@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../models/user.dart';
 import '../../routes/app_router.dart';
+import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/incentive_banner.dart';
 
@@ -79,11 +80,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
     setState(() => _loading = true);
-    // TODO: wire up AuthService.register(...).
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
-    setState(() => _loading = false);
-    context.go(Routes.home);
+    try {
+      await AuthService.instance.register(
+        phone: _phoneCtrl.text.trim(),
+        password: _passCtrl.text,
+        gender: _gender!,
+        birthDate: _birthDate!,
+        city: _cityCtrl.text,
+        district: _districtCtrl.text.trim().isEmpty
+            ? null
+            : _districtCtrl.text.trim(),
+      );
+      if (!mounted) return;
+      context.go(Routes.home);
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Алдаа гарлаа, дахин оролдоно уу')),
+      );
+    }
   }
 
   void _openTerms() {

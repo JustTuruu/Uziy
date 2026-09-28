@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../models/campaign.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/home/home_feed_screen.dart';
@@ -128,6 +129,9 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) => _modal(
         VideoPlayerScreen(
           campaignId: state.pathParameters['campaignId']!,
+          // Feed passes the Campaign via `extra` so we don't need a second
+          // network call. Falls back to null for deep links.
+          campaign: state.extra is Campaign ? state.extra as Campaign : null,
         ),
         state.pageKey,
       ),
@@ -137,6 +141,7 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) => _modal(
         SurveyScreen(
           campaignId: state.pathParameters['campaignId']!,
+          campaign: state.extra is Campaign ? state.extra as Campaign : null,
         ),
         state.pageKey,
       ),

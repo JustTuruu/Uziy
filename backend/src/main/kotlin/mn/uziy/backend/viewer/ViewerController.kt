@@ -19,6 +19,7 @@ data class FeedItemDto(
     val videoUrl: String,
     val thumbnailUrl: String?,
     val durationSeconds: Int,
+    val hasVideo: Boolean,
     val rewardPerUser: Double,
     val companyName: String,
 )
@@ -84,6 +85,7 @@ class ViewerController(
                 videoUrl = it.videoUrl,
                 thumbnailUrl = it.thumbnailUrl,
                 durationSeconds = it.durationSeconds,
+                hasVideo = it.hasVideo,
                 rewardPerUser = it.rewardPerUser,
                 companyName = companyNames[it.companyId] ?: "",
             )

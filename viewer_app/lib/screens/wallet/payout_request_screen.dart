@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../services/viewer_service.dart';
 import '../../theme/app_theme.dart';
 
 /// First-payout verification flow.
@@ -46,31 +47,49 @@ class _PayoutRequestScreenState extends State<PayoutRequestScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
-    // TODO: POST /payouts/request — enters PENDING queue for Admin review.
-    await Future.delayed(const Duration(milliseconds: 700));
-    if (!mounted) return;
-    setState(() => _loading = false);
-    showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: const Text('Хүсэлт хүлээн авлаа'),
-        content: const Text(
-          'Таны эхний татах хүсэлт админаар шалгагдаж, дансны нэр таарсны '
-          'дараа is_verified статус олгогдоно. 1-2 ажлын өдрийн дотор мөнгө '
-          'таны данс руу орно.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              context.pop();
-            },
-            child: const Text('Ойлголоо'),
+    try {
+      await ViewerService.instance.requestPayout(
+        amount: double.parse(_amountCtrl.text),
+        bank: _bank,
+        accountNumber: _accountNumberCtrl.text.trim(),
+        accountName: _accountNameCtrl.text.trim(),
+        nationalId: _nationalIdCtrl.text.trim(),
+      );
+      if (!mounted) return;
+      setState(() => _loading = false);
+      showDialog<void>(
+        context: context,
+        builder: (_) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          title: const Text('Хүсэлт хүлээн авлаа'),
+          content: const Text(
+            'Хүсэлт админаар шалгагдаж, дансны нэр таарсны дараа таны данс руу '
+            'мөнгө шилжинэ. Эхний удаагийн батлагдсан таталтад '
+            'is_verified статус олгогдоно.',
           ),
-        ],
-      ),
-    );
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                context.pop();
+              },
+              child: const Text('Ойлголоо'),
+            ),
+          ],
+        ),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Илгээхэд алдаа гарлаа')),
+      );
+    }
   }
 
   @override

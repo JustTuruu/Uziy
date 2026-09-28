@@ -4,57 +4,106 @@ import 'package:go_router/go_router.dart';
 import '../../models/campaign.dart';
 import '../../models/survey_question.dart';
 import '../../routes/app_router.dart';
+import '../../services/auth_service.dart';
+import '../../services/viewer_service.dart';
 import '../../theme/app_theme.dart';
 
 class SurveyScreen extends StatefulWidget {
-  const SurveyScreen({super.key, required this.campaignId});
+  const SurveyScreen({
+    super.key,
+    required this.campaignId,
+    this.campaign,
+  });
   final String campaignId;
+  final Campaign? campaign;
 
   @override
   State<SurveyScreen> createState() => _SurveyScreenState();
 }
 
 class _SurveyScreenState extends State<SurveyScreen> {
-  late final Campaign _campaign;
-  late final List<SurveyQuestion> _questions;
+  List<SurveyQuestion>? _questions;
+  String? _loadError;
 
   final Map<int, dynamic> _answers = {}; // questionId -> answer
   int _index = 0;
   bool _submitting = false;
+  String? _submitError;
+
+  int get _campaignId => int.tryParse(widget.campaignId) ?? 0;
 
   @override
   void initState() {
     super.initState();
-    final id = int.tryParse(widget.campaignId) ?? 1;
-    _campaign = Campaign.mockFeed().firstWhere(
-      (c) => c.id == id,
-      orElse: () => Campaign.mockFeed().first,
-    );
-    _questions = SurveyQuestion.mockFor(_campaign.id);
+    _loadQuestions();
   }
 
-  SurveyQuestion get _current => _questions[_index];
-  bool get _isLast => _index == _questions.length - 1;
+  Future<void> _loadQuestions() async {
+    try {
+      final qs = await ViewerService.instance.questions(_campaignId);
+      if (!mounted) return;
+      setState(() {
+        _questions = qs;
+        _loadError = null;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      if (e.statusCode == 401 || e.statusCode == 403) {
+        await AuthService.instance.logout();
+        if (!mounted) return;
+        context.go(Routes.login);
+        return;
+      }
+      setState(() => _loadError = e.message);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadError = 'Асуулт ачаалж чадсангүй');
+    }
+  }
+
+  SurveyQuestion get _current => _questions![_index];
+  bool get _isLast => _index == (_questions?.length ?? 0) - 1;
 
   bool _canAdvance() {
+    if (_questions == null) return false;
     final q = _current;
     if (!q.required) return true;
     final a = _answers[q.id];
     if (a == null) return false;
     if (a is String && a.trim().isEmpty) return false;
+    if (a is List && a.isEmpty) return false;
     return true;
   }
 
   Future<void> _submit() async {
-    setState(() => _submitting = true);
-    // TODO: POST /surveys/submit -> triggers atomic reward transaction on backend.
-    await Future.delayed(const Duration(milliseconds: 700));
-    if (!mounted) return;
-    setState(() => _submitting = false);
-    _showRewardSheet();
+    setState(() {
+      _submitting = true;
+      _submitError = null;
+    });
+    try {
+      final res = await ViewerService.instance.submitSurvey(
+        campaignId: _campaignId,
+        answers: _answers,
+      );
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      _showRewardSheet(res.rewardPaid);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _submitError = e.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _submitError = 'Илгээхэд алдаа гарлаа';
+      });
+    }
   }
 
-  void _showRewardSheet() {
+  void _showRewardSheet(double reward) {
     showModalBottomSheet<void>(
       context: context,
       isDismissible: false,
@@ -63,7 +112,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => _RewardSheet(reward: _campaign.rewardPerUser),
+      builder: (_) => _RewardSheet(reward: reward),
     ).then((_) {
       if (mounted) context.go(Routes.home);
     });
@@ -71,10 +120,53 @@ class _SurveyScreenState extends State<SurveyScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loadError != null) {
+      return Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => context.go(Routes.home),
+          ),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_loadError!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AppColors.danger)),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                    onPressed: _loadQuestions,
+                    child: const Text('Дахин')),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_questions == null) {
+      return const Scaffold(
+        body: Center(
+          child: SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              valueColor: AlwaysStoppedAnimation(AppColors.primary),
+            ),
+          ),
+        ),
+      );
+    }
+
     final q = _current;
     return Scaffold(
       appBar: AppBar(
-        title: Text('${_index + 1} / ${_questions.length}'),
+        title: Text('${_index + 1} / ${_questions!.length}'),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => context.go(Routes.home),
@@ -84,7 +176,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
         child: Column(
           children: [
             LinearProgressIndicator(
-              value: (_index + 1) / _questions.length,
+              value: (_index + 1) / _questions!.length,
               backgroundColor: AppColors.divider,
               valueColor: const AlwaysStoppedAnimation(AppColors.primary),
               minHeight: 3,
@@ -111,6 +203,25 @@ class _SurveyScreenState extends State<SurveyScreen> {
                 ),
               ),
             ),
+            if (_submitError != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.danger.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: AppColors.danger.withValues(alpha: 0.4)),
+                  ),
+                  child: Text(
+                    _submitError!,
+                    style: const TextStyle(
+                        color: AppColors.danger, fontSize: 13),
+                  ),
+                ),
+              ),
             SafeArea(
               minimum: const EdgeInsets.fromLTRB(20, 0, 20, 20),
               child: Row(

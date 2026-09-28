@@ -3,8 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
+import 'services/auth_service.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -12,5 +13,8 @@ void main() {
       statusBarIconBrightness: Brightness.light,
     ),
   );
+  // Rehydrate the persisted JWT into Dio's headers so /viewer/* calls made
+  // during splash / early screens don't 401.
+  await AuthService.instance.restore();
   runApp(const ProviderScope(child: ViewerApp()));
 }

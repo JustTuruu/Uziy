@@ -8,8 +8,16 @@ import '../../routes/app_router.dart';
 import '../../theme/app_theme.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
-  const VideoPlayerScreen({super.key, required this.campaignId});
+  const VideoPlayerScreen({
+    super.key,
+    required this.campaignId,
+    this.campaign,
+  });
   final String campaignId;
+
+  /// Passed via router `extra` from the feed. Null for deep links — we
+  /// fall back to a mock lookup so the player can still render.
+  final Campaign? campaign;
 
   @override
   State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
@@ -28,10 +36,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void initState() {
     super.initState();
-    _campaign = Campaign.mockFeed().firstWhere(
-      (c) => c.id.toString() == widget.campaignId,
-      orElse: () => Campaign.mockFeed().first,
-    );
+    _campaign = widget.campaign ??
+        Campaign.mockFeed().firstWhere(
+          (c) => c.id.toString() == widget.campaignId,
+          orElse: () => Campaign.mockFeed().first,
+        );
     _startTicker();
   }
 
@@ -193,6 +202,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     onPressed: _fullyWatched
                         ? () => context.pushReplacement(
                               '${Routes.survey}/${_campaign.id}',
+                              extra: _campaign,
                             )
                         : null,
                     style: ElevatedButton.styleFrom(

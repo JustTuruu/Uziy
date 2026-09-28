@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../routes/app_router.dart';
+import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -26,14 +27,34 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  String? _error;
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _loading = true);
-    // TODO: wire up AuthService.login(phone, password) -> JWT.
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
-    setState(() => _loading = false);
-    context.go(Routes.home);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      await AuthService.instance.login(
+        phone: _phoneCtrl.text.trim(),
+        password: _passCtrl.text,
+      );
+      if (!mounted) return;
+      context.go(Routes.home);
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.message;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Алдаа гарлаа, дахин оролдоно уу';
+        _loading = false;
+      });
+    }
   }
 
   @override
@@ -114,6 +135,26 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: const Text('Нууц үг мартсан?'),
                   ),
                 ),
+                if (_error != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.danger.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border:
+                          Border.all(color: AppColors.danger.withValues(alpha: 0.4)),
+                    ),
+                    child: Text(
+                      _error!,
+                      style: const TextStyle(
+                        color: AppColors.danger,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 ElevatedButton(
                   onPressed: _loading ? null : _submit,
