@@ -1,41 +1,94 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Search, ShieldCheck, UserX } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { Search, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/page-header";
-import { mockUsers } from "@/lib/mock-data";
+import { adminApi, ApiError, auth, type AdminUser } from "@/lib/api";
 import { formatTugrik, relativeTime } from "@/lib/utils";
 
+/**
+ * Filter helper — exported so it can be unit tested without a Vitest
+ * component-render for the whole page.
+ */
+export function filterUsers(
+  users: AdminUser[],
+  filter: "ALL" | "VERIFIED" | "UNVERIFIED",
+  query: string,
+): AdminUser[] {
+  const q = query.trim().toLowerCase();
+  return users.filter((u) => {
+    if (filter === "VERIFIED" && !u.isVerified) return false;
+    if (filter === "UNVERIFIED" && u.isVerified) return false;
+    if (!q) return true;
+    return (
+      u.phoneNumber.toLowerCase().includes(q) ||
+      (u.city?.toLowerCase().includes(q) ?? false) ||
+      (u.companyName?.toLowerCase().includes(q) ?? false)
+    );
+  });
+}
+
 export default function UsersPage() {
+  const router = useRouter();
+  const [users, setUsers] = useState<AdminUser[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"ALL" | "VERIFIED" | "UNVERIFIED">(
     "ALL",
   );
+  const [pendingVerify, setPendingVerify] = useState<Set<number>>(new Set());
 
-  const filtered = useMemo(() => {
-    return mockUsers.filter((u) => {
-      if (filter === "VERIFIED" && !u.isVerified) return false;
-      if (filter === "UNVERIFIED" && u.isVerified) return false;
-      if (
-        query &&
-        !u.phoneNumber.toLowerCase().includes(query.toLowerCase()) &&
-        !u.city?.toLowerCase().includes(query.toLowerCase())
-      ) {
-        return false;
-      }
-      return true;
-    });
-  }, [query, filter]);
+  useEffect(() => {
+    if (!auth.getToken()) {
+      router.replace("/login");
+      return;
+    }
+    adminApi
+      .users()
+      .then(setUsers)
+      .catch((e) => {
+        if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+          auth.clear();
+          router.replace("/login");
+          return;
+        }
+        setError(e instanceof Error ? e.message : "Алдаа гарлаа");
+      });
+  }, [router]);
+
+  const verify = async (id: number) => {
+    setPendingVerify((s) => new Set(s).add(id));
+    try {
+      const updated = await adminApi.verify(id);
+      setUsers((prev) =>
+        prev ? prev.map((u) => (u.id === id ? updated : u)) : prev,
+      );
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Алдаа гарлаа");
+    } finally {
+      setPendingVerify((s) => {
+        const n = new Set(s);
+        n.delete(id);
+        return n;
+      });
+    }
+  };
+
+  const filtered = useMemo(
+    () => (users ? filterUsers(users, filter, query) : []),
+    [users, filter, query],
+  );
 
   return (
     <>
       <PageHeader
         title="Хэрэглэгчид"
-        description="Бүх бүртгэлтэй үзэгчид"
+        description="Бүх бүртгэлтэй үзэгчид ба компаниуд"
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -46,7 +99,7 @@ export default function UsersPage() {
           />
           <Input
             className="pl-9"
-            placeholder="Утас, хотоор хайх..."
+            placeholder="Утас, хот, компаниар хайх..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -75,84 +128,106 @@ export default function UsersPage() {
       </div>
 
       <Card>
-        <CardHeader title={`Нийт: ${filtered.length}`} />
+        <CardHeader
+          title={users === null ? "Ачаалж байна..." : `Нийт: ${filtered.length}`}
+        />
         <CardBody className="p-0">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--color-divider)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
-                <th className="px-5 py-3 font-semibold">Утас</th>
-                <th className="px-5 py-3 font-semibold">Профайл</th>
-                <th className="px-5 py-3 font-semibold">Хот</th>
-                <th className="px-5 py-3 font-semibold">Бүртгэсэн</th>
-                <th className="px-5 py-3 font-semibold text-right">
-                  Үлдэгдэл
-                </th>
-                <th className="px-5 py-3 font-semibold text-right">
-                  Статус
-                </th>
-                <th className="px-5 py-3 font-semibold text-right">Үйлдэл</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((u) => (
-                <tr
-                  key={u.id}
-                  className="border-b border-[var(--color-divider)] last:border-0"
-                >
-                  <td className="px-5 py-3 font-mono text-[var(--color-text-primary)]">
-                    {u.phoneNumber}
-                  </td>
-                  <td className="px-5 py-3 text-[var(--color-text-secondary)]">
-                    {u.gender === "MALE" ? "♂" : "♀"} · {u.age} нас
-                  </td>
-                  <td className="px-5 py-3 text-[var(--color-text-secondary)]">
-                    {u.city ?? "—"}
-                  </td>
-                  <td className="px-5 py-3 text-[var(--color-text-muted)]">
-                    {relativeTime(u.createdAt)}
-                  </td>
-                  <td className="px-5 py-3 text-right font-mono text-[var(--color-text-primary)]">
-                    {formatTugrik(u.balance)}
-                  </td>
-                  <td className="px-5 py-3 text-right">
-                    <Badge tone={u.isVerified ? "success" : "neutral"}>
-                      {u.isVerified ? "Баталгаажсан" : "Баталгаажаагүй"}
-                    </Badge>
-                  </td>
-                  <td className="px-5 py-3">
-                    <div className="flex justify-end gap-2">
-                      {!u.isVerified && (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          leftIcon={<ShieldCheck size={12} />}
-                        >
-                          Баталгаажуулах
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        leftIcon={<UserX size={12} />}
-                      >
-                        Хаах
-                      </Button>
-                    </div>
-                  </td>
+          {error && (
+            <div className="border-b border-[var(--color-danger)]/40 bg-[color-mix(in_oklab,var(--color-danger)_10%,transparent)] px-5 py-3 text-xs text-[var(--color-danger)]">
+              {error}
+            </div>
+          )}
+          {users === null && !error ? (
+            <div className="animate-pulse px-5 py-10 text-sm text-[var(--color-text-muted)]">
+              Хэрэглэгчдийн жагсаалт ачаалж байна...
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[var(--color-divider)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
+                  <th className="px-5 py-3 font-semibold">Утас</th>
+                  <th className="px-5 py-3 font-semibold">Профайл</th>
+                  <th className="px-5 py-3 font-semibold">Хот</th>
+                  <th className="px-5 py-3 font-semibold">Бүртгэсэн</th>
+                  <th className="px-5 py-3 font-semibold text-right">
+                    Үлдэгдэл
+                  </th>
+                  <th className="px-5 py-3 font-semibold text-right">Статус</th>
+                  <th className="px-5 py-3 font-semibold text-right">Үйлдэл</th>
                 </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="px-5 py-10 text-center text-sm text-[var(--color-text-muted)]"
+              </thead>
+              <tbody>
+                {filtered.map((u) => (
+                  <tr
+                    key={u.id}
+                    className="border-b border-[var(--color-divider)] last:border-0"
                   >
-                    Хэрэглэгч олдсонгүй.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                    <td className="px-5 py-3 font-mono text-[var(--color-text-primary)]">
+                      {u.phoneNumber}
+                    </td>
+                    <td className="px-5 py-3 text-[var(--color-text-secondary)]">
+                      {u.role === "COMPANY" ? (
+                        <span>
+                          {u.companyName ?? "—"}{" "}
+                          <span className="text-[var(--color-text-muted)]">
+                            (Компани)
+                          </span>
+                        </span>
+                      ) : u.role === "ADMIN" ? (
+                        <span className="text-[var(--color-primary)]">Админ</span>
+                      ) : (
+                        <span>
+                          {u.gender === "MALE" ? "♂" : u.gender === "FEMALE" ? "♀" : ""}
+                          {u.age !== null ? ` · ${u.age} нас` : ""}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3 text-[var(--color-text-secondary)]">
+                      {u.city ?? "—"}
+                    </td>
+                    <td className="px-5 py-3 text-[var(--color-text-muted)]">
+                      {relativeTime(u.createdAt)}
+                    </td>
+                    <td className="px-5 py-3 text-right font-mono text-[var(--color-text-primary)]">
+                      {formatTugrik(u.balance)}
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <Badge tone={u.isVerified ? "success" : "neutral"}>
+                        {u.isVerified ? "Баталгаажсан" : "Баталгаажаагүй"}
+                      </Badge>
+                    </td>
+                    <td className="px-5 py-3">
+                      <div className="flex justify-end gap-2">
+                        {!u.isVerified && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            leftIcon={<ShieldCheck size={12} />}
+                            onClick={() => verify(u.id)}
+                            disabled={pendingVerify.has(u.id)}
+                          >
+                            {pendingVerify.has(u.id)
+                              ? "Хадгалж байна..."
+                              : "Баталгаажуулах"}
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="px-5 py-10 text-center text-sm text-[var(--color-text-muted)]"
+                    >
+                      Хэрэглэгч олдсонгүй.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
         </CardBody>
       </Card>
     </>

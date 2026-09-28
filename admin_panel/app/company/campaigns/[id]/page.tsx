@@ -1,19 +1,28 @@
+"use client";
+
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { ArrowLeft, Pause, Play } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { ArrowLeft, ClipboardList, Pause, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
-import { mockCampaigns, mockSurveyResponses } from "@/lib/mock-data";
-import { formatNumber, formatTugrik } from "@/lib/utils";
+import {
+  ApiError,
+  auth,
+  companyApi,
+  type Campaign,
+} from "@/lib/api";
+import { formatTugrik } from "@/lib/utils";
 
 const statusTone = {
   ACTIVE: "success",
   PAUSED: "warning",
   PENDING: "info",
   COMPLETED: "neutral",
+  REJECTED: "danger",
 } as const;
 
 const statusLabel = {
@@ -21,24 +30,85 @@ const statusLabel = {
   PAUSED: "Түр зогсоосон",
   PENDING: "Хүлээгдэж буй",
   COMPLETED: "Дууссан",
+  REJECTED: "Татгалзсан",
 } as const;
 
-export default async function CampaignDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  const campaign = mockCampaigns.find((c) => c.id === Number(id));
-  if (!campaign) notFound();
+export default function CampaignDetailPage() {
+  const router = useRouter();
+  const params = useParams<{ id: string }>();
+  const id = Number(params.id);
 
-  const rate =
-    campaign.views === 0
-      ? 0
-      : Math.round((campaign.completions / campaign.views) * 100);
-  const responses = mockSurveyResponses.filter(
-    (r) => r.campaignId === campaign.id,
-  );
+  const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!auth.getToken()) {
+      router.replace("/login");
+      return;
+    }
+    if (!Number.isFinite(id)) {
+      setError("Кампанийн ID буруу");
+      return;
+    }
+    companyApi
+      .get(id)
+      .then(setCampaign)
+      .catch((e) => {
+        if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+          auth.clear();
+          router.replace("/login");
+          return;
+        }
+        if (e instanceof ApiError && e.status === 404) {
+          setError("Кампани олдсонгүй");
+          return;
+        }
+        setError(e instanceof Error ? e.message : "Алдаа гарлаа");
+      });
+  }, [id, router]);
+
+  const setStatus = async (next: "ACTIVE" | "PAUSED" | "COMPLETED") => {
+    if (!campaign) return;
+    setBusy(true);
+    try {
+      const updated = await companyApi.setStatus(campaign.id, next);
+      setCampaign(updated);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Алдаа гарлаа");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (error) {
+    return (
+      <>
+        <Link
+          href="/company/campaigns"
+          className="mb-4 inline-flex items-center gap-1 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+        >
+          <ArrowLeft size={12} /> Бүх кампани
+        </Link>
+        <Card>
+          <CardBody className="py-10 text-center text-sm text-[var(--color-danger)]">
+            {error}
+          </CardBody>
+        </Card>
+      </>
+    );
+  }
+
+  if (!campaign) {
+    return (
+      <div className="animate-pulse text-sm text-[var(--color-text-muted)]">
+        Ачаалж байна...
+      </div>
+    );
+  }
+
+  const spent = campaign.totalBudget - campaign.remainingBudget;
+  const unitLabel = campaign.hasVideo ? "үзэгч" : "хариулт";
 
   return (
     <>
@@ -51,38 +121,56 @@ export default async function CampaignDetailPage({
 
       <PageHeader
         title={campaign.title}
-        description={`${campaign.durationSeconds} сек · ${campaign.targetCity}`}
+        description={
+          campaign.hasVideo
+            ? `${campaign.durationSeconds} сек · ${campaign.targetCity === "ALL" ? "Бүх хот" : campaign.targetCity}`
+            : `Судалгаа зөвхөн · ${campaign.targetCity === "ALL" ? "Бүх хот" : campaign.targetCity}`
+        }
         actions={
           <div className="flex items-center gap-2">
             <Badge tone={statusTone[campaign.status]}>
               {statusLabel[campaign.status]}
             </Badge>
-            {campaign.status === "ACTIVE" ? (
-              <Button variant="secondary" leftIcon={<Pause size={14} />}>
+            {campaign.status === "ACTIVE" && (
+              <Button
+                variant="secondary"
+                leftIcon={<Pause size={14} />}
+                onClick={() => setStatus("PAUSED")}
+                disabled={busy}
+              >
                 Түр зогсоох
               </Button>
-            ) : campaign.status === "PAUSED" ? (
-              <Button leftIcon={<Play size={14} />}>Үргэлжлүүлэх</Button>
-            ) : null}
+            )}
+            {campaign.status === "PAUSED" && (
+              <Button
+                leftIcon={<Play size={14} />}
+                onClick={() => setStatus("ACTIVE")}
+                disabled={busy}
+              >
+                Үргэлжлүүлэх
+              </Button>
+            )}
           </div>
         }
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <StatCard label="Үзсэн" value={formatNumber(campaign.views)} />
-        <StatCard
-          label="Гүйцэтгэсэн"
-          value={formatNumber(campaign.completions)}
-          hint={`${rate}% гүйцэтгэл`}
-        />
         <StatCard
           label="Зарцуулсан"
-          value={formatTugrik(campaign.totalBudget - campaign.remainingBudget)}
+          value={formatTugrik(spent)}
           hint={`/ ${formatTugrik(campaign.totalBudget)}`}
         />
         <StatCard
           label="Үлдэгдэл"
           value={formatTugrik(campaign.remainingBudget)}
+        />
+        <StatCard
+          label={`Үнэ / ${unitLabel}`}
+          value={formatTugrik(campaign.costPerView)}
+        />
+        <StatCard
+          label="Урамшуулал"
+          value={formatTugrik(campaign.rewardPerUser)}
         />
       </div>
 
@@ -90,47 +178,18 @@ export default async function CampaignDetailPage({
         <Card className="lg:col-span-2">
           <CardHeader
             title="Судалгааны хариултууд"
-            description="Хэрэглэгчид энэ видеог үзсэний дараа юу гэж хариулав"
+            description="Backend-д агрегатор нэмэгдэх хүртэл харагдахгүй"
           />
-          <CardBody className="space-y-6">
-            {responses.length === 0 && (
-              <div className="text-sm text-[var(--color-text-muted)]">
-                Хариулт хараахан алга.
+          <CardBody className="py-10 text-center text-sm text-[var(--color-text-muted)]">
+            {campaign.hasVideo ? (
+              <div className="flex items-center justify-center gap-2">
+                <Play size={16} /> Судалгааны agregate endpoint удахгүй.
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-2">
+                <ClipboardList size={16} /> Судалгааны agregate endpoint удахгүй.
               </div>
             )}
-            {responses.map((r) => {
-              const total = r.breakdown.reduce((s, b) => s + b.count, 0);
-              return (
-                <div key={r.questionId}>
-                  <div className="mb-3 text-sm font-semibold">
-                    {r.prompt}
-                  </div>
-                  <div className="space-y-2">
-                    {r.breakdown.map((b) => {
-                      const pct = Math.round((b.count / total) * 100);
-                      return (
-                        <div key={b.label}>
-                          <div className="mb-1 flex items-center justify-between text-xs">
-                            <span className="text-[var(--color-text-secondary)]">
-                              {b.label}
-                            </span>
-                            <span className="font-mono text-[var(--color-text-primary)]">
-                              {formatNumber(b.count)} · {pct}%
-                            </span>
-                          </div>
-                          <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-divider)]">
-                            <div
-                              className="h-full bg-[var(--color-primary)]"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
           </CardBody>
         </Card>
 
@@ -152,11 +211,7 @@ export default async function CampaignDetailPage({
               k="Хот"
               v={campaign.targetCity === "ALL" ? "Бүх" : campaign.targetCity}
             />
-            <KV k="Зардал / үзэгч" v={formatTugrik(campaign.costPerView)} />
-            <KV
-              k="Урамшуулал / үзэгч"
-              v={formatTugrik(campaign.rewardPerUser)}
-            />
+            <KV k="Төрөл" v={campaign.hasVideo ? "Видеотой" : "Судалгаа зөвхөн"} />
           </CardBody>
         </Card>
       </div>

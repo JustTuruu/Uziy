@@ -142,6 +142,7 @@ export interface Campaign {
   title: string;
   videoUrl: string;
   durationSeconds: number;
+  hasVideo: boolean;
   targetGender: "ALL" | Gender;
   minAge: number;
   maxAge: number;

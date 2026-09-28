@@ -20,6 +20,7 @@ import { PageHeader } from "@/components/page-header";
 import {
   ApiError,
   auth,
+  companyApi,
   platformSettingsApi,
   type PlatformSettings,
 } from "@/lib/api";
@@ -157,11 +158,63 @@ export default function NewCampaignPage() {
     if (canPrev) setStep(steps[stepIndex - 1].id);
   };
 
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   const submit = async () => {
-    // TODO: POST /company/campaigns (multipart video for VIDEO; JSON for SURVEY_ONLY).
-    // Backend enforces hasVideo=false → durationSeconds=0, videoUrl="", questions.size >= 1
-    await new Promise((r) => setTimeout(r, 400));
-    router.push("/company/campaigns");
+    setSubmitError(null);
+
+    if (!title.trim()) {
+      setSubmitError("Гарчиг заавал бөглөнө үү");
+      return;
+    }
+    if (kind === "SURVEY_ONLY" && !platformSettings) {
+      setSubmitError("Судалгааны үнэ ачаалагдаж дуусаагүй байна");
+      return;
+    }
+    if (kind === "VIDEO" && (duration < 5 || duration > 180)) {
+      setSubmitError("Видеоны урт 5-180 сек хооронд байх ёстой");
+      return;
+    }
+    if (questions.length === 0) {
+      setSubmitError("Хамгийн багадаа 1 асуулт нэмнэ үү");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      // NOTE: video file upload is not wired yet — until the FFmpeg worker
+      // exists, we send an empty videoUrl for video campaigns too and the
+      // company can attach a hosted URL later.
+      await companyApi.create({
+        title: title.trim(),
+        hasVideo: kind === "VIDEO",
+        videoUrl: "",
+        durationSeconds: kind === "VIDEO" ? duration : 0,
+        targetGender: gender,
+        minAge, maxAge,
+        targetCity: city,
+        totalBudget,
+        costPerView: costPerUnit,
+        rewardPerUser: effectiveReward,
+        questions: questions.map((q) => ({
+          prompt: q.prompt,
+          type: q.type,
+          options: q.type === "TEXT" ? [] : q.options.filter(Boolean),
+          required: true,
+        })),
+      });
+      router.push("/company/campaigns");
+    } catch (e) {
+      if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+        auth.clear();
+        router.replace("/login");
+        return;
+      }
+      setSubmitError(e instanceof ApiError ? e.message : "Илгээхэд алдаа гарлаа");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -627,6 +680,11 @@ export default function NewCampaignPage() {
                 label="Судалгааны асуулт"
                 value={`${questions.length} ширхэг`}
               />
+              {submitError && (
+                <div className="mt-2 rounded-lg border border-[var(--color-danger)]/40 bg-[color-mix(in_oklab,var(--color-danger)_10%,transparent)] px-3 py-2 text-xs text-[var(--color-danger)]">
+                  {submitError}
+                </div>
+              )}
             </CardBody>
           </Card>
         )}
@@ -642,8 +700,12 @@ export default function NewCampaignPage() {
           Буцах
         </Button>
         {step === "review" ? (
-          <Button leftIcon={<Check size={16} />} onClick={submit}>
-            Илгээх
+          <Button
+            leftIcon={<Check size={16} />}
+            onClick={submit}
+            disabled={submitting}
+          >
+            {submitting ? "Илгээж байна..." : "Илгээх"}
           </Button>
         ) : (
           <Button

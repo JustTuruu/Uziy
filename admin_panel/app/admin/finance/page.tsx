@@ -1,23 +1,48 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Banknote, PiggyBank, TrendingUp } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
-import { platformStats } from "@/lib/mock-data";
+import {
+  adminApi,
+  ApiError,
+  auth,
+  type AdminStats,
+} from "@/lib/api";
 import { formatTugrik } from "@/lib/utils";
 
-const monthlyLedger = [
-  { month: "2026-09", gmv: 22_400_000, commission: 7_840_000, payouts: 12_600_000 },
-  { month: "2026-08", gmv: 19_100_000, commission: 6_685_000, payouts: 10_800_000 },
-  { month: "2026-07", gmv: 17_500_000, commission: 6_125_000, payouts: 9_900_000 },
-  { month: "2026-06", gmv: 14_800_000, commission: 5_180_000, payouts: 8_400_000 },
-  { month: "2026-05", gmv: 12_600_000, commission: 4_410_000, payouts: 7_200_000 },
-];
-
+/**
+ * Finance summary. Right now the backend exposes headline counts via
+ * /admin/stats but no per-month ledger — we render the summary tiles
+ * from live data and leave the ledger as a "coming soon" table. When
+ * the backend grows a /admin/finance/monthly endpoint we can wire the
+ * table straight into it.
+ */
 export default function FinancePage() {
-  const commissionAllTime = Math.round(
-    platformStats.totalGmv * platformStats.commissionRate,
-  );
-  const payoutsAllTime = platformStats.totalGmv - commissionAllTime;
+  const router = useRouter();
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!auth.getToken()) {
+      router.replace("/login");
+      return;
+    }
+    adminApi
+      .stats()
+      .then(setStats)
+      .catch((e) => {
+        if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+          auth.clear();
+          router.replace("/login");
+          return;
+        }
+        setError(e instanceof Error ? e.message : "Алдаа гарлаа");
+      });
+  }, [router]);
 
   return (
     <>
@@ -26,21 +51,28 @@ export default function FinancePage() {
         description="Платформын нийт орлого болон хэрэглэгчид олгосон урамшуулал"
       />
 
+      {error && (
+        <div className="mb-4 rounded-xl border border-[var(--color-danger)]/40 bg-[color-mix(in_oklab,var(--color-danger)_10%,transparent)] px-4 py-3 text-xs text-[var(--color-danger)]">
+          {error}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <StatCard
-          label="Нийт GMV"
-          value={formatTugrik(platformStats.totalGmv)}
+          label="Идэвхтэй кампани"
+          value={stats ? String(stats.activeCampaigns) : "—"}
           icon={<TrendingUp size={16} />}
+          hint="Одоо хэрэглэгчдэд харагдаж байгаа"
         />
         <StatCard
-          label="Шимтгэлийн орлого"
-          value={formatTugrik(commissionAllTime)}
+          label="Шимтгэлийн хувь"
+          value={stats ? `${Math.round(stats.commissionRate * 100)}%` : "—"}
           icon={<Banknote size={16} />}
-          hint={`${Math.round(platformStats.commissionRate * 100)}% шимтгэл`}
+          hint="Гүйлгээ бүрээс"
         />
         <StatCard
-          label="Хэрэглэгчид олгосон"
-          value={formatTugrik(payoutsAllTime)}
+          label="Хүлээгдэж буй таталт"
+          value={stats ? String(stats.pendingPayouts) : "—"}
           icon={<PiggyBank size={16} />}
         />
       </div>
@@ -49,42 +81,10 @@ export default function FinancePage() {
         <Card>
           <CardHeader
             title="Сар бүрийн жагсаалт"
-            description="Сүүлийн 5 сар"
+            description="Backend-д /admin/finance/monthly endpoint нэмэгдэх хүртэл хоосон"
           />
-          <CardBody className="p-0">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--color-divider)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
-                  <th className="px-5 py-3 font-semibold">Сар</th>
-                  <th className="px-5 py-3 font-semibold text-right">GMV</th>
-                  <th className="px-5 py-3 font-semibold text-right">
-                    Шимтгэл
-                  </th>
-                  <th className="px-5 py-3 font-semibold text-right">
-                    Хэрэглэгчид
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {monthlyLedger.map((r) => (
-                  <tr
-                    key={r.month}
-                    className="border-b border-[var(--color-divider)] last:border-0"
-                  >
-                    <td className="px-5 py-3 font-mono">{r.month}</td>
-                    <td className="px-5 py-3 text-right font-mono">
-                      {formatTugrik(r.gmv)}
-                    </td>
-                    <td className="px-5 py-3 text-right font-mono text-[var(--color-primary)]">
-                      {formatTugrik(r.commission)}
-                    </td>
-                    <td className="px-5 py-3 text-right font-mono">
-                      {formatTugrik(r.payouts)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <CardBody className="py-16 text-center text-sm text-[var(--color-text-muted)]">
+            Сарын GMV, шимтгэл, олгосон дүнгийн тайлан удахгүй нээгдэнэ.
           </CardBody>
         </Card>
       </div>
