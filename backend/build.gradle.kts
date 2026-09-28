@@ -6,7 +6,7 @@ plugins {
 	kotlin("plugin.jpa") version "2.3.21"
 }
 
-group = "mn.zoos"
+group = "mn.uziy"
 version = "0.0.1-SNAPSHOT"
 
 java {

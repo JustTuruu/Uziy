@@ -1,4 +1,4 @@
--- Zoos initial schema. Mirrors docs/SPEC.md §3.
+-- Uziy initial schema. Mirrors docs/SPEC.md §3.
 -- All timestamps are stored in UTC. Money is DOUBLE PRECISION as per spec —
 -- switch to NUMERIC(14,2) later if audit-grade precision becomes a requirement.
 

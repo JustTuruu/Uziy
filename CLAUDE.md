@@ -96,7 +96,7 @@ rewarded-video-platform/
   as one Next.js codebase with role-based routing (`/company/*` and
   `/admin/*`). Rationale: uploading videos, drawing targeting filters, and
   reviewing charts are painful on a phone.
-- The app is named **Zoos** (Mongolian "зоос" = coin) — reflected in the
+- The app is named **Uziy** (Mongolian "зоос" = coin) — reflected in the
   Next.js metadata and the console login page. The Flutter viewer app still
   says "Rewarded Video" as a placeholder; rename when the marketing pass
   happens.
@@ -194,7 +194,7 @@ this session — every endpoint below has been smoke-tested with curl.
 ```
 backend/
 ├── build.gradle.kts                Spring Boot 4.1.1, Kotlin 2.3, JJWT 0.12
-├── docker-compose.yml              zoos-postgres (Postgres 16, port 5432)
+├── docker-compose.yml              uziy-postgres (Postgres 16, port 5432)
 ├── README.md                       run/env/endpoint reference
 ├── gradlew, gradle/                bundled wrapper
 ├── src/main/resources/
@@ -202,10 +202,10 @@ backend/
 │   └── db/migration/
 │       ├── V1__init_schema.sql     spec §3 tables + indexes + constraints
 │       └── V2__seed_dev_data.sql   dev users + 3 campaigns + questions
-└── src/main/kotlin/mn/zoos/backend/
-    ├── ZoosBackendApplication.kt
+└── src/main/kotlin/mn/uziy/backend/
+    ├── UziyBackendApplication.kt
     ├── config/
-    │   ├── AppProperties.kt        @ConfigurationProperties("zoos")
+    │   ├── AppProperties.kt        @ConfigurationProperties("uziy")
     │   └── WebConfig.kt            registers AuthArgumentResolver
     ├── domain/
     │   ├── UserEntity.kt           + Role, Gender enums, computed .age
@@ -265,7 +265,7 @@ hashes in `V2__seed_dev_data.sql` — small future task.)
 **There is no admin-create endpoint** — to make an admin, run:
 
 ```
-docker exec zoos-postgres psql -U zoos -d zoos \
+docker exec uziy-postgres psql -U uziy -d uziy \
   -c "UPDATE users SET role='ADMIN' WHERE phone_number='XXXXXXXX'"
 ```
 

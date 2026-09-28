@@ -1,21 +1,21 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: zoos-postgres
+    container_name: uziy-postgres
     restart: unless-stopped
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: zoos
-      POSTGRES_PASSWORD: zoos_dev
-      POSTGRES_DB: zoos
+      POSTGRES_USER: uziy
+      POSTGRES_PASSWORD: uziy_dev
+      POSTGRES_DB: uziy
     volumes:
-      - zoos_pgdata:/var/lib/postgresql/data
+      - uziy_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U zoos"]
+      test: ["CMD-SHELL", "pg_isready -U uziy"]
       interval: 5s
       timeout: 5s
       retries: 5
 
 volumes:
-  zoos_pgdata:
+  uziy_pgdata:

@@ -267,8 +267,8 @@ uziy/
 │   ├── src/main/resources/
 │   │   ├── application.yml    env-driven config
 │   │   └── db/migration/      Flyway (V1 schema + V2 dev seed)
-│   └── src/main/kotlin/mn/zoos/backend/
-│       ├── ZoosBackendApplication.kt
+│   └── src/main/kotlin/mn/uziy/backend/
+│       ├── UziyBackendApplication.kt
 │       ├── config/            AppProperties, WebConfig
 │       ├── domain/            JPA entities + Spring Data repositories
 │       ├── security/          JwtService, JwtAuthFilter, SecurityConfig

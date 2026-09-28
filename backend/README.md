@@ -1,4 +1,4 @@
-# Zoos backend
+# Uziy backend
 
 Spring Boot 4 + Kotlin + PostgreSQL. Implements the API consumed by
 `viewer_app/` (Flutter) and `admin_panel/` (Next.js).
@@ -25,9 +25,9 @@ The API listens on http://localhost:8080.
 | Var             | Default                                                     |
 | --------------- | ----------------------------------------------------------- |
 | `PORT`          | `8080`                                                      |
-| `DB_URL`        | `jdbc:postgresql://localhost:5432/zoos`                     |
-| `DB_USER`       | `zoos`                                                      |
-| `DB_PASSWORD`   | `zoos_dev`                                                  |
+| `DB_URL`        | `jdbc:postgresql://localhost:5432/uziy`                     |
+| `DB_USER`       | `uziy`                                                      |
+| `DB_PASSWORD`   | `uziy_dev`                                                  |
 | `JWT_SECRET`    | dev-only string; **override in prod, 256 bits minimum**     |
 
 ## Endpoints

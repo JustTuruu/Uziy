@@ -1,10 +1,10 @@
 spring:
   application:
-    name: zoos-backend
+    name: uziy-backend
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/zoos}
-    username: ${DB_USER:zoos}
-    password: ${DB_PASSWORD:zoos_dev}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/uziy}
+    username: ${DB_USER:uziy}
+    password: ${DB_PASSWORD:uziy_dev}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -29,7 +29,7 @@ management:
       exposure:
         include: health,info
 
-zoos:
+uziy:
   jwt:
     # 256-bit dev-only secret. Rotate + inject via env in prod.
     secret: ${JWT_SECRET:dev-only-secret-change-me-please-do-not-ship-this-keyminimum-256-bit}

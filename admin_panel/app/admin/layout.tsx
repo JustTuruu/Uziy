@@ -48,7 +48,7 @@ export default function AdminLayout({
   return (
     <div>
       <Sidebar
-        brand="Zoos"
+        brand="Uziy"
         subtitle="Супер Админ"
         items={nav}
         footer={

@@ -44,7 +44,7 @@ export default function CompanyLayout({
   return (
     <div>
       <Sidebar
-        brand="Zoos"
+        brand="Uziy"
         subtitle="Компанийн самбар"
         items={nav}
         footer={

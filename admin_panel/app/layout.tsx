@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Zoos — Console",
+  title: "Uziy — Console",
   description:
     "Rewarded video platform console (Company + Super Admin) for the Mongolian market.",
 };

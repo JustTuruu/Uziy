@@ -43,7 +43,7 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
             const SizedBox(height: 24),
             const Text(
-              'Rewarded Video',
+              'Uziy',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,

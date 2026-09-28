@@ -38,7 +38,7 @@ export default function LoginPage() {
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--color-primary)] text-black">
             <Play size={22} fill="currentColor" />
           </div>
-          <div className="text-xl font-extrabold tracking-tight">Zoos</div>
+          <div className="text-xl font-extrabold tracking-tight">Uziy</div>
         </div>
 
         <div>
@@ -57,8 +57,8 @@ export default function LoginPage() {
         </div>
 
         <div className="flex gap-6 text-xs text-[var(--color-text-secondary)]">
-          <span>© 2026 Zoos</span>
-          <span>support@zoos.mn</span>
+          <span>© 2026 Uziy</span>
+          <span>support@uziy.mn</span>
         </div>
       </div>
 
@@ -125,10 +125,10 @@ export default function LoginPage() {
           <div className="mt-6 text-center text-xs text-[var(--color-text-muted)]">
             Компаниар бүртгүүлэх бол{" "}
             <a
-              href="mailto:sales@zoos.mn"
+              href="mailto:sales@uziy.mn"
               className="text-[var(--color-primary)] hover:underline"
             >
-              sales@zoos.mn
+              sales@uziy.mn
             </a>
           </div>
         </div>
