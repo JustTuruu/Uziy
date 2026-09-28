@@ -28,22 +28,13 @@ class IncentiveBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.primary.withOpacity(0.35)),
       ),
-      child: const Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('💡', style: TextStyle(fontSize: 22)),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              _message,
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 13,
-                height: 1.45,
-              ),
-            ),
-          ),
-        ],
+      child: const Text(
+        _message,
+        style: TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 13,
+          height: 1.5,
+        ),
       ),
     );
   }

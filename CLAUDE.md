@@ -4,7 +4,7 @@
 > is, what's already built, and where to pick up. The original product brief
 > lives at `docs/SPEC.md`.
 
-> ⚠️ **Standing rule from the user (2026-09-28):** Whenever you add a
+> **Standing rule from the user (2026-09-28):** Whenever you add a
 > function, feature, endpoint, or non-trivial piece of logic, you MUST write
 > unit tests for it in the same turn — don't wait to be asked. Run them
 > before reporting done. Exceptions are only typos, one-line style tweaks,

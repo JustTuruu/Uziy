@@ -69,7 +69,7 @@ product — companies can buy aggregate results on demand.
 <tr>
 <td valign="top" width="33%">
 
-### 👤 Viewer
+### Viewer
 
 1. Register with phone + age + gender + city.
 2. Open the feed — see only ads matched to your profile.
@@ -81,7 +81,7 @@ product — companies can buy aggregate results on demand.
 </td>
 <td valign="top" width="33%">
 
-### 🏢 Company
+### Company
 
 1. Log into the web console.
 2. Upload a video, set:
@@ -96,7 +96,7 @@ product — companies can buy aggregate results on demand.
 </td>
 <td valign="top" width="33%">
 
-### 🛡️ Super Admin
+### Super Admin
 
 1. Log into the web console.
 2. Moderate incoming campaigns (approve / reject).
@@ -471,7 +471,7 @@ etc.) and dev seed lives in
 
 On registration, viewers see this exact message (in Cyrillic Mongolian):
 
-> 💡 Та өөрийн нас, хүйс, байршлыг үнэн зөв оруулснаар өөрт тохирсон илүү
+> Та өөрийн нас, хүйс, байршлыг үнэн зөв оруулснаар өөрт тохирсон илүү
 > олон, илүү өндөр дүнтэй видео судалгаануудыг хүлээн авч, орлогоо
 > нэмэгдүүлэх боломжтой болно.
 
