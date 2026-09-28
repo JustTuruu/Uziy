@@ -21,6 +21,8 @@ viewer_app/.dart_tool/
 viewer_app/.flutter-plugins
 viewer_app/.flutter-plugins-dependencies
 viewer_app/build/
+# Flutter DevTools "take screenshot" saves these to project root; junk.
+viewer_app/flutter_*.png
 viewer_app/ios/Pods/
 viewer_app/ios/.symlinks/
 viewer_app/ios/Flutter/Flutter.podspec
