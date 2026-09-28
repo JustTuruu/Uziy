@@ -116,6 +116,68 @@ class CompanyControllerTest {
         assertEquals(HttpStatus.BAD_REQUEST, ex.statusCode)
     }
 
+    @Test
+    fun `create rejects video campaign with duration outside 5-180`() {
+        val body = CreateCampaignReq(
+            title = "bad-duration", hasVideo = true, durationSeconds = 3,
+            totalBudget = 100_000.0, costPerView = 500.0, rewardPerUser = 300.0,
+            questions = listOf(
+                CreateCampaignReq.NewQuestion(prompt = "P", type = "TEXT"),
+            ),
+        )
+        val ex = assertFailsWith<ResponseStatusException> {
+            controller.create(body, principal)
+        }
+        assertEquals(HttpStatus.BAD_REQUEST, ex.statusCode)
+    }
+
+    @Test
+    fun `create allows survey-only campaign with duration=0 + no video url`() {
+        val saved = slot<CampaignEntity>()
+        every { campaigns.save(capture(saved)) } answers {
+            saved.captured.also { it.id = 88L }
+        }
+        every { questions.save(any()) } answers { firstArg() }
+
+        val body = CreateCampaignReq(
+            title = "Судалгаа: Хэрэглэгчийн үзэл бодол",
+            hasVideo = false, videoUrl = "should-be-ignored",
+            durationSeconds = 45, // should be forced to 0
+            totalBudget = 200_000.0,
+            costPerView = 400.0, rewardPerUser = 250.0,
+            questions = listOf(
+                CreateCampaignReq.NewQuestion(
+                    prompt = "Танай brand-ийг таньж байна уу?",
+                    type = "SINGLE_CHOICE",
+                    options = listOf("Тийм", "Үгүй"),
+                ),
+            ),
+        )
+        val dto = controller.create(body, principal)
+
+        assertEquals(88L, dto.id)
+        assertEquals(false, dto.hasVideo)
+        assertEquals(0, saved.captured.durationSeconds)
+        assertEquals("", saved.captured.videoUrl,
+            "videoUrl must be blanked for survey-only campaigns")
+    }
+
+    @Test
+    fun `create rejects survey-only campaign with no questions`() {
+        val body = CreateCampaignReq(
+            title = "empty-survey",
+            hasVideo = false, videoUrl = "",
+            durationSeconds = 0,
+            totalBudget = 100_000.0,
+            costPerView = 400.0, rewardPerUser = 250.0,
+            questions = emptyList(),
+        )
+        val ex = assertFailsWith<ResponseStatusException> {
+            controller.create(body, principal)
+        }
+        assertEquals(HttpStatus.BAD_REQUEST, ex.statusCode)
+    }
+
     // ------- setStatus -----------------------------------------------------
 
     @Test

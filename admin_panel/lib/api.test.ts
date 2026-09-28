@@ -134,3 +134,74 @@ describe("authApi.login", () => {
     expect(res.token).toBe("t");
   });
 });
+
+describe("platformSettingsApi + adminApi.updateSettings", () => {
+  const originalFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    window.localStorage.clear();
+  });
+
+  it("get() calls /platform-settings anonymously (no auth header)", async () => {
+    auth.setToken("tok");
+    let captured: RequestInit | undefined;
+    let capturedUrl: RequestInfo | URL | undefined;
+    globalThis.fetch = vi.fn(async (url, init) => {
+      capturedUrl = url;
+      captured = init ?? {};
+      return new Response(
+        JSON.stringify({
+          surveyOnlyCostPerResponse: 400,
+          surveyOnlyRewardPerUser: 250,
+          updatedAt: "2026-09-28T10:00:00Z",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }) as typeof fetch;
+
+    const { platformSettingsApi } = await import("./api");
+    const res = await platformSettingsApi.get();
+
+    expect(String(capturedUrl)).toContain("/platform-settings");
+    expect(captured!.method ?? "GET").toBe("GET");
+    expect(
+      (captured!.headers as Record<string, string>).Authorization,
+    ).toBeUndefined();
+    expect(res.surveyOnlyCostPerResponse).toBe(400);
+  });
+
+  it("updateSettings PATCHes /admin/platform-settings with a JSON body", async () => {
+    auth.setToken("admin-tok");
+    let captured: RequestInit | undefined;
+    let capturedUrl: RequestInfo | URL | undefined;
+    globalThis.fetch = vi.fn(async (url, init) => {
+      capturedUrl = url;
+      captured = init ?? {};
+      return new Response(
+        JSON.stringify({
+          surveyOnlyCostPerResponse: 600,
+          surveyOnlyRewardPerUser: 350,
+          updatedAt: "2026-09-28T11:00:00Z",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }) as typeof fetch;
+
+    const { adminApi } = await import("./api");
+    const res = await adminApi.updateSettings({
+      surveyOnlyCostPerResponse: 600,
+      surveyOnlyRewardPerUser: 350,
+    });
+
+    expect(String(capturedUrl)).toContain("/admin/platform-settings");
+    expect(captured!.method).toBe("PATCH");
+    expect(
+      (captured!.headers as Record<string, string>).Authorization,
+    ).toBe("Bearer admin-tok");
+    expect(JSON.parse(captured!.body as string)).toEqual({
+      surveyOnlyCostPerResponse: 600,
+      surveyOnlyRewardPerUser: 350,
+    });
+    expect(res.surveyOnlyCostPerResponse).toBe(600);
+  });
+});

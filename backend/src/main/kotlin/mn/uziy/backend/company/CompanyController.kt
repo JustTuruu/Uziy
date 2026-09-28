@@ -18,6 +18,7 @@ data class CampaignDto(
     val title: String,
     val videoUrl: String,
     val durationSeconds: Int,
+    val hasVideo: Boolean,
     val targetGender: TargetGender,
     val minAge: Int,
     val maxAge: Int,
@@ -33,6 +34,7 @@ data class CampaignDto(
         fun of(c: CampaignEntity) = CampaignDto(
             id = c.id!!, title = c.title, videoUrl = c.videoUrl,
             durationSeconds = c.durationSeconds,
+            hasVideo = c.hasVideo,
             targetGender = c.targetGender,
             minAge = c.minAge, maxAge = c.maxAge, targetCity = c.targetCity,
             totalBudget = c.totalBudget, remainingBudget = c.remainingBudget,
@@ -45,7 +47,9 @@ data class CampaignDto(
 data class CreateCampaignReq(
     @field:NotBlank val title: String,
     val videoUrl: String = "",
-    @field:Positive val durationSeconds: Int,
+    /** Set false for survey-only campaigns (videoUrl + durationSeconds ignored). */
+    val hasVideo: Boolean = true,
+    val durationSeconds: Int = 0,
     val targetGender: TargetGender = TargetGender.ALL,
     val minAge: Int = 0,
     val maxAge: Int = 100,
@@ -94,12 +98,22 @@ class CompanyController(
         if (body.rewardPerUser >= body.costPerView)
             throw ResponseStatusException(HttpStatus.BAD_REQUEST,
                 "rewardPerUser must be strictly less than costPerView")
+        if (body.hasVideo) {
+            if (body.durationSeconds !in 5..180)
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "durationSeconds must be 5..180 for video campaigns")
+        } else {
+            if (body.questions.isEmpty())
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "survey-only campaigns must include at least one survey question")
+        }
 
         val c = campaigns.save(CampaignEntity(
             companyId       = principal.userId,
             title           = body.title,
-            videoUrl        = body.videoUrl,
-            durationSeconds = body.durationSeconds,
+            videoUrl        = if (body.hasVideo) body.videoUrl else "",
+            durationSeconds = if (body.hasVideo) body.durationSeconds else 0,
+            hasVideo        = body.hasVideo,
             targetGender    = body.targetGender,
             minAge          = body.minAge,
             maxAge          = body.maxAge,

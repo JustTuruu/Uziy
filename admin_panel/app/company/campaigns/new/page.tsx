@@ -1,32 +1,32 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Calculator,
   Check,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
   Plus,
   Trash2,
   Upload,
+  Video,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { Input, Select, Textarea } from "@/components/ui/input";
+import { Input, Select } from "@/components/ui/input";
 import { PageHeader } from "@/components/page-header";
+import {
+  ApiError,
+  auth,
+  platformSettingsApi,
+  type PlatformSettings,
+} from "@/lib/api";
 import { cn, formatNumber, formatTugrik } from "@/lib/utils";
 
-type Step = "video" | "targeting" | "budget" | "survey" | "review";
-
-const steps: { id: Step; label: string }[] = [
-  { id: "video", label: "Видео" },
-  { id: "targeting", label: "Зорилтот" },
-  { id: "budget", label: "Төсөв" },
-  { id: "survey", label: "Судалгаа" },
-  { id: "review", label: "Хянах" },
-];
+type CampaignKind = "VIDEO" | "SURVEY_ONLY";
+type Step = "type" | "video" | "targeting" | "budget" | "survey" | "review";
 
 const cities = [
   "ALL",
@@ -46,57 +46,120 @@ interface SurveyQ {
   options: string[];
 }
 
+/** Cost-per-view for video campaigns — grows with targeting precision. */
+export function computeVideoCostPerView(input: {
+  gender: "ALL" | "MALE" | "FEMALE";
+  minAge: number;
+  maxAge: number;
+  city: string;
+}): number {
+  let cost = 500;
+  if (input.gender !== "ALL") cost += 200;
+  if (input.maxAge - input.minAge <= 10) cost += 150;
+  if (input.city !== "ALL") cost += 200;
+  return cost;
+}
+
 export default function NewCampaignPage() {
   const router = useRouter();
-  const [step, setStep] = useState<Step>("video");
 
-  // Step 1
+  // Type toggle (drives visible steps + pricing model)
+  const [kind, setKind] = useState<CampaignKind>("VIDEO");
+  const [step, setStep] = useState<Step>("type");
+
+  const [platformSettings, setPlatformSettings] =
+    useState<PlatformSettings | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Step: video
   const [title, setTitle] = useState("");
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [duration, setDuration] = useState<number>(30);
 
-  // Step 2
+  // Step: targeting
   const [gender, setGender] = useState<"ALL" | "MALE" | "FEMALE">("ALL");
   const [minAge, setMinAge] = useState(18);
   const [maxAge, setMaxAge] = useState(45);
   const [city, setCity] = useState<string>("Улаанбаатар");
 
-  // Step 3
+  // Step: budget
   const [totalBudget, setTotalBudget] = useState(1_000_000);
   const [rewardPerUser, setRewardPerUser] = useState(600);
 
-  // Step 4
+  // Step: survey
   const [questions, setQuestions] = useState<SurveyQ[]>([
     {
       id: 1,
-      prompt: "Энэ реклам танд сонирхолтой санагдсан уу?",
+      prompt: "Танай brand-ийг таньж байна уу?",
       type: "SINGLE_CHOICE",
       options: ["Тийм", "Дунд зэрэг", "Үгүй"],
     },
   ]);
 
-  // Derived pricing — the spec says cost_per_view grows with targeting precision.
-  // Simple model: base 500₮/view, +100 per narrow filter, +200 for gender lock,
-  // +150 if age window ≤ 10 years, +200 if city != ALL.
-  const costPerView = useMemo(() => {
-    let cost = 500;
-    if (gender !== "ALL") cost += 200;
-    if (maxAge - minAge <= 10) cost += 150;
-    if (city !== "ALL") cost += 200;
-    return cost;
-  }, [gender, minAge, maxAge, city]);
+  // Load platform settings once; needed for SURVEY_ONLY pricing display.
+  useEffect(() => {
+    if (!auth.getToken()) {
+      router.replace("/login");
+      return;
+    }
+    platformSettingsApi
+      .get()
+      .then(setPlatformSettings)
+      .catch((e) => setLoadError(e instanceof Error ? e.message : "Алдаа"));
+  }, [router]);
 
-  // Admin commission: 35%. Company must cover cost = reward + commission per view.
-  const platformFeePerView = Math.max(0, costPerView - rewardPerUser);
-  const projectedReach = Math.floor(totalBudget / costPerView);
+  // Video campaigns skip nothing. Survey-only skips the "video" step.
+  const steps = useMemo<{ id: Step; label: string }[]>(
+    () =>
+      kind === "VIDEO"
+        ? [
+            { id: "type", label: "Төрөл" },
+            { id: "video", label: "Видео" },
+            { id: "targeting", label: "Зорилтот" },
+            { id: "budget", label: "Төсөв" },
+            { id: "survey", label: "Судалгаа" },
+            { id: "review", label: "Хянах" },
+          ]
+        : [
+            { id: "type", label: "Төрөл" },
+            { id: "targeting", label: "Зорилтот" },
+            { id: "budget", label: "Төсөв" },
+            { id: "survey", label: "Судалгаа" },
+            { id: "review", label: "Хянах" },
+          ],
+    [kind],
+  );
+
+  // Derived pricing.
+  const videoCostPerView = useMemo(
+    () => computeVideoCostPerView({ gender, minAge, maxAge, city }),
+    [gender, minAge, maxAge, city],
+  );
+  const costPerUnit =
+    kind === "VIDEO"
+      ? videoCostPerView
+      : platformSettings?.surveyOnlyCostPerResponse ?? 0;
+  const effectiveReward =
+    kind === "VIDEO"
+      ? rewardPerUser
+      : platformSettings?.surveyOnlyRewardPerUser ?? 0;
+  const platformFeePerUnit = Math.max(0, costPerUnit - effectiveReward);
+  const projectedReach = costPerUnit > 0 ? Math.floor(totalBudget / costPerUnit) : 0;
 
   const stepIndex = steps.findIndex((s) => s.id === step);
   const canPrev = stepIndex > 0;
   const canNext = stepIndex < steps.length - 1;
 
+  const goNext = () => {
+    if (canNext) setStep(steps[stepIndex + 1].id);
+  };
+  const goPrev = () => {
+    if (canPrev) setStep(steps[stepIndex - 1].id);
+  };
+
   const submit = async () => {
-    // TODO: POST /campaigns (multipart with video file) — backend transcodes
-    // via the FFmpeg worker and uploads HLS to Cloudflare R2.
+    // TODO: POST /company/campaigns (multipart video for VIDEO; JSON for SURVEY_ONLY).
+    // Backend enforces hasVideo=false → durationSeconds=0, videoUrl="", questions.size >= 1
     await new Promise((r) => setTimeout(r, 400));
     router.push("/company/campaigns");
   };
@@ -105,26 +168,67 @@ export default function NewCampaignPage() {
     <>
       <PageHeader
         title="Шинэ кампани үүсгэх"
-        description="Видео байршуулж, зорилтот үзэгчээ тодорхойлно уу"
+        description={
+          kind === "VIDEO"
+            ? "Видео байршуулж, зорилтот үзэгчээ тодорхойлно уу"
+            : "Видеогүй судалгаа кампани — хэрэглэгч видео үзэлгүй шууд хариулна"
+        }
       />
 
-      <Stepper current={stepIndex} />
+      <Stepper steps={steps} current={stepIndex} />
 
       <div className="mt-8">
-        {step === "video" && (
+        {step === "type" && (
+          <Card>
+            <CardHeader
+              title="Кампанийн төрлөө сонго"
+              description="Дараах алхмууд төрлийн дагуу өөрчлөгдөнө"
+            />
+            <CardBody className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <KindCard
+                icon={<Video size={20} />}
+                title="Видеотой кампани"
+                hint="Компанийн видео хэрэглэгчид харагдана. Үнэ нь зорилтот нарийвчлалаас хамааран өөрчлөгдөнө."
+                active={kind === "VIDEO"}
+                onClick={() => setKind("VIDEO")}
+              />
+              <KindCard
+                icon={<ClipboardList size={20} />}
+                title="Судалгаа зөвхөн"
+                hint={
+                  platformSettings
+                    ? `Видеогүй. Үнэ: ${formatTugrik(
+                        platformSettings.surveyOnlyCostPerResponse,
+                      )} / хариулт (админаас тогтоосон).`
+                    : "Видеогүй. Үнэ админ дээр төвлөрч тохируулагдана."
+                }
+                active={kind === "SURVEY_ONLY"}
+                onClick={() => setKind("SURVEY_ONLY")}
+              />
+              <div className="md:col-span-2">
+                <Input
+                  label="Кампанийн гарчиг"
+                  placeholder="Ж-нь: Шинэ 5G багц"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
+              </div>
+              {loadError && (
+                <div className="md:col-span-2 rounded-lg border border-[var(--color-danger)]/40 bg-[color-mix(in_oklab,var(--color-danger)_10%,transparent)] px-3 py-2 text-xs text-[var(--color-danger)]">
+                  Судалгааны үнэ ачаалахад алдаа: {loadError}
+                </div>
+              )}
+            </CardBody>
+          </Card>
+        )}
+
+        {step === "video" && kind === "VIDEO" && (
           <Card>
             <CardHeader
               title="Видео байршуулах"
               description="MP4 форматтай, 30 сек – 2 минутын урттай байх"
             />
             <CardBody className="space-y-5">
-              <Input
-                label="Гарчиг"
-                placeholder="Ж-нь: Шинэ 5G багц"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-
               <label className="block">
                 <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
                   Видео файл
@@ -154,16 +258,10 @@ export default function NewCampaignPage() {
                     accept="video/mp4"
                     className="hidden"
                     id="video-input"
-                    onChange={(e) =>
-                      setVideoFile(e.target.files?.[0] ?? null)
-                    }
+                    onChange={(e) => setVideoFile(e.target.files?.[0] ?? null)}
                   />
                   <label htmlFor="video-input">
-                    <span
-                      className={cn(
-                        "mt-2 inline-flex cursor-pointer items-center rounded-xl bg-[var(--color-surface-elevated)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-primary)]",
-                      )}
-                    >
+                    <span className="mt-2 inline-flex cursor-pointer items-center rounded-xl bg-[var(--color-surface-elevated)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-primary)]">
                       Файл сонгох
                     </span>
                   </label>
@@ -173,11 +271,11 @@ export default function NewCampaignPage() {
               <Input
                 label="Урт (секунд)"
                 type="number"
-                min={30}
-                max={120}
+                min={5}
+                max={180}
                 value={duration}
                 onChange={(e) => setDuration(Number(e.target.value))}
-                hint="30 – 120 сек"
+                hint="5 – 180 сек"
               />
             </CardBody>
           </Card>
@@ -187,7 +285,11 @@ export default function NewCampaignPage() {
           <Card>
             <CardHeader
               title="Зорилтот үзэгч"
-              description="Нарийвчлал өндөр байх тусам нэг үзэгчийн үнэ өснө"
+              description={
+                kind === "VIDEO"
+                  ? "Нарийвчлал өндөр байх тусам нэг үзэгчийн үнэ өснө"
+                  : "Судалгаа хэнд илгээх вэ"
+              }
             />
             <CardBody className="space-y-6">
               <div>
@@ -207,11 +309,7 @@ export default function NewCampaignPage() {
                           : "border-[var(--color-divider)] text-[var(--color-text-secondary)] hover:border-[var(--color-text-muted)]",
                       )}
                     >
-                      {g === "ALL"
-                        ? "Бүгд"
-                        : g === "MALE"
-                          ? "Эрэгтэй"
-                          : "Эмэгтэй"}
+                      {g === "ALL" ? "Бүгд" : g === "MALE" ? "Эрэгтэй" : "Эмэгтэй"}
                     </button>
                   ))}
                 </div>
@@ -248,19 +346,21 @@ export default function NewCampaignPage() {
                 ))}
               </Select>
 
-              <div className="rounded-xl border border-[color-mix(in_oklab,var(--color-accent)_35%,transparent)] bg-[color-mix(in_oklab,var(--color-accent)_10%,transparent)] p-4 text-xs text-[var(--color-text-primary)]">
-                <div className="mb-1 font-semibold text-[var(--color-accent)]">
-                  Тооцоолсон үнэ
+              {kind === "VIDEO" && (
+                <div className="rounded-xl border border-[color-mix(in_oklab,var(--color-accent)_35%,transparent)] bg-[color-mix(in_oklab,var(--color-accent)_10%,transparent)] p-4 text-xs text-[var(--color-text-primary)]">
+                  <div className="mb-1 font-semibold text-[var(--color-accent)]">
+                    Тооцоолсон үнэ
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-mono text-2xl font-extrabold">
+                      {formatTugrik(costPerUnit)}
+                    </span>
+                    <span className="text-[var(--color-text-secondary)]">
+                      / нэг үзэгч
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-baseline gap-2">
-                  <span className="font-mono text-2xl font-extrabold">
-                    {formatTugrik(costPerView)}
-                  </span>
-                  <span className="text-[var(--color-text-secondary)]">
-                    / нэг үзэгч
-                  </span>
-                </div>
-              </div>
+              )}
             </CardBody>
           </Card>
         )}
@@ -269,7 +369,11 @@ export default function NewCampaignPage() {
           <Card>
             <CardHeader
               title="Төсөв ба урамшуулал"
-              description="Хэрэглэгчид хэдийг өгөх, платформ хэдийг авахыг тохируулах"
+              description={
+                kind === "VIDEO"
+                  ? "Хэрэглэгчид хэдийг өгөх, платформ хэдийг авахыг тохируулах"
+                  : "Судалгааны үнэ платформоор төвлөрсөн тохируулагдсан"
+              }
             />
             <CardBody className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
@@ -281,28 +385,47 @@ export default function NewCampaignPage() {
                   value={totalBudget}
                   onChange={(e) => setTotalBudget(Number(e.target.value))}
                 />
-                <Input
-                  label="Үзэгчид олгох урамшуулал (₮)"
-                  type="number"
-                  min={100}
-                  step={100}
-                  value={rewardPerUser}
-                  onChange={(e) => setRewardPerUser(Number(e.target.value))}
-                />
+                {kind === "VIDEO" ? (
+                  <Input
+                    label="Үзэгчид олгох урамшуулал (₮)"
+                    type="number"
+                    min={100}
+                    step={100}
+                    value={rewardPerUser}
+                    onChange={(e) => setRewardPerUser(Number(e.target.value))}
+                  />
+                ) : (
+                  <div>
+                    <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
+                      Хэрэглэгчид олгох (админ тогтоосон)
+                    </div>
+                    <div className="rounded-xl border border-[var(--color-divider)] bg-[var(--color-surface-elevated)] px-4 py-2.5 font-mono text-sm text-[var(--color-text-primary)]">
+                      {formatTugrik(effectiveReward)}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <SummaryTile
-                  label="Нэг үзэгчийн зардал"
-                  value={formatTugrik(costPerView)}
+                  label={
+                    kind === "VIDEO"
+                      ? "Нэг үзэгчийн зардал"
+                      : "Нэг хариултын зардал"
+                  }
+                  value={formatTugrik(costPerUnit)}
                 />
                 <SummaryTile
                   label="Платформын шимтгэл"
-                  value={formatTugrik(platformFeePerView)}
+                  value={formatTugrik(platformFeePerUnit)}
                   tone="warn"
                 />
                 <SummaryTile
-                  label="Хүрэх үзэгчийн тоо"
+                  label={
+                    kind === "VIDEO"
+                      ? "Хүрэх үзэгчийн тоо"
+                      : "Хүлээгдэж буй хариултын тоо"
+                  }
                   value={formatNumber(projectedReach)}
                   icon={<Calculator size={14} />}
                   tone="primary"
@@ -311,12 +434,13 @@ export default function NewCampaignPage() {
 
               <div className="rounded-xl border border-[var(--color-divider)] bg-[var(--color-surface-elevated)] p-4 text-xs text-[var(--color-text-secondary)]">
                 <b className="text-[var(--color-text-primary)]">Хэрхэн:</b>{" "}
-                {formatTugrik(totalBudget)} төсөв ÷{" "}
-                {formatTugrik(costPerView)} = ойролцоогоор{" "}
+                {formatTugrik(totalBudget)} төсөв ÷ {formatTugrik(costPerUnit)} =
+                ойролцоогоор{" "}
                 <b className="text-[var(--color-text-primary)]">
-                  {formatNumber(projectedReach)} үзэгч
+                  {formatNumber(projectedReach)}{" "}
+                  {kind === "VIDEO" ? "үзэгч" : "хариулт"}
                 </b>{" "}
-                судалгаа бөглөх боломжтой.
+                хүлээж авах боломжтой.
               </div>
             </CardBody>
           </Card>
@@ -326,13 +450,17 @@ export default function NewCampaignPage() {
           <Card>
             <CardHeader
               title="Судалгааны асуултууд"
-              description="2 – 3 асуулт зөвлөж байна. Хамгийн ихдээ 10."
+              description={
+                kind === "SURVEY_ONLY"
+                  ? "Дор хаяж 1 асуулт заавал. Дээд тал нь 20."
+                  : "2 – 3 асуулт зөвлөж байна. Дээд тал нь 20."
+              }
               action={
                 <Button
                   variant="secondary"
                   size="sm"
                   leftIcon={<Plus size={14} />}
-                  disabled={questions.length >= 10}
+                  disabled={questions.length >= 20}
                   onClick={() =>
                     setQuestions((qs) => [
                       ...qs,
@@ -380,17 +508,14 @@ export default function NewCampaignPage() {
                               x.id === q.id
                                 ? {
                                     ...x,
-                                    type: e.target
-                                      .value as SurveyQ["type"],
+                                    type: e.target.value as SurveyQ["type"],
                                   }
                                 : x,
                             ),
                           )
                         }
                       >
-                        <option value="SINGLE_CHOICE">
-                          Ганц сонголт
-                        </option>
+                        <option value="SINGLE_CHOICE">Ганц сонголт</option>
                         <option value="MULTI_CHOICE">Олон сонголт</option>
                         <option value="TEXT">Чөлөөт текст</option>
                       </Select>
@@ -422,10 +547,7 @@ export default function NewCampaignPage() {
                               setQuestions((qs) =>
                                 qs.map((x) =>
                                   x.id === q.id
-                                    ? {
-                                        ...x,
-                                        options: [...x.options, ""],
-                                      }
+                                    ? { ...x, options: [...x.options, ""] }
                                     : x,
                                 ),
                               )
@@ -438,9 +560,7 @@ export default function NewCampaignPage() {
                     </div>
                     <button
                       onClick={() =>
-                        setQuestions((qs) =>
-                          qs.filter((x) => x.id !== q.id),
-                        )
+                        setQuestions((qs) => qs.filter((x) => x.id !== q.id))
                       }
                       className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-danger)]"
                     >
@@ -460,11 +580,17 @@ export default function NewCampaignPage() {
               description="Илгээсний дараа админ баталгаажуулна"
             />
             <CardBody className="space-y-4 text-sm">
-              <ReviewRow label="Гарчиг" value={title || "—"} />
               <ReviewRow
-                label="Видео"
-                value={videoFile?.name ?? "Байршуулаагүй"}
+                label="Төрөл"
+                value={kind === "VIDEO" ? "Видеотой" : "Судалгаа зөвхөн"}
               />
+              <ReviewRow label="Гарчиг" value={title || "—"} />
+              {kind === "VIDEO" && (
+                <ReviewRow
+                  label="Видео"
+                  value={videoFile?.name ?? "Байршуулаагүй"}
+                />
+              )}
               <ReviewRow
                 label="Хүйс"
                 value={
@@ -483,11 +609,17 @@ export default function NewCampaignPage() {
                 strong
               />
               <ReviewRow
-                label="Урамшуулал / нэг үзэгч"
-                value={formatTugrik(rewardPerUser)}
+                label={
+                  kind === "VIDEO" ? "Урамшуулал / нэг үзэгч" : "Урамшуулал / нэг хариулт"
+                }
+                value={formatTugrik(effectiveReward)}
               />
               <ReviewRow
-                label="Хүрэх үзэгчийн тоо (ойролцоогоор)"
+                label={
+                  kind === "VIDEO"
+                    ? "Хүрэх үзэгчийн тоо (ойролцоогоор)"
+                    : "Хүлээгдэж буй хариултын тоо (ойролцоогоор)"
+                }
                 value={formatNumber(projectedReach)}
                 strong
               />
@@ -504,9 +636,7 @@ export default function NewCampaignPage() {
         <Button
           variant="secondary"
           disabled={!canPrev}
-          onClick={() =>
-            canPrev && setStep(steps[stepIndex - 1].id)
-          }
+          onClick={goPrev}
           leftIcon={<ChevronLeft size={16} />}
         >
           Буцах
@@ -517,10 +647,8 @@ export default function NewCampaignPage() {
           </Button>
         ) : (
           <Button
-            disabled={!canNext}
-            onClick={() =>
-              canNext && setStep(steps[stepIndex + 1].id)
-            }
+            disabled={!canNext || (step === "type" && !title.trim())}
+            onClick={goNext}
             rightIcon={<ChevronRight size={16} />}
           >
             Дараах
@@ -531,7 +659,13 @@ export default function NewCampaignPage() {
   );
 }
 
-function Stepper({ current }: { current: number }) {
+function Stepper({
+  steps,
+  current,
+}: {
+  steps: { id: Step; label: string }[];
+  current: number;
+}) {
   return (
     <div className="flex items-center gap-2">
       {steps.map((s, i) => {
@@ -570,6 +704,47 @@ function Stepper({ current }: { current: number }) {
         );
       })}
     </div>
+  );
+}
+
+function KindCard({
+  icon,
+  title,
+  hint,
+  active,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  hint: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-colors",
+        active
+          ? "border-[var(--color-primary)] bg-[color-mix(in_oklab,var(--color-primary)_10%,transparent)]"
+          : "border-[var(--color-divider)] bg-[var(--color-surface)] hover:border-[var(--color-text-muted)]",
+      )}
+    >
+      <span
+        className={cn(
+          active
+            ? "text-[var(--color-primary)]"
+            : "text-[var(--color-text-secondary)]",
+        )}
+      >
+        {icon}
+      </span>
+      <span className="text-sm font-bold text-[var(--color-text-primary)]">
+        {title}
+      </span>
+      <span className="text-xs text-[var(--color-text-secondary)]">{hint}</span>
+    </button>
   );
 }
 

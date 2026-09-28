@@ -52,6 +52,7 @@ class SecurityConfig(
                 auth
                     .requestMatchers(
                         "/auth/**",
+                        "/platform-settings",
                         "/actuator/health",
                         "/actuator/info",
                         "/error",

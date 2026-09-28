@@ -4,6 +4,7 @@ import {
   LogOut,
   PlaySquare,
   ShieldCheck,
+  SlidersHorizontal,
   Users,
   Wallet,
 } from "lucide-react";
@@ -37,6 +38,11 @@ const nav: NavItem[] = [
     href: "/admin/finance",
     label: "Санхүү",
     icon: <Banknote size={18} />,
+  },
+  {
+    href: "/admin/pricing",
+    label: "Судалгааны үнэ",
+    icon: <SlidersHorizontal size={18} />,
   },
 ];
 

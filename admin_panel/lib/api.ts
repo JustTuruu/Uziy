@@ -231,4 +231,25 @@ export const adminApi = {
       }`,
       { method: "PATCH" },
     ),
+  updateSettings: (body: {
+    surveyOnlyCostPerResponse: number;
+    surveyOnlyRewardPerUser: number;
+  }) =>
+    apiFetch<PlatformSettings>("/admin/platform-settings", {
+      method: "PATCH",
+      body,
+    }),
+};
+
+// --- Platform settings (public read; admin write) --------------------------
+
+export interface PlatformSettings {
+  surveyOnlyCostPerResponse: number;
+  surveyOnlyRewardPerUser: number;
+  updatedAt: string;
+}
+
+export const platformSettingsApi = {
+  get: () =>
+    apiFetch<PlatformSettings>("/platform-settings", { anonymous: true }),
 };

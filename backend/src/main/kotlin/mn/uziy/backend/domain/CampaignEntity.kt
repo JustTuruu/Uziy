@@ -53,6 +53,10 @@ class CampaignEntity(
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 20)
     var status: CampaignStatus = CampaignStatus.PENDING,
 
+    /** false → survey-only campaign (viewer answers survey directly). */
+    @Column(name = "has_video", nullable = false)
+    var hasVideo: Boolean = true,
+
     @Column(name = "created_at", nullable = false, updatable = false)
     var createdAt: OffsetDateTime = OffsetDateTime.now(),
 
