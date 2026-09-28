@@ -1,0 +1,120 @@
+import { cn } from "@/lib/utils";
+import type { InputHTMLAttributes, TextareaHTMLAttributes } from "react";
+
+interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+  label?: string;
+  hint?: string;
+  error?: string;
+}
+
+const fieldBase =
+  "w-full rounded-xl border bg-[var(--color-surface)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] transition-colors focus:outline-none focus:border-[var(--color-primary)]";
+const okBorder = "border-[var(--color-divider)]";
+const errBorder = "border-[var(--color-danger)]";
+
+export function Input({
+  label,
+  hint,
+  error,
+  className,
+  ...rest
+}: InputProps) {
+  return (
+    <label className="block">
+      {label && (
+        <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
+          {label}
+        </div>
+      )}
+      <input
+        {...rest}
+        className={cn(fieldBase, error ? errBorder : okBorder, className)}
+      />
+      {(hint || error) && (
+        <div
+          className={cn(
+            "mt-1 text-xs",
+            error
+              ? "text-[var(--color-danger)]"
+              : "text-[var(--color-text-muted)]",
+          )}
+        >
+          {error ?? hint}
+        </div>
+      )}
+    </label>
+  );
+}
+
+interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
+  label?: string;
+  hint?: string;
+  error?: string;
+}
+
+export function Textarea({
+  label,
+  hint,
+  error,
+  className,
+  ...rest
+}: TextareaProps) {
+  return (
+    <label className="block">
+      {label && (
+        <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
+          {label}
+        </div>
+      )}
+      <textarea
+        {...rest}
+        className={cn(
+          fieldBase,
+          "min-h-24 resize-y",
+          error ? errBorder : okBorder,
+          className,
+        )}
+      />
+      {(hint || error) && (
+        <div
+          className={cn(
+            "mt-1 text-xs",
+            error
+              ? "text-[var(--color-danger)]"
+              : "text-[var(--color-text-muted)]",
+          )}
+        >
+          {error ?? hint}
+        </div>
+      )}
+    </label>
+  );
+}
+
+interface SelectProps
+  extends React.SelectHTMLAttributes<HTMLSelectElement> {
+  label?: string;
+}
+
+export function Select({ label, className, children, ...rest }: SelectProps) {
+  return (
+    <label className="block">
+      {label && (
+        <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
+          {label}
+        </div>
+      )}
+      <select
+        {...rest}
+        className={cn(
+          fieldBase,
+          okBorder,
+          "appearance-none pr-10 [background-image:url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20' fill='none' stroke='%239ca3af' stroke-width='1.5'><path d='M6 8l4 4 4-4'/></svg>\")] [background-position:right_0.75rem_center] [background-repeat:no-repeat]",
+          className,
+        )}
+      >
+        {children}
+      </select>
+    </label>
+  );
+}

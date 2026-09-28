@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: zoos-backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/zoos}
+    username: ${DB_USER:zoos}
+    password: ${DB_PASSWORD:zoos_dev}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc.time_zone: UTC
+    open-in-view: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: always
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+zoos:
+  jwt:
+    # 256-bit dev-only secret. Rotate + inject via env in prod.
+    secret: ${JWT_SECRET:dev-only-secret-change-me-please-do-not-ship-this-keyminimum-256-bit}
+    ttl-hours: 24
+  reward:
+    # 35% platform commission per spec §1
+    commission-rate: 0.35
+  cors:
+    allowed-origins:
+      - http://localhost:3000
+      - http://localhost:8080
