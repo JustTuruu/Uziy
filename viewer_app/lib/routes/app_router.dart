@@ -196,18 +196,18 @@ class _MainShell extends StatelessWidget {
           NavigationDestination(
             icon: Icon(Icons.play_circle_outline),
             selectedIcon: Icon(Icons.play_circle, color: AppColors.primary),
-            label: 'Feed',
+            label: 'Нүүр',
           ),
           NavigationDestination(
             icon: Icon(Icons.account_balance_wallet_outlined),
             selectedIcon:
                 Icon(Icons.account_balance_wallet, color: AppColors.primary),
-            label: 'Wallet',
+            label: 'Хэтэвч',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline),
             selectedIcon: Icon(Icons.person, color: AppColors.primary),
-            label: 'Profile',
+            label: 'Профайл',
           ),
         ],
       ),
