@@ -6,6 +6,7 @@ import { Building2, Play, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { ApiError, auth, authApi } from "@/lib/api";
 
 type Role = "COMPANY" | "ADMIN";
 
@@ -25,9 +26,30 @@ export default function LoginPage() {
       return;
     }
     setLoading(true);
-    // TODO: POST /auth/login → JWT; assert response.role === role.
-    await new Promise((r) => setTimeout(r, 500));
-    router.push(role === "ADMIN" ? "/admin" : "/company");
+    try {
+      const res = await authApi.login({ phoneNumber: phone, password });
+      if (res.user.role !== role) {
+        setError(
+          role === "ADMIN"
+            ? "Энэ данс админ эрхгүй байна"
+            : "Энэ данс компани эрхгүй байна",
+        );
+        setLoading(false);
+        return;
+      }
+      auth.setToken(res.token);
+      auth.setUser(res.user);
+      router.push(role === "ADMIN" ? "/admin" : "/company");
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        setError("Утас эсвэл нууц үг буруу байна");
+      } else if (e instanceof ApiError) {
+        setError(e.message || "Алдаа гарлаа");
+      } else {
+        setError("Сервертэй холбогдож чадсангүй");
+      }
+      setLoading(false);
+    }
   };
 
   return (

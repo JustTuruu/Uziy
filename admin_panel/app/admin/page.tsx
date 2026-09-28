@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   Banknote,
@@ -12,20 +16,67 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import {
-  mockCampaigns,
-  mockPayouts,
-  platformStats,
-} from "@/lib/mock-data";
+  ApiError,
+  adminApi,
+  auth,
+  type AdminStats,
+  type Campaign,
+  type Payout,
+} from "@/lib/api";
 import { formatNumber, formatTugrik, relativeTime } from "@/lib/utils";
 
 export default function AdminDashboard() {
+  const router = useRouter();
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [pendingCampaigns, setPendingCampaigns] = useState<Campaign[]>([]);
+  const [pendingPayouts, setPendingPayouts] = useState<Payout[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!auth.getToken()) {
+      router.replace("/login");
+      return;
+    }
+    (async () => {
+      try {
+        const [s, camps, payouts] = await Promise.all([
+          adminApi.stats(),
+          adminApi.campaigns("PENDING"),
+          adminApi.pendingPayouts(),
+        ]);
+        setStats(s);
+        setPendingCampaigns(camps);
+        setPendingPayouts(payouts);
+      } catch (e) {
+        if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+          auth.clear();
+          router.replace("/login");
+          return;
+        }
+        setError(e instanceof Error ? e.message : "Алдаа гарлаа");
+      }
+    })();
+  }, [router]);
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-[var(--color-danger)]/40 bg-[color-mix(in_oklab,var(--color-danger)_10%,transparent)] p-6 text-sm text-[var(--color-danger)]">
+        Серверээс мэдээлэл авч чадсангүй: {error}
+      </div>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <div className="animate-pulse text-sm text-[var(--color-text-muted)]">
+        Ачаалж байна...
+      </div>
+    );
+  }
+
   const commissionAllTime = Math.round(
-    platformStats.totalGmv * platformStats.commissionRate,
+    (stats.pendingPayouts + stats.activeCampaigns) * 0, // TODO wire once /admin/finance is ready
   );
-  const pendingCampaigns = mockCampaigns.filter(
-    (c) => c.status === "PENDING",
-  );
-  const pendingPayouts = mockPayouts.filter((p) => p.status === "PENDING");
 
   return (
     <>
@@ -37,28 +88,27 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Нийт хэрэглэгч"
-          value={formatNumber(platformStats.totalUsers)}
+          value={formatNumber(stats.totalUsers)}
           icon={<Users size={16} />}
-          trend={{ direction: "up", value: "+8%" }}
-          hint="Энэ сар"
         />
         <StatCard
-          label="7 хоногийн идэвх"
-          value={formatNumber(platformStats.activeUsers7d)}
-          icon={<UserPlus size={16} />}
-          trend={{ direction: "up", value: "+14%" }}
-        />
-        <StatCard
-          label="Нийт GMV"
-          value={formatTugrik(platformStats.totalGmv)}
+          label="Идэвхтэй кампани"
+          value={formatNumber(stats.activeCampaigns)}
           icon={<TrendingUp size={16} />}
-          hint="Компаниудын нийт зарцуулалт"
         />
         <StatCard
-          label="Шимтгэлийн орлого"
-          value={formatTugrik(commissionAllTime)}
+          label="Шимтгэлийн хувь"
+          value={`${Math.round(stats.commissionRate * 100)}%`}
           icon={<Banknote size={16} />}
-          hint={`${Math.round(platformStats.commissionRate * 100)}% шимтгэл`}
+          hint="Гүйлгээ бүр дээр"
+        />
+        <StatCard
+          label="Хүлээгдэж буй"
+          value={formatNumber(
+            stats.pendingCampaigns + stats.pendingPayouts,
+          )}
+          icon={<UserPlus size={16} />}
+          hint={`${stats.pendingCampaigns} кампани · ${stats.pendingPayouts} татах`}
         />
       </div>
 
@@ -83,9 +133,8 @@ export default function AdminDashboard() {
               </div>
             )}
             {pendingPayouts.slice(0, 4).map((p) => (
-              <Link
+              <div
                 key={p.id}
-                href="/admin/payouts"
                 className="flex items-center justify-between rounded-lg p-2 hover:bg-[var(--color-surface-elevated)]"
               >
                 <div className="min-w-0">
@@ -106,7 +155,7 @@ export default function AdminDashboard() {
                 <div className="ml-4 shrink-0 font-mono text-sm font-bold text-[var(--color-primary)]">
                   {formatTugrik(p.amount)}
                 </div>
-              </Link>
+              </div>
             ))}
           </CardBody>
         </Card>
@@ -131,9 +180,8 @@ export default function AdminDashboard() {
               </div>
             )}
             {pendingCampaigns.slice(0, 4).map((c) => (
-              <Link
+              <div
                 key={c.id}
-                href="/admin/campaigns"
                 className="flex items-center justify-between rounded-lg p-2 hover:bg-[var(--color-surface-elevated)]"
               >
                 <div className="flex min-w-0 items-center gap-3">
@@ -145,7 +193,7 @@ export default function AdminDashboard() {
                       {c.title}
                     </div>
                     <div className="truncate text-xs text-[var(--color-text-muted)]">
-                      {c.companyName} · {formatTugrik(c.totalBudget)} төсөв
+                      {formatTugrik(c.totalBudget)} төсөв
                     </div>
                   </div>
                 </div>
@@ -153,7 +201,7 @@ export default function AdminDashboard() {
                   size={16}
                   className="ml-4 shrink-0 text-[var(--color-warning)]"
                 />
-              </Link>
+              </div>
             ))}
           </CardBody>
         </Card>

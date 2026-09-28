@@ -63,3 +63,26 @@ allOpen {
 tasks.withType<Test> {
 	useJUnitPlatform()
 }
+
+springBoot {
+	// We now ship extra main() methods (HashCli, MakeAdminCli) as Gradle
+	// tasks — pin the Spring Boot entry point so bootRun/bootJar don't get
+	// confused about which class starts the app.
+	mainClass.set("mn.uziy.backend.UziyBackendApplicationKt")
+}
+
+// --- Bootstrap CLI tasks ---------------------------------------------------
+// ./gradlew hash --args="password"
+// ./gradlew makeAdmin --args="99990000 mypass"
+tasks.register<JavaExec>("hash") {
+	group = "bootstrap"
+	description = "Print a BCrypt hash for the given plaintext: --args=\"<password>\""
+	mainClass.set("mn.uziy.backend.tools.HashCli")
+	classpath = sourceSets["main"].runtimeClasspath
+}
+tasks.register<JavaExec>("makeAdmin") {
+	group = "bootstrap"
+	description = "Insert or promote an ADMIN user: --args=\"<phone8digits> <password>\""
+	mainClass.set("mn.uziy.backend.tools.MakeAdminCli")
+	classpath = sourceSets["main"].runtimeClasspath
+}
