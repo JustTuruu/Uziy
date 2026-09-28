@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -25,16 +26,14 @@ export function Sidebar({ brand, subtitle, items, footer }: Props) {
   return (
     <aside className="fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-[var(--color-divider)] bg-[var(--color-surface)]">
       <div className="flex items-center gap-3 border-b border-[var(--color-divider)] px-5 py-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary)] text-black">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M8 5v14l11-7z" />
-          </svg>
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/95">
+          <Image
+            src="/logo.png"
+            alt="Uziy"
+            width={40}
+            height={40}
+            className="h-8 w-8 object-contain"
+          />
         </div>
         <div>
           <div className="text-sm font-extrabold text-[var(--color-text-primary)]">

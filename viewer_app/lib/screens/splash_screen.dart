@@ -32,14 +32,25 @@ class _SplashScreenState extends State<SplashScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 96,
-              height: 96,
+              width: 112,
+              height: 112,
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(24),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.35),
+                    blurRadius: 40,
+                    spreadRadius: 2,
+                  ),
+                ],
               ),
-              child: const Icon(Icons.play_arrow_rounded,
-                  size: 64, color: Colors.black),
+              child: Image.asset(
+                'assets/logo.png',
+                fit: BoxFit.contain,
+                semanticLabel: 'Uziy',
+              ),
             ),
             const SizedBox(height: 24),
             const Text(

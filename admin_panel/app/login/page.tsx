@@ -1,8 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Building2, Play, ShieldCheck } from "lucide-react";
+import { Building2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -57,8 +58,15 @@ export default function LoginPage() {
       {/* Left: brand */}
       <div className="hidden w-1/2 flex-col justify-between bg-[var(--color-surface)] p-12 lg:flex">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--color-primary)] text-black">
-            <Play size={22} fill="currentColor" />
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/95">
+            <Image
+              src="/logo.png"
+              alt="Uziy"
+              width={44}
+              height={44}
+              priority
+              className="h-9 w-9 object-contain"
+            />
           </div>
           <div className="text-xl font-extrabold tracking-tight">Uziy</div>
         </div>

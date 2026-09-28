@@ -36,6 +36,24 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.1
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/logo.png
+
+# Run once to (re)generate iOS + Android + web launcher icons from the source:
+#   flutter pub get
+#   flutter pub run flutter_launcher_icons
+flutter_launcher_icons:
+  image_path: "assets/logo.png"
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: "assets/logo.png"
+    background_color: "#0B0B0F"
+    theme_color: "#FFCE00"
+  min_sdk_android: 21

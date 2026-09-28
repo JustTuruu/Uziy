@@ -5,6 +5,20 @@ export const metadata: Metadata = {
   title: "Uziy — Console",
   description:
     "Rewarded video platform console (Company + Super Admin) for the Mongolian market.",
+  icons: {
+    icon: [
+      { url: "/logo.png", type: "image/png" },
+    ],
+    apple: [{ url: "/logo.png" }],
+  },
+  openGraph: {
+    title: "Uziy — Console",
+    description:
+      "Rewarded video platform console for the Mongolian market.",
+    images: ["/logo.png"],
+    siteName: "Uziy",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
