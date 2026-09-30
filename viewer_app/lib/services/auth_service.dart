@@ -59,6 +59,7 @@ class AuthService {
         '/auth/login',
         data: {'phoneNumber': phone, 'password': password},
       );
+      _throwIfNotOk(res, fallback: 'Нэвтрэхэд алдаа гарлаа');
       final body = res.data!;
       await _saveToken(body['token'] as String);
       return AppUser.fromJson(body['user'] as Map<String, dynamic>);
@@ -91,12 +92,31 @@ class AuthService {
           if (district != null) 'district': district,
         },
       );
+      _throwIfNotOk(res, fallback: 'Бүртгүүлэхэд алдаа гарлаа');
       final body = res.data!;
       await _saveToken(body['token'] as String);
       return AppUser.fromJson(body['user'] as Map<String, dynamic>);
     } on DioException catch (e) {
       throw _mapDioError(e, 'Бүртгүүлэхэд алдаа гарлаа');
     }
+  }
+
+  /// Dio's validateStatus is set to `< 500`, so 4xx responses come back
+  /// through the normal `res` path instead of throwing. Convert them
+  /// into an AuthException so the UI layer only has one code path.
+  void _throwIfNotOk(Response<dynamic> res, {required String fallback}) {
+    final code = res.statusCode ?? 0;
+    if (code >= 200 && code < 300) return;
+    final data = res.data;
+    String message = fallback;
+    if (data is Map<String, dynamic> && data['message'] is String) {
+      message = data['message'] as String;
+    } else if (code == 401) {
+      message = 'Утас эсвэл нууц үг буруу байна';
+    } else if (code == 409) {
+      message = 'Энэ утас аль хэдийн бүртгэлтэй байна';
+    }
+    throw AuthException(code, message);
   }
 
   AuthException _mapDioError(DioException e, String fallback) {
@@ -111,7 +131,14 @@ class AuthService {
       message = 'Энэ утас аль хэдийн бүртгэлтэй байна';
     } else if (e.type == DioExceptionType.connectionTimeout ||
         e.type == DioExceptionType.connectionError) {
-      message = 'Сервертэй холбогдож чадсангүй';
+      message =
+          'Сервертэй холбогдож чадсангүй. Backend ажиллаж байгаа эсэхийг шалгана уу '
+          '(http://localhost:8080).';
+    } else if (e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.sendTimeout) {
+      message = 'Хүсэлт удлаа. Дахин оролдоно уу.';
+    } else if (e.error != null) {
+      message = 'Алдаа: ${e.error}';
     }
     return AuthException(status, message);
   }

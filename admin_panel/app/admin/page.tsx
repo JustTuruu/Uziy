@@ -19,9 +19,11 @@ import {
   ApiError,
   adminApi,
   auth,
+  platformSettingsApi,
   type AdminStats,
   type Campaign,
   type Payout,
+  type PlatformSettings,
 } from "@/lib/api";
 import { formatNumber, formatTugrik, relativeTime } from "@/lib/utils";
 
@@ -30,6 +32,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [pendingCampaigns, setPendingCampaigns] = useState<Campaign[]>([]);
   const [pendingPayouts, setPendingPayouts] = useState<Payout[]>([]);
+  const [settings, setSettings] = useState<PlatformSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,12 +42,16 @@ export default function AdminDashboard() {
     }
     (async () => {
       try {
-        const [s, camps, payouts] = await Promise.all([
+        const [s, camps, payouts, ps] = await Promise.all([
           adminApi.stats(),
-          adminApi.campaigns("PENDING"),
+          adminApi.campaigns({ status: "PENDING" }),
           adminApi.pendingPayouts(),
+          // The commission the admin actually set; optional so a hiccup
+          // here doesn't blank the whole dashboard.
+          platformSettingsApi.get().catch(() => null),
         ]);
         setStats(s);
+        setSettings(ps);
         setPendingCampaigns(camps);
         setPendingPayouts(payouts);
       } catch (e) {
@@ -74,10 +81,6 @@ export default function AdminDashboard() {
     );
   }
 
-  const commissionAllTime = Math.round(
-    (stats.pendingPayouts + stats.activeCampaigns) * 0, // TODO wire once /admin/finance is ready
-  );
-
   return (
     <>
       <PageHeader
@@ -98,9 +101,16 @@ export default function AdminDashboard() {
         />
         <StatCard
           label="Шимтгэлийн хувь"
-          value={`${Math.round(stats.commissionRate * 100)}%`}
+          value={`${settings?.commissionPercent ?? Math.round(stats.commissionRate * 100)}%`}
           icon={<Banknote size={16} />}
-          hint="Гүйлгээ бүр дээр"
+          hint={
+            <Link
+              href="/admin/pricing"
+              className="hover:text-[var(--color-text-primary)] hover:underline"
+            >
+              Аяны төсвөөс · тохируулах
+            </Link>
+          }
         />
         <StatCard
           label="Хүлээгдэж буй"

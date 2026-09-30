@@ -27,13 +27,22 @@ class SecurityConfig(
     @Bean
     fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
 
+    /**
+     * IMPORTANT: bean name MUST be `corsConfigurationSource` — that is the
+     * exact name Spring Security's `.cors {}` DSL looks up in the context.
+     * Any other name (e.g. `corsSource`) causes the filter to be enabled
+     * but with an empty config, so no Access-Control-* headers get emitted
+     * and every browser call fails CORS.
+     */
     @Bean
-    fun corsSource(): CorsConfigurationSource {
+    fun corsConfigurationSource(): CorsConfigurationSource {
         val cfg = CorsConfiguration().apply {
             allowedOrigins = props.cors.allowedOrigins
             allowedMethods = listOf("GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS")
             allowedHeaders = listOf("*")
+            exposedHeaders = listOf("Authorization")
             allowCredentials = true
+            maxAge = 3600
         }
         return UrlBasedCorsConfigurationSource().apply {
             registerCorsConfiguration("/**", cfg)
@@ -43,7 +52,8 @@ class SecurityConfig(
     @Bean
     fun filterChain(http: HttpSecurity): SecurityFilterChain {
         http
-            .cors { }
+            // Explicitly wire the source to be resilient to future bean renames.
+            .cors { it.configurationSource(corsConfigurationSource()) }
             .csrf { it.disable() }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .formLogin { it.disable() }

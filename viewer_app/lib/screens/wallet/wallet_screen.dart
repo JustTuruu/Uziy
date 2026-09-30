@@ -1,13 +1,21 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../models/user.dart';
 import '../../routes/app_router.dart';
 import '../../services/auth_service.dart';
 import '../../services/viewer_service.dart';
-import '../../theme/app_theme.dart';
+import '../../widgets/ui.dart';
+import 'wallet_logic.dart';
+import 'wallet_widgets.dart';
 
+/// Wallet tab: gold balance card, payout action (+ progress toward the
+/// 1,000 ₮ minimum), how rewards work, and the transaction history area.
+///
+/// A body inside the main shell (floating nav bar): no bottom SafeArea, the
+/// scroll content ends with [AppLayout.scrollBottomPadding].
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
 
@@ -18,6 +26,10 @@ class WalletScreen extends StatefulWidget {
 class _WalletScreenState extends State<WalletScreen> {
   AppUser? _me;
   String? _error;
+
+  static const _unverifiedNote =
+      'Эхний удаа мөнгө татахад админ дансны нэрийг таны бүртгэлтэй '
+      'мэдээлэлтэй тулгаж баталгаажуулна.';
 
   @override
   void initState() {
@@ -48,143 +60,141 @@ class _WalletScreenState extends State<WalletScreen> {
     }
   }
 
+  /// Retry from the error banner: clear the error (so the skeleton shows
+  /// again while nothing is loaded yet) and reload.
+  void _retry() {
+    setState(() => _error = null);
+    _load();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final money = NumberFormat.decimalPattern('mn');
-    final balance = _me?.balance ?? 0.0;
-    final verified = _me?.isVerified ?? false;
+    final me = _me;
+    final loading = me == null && _error == null;
+    final width = MediaQuery.sizeOf(context).width;
+    final gutter = math.max(
+      AppLayout.screenPadding,
+      (width - AppLayout.maxContentWidth) / 2,
+    );
 
-    return SafeArea(
-      child: RefreshIndicator(
-        onRefresh: _load,
-        color: AppColors.primary,
-        child: CustomScrollView(
-          slivers: [
-            const SliverToBoxAdapter(child: SizedBox(height: 16)),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFFCE00), Color(0xFFE0A800)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Одоогийн үлдэгдэл',
-                        style:
-                            TextStyle(color: Colors.black87, fontSize: 13),
+    return AmbientBackground(
+      child: SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
+          onRefresh: _load,
+          color: AppColors.primary,
+          backgroundColor: AppColors.surfaceElevated,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  gutter,
+                  AppSpacing.md,
+                  gutter,
+                  AppLayout.scrollBottomPadding(context),
+                ),
+                sliver: SliverList.list(
+                  children: [
+                    FadeSlideIn(child: _header()),
+                    const SizedBox(height: AppSpacing.xxl),
+                    if (_error != null) ...[
+                      StatusBanner(
+                        message: _error!,
+                        actionLabel: 'Дахин оролдох',
+                        onAction: _retry,
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _me == null
-                            ? '—'
-                            : '${money.format(balance.round())} ₮',
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 34,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
+                      const SizedBox(height: AppSpacing.lg),
+                    ],
+                    if (loading) const WalletCardSkeleton(),
+                    if (me != null) ..._balanceSection(me),
+                    const SizedBox(height: AppSpacing.xxxl),
+                    const FadeSlideIn(
+                      index: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.black,
-                                foregroundColor: Colors.white,
-                                minimumSize: const Size.fromHeight(46),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              onPressed: _me == null || balance < 1000
-                                  ? null
-                                  : () => context.push(Routes.payout),
-                              icon: const Icon(Icons.download_rounded,
-                                  size: 18),
-                              label: const Text('Мөнгө татах'),
-                            ),
+                          SectionHeader(title: 'Хэрхэн ажилладаг вэ'),
+                          SizedBox(height: AppSpacing.md),
+                          HowItWorksCard(),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xxxl),
+                    const FadeSlideIn(
+                      index: 4,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          SectionHeader(title: 'Гүйлгээний түүх'),
+                          EmptyState(
+                            icon: Icons.receipt_long_rounded,
+                            title: 'Одоогоор гүйлгээ алга',
+                            message: 'Гүйлгээний түүх удахгүй энд харагдана.',
                           ),
                         ],
                       ),
-                      if (_me != null && !verified) ...[
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Эхний удаа мөнгө татахад админ дансны нэрийг таны бүртгэлтэй мэдээлэлтэй тулгаж баталгаажуулна.',
-                          style: TextStyle(
-                            color: Colors.black87,
-                            fontSize: 11.5,
-                            height: 1.35,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
-            if (_error != null)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: AppColors.danger.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                          color: AppColors.danger.withValues(alpha: 0.4)),
                     ),
-                    child: Text(
-                      _error!,
-                      style: const TextStyle(
-                          color: AppColors.danger, fontSize: 13),
-                    ),
-                  ),
+                  ],
                 ),
               ),
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: Text(
-                  'Гүйлгээний түүх',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 8)),
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-                child: Center(
-                  child: Text(
-                    'Гүйлгээний түүхийн endpoint нэмэгдэх хүртэл хоосон.',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Widget _header() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Semantics(
+          header: true,
+          child: const Text('Хэтэвч', style: AppTextStyles.display),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        const Text(
+          'Урамшууллаа цуглуулж, дансандаа татаарай',
+          style: AppTextStyles.bodySmall,
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _balanceSection(AppUser me) {
+    final canPayout = canRequestPayout(me.balance);
+    return [
+      FadeSlideIn(
+        index: 1,
+        child: WalletBalanceCard(
+          balance: me.balance,
+          verified: me.isVerified,
+          progress: payoutProgress(me.balance),
+        ),
+      ),
+      const SizedBox(height: AppSpacing.lg),
+      FadeSlideIn(
+        index: 2,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppButton(
+              label: 'Мөнгө татах',
+              icon: Icons.account_balance_rounded,
+              haptic: true,
+              onPressed: canPayout ? () => context.push(Routes.payout) : null,
+            ),
+            if (!me.isVerified) ...[
+              const SizedBox(height: AppSpacing.md),
+              const WalletNote(
+                icon: Icons.verified_user_outlined,
+                text: _unverifiedNote,
+              ),
+            ],
+          ],
+        ),
+      ),
+    ];
   }
 }

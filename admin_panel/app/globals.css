@@ -55,3 +55,44 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-muted);
 }
+
+/* --- Form controls -------------------------------------------------------
+   Kill the browser-default UI on dark theme (up/down spinners on
+   number inputs, dropdown arrows, calendar pickers, invalid-input
+   tooltips). We handle validation in JS at submit time. */
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox red glow for :invalid — we prefer to show errors inline. */
+input:invalid,
+textarea:invalid,
+select:invalid {
+  box-shadow: none;
+}
+
+/* Autofill styling on Chrome/Safari — otherwise the input turns baby-blue. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: var(--color-text-primary);
+  -webkit-box-shadow: 0 0 0px 1000px var(--color-surface) inset;
+  caret-color: var(--color-text-primary);
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Placeholder color matches --color-text-muted on all inputs so it's
+   consistent across native + our components. */
+::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
+}

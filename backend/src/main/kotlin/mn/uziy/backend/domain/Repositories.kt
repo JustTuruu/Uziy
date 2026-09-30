@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
+import java.time.OffsetDateTime
 
 @Repository
 interface UserRepository : JpaRepository<UserEntity, Long> {
@@ -58,6 +59,57 @@ interface CampaignRepository : JpaRepository<CampaignEntity, Long> {
            AND c.remainingBudget >= c.costPerView
     """)
     fun tryDecrementBudget(@Param("campaignId") campaignId: Long): Int
+
+    /**
+     * Payment step: AWAITING_PAYMENT → PENDING, stamping paid_at. Conditional
+     * on the current status so two concurrent "Төлөх" clicks can't both win —
+     * the loser's UPDATE re-checks the row after the winner commits and
+     * matches 0 rows. Returns 1 if this call flipped it, 0 otherwise.
+     *
+     * clearAutomatically: the persistence context is cleared afterwards so a
+     * later read in the same transaction can't see the stale pre-update entity.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+        UPDATE CampaignEntity c
+           SET c.status    = mn.uziy.backend.domain.CampaignStatus.PENDING,
+               c.paidAt    = :paidAt,
+               c.updatedAt = :paidAt
+         WHERE c.id = :campaignId
+           AND c.status = mn.uziy.backend.domain.CampaignStatus.AWAITING_PAYMENT
+    """)
+    fun tryMarkPaid(
+        @Param("campaignId") campaignId: Long,
+        @Param("paidAt") paidAt: OffsetDateTime,
+    ): Int
+
+    /**
+     * Company-driven status change (pause / resume / complete), applied only
+     * if the row is still in `from`. Touches status + updated_at ONLY — a
+     * full-entity save here would write back a stale remaining_budget while
+     * viewers are concurrently being rewarded (tryDecrementBudget), silently
+     * refunding views. Returns 1 if applied, 0 if the status moved meanwhile.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+        UPDATE CampaignEntity c
+           SET c.status    = :to,
+               c.updatedAt = :now
+         WHERE c.id = :campaignId
+           AND c.status = :from
+    """)
+    fun tryTransition(
+        @Param("campaignId") campaignId: Long,
+        @Param("from") from: CampaignStatus,
+        @Param("to") to: CampaignStatus,
+        @Param("now") now: OffsetDateTime,
+    ): Int
+}
+
+@Repository
+interface CampaignPaymentRepository : JpaRepository<CampaignPaymentEntity, Long> {
+    /** A company's payments, newest first (id breaks same-instant ties). */
+    fun findAllByCompanyIdOrderByCreatedAtDescIdDesc(companyId: Long): List<CampaignPaymentEntity>
 }
 
 @Repository
@@ -70,6 +122,7 @@ interface SurveyQuestionRepository : JpaRepository<SurveyQuestionEntity, Long> {
 interface ViewHistoryRepository : JpaRepository<ViewHistoryEntity, Long> {
     fun existsByUserIdAndCampaignId(userId: Long, campaignId: Long): Boolean
     fun countByUserId(userId: Long): Long
+    fun countByCampaignId(campaignId: Long): Long
 }
 
 @Repository
@@ -82,4 +135,13 @@ interface PayoutRepository : JpaRepository<PayoutEntity, Long> {
     fun findAllByStatusOrderByRequestedAtAsc(status: PayoutStatus): List<PayoutEntity>
     fun findAllByUserIdOrderByRequestedAtDesc(userId: Long): List<PayoutEntity>
     fun existsByUserIdAndStatus(userId: Long, status: PayoutStatus): Boolean
+
+    /**
+     * Decided payouts (APPROVED or REJECTED) newest-first. Used by the
+     * admin history table so the super admin sees what was already
+     * processed, not just what's still pending.
+     */
+    fun findAllByStatusInOrderByDecidedAtDesc(
+        statuses: Collection<PayoutStatus>,
+    ): List<PayoutEntity>
 }

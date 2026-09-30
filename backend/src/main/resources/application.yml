@@ -34,9 +34,13 @@ uziy:
     # 256-bit dev-only secret. Rotate + inject via env in prod.
     secret: ${JWT_SECRET:dev-only-secret-change-me-please-do-not-ship-this-keyminimum-256-bit}
     ttl-hours: 24
-  reward:
-    # 35% platform commission per spec §1
-    commission-rate: 0.35
+  payments:
+    # true → the company's "Төлөх" button marks a campaign paid instantly
+    # (no money moves). Set PAYMENTS_SIMULATED=false in prod until the real
+    # QPay gateway is wired; the pay endpoint then answers 503.
+    # The platform commission itself is NOT configured here — the Super Admin
+    # sets it in platform_settings (PATCH /admin/platform-settings).
+    simulated: ${PAYMENTS_SIMULATED:true}
   cors:
     allowed-origins:
       - http://localhost:3000

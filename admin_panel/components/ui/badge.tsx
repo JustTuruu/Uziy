@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
-type Tone =
+export type BadgeTone =
   | "neutral"
   | "success"
   | "danger"
@@ -9,7 +9,7 @@ type Tone =
   | "info"
   | "primary";
 
-const tones: Record<Tone, string> = {
+const tones: Record<BadgeTone, string> = {
   neutral:
     "bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] border-[var(--color-divider)]",
   success:
@@ -28,7 +28,7 @@ export function Badge({
   children,
   className,
 }: {
-  tone?: Tone;
+  tone?: BadgeTone;
   children: ReactNode;
   className?: string;
 }) {

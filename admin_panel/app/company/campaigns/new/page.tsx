@@ -1,33 +1,66 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Calculator,
   Check,
   ChevronLeft,
   ChevronRight,
+  CircleAlert,
   ClipboardList,
+  Clock,
+  LoaderCircle,
   Plus,
+  RotateCcw,
   Trash2,
   Upload,
   Video,
 } from "lucide-react";
+import {
+  CampaignBudgetFields,
+  DEFAULT_BUDGET_FIELDS,
+  pricingFromFields,
+  type BudgetFieldsValue,
+} from "@/components/campaign-budget-fields";
+import { CampaignPaymentCard } from "@/components/campaign-payment-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { Input, Select } from "@/components/ui/input";
+import { Input, NumericInput, Select } from "@/components/ui/input";
 import { PageHeader } from "@/components/page-header";
 import {
   ApiError,
   auth,
   companyApi,
   platformSettingsApi,
+  type Campaign,
   type PlatformSettings,
 } from "@/lib/api";
-import { cn, formatNumber, formatTugrik } from "@/lib/utils";
+import { pricingErrorMessage, pricingRequestFields } from "@/lib/pricing";
+import {
+  cn,
+  formatDuration,
+  formatNumber,
+  formatTugrik,
+  parseIntInput,
+} from "@/lib/utils";
+import {
+  MAX_VIDEO_SECONDS,
+  MIN_VIDEO_SECONDS,
+  describeVideoLength,
+  isVideoLengthAllowed,
+  readVideoDuration,
+  type VideoLengthStatus,
+} from "@/lib/video";
 
 type CampaignKind = "VIDEO" | "SURVEY_ONLY";
-type Step = "type" | "video" | "targeting" | "budget" | "survey" | "review";
+type Step =
+  | "type"
+  | "video"
+  | "targeting"
+  | "budget"
+  | "survey"
+  | "review"
+  | "payment";
 
 const cities = [
   "ALL",
@@ -47,57 +80,91 @@ interface SurveyQ {
   options: string[];
 }
 
-/** Cost-per-view for video campaigns — grows with targeting precision. */
-export function computeVideoCostPerView(input: {
-  gender: "ALL" | "MALE" | "FEMALE";
-  minAge: number;
-  maxAge: number;
-  city: string;
-}): number {
-  let cost = 500;
-  if (input.gender !== "ALL") cost += 200;
-  if (input.maxAge - input.minAge <= 10) cost += 150;
-  if (input.city !== "ALL") cost += 200;
-  return cost;
-}
-
 export default function NewCampaignPage() {
   const router = useRouter();
 
-  // Type toggle (drives visible steps + pricing model)
+  // Type toggle (drives visible steps; pricing is the same for both kinds)
   const [kind, setKind] = useState<CampaignKind>("VIDEO");
   const [step, setStep] = useState<Step>("type");
 
+  // Commission % + minimum reward, set by the Super Admin. Needed to preview
+  // the price on the budget step; the server re-prices on create anyway.
   const [platformSettings, setPlatformSettings] =
     useState<PlatformSettings | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [settingsAttempt, setSettingsAttempt] = useState(0);
 
   // Step: video
   const [title, setTitle] = useState("");
   const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [duration, setDuration] = useState<number>(30);
+  // The video length is read from the picked file's metadata
+  // (lib/video.ts) — companies never type it. null until a readable video
+  // is picked.
+  const [duration, setDuration] = useState<number | null>(null);
+  const [durationStatus, setDurationStatus] =
+    useState<VideoLengthStatus>("idle");
+  const videoPickSeq = useRef(0);
+
+  const pickVideo = (file: File | null) => {
+    const seq = ++videoPickSeq.current; // ignore results of an older pick
+    setVideoFile(file);
+    setDuration(null);
+    if (!file) {
+      setDurationStatus("idle");
+      return;
+    }
+    setDurationStatus("reading");
+    readVideoDuration(file).then(
+      (seconds) => {
+        if (seq !== videoPickSeq.current) return;
+        setDuration(seconds);
+        setDurationStatus("ready");
+      },
+      () => {
+        if (seq !== videoPickSeq.current) return;
+        setDurationStatus("error");
+      },
+    );
+  };
+  const videoLength = describeVideoLength(durationStatus, duration);
+
+  // Number fields keep the raw text so they can be cleared while typing
+  // (numeric state would snap an empty field back to "0").
 
   // Step: targeting
   const [gender, setGender] = useState<"ALL" | "MALE" | "FEMALE">("ALL");
-  const [minAge, setMinAge] = useState(18);
-  const [maxAge, setMaxAge] = useState(45);
+  const [minAgeText, setMinAgeText] = useState("18");
+  const [maxAgeText, setMaxAgeText] = useState("45");
+  const minAge = parseIntInput(minAgeText);
+  const maxAge = parseIntInput(maxAgeText);
   const [city, setCity] = useState<string>("Улаанбаатар");
 
-  // Step: budget
-  const [totalBudget, setTotalBudget] = useState(1_000_000);
-  const [rewardPerUser, setRewardPerUser] = useState(600);
+  // Step: budget. The company enters a total budget plus EITHER a viewer
+  // count or a per-viewer reward; the other is derived (lib/pricing.ts).
+  const [budgetFields, setBudgetFields] =
+    useState<BudgetFieldsValue>(DEFAULT_BUDGET_FIELDS);
+  const pricing = useMemo(
+    () =>
+      platformSettings ? pricingFromFields(budgetFields, platformSettings) : null,
+    [budgetFields, platformSettings],
+  );
 
-  // Step: survey
+  // Set once the campaign exists on the server (status AWAITING_PAYMENT);
+  // from then on the wizard only shows the payment step.
+  const [created, setCreated] = useState<Campaign | null>(null);
+
+  // Step: survey. Seed with one empty question so the user sees the form
+  // structure — but no pre-filled text: they should type their own prompt and
+  // answers, guided only by placeholders.
   const [questions, setQuestions] = useState<SurveyQ[]>([
     {
       id: 1,
-      prompt: "Танай brand-ийг таньж байна уу?",
+      prompt: "",
       type: "SINGLE_CHOICE",
-      options: ["Тийм", "Дунд зэрэг", "Үгүй"],
+      options: ["", ""],
     },
   ]);
 
-  // Load platform settings once; needed for SURVEY_ONLY pricing display.
   useEffect(() => {
     if (!auth.getToken()) {
       router.replace("/login");
@@ -105,11 +172,22 @@ export default function NewCampaignPage() {
     }
     platformSettingsApi
       .get()
-      .then(setPlatformSettings)
-      .catch((e) => setLoadError(e instanceof Error ? e.message : "Алдаа"));
-  }, [router]);
+      .then((s) => {
+        setPlatformSettings(s);
+        setLoadError(null);
+      })
+      .catch((e) =>
+        setLoadError(e instanceof Error ? e.message : "Алдаа гарлаа"),
+      );
+  }, [router, settingsAttempt]);
 
-  // Video campaigns skip nothing. Survey-only skips the "video" step.
+  const retryLoadSettings = () => {
+    setLoadError(null);
+    setSettingsAttempt((n) => n + 1);
+  };
+
+  // Video campaigns skip nothing. Survey-only skips the "video" step. The
+  // last step (payment) is only reachable by creating the campaign.
   const steps = useMemo<{ id: Step; label: string }[]>(
     () =>
       kind === "VIDEO"
@@ -120,6 +198,7 @@ export default function NewCampaignPage() {
             { id: "budget", label: "Төсөв" },
             { id: "survey", label: "Судалгаа" },
             { id: "review", label: "Хянах" },
+            { id: "payment", label: "Төлбөр" },
           ]
         : [
             { id: "type", label: "Төрөл" },
@@ -127,29 +206,18 @@ export default function NewCampaignPage() {
             { id: "budget", label: "Төсөв" },
             { id: "survey", label: "Судалгаа" },
             { id: "review", label: "Хянах" },
+            { id: "payment", label: "Төлбөр" },
           ],
     [kind],
   );
 
-  // Derived pricing.
-  const videoCostPerView = useMemo(
-    () => computeVideoCostPerView({ gender, minAge, maxAge, city }),
-    [gender, minAge, maxAge, city],
-  );
-  const costPerUnit =
-    kind === "VIDEO"
-      ? videoCostPerView
-      : platformSettings?.surveyOnlyCostPerResponse ?? 0;
-  const effectiveReward =
-    kind === "VIDEO"
-      ? rewardPerUser
-      : platformSettings?.surveyOnlyRewardPerUser ?? 0;
-  const platformFeePerUnit = Math.max(0, costPerUnit - effectiveReward);
-  const projectedReach = costPerUnit > 0 ? Math.floor(totalBudget / costPerUnit) : 0;
-
   const stepIndex = steps.findIndex((s) => s.id === step);
-  const canPrev = stepIndex > 0;
-  const canNext = stepIndex < steps.length - 1;
+  const reviewIndex = steps.findIndex((s) => s.id === "review");
+  const canPrev = stepIndex > 0 && step !== "payment";
+  // "Дараах" never leads past review — only "Үүсгэх" opens the payment step.
+  const canNext = stepIndex < reviewIndex;
+  // Settings loaded and the budget/viewers/reward combination is valid.
+  const pricingOk = pricing !== null && pricing.error === null;
 
   const goNext = () => {
     if (canNext) setStep(steps[stepIndex + 1].id);
@@ -164,21 +232,63 @@ export default function NewCampaignPage() {
   const submit = async () => {
     setSubmitError(null);
 
+    if (created) return; // already created — never create twice
     if (!title.trim()) {
       setSubmitError("Гарчиг заавал бөглөнө үү");
       return;
     }
-    if (kind === "SURVEY_ONLY" && !platformSettings) {
-      setSubmitError("Судалгааны үнэ ачаалагдаж дуусаагүй байна");
+    if (!platformSettings || !pricing) {
+      setSubmitError("Шимтгэлийн тохиргоо ачаалагдаж дуусаагүй байна");
       return;
     }
-    if (kind === "VIDEO" && (duration < 5 || duration > 180)) {
-      setSubmitError("Видеоны урт 5-180 сек хооронд байх ёстой");
+    if (kind === "VIDEO" && !videoFile) {
+      setSubmitError("Видео файлаа сонгоно уу");
+      return;
+    }
+    if (kind === "VIDEO" && !isVideoLengthAllowed(duration)) {
+      setSubmitError(
+        durationStatus === "ready"
+          ? `Видеоны урт ${formatDuration(MIN_VIDEO_SECONDS)}–` +
+              `${formatDuration(MAX_VIDEO_SECONDS)} хооронд байх ёстой`
+          : "Видеоны уртыг уншиж чадсангүй — өөр MP4 файл сонгоно уу",
+      );
+      return;
+    }
+    // Number fields can now be left blank (blank counts as 0), so catch
+    // empty/out-of-range values here instead of sending them to the API.
+    if (minAge < 13 || maxAge > 99 || minAge > maxAge) {
+      setSubmitError(
+        "Нас 13-99 хооронд, бага нас нь их наснаас хэтрэхгүй байх ёстой",
+      );
+      return;
+    }
+    if (pricing.error) {
+      setSubmitError(
+        pricingErrorMessage(pricing.error, platformSettings.minRewardPerViewer),
+      );
       return;
     }
     if (questions.length === 0) {
       setSubmitError("Хамгийн багадаа 1 асуулт нэмнэ үү");
       return;
+    }
+    // Now that we no longer seed the survey with example content, catch the
+    // easy case where the user left the fields blank before hitting submit.
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      if (!q.prompt.trim()) {
+        setSubmitError(`Асуулт ${i + 1}: асуултын текстийг бөглөнө үү`);
+        return;
+      }
+      if (q.type !== "TEXT") {
+        const filled = q.options.filter((o) => o.trim().length > 0);
+        if (filled.length < 2) {
+          setSubmitError(
+            `Асуулт ${i + 1}: хамгийн багадаа 2 хариулт бөглөнө үү`,
+          );
+          return;
+        }
+      }
     }
 
     setSubmitting(true);
@@ -186,17 +296,20 @@ export default function NewCampaignPage() {
       // NOTE: video file upload is not wired yet — until the FFmpeg worker
       // exists, we send an empty videoUrl for video campaigns too and the
       // company can attach a hosted URL later.
-      await companyApi.create({
+      // The server prices the campaign itself from the current commission
+      // settings: we send the budget plus ONLY the field the company drove
+      // (viewer count or per-viewer reward). The returned campaign — not
+      // this preview — is what the invoice shows.
+      const campaign = await companyApi.create({
         title: title.trim(),
         hasVideo: kind === "VIDEO",
         videoUrl: "",
-        durationSeconds: kind === "VIDEO" ? duration : 0,
+        durationSeconds: kind === "VIDEO" ? (duration ?? 0) : 0,
         targetGender: gender,
         minAge, maxAge,
         targetCity: city,
-        totalBudget,
-        costPerView: costPerUnit,
-        rewardPerUser: effectiveReward,
+        totalBudget: pricing.budget,
+        ...pricingRequestFields(pricing),
         questions: questions.map((q) => ({
           prompt: q.prompt,
           type: q.type,
@@ -204,7 +317,8 @@ export default function NewCampaignPage() {
           required: true,
         })),
       });
-      router.push("/company/campaigns");
+      setCreated(campaign);
+      setStep("payment");
     } catch (e) {
       if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
         auth.clear();
@@ -220,11 +334,13 @@ export default function NewCampaignPage() {
   return (
     <>
       <PageHeader
-        title="Шинэ кампани үүсгэх"
+        title="Шинэ аян үүсгэх"
         description={
-          kind === "VIDEO"
-            ? "Видео байршуулж, зорилтот үзэгчээ тодорхойлно уу"
-            : "Видеогүй судалгаа кампани — хэрэглэгч видео үзэлгүй шууд хариулна"
+          step === "payment"
+            ? "Аян үүслээ. Төлбөрөө төлснөөр админы шалгалтад орно."
+            : kind === "VIDEO"
+              ? "Видео байршуулж, зорилтот үзэгчээ тодорхойлно уу"
+              : "Видеогүй судалгаа кампани — хэрэглэгч видео үзэлгүй шууд хариулна"
         }
       />
 
@@ -241,20 +357,14 @@ export default function NewCampaignPage() {
               <KindCard
                 icon={<Video size={20} />}
                 title="Видеотой кампани"
-                hint="Компанийн видео хэрэглэгчид харагдана. Үнэ нь зорилтот нарийвчлалаас хамааран өөрчлөгдөнө."
+                hint="Компанийн видео хэрэглэгчид харагдана. Видеог бүтэн үзсэний дараа судалгаанд хариулна."
                 active={kind === "VIDEO"}
                 onClick={() => setKind("VIDEO")}
               />
               <KindCard
                 icon={<ClipboardList size={20} />}
                 title="Судалгаа зөвхөн"
-                hint={
-                  platformSettings
-                    ? `Видеогүй. Үнэ: ${formatTugrik(
-                        platformSettings.surveyOnlyCostPerResponse,
-                      )} / хариулт (админаас тогтоосон).`
-                    : "Видеогүй. Үнэ админ дээр төвлөрч тохируулагдана."
-                }
+                hint="Видеогүй. Хэрэглэгч шууд судалгаанд хариулна."
                 active={kind === "SURVEY_ONLY"}
                 onClick={() => setKind("SURVEY_ONLY")}
               />
@@ -266,11 +376,6 @@ export default function NewCampaignPage() {
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </div>
-              {loadError && (
-                <div className="md:col-span-2 rounded-lg border border-[var(--color-danger)]/40 bg-[color-mix(in_oklab,var(--color-danger)_10%,transparent)] px-3 py-2 text-xs text-[var(--color-danger)]">
-                  Судалгааны үнэ ачаалахад алдаа: {loadError}
-                </div>
-              )}
             </CardBody>
           </Card>
         )}
@@ -311,7 +416,7 @@ export default function NewCampaignPage() {
                     accept="video/mp4"
                     className="hidden"
                     id="video-input"
-                    onChange={(e) => setVideoFile(e.target.files?.[0] ?? null)}
+                    onChange={(e) => pickVideo(e.target.files?.[0] ?? null)}
                   />
                   <label htmlFor="video-input">
                     <span className="mt-2 inline-flex cursor-pointer items-center rounded-xl bg-[var(--color-surface-elevated)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-primary)]">
@@ -321,15 +426,28 @@ export default function NewCampaignPage() {
                 </div>
               </label>
 
-              <Input
-                label="Урт (секунд)"
-                type="number"
-                min={5}
-                max={180}
-                value={duration}
-                onChange={(e) => setDuration(Number(e.target.value))}
-                hint="5 – 180 сек"
-              />
+              <div
+                aria-live="polite"
+                className={cn(
+                  "flex items-center gap-2 rounded-xl border px-4 py-3 text-sm",
+                  videoLength.tone === "error"
+                    ? "border-[color-mix(in_oklab,var(--color-danger)_40%,transparent)] bg-[color-mix(in_oklab,var(--color-danger)_8%,transparent)] text-[var(--color-danger)]"
+                    : videoLength.tone === "ok"
+                      ? "border-[var(--color-divider)] text-[var(--color-text-primary)]"
+                      : "border-[var(--color-divider)] text-[var(--color-text-secondary)]",
+                )}
+              >
+                {videoLength.tone === "busy" ? (
+                  <LoaderCircle size={16} className="shrink-0 animate-spin" />
+                ) : videoLength.tone === "error" ? (
+                  <CircleAlert size={16} className="shrink-0" />
+                ) : (
+                  <Clock size={16} className="shrink-0" />
+                )}
+                <span className={videoLength.tone === "ok" ? "font-semibold" : undefined}>
+                  {videoLength.text}
+                </span>
+              </div>
             </CardBody>
           </Card>
         )}
@@ -340,7 +458,7 @@ export default function NewCampaignPage() {
               title="Зорилтот үзэгч"
               description={
                 kind === "VIDEO"
-                  ? "Нарийвчлал өндөр байх тусам нэг үзэгчийн үнэ өснө"
+                  ? "Аяныг хэнд харуулахаа сонгоно уу"
                   : "Судалгаа хэнд илгээх вэ"
               }
             />
@@ -369,21 +487,17 @@ export default function NewCampaignPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <Input
+                <NumericInput
                   label="Хамгийн бага нас"
-                  type="number"
-                  min={13}
-                  max={99}
-                  value={minAge}
-                  onChange={(e) => setMinAge(Number(e.target.value))}
+                  maxLength={2}
+                  value={minAgeText}
+                  onValueChange={setMinAgeText}
                 />
-                <Input
+                <NumericInput
                   label="Хамгийн их нас"
-                  type="number"
-                  min={13}
-                  max={99}
-                  value={maxAge}
-                  onChange={(e) => setMaxAge(Number(e.target.value))}
+                  maxLength={2}
+                  value={maxAgeText}
+                  onValueChange={setMaxAgeText}
                 />
               </div>
 
@@ -399,21 +513,6 @@ export default function NewCampaignPage() {
                 ))}
               </Select>
 
-              {kind === "VIDEO" && (
-                <div className="rounded-xl border border-[color-mix(in_oklab,var(--color-accent)_35%,transparent)] bg-[color-mix(in_oklab,var(--color-accent)_10%,transparent)] p-4 text-xs text-[var(--color-text-primary)]">
-                  <div className="mb-1 font-semibold text-[var(--color-accent)]">
-                    Тооцоолсон үнэ
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-mono text-2xl font-extrabold">
-                      {formatTugrik(costPerUnit)}
-                    </span>
-                    <span className="text-[var(--color-text-secondary)]">
-                      / нэг үзэгч
-                    </span>
-                  </div>
-                </div>
-              )}
             </CardBody>
           </Card>
         )}
@@ -422,79 +521,36 @@ export default function NewCampaignPage() {
           <Card>
             <CardHeader
               title="Төсөв ба урамшуулал"
-              description={
-                kind === "VIDEO"
-                  ? "Хэрэглэгчид хэдийг өгөх, платформ хэдийг авахыг тохируулах"
-                  : "Судалгааны үнэ платформоор төвлөрсөн тохируулагдсан"
-              }
+              description="Нийт төсвөө оруулаад хүрэх үзэгчийн тоо эсвэл нэг үзэгчид олгох урамшууллаа сонгоно уу. Данс цэнэглэх шаардлагагүй — аяны төлбөрийг хамгийн сүүлд төлнө."
             />
-            <CardBody className="space-y-5">
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="Нийт төсөв (₮)"
-                  type="number"
-                  min={100_000}
-                  step={100_000}
-                  value={totalBudget}
-                  onChange={(e) => setTotalBudget(Number(e.target.value))}
+            <CardBody>
+              {platformSettings ? (
+                <CampaignBudgetFields
+                  value={budgetFields}
+                  onChange={setBudgetFields}
+                  settings={platformSettings}
                 />
-                {kind === "VIDEO" ? (
-                  <Input
-                    label="Үзэгчид олгох урамшуулал (₮)"
-                    type="number"
-                    min={100}
-                    step={100}
-                    value={rewardPerUser}
-                    onChange={(e) => setRewardPerUser(Number(e.target.value))}
-                  />
-                ) : (
-                  <div>
-                    <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
-                      Хэрэглэгчид олгох (админ тогтоосон)
-                    </div>
-                    <div className="rounded-xl border border-[var(--color-divider)] bg-[var(--color-surface-elevated)] px-4 py-2.5 font-mono text-sm text-[var(--color-text-primary)]">
-                      {formatTugrik(effectiveReward)}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <SummaryTile
-                  label={
-                    kind === "VIDEO"
-                      ? "Нэг үзэгчийн зардал"
-                      : "Нэг хариултын зардал"
-                  }
-                  value={formatTugrik(costPerUnit)}
-                />
-                <SummaryTile
-                  label="Платформын шимтгэл"
-                  value={formatTugrik(platformFeePerUnit)}
-                  tone="warn"
-                />
-                <SummaryTile
-                  label={
-                    kind === "VIDEO"
-                      ? "Хүрэх үзэгчийн тоо"
-                      : "Хүлээгдэж буй хариултын тоо"
-                  }
-                  value={formatNumber(projectedReach)}
-                  icon={<Calculator size={14} />}
-                  tone="primary"
-                />
-              </div>
-
-              <div className="rounded-xl border border-[var(--color-divider)] bg-[var(--color-surface-elevated)] p-4 text-xs text-[var(--color-text-secondary)]">
-                <b className="text-[var(--color-text-primary)]">Хэрхэн:</b>{" "}
-                {formatTugrik(totalBudget)} төсөв ÷ {formatTugrik(costPerUnit)} =
-                ойролцоогоор{" "}
-                <b className="text-[var(--color-text-primary)]">
-                  {formatNumber(projectedReach)}{" "}
-                  {kind === "VIDEO" ? "үзэгч" : "хариулт"}
-                </b>{" "}
-                хүлээж авах боломжтой.
-              </div>
+              ) : loadError ? (
+                <div
+                  role="alert"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--color-danger)]/40 bg-[color-mix(in_oklab,var(--color-danger)_10%,transparent)] px-3 py-2 text-xs text-[var(--color-danger)]"
+                >
+                  <span>Шимтгэлийн тохиргоо ачаалахад алдаа гарлаа: {loadError}</span>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    leftIcon={<RotateCcw size={12} />}
+                    onClick={retryLoadSettings}
+                  >
+                    Дахин оролдох
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
+                  <LoaderCircle size={16} className="animate-spin" />
+                  Шимтгэлийн тохиргоо ачаалж байна...
+                </div>
+              )}
             </CardBody>
           </Card>
         )}
@@ -537,11 +593,11 @@ export default function NewCampaignPage() {
                   className="rounded-xl border border-[var(--color-divider)] bg-[var(--color-surface-elevated)] p-4"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 space-y-3">
+                    <div className="flex-1 space-y-4">
                       <Input
                         label={`Асуулт ${qi + 1}`}
                         value={q.prompt}
-                        placeholder="Асуултаа бичнэ үү"
+                        placeholder="Асуулт"
                         onChange={(e) =>
                           setQuestions((qs) =>
                             qs.map((x) =>
@@ -574,40 +630,45 @@ export default function NewCampaignPage() {
                       </Select>
 
                       {q.type !== "TEXT" && (
-                        <div className="space-y-2">
-                          {q.options.map((opt, oi) => (
-                            <Input
-                              key={oi}
-                              value={opt}
-                              placeholder={`Сонголт ${oi + 1}`}
-                              onChange={(e) =>
+                        <div className="rounded-lg border border-[var(--color-divider)] bg-[var(--color-surface)] p-3">
+                          <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
+                            Хариултын сонголтууд
+                          </div>
+                          <div className="space-y-2">
+                            {q.options.map((opt, oi) => (
+                              <Input
+                                key={oi}
+                                value={opt}
+                                placeholder={`Хариулт ${oi + 1}`}
+                                onChange={(e) =>
+                                  setQuestions((qs) =>
+                                    qs.map((x) => {
+                                      if (x.id !== q.id) return x;
+                                      const next = [...x.options];
+                                      next[oi] = e.target.value;
+                                      return { ...x, options: next };
+                                    }),
+                                  )
+                                }
+                              />
+                            ))}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              leftIcon={<Plus size={12} />}
+                              onClick={() =>
                                 setQuestions((qs) =>
-                                  qs.map((x) => {
-                                    if (x.id !== q.id) return x;
-                                    const next = [...x.options];
-                                    next[oi] = e.target.value;
-                                    return { ...x, options: next };
-                                  }),
+                                  qs.map((x) =>
+                                    x.id === q.id
+                                      ? { ...x, options: [...x.options, ""] }
+                                      : x,
+                                  ),
                                 )
                               }
-                            />
-                          ))}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            leftIcon={<Plus size={12} />}
-                            onClick={() =>
-                              setQuestions((qs) =>
-                                qs.map((x) =>
-                                  x.id === q.id
-                                    ? { ...x, options: [...x.options, ""] }
-                                    : x,
-                                ),
-                              )
-                            }
-                          >
-                            Сонголт нэмэх
-                          </Button>
+                            >
+                              Хариулт нэмэх
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -629,8 +690,8 @@ export default function NewCampaignPage() {
         {step === "review" && (
           <Card>
             <CardHeader
-              title="Хянаж илгээх"
-              description="Илгээсний дараа админ баталгаажуулна"
+              title="Хянаж үүсгэх"
+              description="Үүсгэсний дараа төлбөрөө төлнө. Төлбөр төлөгдсөний дараа админ шалгаж баталгаажуулна."
             />
             <CardBody className="space-y-4 text-sm">
               <ReviewRow
@@ -642,6 +703,12 @@ export default function NewCampaignPage() {
                 <ReviewRow
                   label="Видео"
                   value={videoFile?.name ?? "Байршуулаагүй"}
+                />
+              )}
+              {kind === "VIDEO" && (
+                <ReviewRow
+                  label="Урт"
+                  value={duration === null ? "—" : formatDuration(duration)}
                 />
               )}
               <ReviewRow
@@ -657,66 +724,93 @@ export default function NewCampaignPage() {
               <ReviewRow label="Нас" value={`${minAge} – ${maxAge}`} />
               <ReviewRow label="Хот" value={city === "ALL" ? "Бүх" : city} />
               <ReviewRow
-                label="Төсөв"
-                value={formatTugrik(totalBudget)}
-                strong
-              />
-              <ReviewRow
-                label={
-                  kind === "VIDEO" ? "Урамшуулал / нэг үзэгч" : "Урамшуулал / нэг хариулт"
-                }
-                value={formatTugrik(effectiveReward)}
-              />
-              <ReviewRow
-                label={
-                  kind === "VIDEO"
-                    ? "Хүрэх үзэгчийн тоо (ойролцоогоор)"
-                    : "Хүлээгдэж буй хариултын тоо (ойролцоогоор)"
-                }
-                value={formatNumber(projectedReach)}
-                strong
-              />
-              <ReviewRow
                 label="Судалгааны асуулт"
                 value={`${questions.length} ширхэг`}
               />
+              <ReviewRow
+                label="Нийт төсөв"
+                value={pricingOk ? formatTugrik(pricing.payable) : "—"}
+              />
+              <ReviewRow
+                label="Хүрэх үзэгч"
+                value={pricingOk ? formatNumber(pricing.targetViewers) : "—"}
+              />
+              <ReviewRow
+                label="Нэг үзэгчид олгох урамшуулал"
+                value={pricingOk ? formatTugrik(pricing.rewardPerViewer) : "—"}
+              />
+              <ReviewRow
+                label={
+                  pricing
+                    ? `Платформын шимтгэл (${pricing.commissionPercent}%)`
+                    : "Платформын шимтгэл"
+                }
+                value={pricingOk ? formatTugrik(pricing.commissionTotal) : "—"}
+              />
+              <ReviewRow
+                label="Төлөх дүн"
+                value={pricingOk ? formatTugrik(pricing.payable) : "—"}
+                strong
+              />
+              {pricingOk && pricing.unused > 0 && (
+                <div className="text-xs text-[var(--color-text-muted)]">
+                  Таны оруулсан {formatTugrik(pricing.budget)} төсвөөс үлдэгдэл{" "}
+                  {formatTugrik(pricing.unused)} төлбөрт орохгүй.
+                </div>
+              )}
               {submitError && (
-                <div className="mt-2 rounded-lg border border-[var(--color-danger)]/40 bg-[color-mix(in_oklab,var(--color-danger)_10%,transparent)] px-3 py-2 text-xs text-[var(--color-danger)]">
+                <div
+                  role="alert"
+                  className="mt-2 rounded-lg border border-[var(--color-danger)]/40 bg-[color-mix(in_oklab,var(--color-danger)_10%,transparent)] px-3 py-2 text-xs text-[var(--color-danger)]"
+                >
                   {submitError}
                 </div>
               )}
             </CardBody>
           </Card>
         )}
-      </div>
 
-      <div className="mt-6 flex items-center justify-between">
-        <Button
-          variant="secondary"
-          disabled={!canPrev}
-          onClick={goPrev}
-          leftIcon={<ChevronLeft size={16} />}
-        >
-          Буцах
-        </Button>
-        {step === "review" ? (
-          <Button
-            leftIcon={<Check size={16} />}
-            onClick={submit}
-            disabled={submitting}
-          >
-            {submitting ? "Илгээж байна..." : "Илгээх"}
-          </Button>
-        ) : (
-          <Button
-            disabled={!canNext || (step === "type" && !title.trim())}
-            onClick={goNext}
-            rightIcon={<ChevronRight size={16} />}
-          >
-            Дараах
-          </Button>
+        {step === "payment" && created && (
+          <CampaignPaymentCard campaign={created} variant="wizard" />
         )}
       </div>
+
+      {/* Once the campaign exists it can't be edited from here any more, so
+          the payment step has no Back/Next bar — only the payment card. */}
+      {step !== "payment" && (
+        <div className="mt-6 flex items-center justify-between">
+          <Button
+            variant="secondary"
+            disabled={!canPrev}
+            onClick={goPrev}
+            leftIcon={<ChevronLeft size={16} />}
+          >
+            Буцах
+          </Button>
+          {step === "review" ? (
+            <Button
+              leftIcon={<Check size={16} />}
+              onClick={submit}
+              disabled={submitting || !pricingOk}
+            >
+              {submitting ? "Үүсгэж байна..." : "Үүсгэх"}
+            </Button>
+          ) : (
+            <Button
+              disabled={
+                !canNext ||
+                (step === "type" && !title.trim()) ||
+                (step === "video" && !isVideoLengthAllowed(duration)) ||
+                (step === "budget" && !pricingOk)
+              }
+              onClick={goNext}
+              rightIcon={<ChevronRight size={16} />}
+            >
+              Дараах
+            </Button>
+          )}
+        </div>
+      )}
     </>
   );
 }
@@ -807,36 +901,6 @@ function KindCard({
       </span>
       <span className="text-xs text-[var(--color-text-secondary)]">{hint}</span>
     </button>
-  );
-}
-
-function SummaryTile({
-  label,
-  value,
-  tone = "neutral",
-  icon,
-}: {
-  label: string;
-  value: string;
-  tone?: "neutral" | "primary" | "warn";
-  icon?: React.ReactNode;
-}) {
-  const toneCls = {
-    neutral: "border-[var(--color-divider)] bg-[var(--color-surface-elevated)]",
-    primary:
-      "border-[color-mix(in_oklab,var(--color-primary)_35%,transparent)] bg-[color-mix(in_oklab,var(--color-primary)_10%,transparent)]",
-    warn: "border-[color-mix(in_oklab,var(--color-warning)_35%,transparent)] bg-[color-mix(in_oklab,var(--color-warning)_10%,transparent)]",
-  }[tone];
-
-  return (
-    <div className={cn("rounded-xl border p-3", toneCls)}>
-      <div className="mb-1 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-[var(--color-text-secondary)]">
-        {icon} {label}
-      </div>
-      <div className="font-mono text-lg font-bold text-[var(--color-text-primary)]">
-        {value}
-      </div>
-    </div>
   );
 }
 

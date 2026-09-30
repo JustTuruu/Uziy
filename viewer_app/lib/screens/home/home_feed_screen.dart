@@ -1,14 +1,24 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../models/campaign.dart';
 import '../../models/user.dart';
 import '../../routes/app_router.dart';
 import '../../services/auth_service.dart';
 import '../../services/viewer_service.dart';
-import '../../theme/app_theme.dart';
+import '../../widgets/ui.dart';
+import 'feed_logic.dart';
+import 'feed_widgets.dart';
 
+/// Home tab: greeting + balance, earning-potential hero, kind filter and the
+/// targeted campaign feed.
+///
+/// Tab-screen layout contract: this is a body inside the shell's Scaffold
+/// (which uses `extendBody: true` and a floating nav bar), so it uses
+/// `SafeArea(bottom: false)` and ends its scroll content with
+/// [AppLayout.scrollBottomPadding].
 class HomeFeedScreen extends StatefulWidget {
   const HomeFeedScreen({super.key});
 
@@ -20,6 +30,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
   List<Campaign>? _feed;
   AppUser? _me;
   String? _error;
+  FeedFilter _filter = FeedFilter.all;
+
+  /// True while a button-triggered reload (retry / 'Шинэчлэх') is running.
+  bool _reloading = false;
 
   @override
   void initState() {
@@ -54,307 +68,197 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     }
   }
 
+  /// Button-driven reload. [clearError] hides the banner while retrying, so
+  /// a feed that never loaded shows skeletons again instead of a stale
+  /// error. The fetch itself is always [_load].
+  Future<void> _reload({bool clearError = false}) async {
+    if (_reloading) return;
+    setState(() {
+      _reloading = true;
+      if (clearError) _error = null;
+    });
+    try {
+      await _load();
+    } finally {
+      if (mounted) setState(() => _reloading = false);
+    }
+  }
+
+  void _openCampaign(Campaign c) {
+    // Survey-only campaigns skip the video player.
+    final target =
+        c.hasVideo ? '${Routes.video}/${c.id}' : '${Routes.survey}/${c.id}';
+    context.push(target, extra: c);
+  }
+
+  void _onFilterChanged(FeedFilter f) => setState(() => _filter = f);
+
   @override
   Widget build(BuildContext context) {
-    final money = NumberFormat.decimalPattern('mn');
-    final balanceLabel =
-        _me == null ? '—' : '${money.format(_me!.balance.round())} ₮';
+    final feed = _feed;
+    final error = _error;
+    final summary = feed == null ? null : summarizeFeed(feed);
+    final showFilter = summary != null && shouldShowFilter(summary);
+    final filter =
+        summary == null ? FeedFilter.all : effectiveFilter(_filter, summary);
+    final visible =
+        feed == null ? const <Campaign>[] : filterFeed(feed, filter);
+    final bottomPad = AppLayout.scrollBottomPadding(context);
 
-    return SafeArea(
-      child: RefreshIndicator(
-        onRefresh: _load,
-        color: AppColors.primary,
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Танд тохирсон',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Судалгаа бөглөж мөнгө хүлээн ав',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                            color:
-                                AppColors.primary.withValues(alpha: 0.35)),
+    return AmbientBackground(
+      child: SafeArea(
+        bottom: false,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Phone: 20pt gutters. Tablet / landscape: center a 560pt column.
+            final gutter = math.max(
+              AppLayout.screenPadding,
+              (constraints.maxWidth - AppLayout.maxContentWidth) / 2,
+            );
+            EdgeInsets pad({double top = 0}) =>
+                EdgeInsets.fromLTRB(gutter, top, gutter, 0);
+
+            return RefreshIndicator(
+              onRefresh: _load,
+              color: AppColors.primary,
+              backgroundColor: AppColors.surfaceElevated,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverPadding(
+                    key: const ValueKey('feed-header'),
+                    padding: pad(top: AppSpacing.md),
+                    sliver: SliverToBoxAdapter(
+                      child: FeedHeader(
+                        now: DateTime.now(),
+                        balance: _me?.balance,
+                        onBalanceTap: () => context.go(Routes.wallet),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.account_balance_wallet,
-                              size: 16, color: AppColors.primary),
-                          const SizedBox(width: 6),
-                          Text(
-                            balanceLabel,
-                            style: const TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (error != null)
+                    SliverPadding(
+                      key: const ValueKey('feed-error'),
+                      padding: pad(top: AppSpacing.xl),
+                      sliver: SliverToBoxAdapter(
+                        child: StatusBanner(
+                          message: error,
+                          actionLabel: 'Дахин оролдох',
+                          onAction: () => _reload(clearError: true),
+                        ),
+                      ),
+                    ),
+
+                  // Loading: skeletons shaped like the real content.
+                  if (feed == null && error == null)
+                    SliverPadding(
+                      key: const ValueKey('feed-loading'),
+                      padding: pad(top: AppSpacing.xl),
+                      sliver: const SliverToBoxAdapter(child: FeedSkeleton()),
+                    ),
+
+                  // Never loaded and failed: a calm illustration under the
+                  // banner (the banner carries the retry).
+                  if (feed == null && error != null)
+                    SliverFillRemaining(
+                      key: const ValueKey('feed-failed'),
+                      hasScrollBody: false,
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: bottomPad),
+                        child: const Center(
+                          child: EmptyState(
+                            icon: Icons.cloud_off_rounded,
+                            iconColor: AppColors.accent,
+                            title: 'Одоогоор ачаалж чадсангүй',
+                            message: 'Түр хүлээгээд дахин оролдоно уу.',
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  if (feed != null && feed.isEmpty)
+                    SliverFillRemaining(
+                      key: const ValueKey('feed-empty'),
+                      hasScrollBody: false,
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: bottomPad),
+                        child: Center(
+                          child: EmptyState(
+                            icon: Icons.video_library_outlined,
+                            title: 'Танд тохирсон видео түр байхгүй байна',
+                            message: 'Дараа дахин шалгаарай. Шинэ видео, '
+                                'судалгаа нэмэгдэхэд энд харагдана.',
+                            action: AppButton(
+                              label: 'Шинэчлэх',
+                              icon: Icons.refresh_rounded,
+                              variant: AppButtonVariant.secondary,
+                              expand: false,
+                              loading: _reloading,
+                              onPressed: _reload,
                             ),
                           ),
-                        ],
+                        ),
+                      ),
+                    ),
+
+                  if (feed != null && feed.isNotEmpty) ...[
+                    SliverPadding(
+                      key: const ValueKey('feed-hero'),
+                      padding: pad(top: AppSpacing.xl),
+                      sliver: SliverToBoxAdapter(
+                        child: FadeSlideIn(
+                          child: EarningsHeroCard(summary: summary!),
+                        ),
+                      ),
+                    ),
+                    if (showFilter)
+                      SliverPadding(
+                        key: const ValueKey('feed-filter'),
+                        padding: pad(top: AppSpacing.xl),
+                        sliver: SliverToBoxAdapter(
+                          child: FadeSlideIn(
+                            index: 1,
+                            child: FeedFilterBar(
+                              value: filter,
+                              onChanged: _onFilterChanged,
+                            ),
+                          ),
+                        ),
+                      ),
+                    SliverPadding(
+                      key: const ValueKey('feed-list'),
+                      padding: pad(top: AppSpacing.lg),
+                      // Keyed by filter: switching tabs remounts the list so
+                      // the cards cascade in again.
+                      sliver: SliverList.separated(
+                        key: ValueKey('feed-list-${filter.name}'),
+                        itemCount: visible.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: AppSpacing.lg),
+                        itemBuilder: (context, i) {
+                          final c = visible[i];
+                          return FadeSlideIn(
+                            key: ValueKey('campaign-${c.id}'),
+                            index: i + 2,
+                            child: CampaignCard(
+                              campaign: c,
+                              onTap: () => _openCampaign(c),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ],
-                ),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 16)),
-            if (_error != null)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: _ErrorBanner(
-                      message: _error!, onRetry: _load),
-                ),
-              ),
-            if (_feed == null && _error == null)
-              const SliverFillRemaining(
-                hasScrollBody: false,
-                child: Center(
-                  child: SizedBox(
-                    width: 28,
-                    height: 28,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      valueColor:
-                          AlwaysStoppedAnimation(AppColors.primary),
-                    ),
-                  ),
-                ),
-              ),
-            if (_feed != null && _feed!.isEmpty)
-              const SliverFillRemaining(
-                hasScrollBody: false,
-                child: Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 40),
-                    child: Text(
-                      'Танд тохирсон видео түр байхгүй байна.\nДараа дахин шалгаарай.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            if (_feed != null && _feed!.isNotEmpty)
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: SliverList.separated(
-                  itemCount: _feed!.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 14),
-                  itemBuilder: (context, i) {
-                    final c = _feed![i];
-                    return _CampaignCard(
-                      campaign: c,
-                      rewardLabel:
-                          '${money.format(c.rewardPerUser.toInt())} ₮',
-                      onTap: () {
-                        // Survey-only campaigns skip the video player.
-                        final target = c.hasVideo
-                            ? '${Routes.video}/${c.id}'
-                            : '${Routes.survey}/${c.id}';
-                        context.push(target, extra: c);
-                      },
-                    );
-                  },
-                ),
-              ),
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
-class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.message, required this.onRetry});
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.danger.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.danger.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.error_outline, color: AppColors.danger, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(color: AppColors.danger, fontSize: 13),
-            ),
-          ),
-          TextButton(
-            onPressed: onRetry,
-            child: const Text('Дахин'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CampaignCard extends StatelessWidget {
-  const _CampaignCard({
-    required this.campaign,
-    required this.rewardLabel,
-    required this.onTap,
-  });
-
-  final Campaign campaign;
-  final String rewardLabel;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.divider),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF2C2C38), Color(0xFF17171E)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                  if (feed != null ? feed.isNotEmpty : error == null)
+                    SliverToBoxAdapter(
+                      key: const ValueKey('feed-bottom'),
+                      child: SizedBox(height: bottomPad),
                     ),
-                  ),
-                  Center(
-                    child: Icon(
-                      campaign.hasVideo
-                          ? Icons.play_circle_fill
-                          : Icons.assignment_outlined,
-                      size: 64,
-                      color: Colors.white70,
-                    ),
-                  ),
-                  Positioned(
-                    top: 12,
-                    left: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.55),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        campaign.hasVideo
-                            ? '${campaign.durationSeconds}s'
-                            : 'Судалгаа',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 12,
-                    right: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        '+ $rewardLabel',
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    campaign.title,
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.verified,
-                          size: 14, color: AppColors.accent),
-                      const SizedBox(width: 4),
-                      Text(
-                        campaign.companyName,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

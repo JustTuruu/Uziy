@@ -317,5 +317,4 @@ export const companyStats = {
   totalSpent: 5_290_000,
   totalReach: 3_290,
   avgCompletionRate: 0.92,
-  accountBalance: 1_800_000,
 };

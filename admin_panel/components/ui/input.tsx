@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn, sanitizeIntInput } from "@/lib/utils";
 import type { InputHTMLAttributes, TextareaHTMLAttributes } from "react";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -43,6 +43,37 @@ export function Input({
         </div>
       )}
     </label>
+  );
+}
+
+interface NumericInputProps
+  extends Omit<InputProps, "type" | "value" | "onChange" | "inputMode"> {
+  /** Raw field text (digits only, may be empty). Parse with parseIntInput(). */
+  value: string;
+  onValueChange: (text: string) => void;
+}
+
+/**
+ * Whole-number field (money, age, seconds). Deliberately a text input with a
+ * numeric keyboard rather than type="number": the value stays a string we
+ * control, so the user can clear the field completely without a "0" snapping
+ * back, and leading zeros are stripped as they type ("05" → "5").
+ */
+export function NumericInput({
+  value,
+  onValueChange,
+  ...rest
+}: NumericInputProps) {
+  return (
+    <Input
+      {...rest}
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      autoComplete="off"
+      value={value}
+      onChange={(e) => onValueChange(sanitizeIntInput(e.target.value))}
+    />
   );
 }
 

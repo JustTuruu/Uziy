@@ -7,6 +7,11 @@ import java.time.OffsetDateTime
 /**
  * Single-row config table. Enforced via a CHECK constraint that `id = 1`
  * (see V4__survey_only_campaigns.sql). Always load with `findById(1L)`.
+ *
+ * Since V5 it holds the commission model used by
+ * [mn.uziy.backend.pricing.CampaignPricing] for BOTH video and survey-only
+ * campaigns: the platform keeps `commissionPercent` of every viewer's cost,
+ * and a viewer's reward may never drop below `minRewardPerViewer`.
  */
 @Entity
 @Table(name = "platform_settings")
@@ -14,11 +19,13 @@ class PlatformSettingsEntity(
     @Id
     var id: Int = 1,
 
-    @Column(name = "survey_only_cost_per_response", nullable = false)
-    var surveyOnlyCostPerResponse: Double = 400.0,
+    /** Platform cut, whole percent, 1..90 (DB CHECK). */
+    @Column(name = "commission_percent", nullable = false)
+    var commissionPercent: Int = 30,
 
-    @Column(name = "survey_only_reward_per_user", nullable = false)
-    var surveyOnlyRewardPerUser: Double = 250.0,
+    /** Floor for a single viewer's reward, whole ₮, >= 1 (DB CHECK). */
+    @Column(name = "min_reward_per_viewer", nullable = false)
+    var minRewardPerViewer: Int = 100,
 
     @Column(name = "updated_at", nullable = false)
     var updatedAt: OffsetDateTime = OffsetDateTime.now(),

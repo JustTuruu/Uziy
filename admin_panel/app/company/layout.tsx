@@ -16,7 +16,7 @@ const nav: NavItem[] = [
   },
   {
     href: "/company/campaigns",
-    label: "Кампаниуд",
+    label: "Судалгаа",
     icon: <PlaySquare size={18} />,
   },
   {

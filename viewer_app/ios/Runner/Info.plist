@@ -4,6 +4,18 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<!--
+	  App Transport Security exception for local dev only.
+	  NSAllowsLocalNetworking permits plain HTTP but ONLY to local hosts
+	  (localhost, 127.0.0.1, 192.168.*, 10.*, *.local) — so it does not
+	  weaken security for the production API at https://api.uziy.mn.
+	  Remove this block once the backend is deployed under HTTPS.
+	-->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

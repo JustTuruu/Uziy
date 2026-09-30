@@ -2,10 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AlertCircle, DollarSign, Save } from "lucide-react";
+import { AlertCircle, Percent, Save, ShieldCheck, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/input";
 import { PageHeader } from "@/components/page-header";
 import {
   adminApi,
@@ -14,14 +14,33 @@ import {
   platformSettingsApi,
   type PlatformSettings,
 } from "@/lib/api";
-import { formatTugrik } from "@/lib/utils";
+import {
+  MAX_COMMISSION_PERCENT,
+  MIN_COMMISSION_PERCENT,
+  computeCampaignPricing,
+  validateCommissionSettings,
+} from "@/lib/pricing";
+import {
+  formatNumber,
+  formatTugrik,
+  parseIntInput,
+  relativeTime,
+} from "@/lib/utils";
 
-export default function PricingPage() {
+const EXAMPLE_BUDGET = 1_000_000;
+const EXAMPLE_VIEWERS = 1_000;
+
+/**
+ * Super Admin: the platform commission (% taken out of every campaign
+ * budget) and the minimum reward a viewer may receive. Applies to campaigns
+ * created after saving; existing campaigns keep the rate they were priced at.
+ */
+export default function CommissionSettingsPage() {
   const router = useRouter();
 
   const [settings, setSettings] = useState<PlatformSettings | null>(null);
-  const [cost, setCost] = useState("");
-  const [reward, setReward] = useState("");
+  const [percentText, setPercentText] = useState("");
+  const [minRewardText, setMinRewardText] = useState("");
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,41 +54,36 @@ export default function PricingPage() {
       .get()
       .then((s) => {
         setSettings(s);
-        setCost(String(s.surveyOnlyCostPerResponse));
-        setReward(String(s.surveyOnlyRewardPerUser));
+        setPercentText(String(s.commissionPercent));
+        setMinRewardText(String(s.minRewardPerViewer));
       })
       .catch((e) => {
         setError(e instanceof Error ? e.message : "Алдаа гарлаа");
       });
   }, [router]);
 
+  const percent = parseIntInput(percentText);
+  const minReward = parseIntInput(minRewardText);
+  const validationError = validateCommissionSettings(percent, minReward);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSaved(false);
-
-    const c = Number(cost);
-    const r = Number(reward);
-    if (!Number.isFinite(c) || c <= 0) {
-      setError("Компанийн төлөх дүн 0-ээс их байх ёстой");
-      return;
-    }
-    if (!Number.isFinite(r) || r <= 0) {
-      setError("Хэрэглэгчид олгох дүн 0-ээс их байх ёстой");
-      return;
-    }
-    if (r >= c) {
-      setError("Хэрэглэгчид олгох дүн компанийн төлбөрөөс бага байх ёстой");
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
     setLoading(true);
     try {
       const next = await adminApi.updateSettings({
-        surveyOnlyCostPerResponse: c,
-        surveyOnlyRewardPerUser: r,
+        commissionPercent: percent,
+        minRewardPerViewer: minReward,
       });
       setSettings(next);
+      setPercentText(String(next.commissionPercent));
+      setMinRewardText(String(next.minRewardPerViewer));
       setSaved(true);
     } catch (e) {
       if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
@@ -83,23 +97,34 @@ export default function PricingPage() {
     }
   };
 
-  const commission =
-    Number.isFinite(Number(cost)) && Number.isFinite(Number(reward))
-      ? Math.max(0, Number(cost) - Number(reward))
-      : 0;
+  // Live example with the values being edited (only once they're valid).
+  const example =
+    validationError === null
+      ? computeCampaignPricing({
+          budget: EXAMPLE_BUDGET,
+          mode: "VIEWERS",
+          targetViewers: EXAMPLE_VIEWERS,
+          commissionPercent: percent,
+          minRewardPerViewer: minReward,
+        })
+      : null;
 
   return (
     <>
       <PageHeader
-        title="Судалгааны үнэ тохиргоо"
-        description="Видеогүй судалгааны кампанийн үнийг платформ дээр төвлөрсөн байдлаар тохируулна"
+        title="Шимтгэл ба урамшуулал"
+        description="Аян бүрийн төсвөөс платформын авах шимтгэл болон үзэгчид олгох хамгийн бага урамшууллыг тохируулна"
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader
-            title="Одоогийн үнэ"
-            description="Хадгалсны дараа шинэ санал болголтуудад мөрдөгдөнө"
+            title="Одоогийн тохиргоо"
+            description={
+              settings
+                ? `Хадгалсны дараа шинээр үүсэх аянуудад мөрдөгдөнө · Сүүлд шинэчилсэн: ${relativeTime(settings.updatedAt)}`
+                : "Хадгалсны дараа шинээр үүсэх аянуудад мөрдөгдөнө"
+            }
           />
           <CardBody>
             {settings === null && !error ? (
@@ -107,46 +132,58 @@ export default function PricingPage() {
                 Ачаалж байна...
               </div>
             ) : (
-              <form onSubmit={submit} className="space-y-5">
-                <Input
-                  label="Компанийн төлөх дүн (нэг хариултанд)"
-                  type="number"
-                  min={1}
-                  step={10}
-                  value={cost}
-                  onChange={(e) => {
-                    setCost(e.target.value);
-                    setSaved(false);
-                  }}
-                  hint="Компани нэг судалгааны хариулт бүрд төлөх ₮"
-                />
-                <Input
-                  label="Хэрэглэгчид олгох дүн"
-                  type="number"
-                  min={1}
-                  step={10}
-                  value={reward}
-                  onChange={(e) => {
-                    setReward(e.target.value);
-                    setSaved(false);
-                  }}
-                  hint="Судалгаа бөглөсөн хэрэглэгчийн хэтэвч рүү орох ₮"
-                />
+              <form onSubmit={submit} noValidate className="space-y-5">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <NumericInput
+                    label="Платформын шимтгэл (%)"
+                    maxLength={2}
+                    value={percentText}
+                    onValueChange={(text) => {
+                      setPercentText(text);
+                      setSaved(false);
+                    }}
+                    hint={`${MIN_COMMISSION_PERCENT}–${MAX_COMMISSION_PERCENT}% хооронд. Аяны төсвөөс хасагдана.`}
+                  />
+                  <NumericInput
+                    label="Нэг үзэгчид олгох хамгийн бага урамшуулал (₮)"
+                    maxLength={7}
+                    value={minRewardText}
+                    onValueChange={(text) => {
+                      setMinRewardText(text);
+                      setSaved(false);
+                    }}
+                    hint="Үүнээс бага урамшуулалтай аян үүсгэх боломжгүй"
+                  />
+                </div>
 
                 <div className="rounded-xl border border-[color-mix(in_oklab,var(--color-accent)_35%,transparent)] bg-[color-mix(in_oklab,var(--color-accent)_10%,transparent)] p-4 text-xs">
                   <div className="mb-1 font-semibold text-[var(--color-accent)]">
-                    Платформын шимтгэл (авто тооцоолсон)
+                    Жишээ
                   </div>
-                  <div className="font-mono text-lg font-bold text-[var(--color-text-primary)]">
-                    {formatTugrik(commission)}
-                  </div>
-                  <div className="mt-1 text-[var(--color-text-secondary)]">
-                    Компанийн төлбөр – Хэрэглэгчийн урамшуулал
-                  </div>
+                  {example ? (
+                    <div className="text-sm text-[var(--color-text-primary)]">
+                      {formatTugrik(EXAMPLE_BUDGET)} төсөв,{" "}
+                      {formatNumber(EXAMPLE_VIEWERS)} үзэгч → үзэгч бүр{" "}
+                      <b className="font-mono">
+                        {formatTugrik(example.rewardPerViewer)}
+                      </b>
+                      , платформ{" "}
+                      <b className="font-mono">
+                        {formatTugrik(example.commissionTotal)}
+                      </b>
+                    </div>
+                  ) : (
+                    <div className="text-[var(--color-text-secondary)]">
+                      Зөв утга оруулахад жишээ тооцоо энд харагдана.
+                    </div>
+                  )}
                 </div>
 
                 {error && (
-                  <div className="flex items-start gap-2 rounded-lg border border-[var(--color-danger)]/40 bg-[color-mix(in_oklab,var(--color-danger)_10%,transparent)] px-3 py-2 text-xs text-[var(--color-danger)]">
+                  <div
+                    role="alert"
+                    className="flex items-start gap-2 rounded-lg border border-[var(--color-danger)]/40 bg-[color-mix(in_oklab,var(--color-danger)_10%,transparent)] px-3 py-2 text-xs text-[var(--color-danger)]"
+                  >
                     <AlertCircle size={14} className="mt-0.5 shrink-0" />
                     <span>{error}</span>
                   </div>
@@ -173,36 +210,39 @@ export default function PricingPage() {
           <CardHeader title="Хэрхэн ажилладаг вэ?" />
           <CardBody className="space-y-4 text-sm text-[var(--color-text-secondary)]">
             <div className="flex gap-3">
-              <DollarSign
+              <Wallet
                 size={16}
                 className="mt-0.5 shrink-0 text-[var(--color-primary)]"
               />
               <p>
-                Компаниуд <b className="text-[var(--color-text-primary)]">видеогүй</b>
-                {" "}судалгаа-кампани үүсгэхэд эдгээр үнийг ашиглана.
+                Компани аяндаа{" "}
+                <b className="text-[var(--color-text-primary)]">нийт төсөв</b>{" "}
+                оруулаад хүрэх үзэгчийн тоо эсвэл нэг үзэгчид олгох
+                урамшууллаа сонгоно. Төлбөрийг аян тус бүрээр төлнө.
               </p>
             </div>
             <div className="flex gap-3">
-              <DollarSign
+              <Percent
                 size={16}
                 className="mt-0.5 shrink-0 text-[var(--color-primary)]"
               />
               <p>
-                Хэрэглэгч бүр судалгаа бөглөх бүрд{" "}
+                Нэг үзэгчид ногдох дүнгээс{" "}
+                <b className="text-[var(--color-text-primary)]">шимтгэл</b>{" "}
+                хасагдаж, үлдсэн нь үзэгчийн хэтэвчинд орно.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <ShieldCheck
+                size={16}
+                className="mt-0.5 shrink-0 text-[var(--color-primary)]"
+              />
+              <p>
                 <b className="text-[var(--color-text-primary)]">
-                  Хэрэглэгчид олгох дүн
+                  Хамгийн бага урамшуулал
                 </b>{" "}
-                хэтэвчиндээ авна.
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <DollarSign
-                size={16}
-                className="mt-0.5 shrink-0 text-[var(--color-primary)]"
-              />
-              <p>
-                Хоёр дүнгийн зөрүү нь платформын{" "}
-                <b className="text-[var(--color-text-primary)]">шимтгэл</b>.
+                нь үзэгчдэд хэт бага урамшуулалтай аян үүсэхээс сэргийлнэ.
+                Өмнө үүссэн аянууд үүсэх үеийнхээ шимтгэлээр үргэлжилнэ.
               </p>
             </div>
           </CardBody>

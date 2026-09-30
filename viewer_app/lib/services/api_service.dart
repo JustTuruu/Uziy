@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kIsWeb;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kDebugMode, TargetPlatform, kIsWeb, debugPrint;
 
 /// Thin Dio wrapper. Base URL is chosen at construction time.
 ///
@@ -25,16 +26,53 @@ class ApiService {
     return 'http://localhost:8080';
   }
 
-  late final Dio dio = Dio(
-    BaseOptions(
-      baseUrl: defaultBaseUrl(),
-      connectTimeout: const Duration(seconds: 8),
-      receiveTimeout: const Duration(seconds: 12),
-      headers: const {'Content-Type': 'application/json'},
-      // The backend returns JSON; let Dio parse it automatically.
-      responseType: ResponseType.json,
-    ),
-  );
+  late final Dio dio = _buildDio();
+
+  Dio _buildDio() {
+    final client = Dio(
+      BaseOptions(
+        baseUrl: defaultBaseUrl(),
+        connectTimeout: const Duration(seconds: 8),
+        receiveTimeout: const Duration(seconds: 12),
+        headers: const {'Content-Type': 'application/json'},
+        responseType: ResponseType.json,
+        // Never throw on 4xx/5xx — controllers decide how to handle status.
+        validateStatus: (s) => s != null && s < 500,
+      ),
+    );
+
+    // Verbose logging in debug builds so failures aren't invisible.
+    if (kDebugMode) {
+      client.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            debugPrint(
+              '[api] → ${options.method} ${options.uri}'
+              '${options.data != null ? "  body=${options.data}" : ""}',
+            );
+            handler.next(options);
+          },
+          onResponse: (response, handler) {
+            debugPrint(
+              '[api] ← ${response.statusCode} ${response.requestOptions.uri}',
+            );
+            handler.next(response);
+          },
+          onError: (err, handler) {
+            debugPrint(
+              '[api] ✗ ${err.type} ${err.requestOptions.uri}'
+              '  status=${err.response?.statusCode}'
+              '  message=${err.message}',
+            );
+            handler.next(err);
+          },
+        ),
+      );
+      debugPrint('[api] initialized with baseUrl=${client.options.baseUrl}');
+    }
+
+    return client;
+  }
 
   /// Point the client at a different host at runtime (e.g. staging).
   void setBaseUrl(String url) {

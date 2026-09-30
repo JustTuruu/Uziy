@@ -1,35 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Check, Play, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Check, ClipboardList, Play, X } from "lucide-react";
+import { CampaignStatusBadge } from "@/components/campaign-status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
-import {
-  adminApi,
-  ApiError,
-  auth,
-  type Campaign,
-} from "@/lib/api";
-import { formatNumber, formatTugrik, relativeTime } from "@/lib/utils";
-
-const statusTone = {
-  ACTIVE: "success",
-  PAUSED: "warning",
-  PENDING: "info",
-  COMPLETED: "neutral",
-  REJECTED: "danger",
-} as const;
-
-const statusLabel = {
-  ACTIVE: "Идэвхтэй",
-  PAUSED: "Түр зогсоосон",
-  PENDING: "Хүлээгдэж буй",
-  COMPLETED: "Дууссан",
-  REJECTED: "Татгалзсан",
-} as const;
+import { adminApi, ApiError, auth, type Campaign } from "@/lib/api";
+import { formatTugrik, relativeTime } from "@/lib/utils";
 
 export default function AdminCampaignsPage() {
   const router = useRouter();
@@ -92,7 +72,7 @@ export default function AdminCampaignsPage() {
               ? "Ачаалж байна..."
               : `Модераци хүлээж буй (${pending.length})`
           }
-          description="Видеог бүтэн үзэж, зорилтот бодлогод нийцэж байгаа эсэхийг шалгана"
+          description="Төлбөр нь төлөгдсөн аянууд. Видеог бүтэн үзэж, зорилтот бодлогод нийцэж байгаа эсэхийг шалгана"
         />
         <CardBody className="p-0">
           {all === null ? (
@@ -123,21 +103,34 @@ export default function AdminCampaignsPage() {
                 {pending.map((c) => (
                   <tr
                     key={c.id}
-                    className="border-b border-[var(--color-divider)] last:border-0"
+                    className="border-b border-[var(--color-divider)] last:border-0 hover:bg-[var(--color-surface-elevated)]/60"
                   >
                     <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
+                      <Link
+                        href={`/admin/campaigns/${c.id}`}
+                        className="flex items-center gap-3"
+                      >
                         <div className="flex h-10 w-16 items-center justify-center rounded-md bg-gradient-to-br from-[#2c2c38] to-[#17171e]">
-                          <Play size={14} className="text-white/70" />
+                          {c.hasVideo ? (
+                            <Play size={14} className="text-white/70" />
+                          ) : (
+                            <ClipboardList
+                              size={14}
+                              className="text-white/70"
+                            />
+                          )}
                         </div>
                         <div>
                           <div className="font-semibold">{c.title}</div>
                           <div className="text-xs text-[var(--color-text-muted)]">
-                            {c.durationSeconds} сек ·{" "}
+                            {c.hasVideo
+                              ? `${c.durationSeconds} сек`
+                              : "Судалгаа"}
+                            {" · "}
                             {relativeTime(c.createdAt)}
                           </div>
                         </div>
-                      </div>
+                      </Link>
                     </td>
                     <td className="px-5 py-4 text-xs text-[var(--color-text-secondary)]">
                       {c.targetGender === "ALL"
@@ -148,8 +141,17 @@ export default function AdminCampaignsPage() {
                       · {c.minAge}-{c.maxAge} нас ·{" "}
                       {c.targetCity === "ALL" ? "Бүх хот" : c.targetCity}
                     </td>
-                    <td className="px-5 py-4 text-right font-mono text-[var(--color-text-primary)]">
-                      {formatTugrik(c.totalBudget)}
+                    <td className="px-5 py-4 text-right">
+                      <div className="font-mono text-[var(--color-text-primary)]">
+                        {formatTugrik(c.totalBudget)}
+                      </div>
+                      <div className="text-xs text-[var(--color-text-muted)]">
+                        {c.commissionPercent !== null &&
+                          `${c.commissionPercent}% шимтгэл · `}
+                        {c.paidAt
+                          ? `Төлсөн ${relativeTime(c.paidAt)}`
+                          : "Төлбөрийн огноогүй"}
+                      </div>
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex justify-end gap-2">
@@ -190,9 +192,7 @@ export default function AdminCampaignsPage() {
                 <tr className="border-b border-[var(--color-divider)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
                   <th className="px-5 py-3 font-semibold">Кампани</th>
                   <th className="px-5 py-3 font-semibold">Төлөв</th>
-                  <th className="px-5 py-3 font-semibold text-right">
-                    Төсөв
-                  </th>
+                  <th className="px-5 py-3 font-semibold text-right">Төсөв</th>
                   <th className="px-5 py-3 font-semibold text-right">
                     Үлдэгдэл
                   </th>
@@ -202,13 +202,29 @@ export default function AdminCampaignsPage() {
                 {others.map((c) => (
                   <tr
                     key={c.id}
-                    className="border-b border-[var(--color-divider)] last:border-0"
+                    className="border-b border-[var(--color-divider)] last:border-0 hover:bg-[var(--color-surface-elevated)]/60"
                   >
-                    <td className="px-5 py-3">{c.title}</td>
                     <td className="px-5 py-3">
-                      <Badge tone={statusTone[c.status]}>
-                        {statusLabel[c.status]}
-                      </Badge>
+                      <Link
+                        href={`/admin/campaigns/${c.id}`}
+                        className="flex items-center gap-2"
+                      >
+                        {c.hasVideo ? (
+                          <Play
+                            size={12}
+                            className="text-[var(--color-text-muted)]"
+                          />
+                        ) : (
+                          <ClipboardList
+                            size={12}
+                            className="text-[var(--color-text-muted)]"
+                          />
+                        )}
+                        <span>{c.title}</span>
+                      </Link>
+                    </td>
+                    <td className="px-5 py-3">
+                      <CampaignStatusBadge status={c.status} />
                     </td>
                     <td className="px-5 py-3 text-right font-mono">
                       {formatTugrik(c.totalBudget)}

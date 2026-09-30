@@ -3,29 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ClipboardList, Play, Plus } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { ClipboardList, CreditCard, Play, Plus } from "lucide-react";
+import { CampaignStatusBadge } from "@/components/campaign-status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { ApiError, auth, companyApi, type Campaign } from "@/lib/api";
 import { formatNumber, formatTugrik, relativeTime } from "@/lib/utils";
-
-const statusTone = {
-  ACTIVE: "success",
-  PAUSED: "warning",
-  PENDING: "info",
-  COMPLETED: "neutral",
-  REJECTED: "danger",
-} as const;
-
-const statusLabel = {
-  ACTIVE: "Идэвхтэй",
-  PAUSED: "Түр зогсоосон",
-  PENDING: "Хүлээгдэж буй",
-  COMPLETED: "Дууссан",
-  REJECTED: "Татгалзсан",
-} as const;
 
 export default function CampaignsPage() {
   const router = useRouter();
@@ -53,11 +37,11 @@ export default function CampaignsPage() {
   return (
     <>
       <PageHeader
-        title="Кампаниуд"
-        description="Таны бүх видео сурталчилгааны бүртгэл"
+        title="Судалгаа"
+        description="Таны бүх судалгааны бүртгэл"
         actions={
           <Link href="/company/campaigns/new">
-            <Button leftIcon={<Plus size={16} />}>Шинэ кампани</Button>
+            <Button leftIcon={<Plus size={16} />}>Шинэ аян</Button>
           </Link>
         }
       />
@@ -86,7 +70,9 @@ export default function CampaignsPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {list.map((c) => {
             const spent = c.totalBudget - c.remainingBudget;
-            const spendPct = Math.round((spent / c.totalBudget) * 100);
+            const spendPct =
+              c.totalBudget > 0 ? Math.round((spent / c.totalBudget) * 100) : 0;
+            const awaitingPayment = c.status === "AWAITING_PAYMENT";
 
             return (
               <Link
@@ -106,9 +92,7 @@ export default function CampaignsPage() {
                       <ClipboardList size={48} className="text-white/70" />
                     )}
                     <div className="absolute left-3 top-3">
-                      <Badge tone={statusTone[c.status]}>
-                        {statusLabel[c.status]}
-                      </Badge>
+                      <CampaignStatusBadge status={c.status} />
                     </div>
                     <div className="absolute right-3 top-3 rounded-md bg-black/55 px-2 py-1 text-xs font-semibold">
                       {c.hasVideo ? `${c.durationSeconds}s` : "Судалгаа"}
@@ -124,11 +108,15 @@ export default function CampaignsPage() {
 
                     <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
                       <Stat
-                        label={c.hasVideo ? "Үнэ / үзэгч" : "Үнэ / хариулт"}
-                        value={formatTugrik(c.costPerView)}
+                        label="Хүрэх үзэгч"
+                        value={
+                          c.targetViewers === null
+                            ? "—"
+                            : formatNumber(c.targetViewers)
+                        }
                       />
                       <Stat
-                        label="Урамшуулал"
+                        label="Урамшуулал / үзэгч"
                         value={formatTugrik(c.rewardPerUser)}
                       />
                       <Stat
@@ -141,20 +129,36 @@ export default function CampaignsPage() {
                       />
                     </div>
 
-                    <div className="mt-4">
-                      <div className="mb-1 flex items-center justify-between text-xs text-[var(--color-text-secondary)]">
-                        <span>Төсөв</span>
-                        <span className="font-mono text-[var(--color-text-primary)]">
-                          {formatTugrik(spent)} / {formatTugrik(c.totalBudget)}
+                    {awaitingPayment ? (
+                      // The whole card links to the detail page, which hosts
+                      // the payment card — so this is styled as the CTA.
+                      <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-[color-mix(in_oklab,var(--color-warning)_35%,transparent)] bg-[color-mix(in_oklab,var(--color-warning)_10%,transparent)] px-3 py-2">
+                        <div className="text-xs text-[var(--color-text-secondary)]">
+                          Төлөх дүн
+                          <div className="font-mono text-sm font-bold text-[var(--color-text-primary)]">
+                            {formatTugrik(c.totalBudget)}
+                          </div>
+                        </div>
+                        <span className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3 text-xs font-semibold text-black group-hover:bg-[var(--color-primary-dark)]">
+                          <CreditCard size={14} /> Төлөх
                         </span>
                       </div>
-                      <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-divider)]">
-                        <div
-                          className="h-full bg-[var(--color-primary)]"
-                          style={{ width: `${spendPct}%` }}
-                        />
+                    ) : (
+                      <div className="mt-4">
+                        <div className="mb-1 flex items-center justify-between text-xs text-[var(--color-text-secondary)]">
+                          <span>Төсөв</span>
+                          <span className="font-mono text-[var(--color-text-primary)]">
+                            {formatTugrik(spent)} / {formatTugrik(c.totalBudget)}
+                          </span>
+                        </div>
+                        <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-divider)]">
+                          <div
+                            className="h-full bg-[var(--color-primary)]"
+                            style={{ width: `${spendPct}%` }}
+                          />
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </CardBody>
                 </Card>
               </Link>

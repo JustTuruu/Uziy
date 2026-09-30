@@ -19,7 +19,7 @@ import { formatTugrik, relativeTime } from "@/lib/utils";
 export default function PayoutsPage() {
   const router = useRouter();
   const [pending, setPending] = useState<Payout[] | null>(null);
-  const [decidedThisSession, setDecidedThisSession] = useState<Payout[]>([]);
+  const [history, setHistory] = useState<Payout[] | null>(null);
   const [decidingId, setDecidingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,17 +28,16 @@ export default function PayoutsPage() {
       router.replace("/login");
       return;
     }
-    adminApi
-      .pendingPayouts()
-      .then(setPending)
-      .catch((e) => {
-        if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
-          auth.clear();
-          router.replace("/login");
-          return;
-        }
-        setError(e instanceof Error ? e.message : "Алдаа гарлаа");
-      });
+    const onErr = (e: unknown) => {
+      if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+        auth.clear();
+        router.replace("/login");
+        return;
+      }
+      setError(e instanceof Error ? e.message : "Алдаа гарлаа");
+    };
+    adminApi.pendingPayouts().then(setPending).catch(onErr);
+    adminApi.payoutHistory().then(setHistory).catch(onErr);
   }, [router]);
 
   const decide = async (id: number, decision: "APPROVED" | "REJECTED") => {
@@ -53,8 +52,11 @@ export default function PayoutsPage() {
         return;
       }
       const updated = await adminApi.decidePayout(id, decision, reason);
-      setDecidedThisSession((prev) => [updated, ...prev]);
+      // Move the decided row from the pending queue to the top of the
+      // history table so the admin sees their action reflected immediately
+      // without having to refresh.
       setPending((prev) => (prev ? prev.filter((p) => p.id !== id) : prev));
+      setHistory((prev) => (prev ? [updated, ...prev] : [updated]));
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Алдаа гарлаа");
     } finally {
@@ -192,20 +194,37 @@ export default function PayoutsPage() {
         </CardBody>
       </Card>
 
-      {decidedThisSession.length > 0 && (
-        <Card className="mt-6">
-          <CardHeader title={`Энэ session-д шийдвэрлэсэн (${decidedThisSession.length})`} />
-          <CardBody className="p-0">
+      <Card className="mt-6">
+        <CardHeader
+          title={
+            history === null
+              ? "Түүх ачаалж байна..."
+              : `Гүйлгээний түүх (${history.length})`
+          }
+          description="Батлагдсан + татгалзсан бүх хүсэлт, шинэ нь эхэнд"
+        />
+        <CardBody className="p-0">
+          {history === null ? (
+            <div className="animate-pulse px-5 py-10 text-sm text-[var(--color-text-muted)]">
+              Ачаалж байна...
+            </div>
+          ) : history.length === 0 ? (
+            <div className="px-5 py-10 text-center text-sm text-[var(--color-text-muted)]">
+              Хараахан шийдвэрлэгдсэн хүсэлт байхгүй.
+            </div>
+          ) : (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--color-divider)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
                   <th className="px-5 py-3 font-semibold">Хэрэглэгч</th>
+                  <th className="px-5 py-3 font-semibold">Данс</th>
                   <th className="px-5 py-3 font-semibold text-right">Дүн</th>
+                  <th className="px-5 py-3 font-semibold">Шийдвэр</th>
                   <th className="px-5 py-3 font-semibold text-right">Төлөв</th>
                 </tr>
               </thead>
               <tbody>
-                {decidedThisSession.map((p) => (
+                {history.map((p) => (
                   <tr
                     key={p.id}
                     className="border-b border-[var(--color-divider)] last:border-0"
@@ -218,8 +237,28 @@ export default function PayoutsPage() {
                         {p.userPhone}
                       </div>
                     </td>
+                    <td className="px-5 py-3">
+                      <div className="font-mono text-[var(--color-text-primary)]">
+                        {p.bank}
+                      </div>
+                      <div className="text-xs text-[var(--color-text-muted)]">
+                        {p.accountNumber}
+                      </div>
+                    </td>
                     <td className="px-5 py-3 text-right font-mono">
                       {formatTugrik(p.amount)}
+                    </td>
+                    <td className="px-5 py-3">
+                      <div className="text-xs text-[var(--color-text-muted)]">
+                        {p.decidedAt
+                          ? relativeTime(p.decidedAt)
+                          : "—"}
+                      </div>
+                      {p.status === "REJECTED" && p.rejectReason && (
+                        <div className="text-xs text-[var(--color-danger)]">
+                          {p.rejectReason}
+                        </div>
+                      )}
                     </td>
                     <td className="px-5 py-3 text-right">
                       <Badge
@@ -234,9 +273,9 @@ export default function PayoutsPage() {
                 ))}
               </tbody>
             </table>
-          </CardBody>
-        </Card>
-      )}
+          )}
+        </CardBody>
+      </Card>
     </>
   );
 }

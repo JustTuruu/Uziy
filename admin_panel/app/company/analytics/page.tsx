@@ -6,7 +6,7 @@ export default function AnalyticsPage() {
     <>
       <PageHeader
         title="Аналитик"
-        description="Кампаниудын гүйцэтгэлийн харьцуулсан тайлан"
+        description="Судалгааны гүйцэтгэлийн харьцуулсан тайлан"
       />
       <Card>
         <CardBody className="py-16 text-center text-sm text-[var(--color-text-muted)]">

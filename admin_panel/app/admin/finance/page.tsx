@@ -10,9 +10,10 @@ import {
   adminApi,
   ApiError,
   auth,
+  platformSettingsApi,
   type AdminStats,
+  type PlatformSettings,
 } from "@/lib/api";
-import { formatTugrik } from "@/lib/utils";
 
 /**
  * Finance summary. Right now the backend exposes headline counts via
@@ -24,6 +25,7 @@ import { formatTugrik } from "@/lib/utils";
 export default function FinancePage() {
   const router = useRouter();
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [settings, setSettings] = useState<PlatformSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,6 +33,10 @@ export default function FinancePage() {
       router.replace("/login");
       return;
     }
+    platformSettingsApi
+      .get()
+      .then(setSettings)
+      .catch(() => setSettings(null));
     adminApi
       .stats()
       .then(setStats)
@@ -66,9 +72,15 @@ export default function FinancePage() {
         />
         <StatCard
           label="Шимтгэлийн хувь"
-          value={stats ? `${Math.round(stats.commissionRate * 100)}%` : "—"}
+          value={
+            settings
+              ? `${settings.commissionPercent}%`
+              : stats
+                ? `${Math.round(stats.commissionRate * 100)}%`
+                : "—"
+          }
           icon={<Banknote size={16} />}
-          hint="Гүйлгээ бүрээс"
+          hint="Аяны төсвөөс"
         />
         <StatCard
           label="Хүлээгдэж буй таталт"

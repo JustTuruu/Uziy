@@ -5,7 +5,12 @@ import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 import java.time.OffsetDateTime
 
-enum class CampaignStatus { PENDING, ACTIVE, PAUSED, COMPLETED, REJECTED }
+/**
+ * Lifecycle (V5): created → AWAITING_PAYMENT → (company pays) → PENDING
+ * (= paid, awaiting admin moderation) → ACTIVE | REJECTED. Afterwards the
+ * company may toggle ACTIVE ⇄ PAUSED and end with COMPLETED.
+ */
+enum class CampaignStatus { AWAITING_PAYMENT, PENDING, ACTIVE, PAUSED, COMPLETED, REJECTED }
 enum class TargetGender { ALL, MALE, FEMALE }
 
 @Entity
@@ -51,7 +56,19 @@ class CampaignEntity(
     var rewardPerUser: Double = 0.0,
 
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 20)
-    var status: CampaignStatus = CampaignStatus.PENDING,
+    var status: CampaignStatus = CampaignStatus.AWAITING_PAYMENT,
+
+    /** N — how many viewers the paid budget buys. V5 backfilled pre-existing rows as floor(total / cost). */
+    @Column(name = "target_viewers")
+    var targetViewers: Int? = null,
+
+    /** Snapshot of platform_settings.commission_percent at creation. NULL for legacy (pre-V5) rows. */
+    @Column(name = "commission_percent")
+    var commissionPercent: Int? = null,
+
+    /** When the company paid (AWAITING_PAYMENT → PENDING). */
+    @Column(name = "paid_at")
+    var paidAt: OffsetDateTime? = null,
 
     /** false → survey-only campaign (viewer answers survey directly). */
     @Column(name = "has_video", nullable = false)

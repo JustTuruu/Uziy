@@ -116,6 +116,44 @@ class PayoutControllerTest {
         assertEquals("77000001", list[0].userPhone)
     }
 
+    // ------- admin.history -------------------------------------------------
+
+    @Test
+    fun `admin history returns APPROVED and REJECTED payouts with phone numbers`() {
+        every {
+            payouts.findAllByStatusInOrderByDecidedAtDesc(
+                listOf(PayoutStatus.APPROVED, PayoutStatus.REJECTED),
+            )
+        } returns listOf(
+            PayoutEntity(id = 20L, userId = 42L, amount = 500.0,
+                bank = "Khan", accountNumber = "1", accountName = "A",
+                nationalId = "Y", status = PayoutStatus.APPROVED),
+            PayoutEntity(id = 21L, userId = 42L, amount = 700.0,
+                bank = "Golomt", accountNumber = "2", accountName = "B",
+                nationalId = "Y", status = PayoutStatus.REJECTED,
+                rejectReason = "name mismatch"),
+        )
+        every { users.findAllById(listOf(42L)) } returns listOf(viewer)
+
+        val list = controller.history()
+        assertEquals(2, list.size)
+        assertEquals(PayoutStatus.APPROVED, list[0].status)
+        assertEquals(PayoutStatus.REJECTED, list[1].status)
+        assertEquals("77000001", list[0].userPhone)
+    }
+
+    @Test
+    fun `admin history omits PENDING payouts (they belong in the queue)`() {
+        every {
+            payouts.findAllByStatusInOrderByDecidedAtDesc(
+                listOf(PayoutStatus.APPROVED, PayoutStatus.REJECTED),
+            )
+        } returns emptyList()
+        every { users.findAllById(emptyList()) } returns emptyList()
+
+        assertTrue(controller.history().isEmpty())
+    }
+
     // ------- admin.decide --------------------------------------------------
 
     @Test

@@ -1,7 +1,6 @@
 package mn.uziy.backend.admin
 
 import mn.uziy.backend.company.CampaignDto
-import mn.uziy.backend.config.AppProperties
 import mn.uziy.backend.domain.*
 import mn.uziy.backend.security.Auth
 import mn.uziy.backend.security.JwtPrincipal
@@ -16,9 +15,15 @@ data class AdminStats(
     val totalUsers: Long,
     val totalCampaigns: Long,
     val activeCampaigns: Long,
+    /** Paid, waiting for moderation. */
     val pendingCampaigns: Long,
+    /** Created but not yet paid by the company. */
+    val awaitingPaymentCampaigns: Long,
     val pendingPayouts: Long,
+    /** Current platform commission as a fraction (0.30) — mirrors [commissionPercent]. */
     val commissionRate: Double,
+    /** Current platform commission, whole percent (platform_settings). */
+    val commissionPercent: Int,
 )
 
 data class UserDto(
@@ -32,6 +37,27 @@ data class UserDto(
     val isVerified: Boolean,
     val companyName: String?,
     val createdAt: OffsetDateTime,
+) {
+    companion object {
+        fun of(u: UserEntity) = UserDto(
+            id = u.id!!, phoneNumber = u.phoneNumber, role = u.role,
+            gender = u.gender, age = u.age, city = u.city,
+            balance = u.balance, isVerified = u.isVerified,
+            companyName = u.companyName, createdAt = u.createdAt,
+        )
+    }
+}
+
+/**
+ * Extended campaign shape returned by /admin/campaigns/{id} — carries the
+ * completion counter and owning company name that the list DTO leaves off.
+ */
+data class CampaignDetailDto(
+    val campaign: CampaignDto,
+    val companyId: Long,
+    val companyName: String?,
+    val completedViews: Long,
+    val spentBudget: Double,
 )
 
 @RestController
@@ -40,53 +66,80 @@ data class UserDto(
 class AdminController(
     private val users: UserRepository,
     private val campaigns: CampaignRepository,
+    private val history: ViewHistoryRepository,
     private val payouts: PayoutRepository,
-    private val props: AppProperties,
+    private val platformSettings: PlatformSettingsRepository,
 ) {
 
-    @GetMapping("/stats")
-    fun stats(): AdminStats = AdminStats(
-        totalUsers = users.count(),
-        totalCampaigns = campaigns.count(),
-        activeCampaigns = campaigns
-            .findAllByStatusOrderByCreatedAtDesc(CampaignStatus.ACTIVE).size.toLong(),
-        pendingCampaigns = campaigns
-            .findAllByStatusOrderByCreatedAtDesc(CampaignStatus.PENDING).size.toLong(),
-        pendingPayouts = payouts
-            .findAllByStatusOrderByRequestedAtAsc(PayoutStatus.PENDING).size.toLong(),
-        commissionRate = props.reward.commissionRate,
-    )
+    companion object {
+        const val UNPAID_MESSAGE = "Төлбөр нь төлөгдөөгүй аяныг хянах боломжгүй"
+    }
 
-    @GetMapping("/users")
-    fun listUsers(): List<UserDto> = users.findAll().map {
-        UserDto(
-            id = it.id!!, phoneNumber = it.phoneNumber, role = it.role,
-            gender = it.gender, age = it.age, city = it.city,
-            balance = it.balance, isVerified = it.isVerified,
-            companyName = it.companyName, createdAt = it.createdAt,
+    @GetMapping("/stats")
+    fun stats(): AdminStats {
+        val commissionPercent = platformSettings.current().commissionPercent
+        return AdminStats(
+            totalUsers = users.count(),
+            totalCampaigns = campaigns.count(),
+            activeCampaigns = campaigns
+                .findAllByStatusOrderByCreatedAtDesc(CampaignStatus.ACTIVE).size.toLong(),
+            pendingCampaigns = campaigns
+                .findAllByStatusOrderByCreatedAtDesc(CampaignStatus.PENDING).size.toLong(),
+            awaitingPaymentCampaigns = campaigns
+                .findAllByStatusOrderByCreatedAtDesc(CampaignStatus.AWAITING_PAYMENT).size.toLong(),
+            pendingPayouts = payouts
+                .findAllByStatusOrderByRequestedAtAsc(PayoutStatus.PENDING).size.toLong(),
+            commissionRate = commissionPercent / 100.0,
+            commissionPercent = commissionPercent,
         )
     }
+
+    @GetMapping("/users")
+    fun listUsers(): List<UserDto> =
+        users.findAll().map(UserDto::of)
+
+    @GetMapping("/users/{id}")
+    fun getUser(@PathVariable id: Long): UserDto =
+        UserDto.of(users.findById(id).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
+        })
 
     @PatchMapping("/users/{id}/verify")
     fun verify(@PathVariable id: Long): UserDto {
         val u = users.findById(id).orElseThrow()
         u.isVerified = true
-        users.save(u)
-        return UserDto(
-            id = u.id!!, phoneNumber = u.phoneNumber, role = u.role,
-            gender = u.gender, age = u.age, city = u.city,
-            balance = u.balance, isVerified = u.isVerified,
-            companyName = u.companyName, createdAt = u.createdAt,
-        )
+        return UserDto.of(users.save(u))
     }
 
     @GetMapping("/campaigns")
     fun listCampaigns(
         @RequestParam(required = false) status: CampaignStatus?,
-    ): List<CampaignDto> =
-        (status?.let { campaigns.findAllByStatusOrderByCreatedAtDesc(it) }
-            ?: campaigns.findAll())
-            .map(CampaignDto::of)
+        @RequestParam(required = false) companyId: Long?,
+    ): List<CampaignDto> {
+        val list = when {
+            companyId != null -> campaigns
+                .findAllByCompanyIdOrderByCreatedAtDesc(companyId)
+                .let { xs -> if (status != null) xs.filter { it.status == status } else xs }
+            status != null -> campaigns.findAllByStatusOrderByCreatedAtDesc(status)
+            else -> campaigns.findAll().sortedByDescending { it.createdAt }
+        }
+        return list.map(CampaignDto::of)
+    }
+
+    @GetMapping("/campaigns/{id}")
+    fun getCampaign(@PathVariable id: Long): CampaignDetailDto {
+        val c = campaigns.findById(id).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "Campaign not found")
+        }
+        val owner = users.findById(c.companyId).orElse(null)
+        return CampaignDetailDto(
+            campaign = CampaignDto.of(c),
+            companyId = c.companyId,
+            companyName = owner?.companyName,
+            completedViews = history.countByCampaignId(c.id!!),
+            spentBudget = c.totalBudget - c.remainingBudget,
+        )
+    }
 
     @PatchMapping("/campaigns/{id}/moderate")
     @Transactional
@@ -98,7 +151,12 @@ class AdminController(
         if (decision !in setOf(CampaignStatus.ACTIVE, CampaignStatus.REJECTED))
             throw ResponseStatusException(HttpStatus.BAD_REQUEST,
                 "Only ACTIVE or REJECTED allowed for moderation")
-        val c = campaigns.findById(id).orElseThrow()
+        val c = campaigns.findById(id).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "Campaign not found")
+        }
+        // Only paid campaigns (PENDING) reach moderation.
+        if (c.status == CampaignStatus.AWAITING_PAYMENT)
+            throw ResponseStatusException(HttpStatus.CONFLICT, UNPAID_MESSAGE)
         if (c.status != CampaignStatus.PENDING)
             throw ResponseStatusException(HttpStatus.CONFLICT, "Already moderated")
         c.status = decision

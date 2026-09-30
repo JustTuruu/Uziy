@@ -42,12 +42,19 @@ export default function LoginPage() {
       auth.setUser(res.user);
       router.push(role === "ADMIN" ? "/admin" : "/company");
     } catch (e) {
+      // Log the real error to the browser console so it's easy to
+      // diagnose in DevTools (network error, CORS block, etc.).
+      console.error("[login] request failed:", e);
       if (e instanceof ApiError && e.status === 401) {
         setError("Утас эсвэл нууц үг буруу байна");
       } else if (e instanceof ApiError) {
         setError(e.message || "Алдаа гарлаа");
       } else {
-        setError("Сервертэй холбогдож чадсангүй");
+        // Surface the real message rather than a generic string so the
+        // user can see whether it's DNS, CORS, refused connection, etc.
+        const detail =
+          e instanceof Error ? e.message : String(e);
+        setError(`Сервертэй холбогдож чадсангүй: ${detail}`);
       }
       setLoading(false);
     }
@@ -119,7 +126,7 @@ export default function LoginPage() {
             />
           </div>
 
-          <form onSubmit={submit} className="mt-6 space-y-4">
+          <form onSubmit={submit} noValidate className="mt-6 space-y-4">
             <Input
               label="Утасны дугаар"
               inputMode="numeric"

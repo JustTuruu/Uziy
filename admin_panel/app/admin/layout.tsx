@@ -2,9 +2,9 @@ import {
   Banknote,
   LayoutDashboard,
   LogOut,
+  Percent,
   PlaySquare,
   ShieldCheck,
-  SlidersHorizontal,
   Users,
   Wallet,
 } from "lucide-react";
@@ -41,8 +41,8 @@ const nav: NavItem[] = [
   },
   {
     href: "/admin/pricing",
-    label: "Судалгааны үнэ",
-    icon: <SlidersHorizontal size={18} />,
+    label: "Шимтгэл",
+    icon: <Percent size={18} />,
   },
 ];
 

@@ -3,8 +3,16 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, ClipboardList, Pause, Play } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import {
+  ArrowLeft,
+  CircleCheck,
+  ClipboardList,
+  Hourglass,
+  Pause,
+  Play,
+} from "lucide-react";
+import { CampaignPaymentCard } from "@/components/campaign-payment-card";
+import { CampaignStatusBadge } from "@/components/campaign-status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
@@ -15,23 +23,12 @@ import {
   companyApi,
   type Campaign,
 } from "@/lib/api";
-import { formatTugrik } from "@/lib/utils";
-
-const statusTone = {
-  ACTIVE: "success",
-  PAUSED: "warning",
-  PENDING: "info",
-  COMPLETED: "neutral",
-  REJECTED: "danger",
-} as const;
-
-const statusLabel = {
-  ACTIVE: "Идэвхтэй",
-  PAUSED: "Түр зогсоосон",
-  PENDING: "Хүлээгдэж буй",
-  COMPLETED: "Дууссан",
-  REJECTED: "Татгалзсан",
-} as const;
+import { campaignInvoice } from "@/lib/billing";
+import {
+  companyStatusTransitions,
+  type CompanySettableStatus,
+} from "@/lib/campaign-status";
+import { formatDate, formatNumber, formatTugrik } from "@/lib/utils";
 
 export default function CampaignDetailPage() {
   const router = useRouter();
@@ -41,16 +38,17 @@ export default function CampaignDetailPage() {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  // Keeps the payment card (in its success state) on screen after paying,
+  // even though the campaign itself has moved on to PENDING.
+  const [justPaid, setJustPaid] = useState(false);
 
   useEffect(() => {
     if (!auth.getToken()) {
       router.replace("/login");
       return;
     }
-    if (!Number.isFinite(id)) {
-      setError("Кампанийн ID буруу");
-      return;
-    }
+    if (!Number.isFinite(id)) return; // shown as `invalidId` below
     companyApi
       .get(id)
       .then(setCampaign)
@@ -68,20 +66,34 @@ export default function CampaignDetailPage() {
       });
   }, [id, router]);
 
-  const setStatus = async (next: "ACTIVE" | "PAUSED" | "COMPLETED") => {
+  const setStatus = async (next: CompanySettableStatus) => {
     if (!campaign) return;
+    if (
+      next === "COMPLETED" &&
+      !window.confirm(
+        "Аяныг дуусгах уу? Дууссан аяныг дахин идэвхжүүлэх боломжгүй.",
+      )
+    ) {
+      return;
+    }
     setBusy(true);
+    setActionError(null);
     try {
       const updated = await companyApi.setStatus(campaign.id, next);
       setCampaign(updated);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Алдаа гарлаа");
+      // Keep the page; a failed action (e.g. 409 on a stale status) should
+      // not replace the whole campaign view with an error.
+      setActionError(e instanceof ApiError ? e.message : "Алдаа гарлаа");
     } finally {
       setBusy(false);
     }
   };
 
-  if (error) {
+  const invalidId = !Number.isFinite(id);
+  const shownError = invalidId ? "Кампанийн ID буруу" : error;
+
+  if (shownError) {
     return (
       <>
         <Link
@@ -92,7 +104,7 @@ export default function CampaignDetailPage() {
         </Link>
         <Card>
           <CardBody className="py-10 text-center text-sm text-[var(--color-danger)]">
-            {error}
+            {shownError}
           </CardBody>
         </Card>
       </>
@@ -108,7 +120,9 @@ export default function CampaignDetailPage() {
   }
 
   const spent = campaign.totalBudget - campaign.remainingBudget;
-  const unitLabel = campaign.hasVideo ? "үзэгч" : "хариулт";
+  const invoice = campaignInvoice(campaign);
+  const transitions = companyStatusTransitions(campaign.status);
+  const showPayment = campaign.status === "AWAITING_PAYMENT" || justPaid;
 
   return (
     <>
@@ -128,10 +142,8 @@ export default function CampaignDetailPage() {
         }
         actions={
           <div className="flex items-center gap-2">
-            <Badge tone={statusTone[campaign.status]}>
-              {statusLabel[campaign.status]}
-            </Badge>
-            {campaign.status === "ACTIVE" && (
+            <CampaignStatusBadge status={campaign.status} />
+            {transitions.includes("PAUSED") && (
               <Button
                 variant="secondary"
                 leftIcon={<Pause size={14} />}
@@ -141,7 +153,7 @@ export default function CampaignDetailPage() {
                 Түр зогсоох
               </Button>
             )}
-            {campaign.status === "PAUSED" && (
+            {transitions.includes("ACTIVE") && (
               <Button
                 leftIcon={<Play size={14} />}
                 onClick={() => setStatus("ACTIVE")}
@@ -150,9 +162,47 @@ export default function CampaignDetailPage() {
                 Үргэлжлүүлэх
               </Button>
             )}
+            {transitions.includes("COMPLETED") && (
+              <Button
+                variant="ghost"
+                leftIcon={<CircleCheck size={14} />}
+                onClick={() => setStatus("COMPLETED")}
+                disabled={busy}
+              >
+                Дуусгах
+              </Button>
+            )}
           </div>
         }
       />
+
+      {actionError && (
+        <div
+          role="alert"
+          className="mb-4 rounded-xl border border-[var(--color-danger)]/40 bg-[color-mix(in_oklab,var(--color-danger)_10%,transparent)] px-4 py-3 text-xs text-[var(--color-danger)]"
+        >
+          {actionError}
+        </div>
+      )}
+
+      {showPayment && (
+        <div className="mb-8 max-w-xl">
+          <CampaignPaymentCard
+            campaign={campaign}
+            onPaid={({ campaign: updated }) => {
+              setJustPaid(true);
+              setCampaign(updated);
+            }}
+          />
+        </div>
+      )}
+
+      {campaign.status === "PENDING" && !justPaid && (
+        <div className="mb-6 flex items-center gap-2 rounded-xl border border-[color-mix(in_oklab,var(--color-accent)_35%,transparent)] bg-[color-mix(in_oklab,var(--color-accent)_10%,transparent)] px-4 py-3 text-xs text-[var(--color-text-primary)]">
+          <Hourglass size={14} className="shrink-0 text-[var(--color-accent)]" />
+          Төлбөр төлөгдсөн. Админ шалгаж баталгаажуулсны дараа аян идэвхжинэ.
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <StatCard
@@ -165,11 +215,11 @@ export default function CampaignDetailPage() {
           value={formatTugrik(campaign.remainingBudget)}
         />
         <StatCard
-          label={`Үнэ / ${unitLabel}`}
-          value={formatTugrik(campaign.costPerView)}
+          label="Хүрэх үзэгч"
+          value={formatNumber(invoice.targetViewers)}
         />
         <StatCard
-          label="Урамшуулал"
+          label="Урамшуулал / үзэгч"
           value={formatTugrik(campaign.rewardPerUser)}
         />
       </div>
@@ -193,27 +243,55 @@ export default function CampaignDetailPage() {
           </CardBody>
         </Card>
 
-        <Card>
-          <CardHeader title="Зорилтот" />
-          <CardBody className="space-y-3 text-sm">
-            <KV
-              k="Хүйс"
-              v={
-                campaign.targetGender === "ALL"
-                  ? "Бүгд"
-                  : campaign.targetGender === "MALE"
-                    ? "Эрэгтэй"
-                    : "Эмэгтэй"
-              }
-            />
-            <KV k="Нас" v={`${campaign.minAge} – ${campaign.maxAge}`} />
-            <KV
-              k="Хот"
-              v={campaign.targetCity === "ALL" ? "Бүх" : campaign.targetCity}
-            />
-            <KV k="Төрөл" v={campaign.hasVideo ? "Видеотой" : "Судалгаа зөвхөн"} />
-          </CardBody>
-        </Card>
+        <div className="space-y-4">
+          <Card>
+            <CardHeader title="Зорилтот" />
+            <CardBody className="space-y-3 text-sm">
+              <KV
+                k="Хүйс"
+                v={
+                  campaign.targetGender === "ALL"
+                    ? "Бүгд"
+                    : campaign.targetGender === "MALE"
+                      ? "Эрэгтэй"
+                      : "Эмэгтэй"
+                }
+              />
+              <KV k="Нас" v={`${campaign.minAge} – ${campaign.maxAge}`} />
+              <KV
+                k="Хот"
+                v={campaign.targetCity === "ALL" ? "Бүх" : campaign.targetCity}
+              />
+              <KV k="Төрөл" v={campaign.hasVideo ? "Видеотой" : "Судалгаа зөвхөн"} />
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader title="Төлбөр" />
+            <CardBody className="space-y-3 text-sm">
+              <KV k="Нийт төсөв" v={formatTugrik(invoice.payable)} />
+              <KV k="Үзэгчдэд олгох" v={formatTugrik(invoice.rewardsTotal)} />
+              <KV
+                k={
+                  invoice.commissionPercent === null
+                    ? "Платформын шимтгэл"
+                    : `Платформын шимтгэл (${invoice.commissionPercent}%)`
+                }
+                v={formatTugrik(invoice.commissionTotal)}
+              />
+              <KV
+                k="Төлсөн огноо"
+                v={
+                  campaign.paidAt
+                    ? formatDate(campaign.paidAt)
+                    : campaign.status === "AWAITING_PAYMENT"
+                      ? "Төлөгдөөгүй"
+                      : "—"
+                }
+              />
+            </CardBody>
+          </Card>
+        </div>
       </div>
     </>
   );

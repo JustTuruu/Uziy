@@ -127,6 +127,10 @@ admin_panel/
 │   │   │   │                         budget+cost calculator → survey builder
 │   │   │   │                         → review). Cost-per-view is derived
 │   │   │   │                         from targeting precision, per spec §6.
+│   │   │   │                         Video length is NOT typed — it's read
+│   │   │   │                         from the picked MP4's metadata
+│   │   │   │                         (lib/video.ts); "Дараах" stays disabled
+│   │   │   │                         until a readable 5–180 s video is picked.
 │   │   │   └── [id]/page.tsx         detail: stats + survey response bars
 │   │   ├── analytics/page.tsx        placeholder — "coming soon"
 │   │   ├── billing/page.tsx          balance card + invoices
@@ -154,12 +158,23 @@ admin_panel/
 │       ├── button.tsx                variants: primary/secondary/ghost/
 │       │                             danger/success; sizes sm/md/lg
 │       ├── card.tsx                  Card + CardHeader + CardBody
-│       ├── input.tsx                 Input, Textarea, Select — dark theme
+│       ├── input.tsx                 Input, Textarea, Select — dark theme;
+│       │                             NumericInput for every whole-number
+│       │                             field (money/age/seconds): text state,
+│       │                             clearable, strips leading zeros. Never
+│       │                             use type="number" + Number(value) —
+│       │                             an emptied field snaps to "0".
 │       └── badge.tsx                 tones: neutral/success/danger/warning/
 │                                     info/primary (using color-mix)
 └── lib/
     ├── utils.ts                      cn(), formatTugrik(), formatNumber(),
-    │                                 relativeTime()
+    │                                 relativeTime(), formatDuration() (m:ss),
+    │                                 sanitizeIntInput()/parseIntInput()
+    │                                 backing NumericInput
+    ├── video.ts                      readVideoDuration(file) — browser-side
+    │                                 metadata read (floors seconds so the
+    │                                 viewer full-watch gate is reachable);
+    │                                 MIN/MAX_VIDEO_SECONDS, status copy
     └── mock-data.ts                  Campaign, User, Payout, SurveyResponse
                                       types + fixtures used by every page
                                       until the backend is wired

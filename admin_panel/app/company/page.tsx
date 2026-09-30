@@ -5,35 +5,21 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   ClipboardList,
+  CreditCard,
   Eye,
   Play,
   Plus,
   TrendingUp,
   Users,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { CampaignStatusBadge } from "@/components/campaign-status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { ApiError, auth, companyApi, type Campaign } from "@/lib/api";
-import { formatNumber, formatTugrik } from "@/lib/utils";
-
-const statusTone = {
-  ACTIVE: "success",
-  PAUSED: "warning",
-  PENDING: "info",
-  COMPLETED: "neutral",
-  REJECTED: "danger",
-} as const;
-
-const statusLabel = {
-  ACTIVE: "Идэвхтэй",
-  PAUSED: "Түр зогсоосон",
-  PENDING: "Хүлээгдэж буй",
-  COMPLETED: "Дууссан",
-  REJECTED: "Татгалзсан",
-} as const;
+import { summarizeCampaignBudgets } from "@/lib/billing";
+import { formatTugrik } from "@/lib/utils";
 
 export default function CompanyDashboard() {
   const router = useRouter();
@@ -58,15 +44,15 @@ export default function CompanyDashboard() {
       });
   }, [router]);
 
-  const activeCount =
-    campaigns?.filter((c) => c.status === "ACTIVE").length ?? 0;
-  const totalSpent =
-    campaigns?.reduce(
-      (sum, c) => sum + (c.totalBudget - c.remainingBudget),
-      0,
-    ) ?? 0;
-  const totalRemaining =
-    campaigns?.reduce((sum, c) => sum + c.remainingBudget, 0) ?? 0;
+  // Unpaid (AWAITING_PAYMENT) campaigns are kept out of spent/remaining —
+  // that money hasn't been paid yet.
+  const {
+    activeCount,
+    awaitingPayment,
+    awaitingPaymentTotal,
+    totalSpent,
+    totalRemaining,
+  } = summarizeCampaignBudgets(campaigns ?? []);
 
   const me = auth.getUser();
   const companyName = me?.companyName ?? "Компани";
@@ -75,10 +61,10 @@ export default function CompanyDashboard() {
     <>
       <PageHeader
         title={`Сайн байна уу, ${companyName}`}
-        description="Кампаниудынхаа өнөөгийн байдлыг доор харна уу"
+        description="Судалгаануудынхаа өнөөгийн байдлыг доор харна уу"
         actions={
           <Link href="/company/campaigns/new">
-            <Button leftIcon={<Plus size={16} />}>Шинэ кампани</Button>
+            <Button leftIcon={<Plus size={16} />}>Шинэ аян</Button>
           </Link>
         }
       />
@@ -86,6 +72,27 @@ export default function CompanyDashboard() {
       {error && (
         <div className="mb-4 rounded-xl border border-[var(--color-danger)]/40 bg-[color-mix(in_oklab,var(--color-danger)_10%,transparent)] px-4 py-3 text-xs text-[var(--color-danger)]">
           {error}
+        </div>
+      )}
+
+      {awaitingPayment.length > 0 && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[color-mix(in_oklab,var(--color-warning)_35%,transparent)] bg-[color-mix(in_oklab,var(--color-warning)_10%,transparent)] px-4 py-3 text-sm">
+          <div className="flex items-center gap-2 text-[var(--color-text-primary)]">
+            <CreditCard size={16} className="shrink-0 text-[var(--color-warning)]" />
+            Төлбөр хүлээгдэж буй {awaitingPayment.length} аян байна ·{" "}
+            <span className="font-mono font-semibold">
+              {formatTugrik(awaitingPaymentTotal)}
+            </span>
+          </div>
+          <Link
+            href={
+              awaitingPayment.length === 1
+                ? `/company/campaigns/${awaitingPayment[0].id}`
+                : "/company/billing"
+            }
+          >
+            <Button size="sm">Төлөх</Button>
+          </Link>
         </div>
       )}
 
@@ -115,8 +122,8 @@ export default function CompanyDashboard() {
       <div className="mt-8">
         <Card>
           <CardHeader
-            title="Кампаниуд"
-            description="Таны бүх кампани"
+            title="Судалгаа"
+            description="Таны бүх судалгаа"
             action={
               <Link href="/company/campaigns">
                 <Button variant="ghost" size="sm">
@@ -138,7 +145,7 @@ export default function CompanyDashboard() {
                   href="/company/campaigns/new"
                   className="text-[var(--color-primary)] hover:underline"
                 >
-                  Шинэ кампани
+                  Шинэ аян
                 </Link>{" "}
                 дараарай.
               </div>
@@ -201,9 +208,17 @@ export default function CompanyDashboard() {
                         {c.hasVideo ? "Видеотой" : "Судалгаа зөвхөн"}
                       </td>
                       <td className="px-5 py-4">
-                        <Badge tone={statusTone[c.status]}>
-                          {statusLabel[c.status]}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <CampaignStatusBadge status={c.status} />
+                          {c.status === "AWAITING_PAYMENT" && (
+                            <Link
+                              href={`/company/campaigns/${c.id}`}
+                              className="text-xs font-semibold text-[var(--color-primary)] hover:underline"
+                            >
+                              Төлөх
+                            </Link>
+                          )}
+                        </div>
                       </td>
                       <td className="px-5 py-4 text-right">
                         <div className="font-mono text-[var(--color-text-primary)]">

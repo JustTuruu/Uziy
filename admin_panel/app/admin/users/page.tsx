@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Search, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { ChevronRight, Search, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -160,19 +161,32 @@ export default function UsersPage() {
                 {filtered.map((u) => (
                   <tr
                     key={u.id}
-                    className="border-b border-[var(--color-divider)] last:border-0"
+                    className={`border-b border-[var(--color-divider)] last:border-0 ${
+                      u.role === "COMPANY"
+                        ? "hover:bg-[var(--color-surface-elevated)]/60"
+                        : ""
+                    }`}
                   >
                     <td className="px-5 py-3 font-mono text-[var(--color-text-primary)]">
                       {u.phoneNumber}
                     </td>
                     <td className="px-5 py-3 text-[var(--color-text-secondary)]">
                       {u.role === "COMPANY" ? (
-                        <span>
-                          {u.companyName ?? "—"}{" "}
+                        <Link
+                          href={`/admin/companies/${u.id}`}
+                          className="inline-flex items-center gap-1 hover:text-[var(--color-text-primary)]"
+                        >
+                          <span className="font-semibold text-[var(--color-text-primary)]">
+                            {u.companyName ?? "—"}
+                          </span>
                           <span className="text-[var(--color-text-muted)]">
                             (Компани)
                           </span>
-                        </span>
+                          <ChevronRight
+                            size={12}
+                            className="text-[var(--color-text-muted)]"
+                          />
+                        </Link>
                       ) : u.role === "ADMIN" ? (
                         <span className="text-[var(--color-primary)]">Админ</span>
                       ) : (

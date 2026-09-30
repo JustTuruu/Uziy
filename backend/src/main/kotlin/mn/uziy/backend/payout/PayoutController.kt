@@ -105,6 +105,22 @@ class PayoutController(
     }
 
     /**
+     * Decided payouts (approved + rejected), newest-first. Used by the
+     * admin console's payout-history table so old requests are still
+     * visible after refresh, not just the ones decided this session.
+     */
+    @GetMapping("/admin/payouts/history")
+    @PreAuthorize("hasRole('ADMIN')")
+    fun history(): List<PayoutDto> {
+        val list = payouts.findAllByStatusInOrderByDecidedAtDesc(
+            listOf(PayoutStatus.APPROVED, PayoutStatus.REJECTED),
+        )
+        val phoneById = users.findAllById(list.map { it.userId }.distinct())
+            .associate { it.id!! to it.phoneNumber }
+        return list.map { toDto(it, phoneById[it.userId] ?: "") }
+    }
+
+    /**
      * Approve or reject. Spec §4A: on APPROVED (first payout only) also
      * flip users.is_verified = TRUE. On REJECTED refund the reserved balance.
      */

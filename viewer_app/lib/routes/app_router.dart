@@ -13,6 +13,7 @@ import '../screens/survey/survey_screen.dart';
 import '../screens/wallet/payout_request_screen.dart';
 import '../screens/wallet/wallet_screen.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_nav_bar.dart';
 
 class Routes {
   static const splash = '/';
@@ -153,6 +154,27 @@ class _MainShell extends StatelessWidget {
   const _MainShell({required this.child});
   final Widget child;
 
+  static const _tabs = [
+    AppNavItem(
+      icon: Icons.play_circle_outline_rounded,
+      selectedIcon: Icons.play_circle_rounded,
+      label: 'Нүүр',
+    ),
+    AppNavItem(
+      icon: Icons.account_balance_wallet_outlined,
+      selectedIcon: Icons.account_balance_wallet_rounded,
+      label: 'Хэтэвч',
+    ),
+    AppNavItem(
+      icon: Icons.person_outline_rounded,
+      selectedIcon: Icons.person_rounded,
+      label: 'Профайл',
+    ),
+  ];
+
+  /// Tab content drifts up this far (fraction of its height) as it fades in.
+  static const _tabEnterOffset = Offset(0, 0.012);
+
   int _indexForLocation(String location) {
     if (location.startsWith(Routes.wallet)) return 1;
     if (location.startsWith(Routes.profile)) return 2;
@@ -179,42 +201,35 @@ class _MainShell extends StatelessWidget {
     final index = _indexForLocation(location);
 
     return Scaffold(
+      // Tab screens scroll underneath the floating glass nav bar; its height
+      // is folded into MediaQuery.padding.bottom for them
+      // (see AppLayout.scrollBottomPadding).
+      extendBody: true,
+      backgroundColor: AppColors.background,
       body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 180),
-        switchInCurve: Curves.easeOut,
-        switchOutCurve: Curves.easeIn,
+        duration:
+            AppMotion.duration(context, const Duration(milliseconds: 220)),
+        switchInCurve: AppMotion.standard,
+        switchOutCurve: AppMotion.exit,
         transitionBuilder: (child, animation) => FadeTransition(
           opacity: animation,
-          child: child,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: _tabEnterOffset,
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
+          ),
         ),
         child: KeyedSubtree(
           key: ValueKey(index),
           child: child,
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        backgroundColor: AppColors.surface,
-        indicatorColor: AppColors.primary.withValues(alpha: 0.15),
-        selectedIndex: index,
-        onDestinationSelected: (i) => _onTap(context, i),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.play_circle_outline),
-            selectedIcon: Icon(Icons.play_circle, color: AppColors.primary),
-            label: 'Нүүр',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            selectedIcon:
-                Icon(Icons.account_balance_wallet, color: AppColors.primary),
-            label: 'Хэтэвч',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person, color: AppColors.primary),
-            label: 'Профайл',
-          ),
-        ],
+      bottomNavigationBar: AppNavBar(
+        currentIndex: index,
+        onTap: (i) => _onTap(context, i),
+        items: _tabs,
       ),
     );
   }
