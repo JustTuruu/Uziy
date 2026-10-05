@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-// Base URL for resolving relative asset paths in Open Graph / Twitter cards.
-// Prefer NEXT_PUBLIC_SITE_URL when deployed; falls back to localhost in dev.
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -12,15 +9,12 @@ export const metadata: Metadata = {
   description:
     "Rewarded video platform console (Company + Super Admin) for the Mongolian market.",
   icons: {
-    icon: [
-      { url: "/logo.png", type: "image/png" },
-    ],
+    icon: [{ url: "/logo.png", type: "image/png" }],
     apple: [{ url: "/logo.png" }],
   },
   openGraph: {
     title: "Uziy — Console",
-    description:
-      "Rewarded video platform console for the Mongolian market.",
+    description: "Rewarded video platform console for the Mongolian market.",
     images: ["/logo.png"],
     siteName: "Uziy",
     type: "website",

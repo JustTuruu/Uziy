@@ -43,5 +43,6 @@ uziy:
     simulated: ${PAYMENTS_SIMULATED:true}
   cors:
     allowed-origins:
-      - http://localhost:3000
+      - http://localhost:3000 # company_panel
+      - http://localhost:3001 # admin_panel (super admin)
       - http://localhost:8080

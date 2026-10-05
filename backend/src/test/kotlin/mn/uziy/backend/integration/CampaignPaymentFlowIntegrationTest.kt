@@ -1,7 +1,11 @@
 package mn.uziy.backend.integration
 
 import mn.uziy.backend.admin.AdminController
+import mn.uziy.backend.common.DomainException
 import mn.uziy.backend.company.CompanyController
+import mn.uziy.backend.company.CompanyMessages
+import mn.uziy.backend.settings.PlatformSettingsServiceImpl
+import mn.uziy.backend.web.ApiExceptionHandler
 import mn.uziy.backend.company.CreateCampaignReq
 import mn.uziy.backend.domain.*
 import mn.uziy.backend.security.JwtPrincipal
@@ -28,7 +32,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.patch
 import org.springframework.test.web.servlet.post
-import org.springframework.web.server.ResponseStatusException
+import mn.uziy.backend.support.assertFailsWithHttp
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
@@ -186,20 +190,20 @@ class CampaignPaymentFlowIntegrationTest {
         assertTrue(viewer.feed(principal(VIEWER, Role.VIEWER)).none { it.id == created.id })
 
         authAs(ADMIN, Role.ADMIN)
-        val unpaid = assertFailsWith<ResponseStatusException> {
-            admin.moderate(created.id, CampaignStatus.ACTIVE, principal(ADMIN, Role.ADMIN))
+        val unpaid = assertFailsWithHttp {
+            admin.moderate(created.id, CampaignStatus.ACTIVE)
         }
         assertEquals(HttpStatus.CONFLICT, unpaid.statusCode)
 
         authAs(MOBICOM, Role.COMPANY)
-        val selfActivate = assertFailsWith<ResponseStatusException> {
+        val selfActivate = assertFailsWithHttp {
             company.setStatus(created.id, CampaignStatus.ACTIVE, principal(MOBICOM, Role.COMPANY))
         }
         assertEquals(HttpStatus.CONFLICT, selfActivate.statusCode)
 
         // 3. Another company can neither pay for it nor see its payment.
         authAs(GOLOMT, Role.COMPANY)
-        val foreign = assertFailsWith<ResponseStatusException> {
+        val foreign = assertFailsWithHttp {
             company.pay(created.id, principal(GOLOMT, Role.COMPANY))
         }
         assertEquals(HttpStatus.FORBIDDEN, foreign.statusCode)
@@ -222,7 +226,7 @@ class CampaignPaymentFlowIntegrationTest {
         assertEquals(1, paidRows(created.id))
 
         // Paying twice is a 409, still one PAID row.
-        val twice = assertFailsWith<ResponseStatusException> {
+        val twice = assertFailsWithHttp {
             company.pay(created.id, principal(MOBICOM, Role.COMPANY))
         }
         assertEquals(HttpStatus.CONFLICT, twice.statusCode)
@@ -235,13 +239,13 @@ class CampaignPaymentFlowIntegrationTest {
 
         // 5. PENDING is still not self-activatable — moderation can't be skipped.
         authAs(MOBICOM, Role.COMPANY)
-        assertFailsWith<ResponseStatusException> {
+        assertFailsWithHttp {
             company.setStatus(created.id, CampaignStatus.ACTIVE, principal(MOBICOM, Role.COMPANY))
         }
 
         // 6. Admin approves; the detail carries the snapshot + paidAt.
         authAs(ADMIN, Role.ADMIN)
-        val approved = admin.moderate(created.id, CampaignStatus.ACTIVE, principal(ADMIN, Role.ADMIN))
+        val approved = admin.moderate(created.id, CampaignStatus.ACTIVE)
         assertEquals(CampaignStatus.ACTIVE, approved.status)
         val detail = admin.getCampaign(created.id)
         assertEquals(30, detail.campaign.commissionPercent)
@@ -285,7 +289,7 @@ class CampaignPaymentFlowIntegrationTest {
     fun `pricing errors are 400 with the Mongolian message and nothing is saved`() {
         val before = campaigns.count()
         authAs(MOBICOM, Role.COMPANY)
-        val ex = assertFailsWith<ResponseStatusException> {
+        val ex = assertFailsWithHttp {
             company.create(createReq(totalBudget = 500.0), principal(MOBICOM, Role.COMPANY))
         }
         assertEquals(HttpStatus.BAD_REQUEST, ex.statusCode)
@@ -346,7 +350,7 @@ class CampaignPaymentFlowIntegrationTest {
             content = """{"title":"x","durationSeconds":30,"totalBudget":1000000,"targetViewers":10,"rewardPerUser":700}"""
         }.andExpect {
             status { isBadRequest() }
-            status { reason(CompanyController.EXACTLY_ONE_DRIVER_MESSAGE) }
+            status { reason(CompanyMessages.EXACTLY_ONE_DRIVER_MESSAGE) }
         }
 
         mvc.post("/company/campaigns/$id/pay") {
@@ -373,7 +377,7 @@ class CampaignPaymentFlowIntegrationTest {
             header("Authorization", bearer(MOBICOM))
         }.andExpect {
             status { isConflict() }
-            status { reason(CompanyController.NOT_PAYABLE_MESSAGE) }
+            status { reason(CompanyMessages.NOT_PAYABLE_MESSAGE) }
         }
 
         mvc.get("/company/payments") {
@@ -405,7 +409,7 @@ class CampaignPaymentFlowIntegrationTest {
             content = """{"commissionPercent":95,"minRewardPerViewer":100}"""
         }.andExpect {
             status { isBadRequest() }
-            status { reason(PlatformSettingsController.COMMISSION_RANGE_MESSAGE) }
+            status { reason(PlatformSettingsServiceImpl.COMMISSION_RANGE_MESSAGE) }
         }
         assertEquals(30, settings.get().commissionPercent)
     }
@@ -427,8 +431,8 @@ class CampaignPaymentFlowIntegrationTest {
                             barrier.await(10, TimeUnit.SECONDS)
                             company.pay(created.id, principal(MOBICOM, Role.COMPANY))
                             "ok"
-                        } catch (e: ResponseStatusException) {
-                            e.statusCode.value().toString()
+                        } catch (e: DomainException) {
+                            ApiExceptionHandler.statusOf(e).value().toString()
                         } finally {
                             SecurityContextHolder.clearContext()
                         }

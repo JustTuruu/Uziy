@@ -6,6 +6,7 @@ import '../../routes/app_router.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/ui.dart';
+import '../splash_screen.dart';
 import 'auth_widgets.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -104,7 +105,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               alignment: Alignment.centerLeft,
                               child: UziyLogo(
                                 size: 76,
-                                heroTag: kUziyLogoHeroTag,
+                                heroTag: SplashScreen.logoHeroTag,
                               ),
                             ),
                             const SizedBox(height: AppSpacing.xxxl),

@@ -14,7 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
-import org.springframework.web.server.ResponseStatusException
+import mn.uziy.backend.support.assertFailsWithHttp
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
@@ -152,7 +152,7 @@ class AtomicRewardIntegrationTest {
             principal = JwtPrincipal(viewer.id!!, Role.VIEWER),
         )
 
-        assertFailsWith<ResponseStatusException> {
+        assertFailsWithHttp {
             viewerController.submit(
                 id = campaign.id!!,
                 body = SubmitSurveyReq(listOf(SubmitSurveyReq.Answer(q.id!!, "\"A\""))),
@@ -185,7 +185,7 @@ class AtomicRewardIntegrationTest {
 
         val second = freshViewer("70000004")
         authAs(second.id!!)
-        assertFailsWith<ResponseStatusException> {
+        assertFailsWithHttp {
             viewerController.submit(
                 id = campaign.id!!,
                 body = SubmitSurveyReq(listOf(SubmitSurveyReq.Answer(q.id!!, "\"A\""))),

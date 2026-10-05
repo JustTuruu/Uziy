@@ -23,6 +23,7 @@ class ViewerService {
   Future<AppUser> me() async {
     try {
       final r = await _dio.get<Map<String, dynamic>>('/viewer/me');
+      _check(r, 'Профайл ачаалж чадсангүй');
       return AppUser.fromJson(r.data!);
     } on DioException catch (e) {
       throw _map(e, 'Профайл ачаалж чадсангүй');
@@ -32,8 +33,9 @@ class ViewerService {
   /// GET /viewer/feed — targeted campaigns the user hasn't watched.
   Future<List<Campaign>> feed() async {
     try {
-      final r = await _dio.get<List<dynamic>>('/viewer/feed');
-      return r.data!
+      final r = await _dio.get<dynamic>('/viewer/feed');
+      _check(r, 'Санал болгосон видеонуудыг ачаалж чадсангүй');
+      return (r.data as List<dynamic>)
           .cast<Map<String, dynamic>>()
           .map(Campaign.fromJson)
           .toList();
@@ -45,10 +47,11 @@ class ViewerService {
   /// GET /viewer/campaigns/{id}/questions
   Future<List<SurveyQuestion>> questions(int campaignId) async {
     try {
-      final r = await _dio.get<List<dynamic>>(
+      final r = await _dio.get<dynamic>(
         '/viewer/campaigns/$campaignId/questions',
       );
-      return r.data!
+      _check(r, 'Асуултууд ачаалж чадсангүй');
+      return (r.data as List<dynamic>)
           .cast<Map<String, dynamic>>()
           .map(SurveyQuestion.fromJson)
           .toList();
@@ -77,6 +80,7 @@ class ViewerService {
         '/viewer/campaigns/$campaignId/submit',
         data: body,
       );
+      _check(r, 'Илгээхэд алдаа гарлаа');
       return RewardResult(
         rewardPaid: (r.data!['rewardPaid'] as num).toDouble(),
         newBalance: (r.data!['newBalance'] as num).toDouble(),
@@ -105,6 +109,7 @@ class ViewerService {
           'nationalId': nationalId,
         },
       );
+      _check(r, 'Хүсэлт илгээхэд алдаа гарлаа');
       return r.data!;
     } on DioException catch (e) {
       throw _map(e, 'Хүсэлт илгээхэд алдаа гарлаа');
@@ -121,18 +126,35 @@ class ViewerService {
     return v.toString();
   }
 
-  ApiException _map(DioException e, String fallback) {
-    final s = e.response?.statusCode ?? 0;
-    final d = e.response?.data;
+  /// The shared Dio accepts every status below 500 (see ApiService), so a
+  /// 401/403/404/409 comes back as a normal response. Call this right after
+  /// each request to turn those into an [ApiException] carrying the status —
+  /// otherwise the error body gets parsed as data and surfaces as a bogus
+  /// "can't reach the server" message.
+  void _check(Response<dynamic> r, String fallback) {
+    final s = r.statusCode ?? 0;
+    if (s >= 200 && s < 300) return;
+    throw _apiError(s, r.data, null, fallback);
+  }
+
+  ApiException _map(DioException e, String fallback) =>
+      _apiError(e.response?.statusCode ?? 0, e.response?.data, e.type, fallback);
+
+  ApiException _apiError(
+    int s,
+    Object? d,
+    DioExceptionType? type,
+    String fallback,
+  ) {
     String message = fallback;
     if (d is Map<String, dynamic> && d['message'] is String) {
       message = d['message'] as String;
-    } else if (s == 401) {
+    } else if (s == 401 || s == 403) {
       message = 'Дахин нэвтэрнэ үү';
     } else if (s == 409) {
       message = 'Аль хэдийн үзсэн байна';
-    } else if (e.type == DioExceptionType.connectionTimeout ||
-        e.type == DioExceptionType.connectionError) {
+    } else if (type == DioExceptionType.connectionTimeout ||
+        type == DioExceptionType.connectionError) {
       message = 'Сервертэй холбогдож чадсангүй';
     }
     return ApiException(s, message);

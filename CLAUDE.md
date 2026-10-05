@@ -92,9 +92,18 @@ rewarded-video-platform/
 
 **Decisions locked in during subsequent sessions:**
 
-- The **Company panel is a web app**, not mobile. Merged into `admin_panel/`
-  as one Next.js codebase with role-based routing (`/company/*` and
-  `/admin/*`). Rationale: uploading videos, drawing targeting filters, and
+- **(2026-10-01) Company panel and Super Admin panel are now SEPARATE apps**:
+  `company_panel/` (port 3000, routes at `/`, `/campaigns`, `/billing`, …) and
+  `admin_panel/` (Super Admin only, port 3001, routes at `/`, `/payouts`,
+  `/users`, …). Each has its own `/login` that only admits its own role. They
+  share no code package — `components/ui`, `lib/utils|api|pricing|billing`
+  are duplicated copies, so keep them in sync by hand. Backend CORS allows both
+  origins. Older notes below that say "one codebase / `/company/*` /
+  `/admin/*`" are superseded. Leftover unused files from the split (not yet
+  deleted): `admin_panel/components/campaign-{budget-fields,payment-card}*`,
+  `admin_panel/lib/video*`, `company_panel/lib/mock-data.ts`.
+- The **Company panel is a web app**, not mobile. (Originally merged into
+  `admin_panel/` with role-based routing; see the split above.) Rationale: uploading videos, drawing targeting filters, and
   reviewing charts are painful on a phone.
 - The app is named **Uziy** (Mongolian "зоос" = coin) — reflected in the
   Next.js metadata and the console login page. The Flutter viewer app still
@@ -203,6 +212,12 @@ session data once the backend + auth are wired.
 
 ### `backend/` — Spring Boot 4 + Kotlin + PostgreSQL
 
+**Layering rule (SOLID, refactored 2026-10-01):** controllers are thin HTTP
+adapters; every use case is a `FooService` interface + `FooServiceImpl`
+(`@Service`, owns `@Transactional`); services depend on repositories and
+interfaces only and throw `DomainException`s. Put new logic in a service,
+not a controller, and write the service's unit test with MockK.
+
 The API consumed by both frontends. **Fully working end-to-end** as of
 this session — every endpoint below has been smoke-tested with curl.
 
@@ -227,26 +242,34 @@ backend/
     │   ├── CampaignEntity.kt       + SurveyQuestion, ViewHistory,
     │   │                           SurveyResponse (JSONB via @JdbcTypeCode)
     │   ├── PayoutEntity.kt         + PayoutStatus
-    │   └── Repositories.kt         6 Spring Data repos; findFeedFor()
-    │                               implements spec §4B; tryDecrementBudget()
-    │                               is the conditional UPDATE for §4C.
+    │   └── *Repository.kt          split per aggregate (User, Campaign+Payment,
+    │                               Survey*/ViewHistory, Payout); findFeedFor()
+    │                               implements §4B; tryDecrementBudget() is the
+    │                               conditional UPDATE for §4C.
+    ├── common/DomainException.kt   NotFound/Forbidden/BadRequest/Conflict/
+    │                               Unauthorized/Unavailable — services throw
+    │                               these, never ResponseStatusException.
+    ├── web/ApiExceptionHandler.kt  the ONE place domain exceptions → HTTP status
+    │                               (sendError, so the JSON `message` is unchanged)
     ├── security/
     │   ├── JwtService.kt           issue/parse; HS512 signed with app secret
     │   ├── JwtAuthFilter.kt        Bearer → SecurityContext
     │   ├── SecurityConfig.kt       stateless, CORS, role-gated routes
     │   └── CurrentUser.kt          @Auth param resolver → JwtPrincipal
-    ├── auth/AuthController.kt      /auth/login, /auth/register/{viewer,company}
-    ├── viewer/ViewerController.kt  /viewer/me, /feed, /campaigns/{id}/questions,
-    │                               /campaigns/{id}/submit ← THE atomic tx (§4C).
-    │                               SERIALIZABLE isolation; uses conditional
-    │                               UPDATE to race safely with concurrent viewers.
-    ├── company/CompanyController.kt /company/campaigns list, create, get,
-    │                               PATCH status. Enforces reward < cost.
-    ├── payout/PayoutController.kt  /viewer/payouts request+list;
-    │                               /admin/payouts pending + decision. Approving
-    │                               a first payout flips is_verified=TRUE (§4A).
-    └── admin/AdminController.kt    /admin/stats, /users, /campaigns,
-                                    /users/{id}/verify, /campaigns/{id}/moderate
+    ├── auth/                       AuthController (HTTP) → AuthService
+    ├── viewer/                     ViewerController → ViewerService (me/feed/
+    │                               questions) + RewardService.submitSurvey
+    │                               ← THE atomic tx (§4C), SERIALIZABLE.
+    ├── company/                    CompanyController → CampaignService
+    │                               (create/list/get/setStatus) +
+    │                               CampaignPaymentService (pay/list)
+    ├── payment/                    PaymentGateway interface; SimulatedPaymentGateway.
+    │                               New provider = new @Component, nothing else
+    │                               changes (first isAvailable() gateway is used).
+    ├── payout/                     PayoutController → PayoutService
+    ├── settings/                   PlatformSettingsController → ...Service
+    └── admin/                      AdminController → AdminStatsService,
+                                    UserAdminService, CampaignModerationService
 ```
 
 **Run locally:**

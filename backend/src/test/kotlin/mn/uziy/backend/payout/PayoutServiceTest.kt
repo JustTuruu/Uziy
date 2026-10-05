@@ -8,18 +8,18 @@ import mn.uziy.backend.domain.*
 import mn.uziy.backend.security.JwtPrincipal
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus
-import org.springframework.web.server.ResponseStatusException
+import mn.uziy.backend.support.assertFailsWithHttp
 import java.util.Optional
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-class PayoutControllerTest {
+class PayoutServiceTest {
 
     private val payouts = mockk<PayoutRepository>()
     private val users = mockk<UserRepository>()
-    private val controller = PayoutController(payouts, users)
+    private val service = PayoutServiceImpl(payouts, users)
 
     private val viewer = UserEntity(
         id = 42L, phoneNumber = "77000001", passwordHash = "x",
@@ -52,7 +52,7 @@ class PayoutControllerTest {
             savedPayout.captured.also { it.id = 1L }
         }
 
-        val dto = controller.request(reqBody(500.0), viewerPrincipal)
+        val dto = service.request(viewerPrincipal.userId, reqBody(500.0))
 
         assertEquals(1L, dto.id)
         assertTrue(dto.isFirstPayout)
@@ -63,8 +63,8 @@ class PayoutControllerTest {
     @Test
     fun `request throws 400 on insufficient balance`() {
         every { users.findById(42L) } returns Optional.of(viewer)
-        val ex = assertFailsWith<ResponseStatusException> {
-            controller.request(reqBody(amount = 9999.0), viewerPrincipal)
+        val ex = assertFailsWithHttp {
+            service.request(viewerPrincipal.userId, reqBody(amount = 9999.0))
         }
         assertEquals(HttpStatus.BAD_REQUEST, ex.statusCode)
         verify(exactly = 0) { payouts.save(any()) }
@@ -80,7 +80,7 @@ class PayoutControllerTest {
             savedPayout.captured.also { it.id = 2L }
         }
 
-        val dto = controller.request(reqBody(500.0), viewerPrincipal)
+        val dto = service.request(viewerPrincipal.userId, reqBody(500.0))
         assertEquals(false, dto.isFirstPayout)
     }
 
@@ -94,7 +94,7 @@ class PayoutControllerTest {
                 bank = "Khan", accountNumber = "1", accountName = "X",
                 nationalId = "Y", status = PayoutStatus.PENDING),
         )
-        val list = controller.mine(viewerPrincipal)
+        val list = service.mine(viewerPrincipal.userId)
         assertEquals(1, list.size)
         assertEquals(PayoutStatus.PENDING, list[0].status)
     }
@@ -111,7 +111,7 @@ class PayoutControllerTest {
                 )
         every { users.findAllById(listOf(42L)) } returns listOf(viewer)
 
-        val list = controller.pending()
+        val list = service.pending()
         assertEquals(1, list.size)
         assertEquals("77000001", list[0].userPhone)
     }
@@ -135,7 +135,7 @@ class PayoutControllerTest {
         )
         every { users.findAllById(listOf(42L)) } returns listOf(viewer)
 
-        val list = controller.history()
+        val list = service.history()
         assertEquals(2, list.size)
         assertEquals(PayoutStatus.APPROVED, list[0].status)
         assertEquals(PayoutStatus.REJECTED, list[1].status)
@@ -151,7 +151,7 @@ class PayoutControllerTest {
         } returns emptyList()
         every { users.findAllById(emptyList()) } returns emptyList()
 
-        assertTrue(controller.history().isEmpty())
+        assertTrue(service.history().isEmpty())
     }
 
     // ------- admin.decide --------------------------------------------------
@@ -170,7 +170,7 @@ class PayoutControllerTest {
         val savedPayout = slot<PayoutEntity>()
         every { payouts.save(capture(savedPayout)) } answers { savedPayout.captured }
 
-        controller.decide(10L, PayoutStatus.APPROVED, null, adminPrincipal)
+        service.decide(10L, PayoutStatus.APPROVED, null, adminPrincipal.userId)
 
         assertTrue(savedUser.captured.isVerified)
         assertEquals(PayoutStatus.APPROVED, savedPayout.captured.status)
@@ -192,7 +192,7 @@ class PayoutControllerTest {
         every { users.save(capture(savedUser)) } answers { savedUser.captured }
         every { payouts.save(any()) } answers { firstArg() }
 
-        controller.decide(11L, PayoutStatus.APPROVED, null, adminPrincipal)
+        service.decide(11L, PayoutStatus.APPROVED, null, adminPrincipal.userId)
 
         // Balance untouched; is_verified NOT flipped because isFirstPayout=false.
         assertEquals(1000.0, savedUser.captured.balance)
@@ -213,15 +213,15 @@ class PayoutControllerTest {
         every { users.save(capture(savedUser)) } answers { savedUser.captured }
         every { payouts.save(any()) } answers { firstArg() }
 
-        controller.decide(12L, PayoutStatus.REJECTED, "wrong name", adminPrincipal)
+        service.decide(12L, PayoutStatus.REJECTED, "wrong name", adminPrincipal.userId)
 
         assertEquals(700.0, savedUser.captured.balance) // refunded
     }
 
     @Test
     fun `decide throws 400 when target status is PENDING`() {
-        val ex = assertFailsWith<ResponseStatusException> {
-            controller.decide(1L, PayoutStatus.PENDING, null, adminPrincipal)
+        val ex = assertFailsWithHttp {
+            service.decide(1L, PayoutStatus.PENDING, null, adminPrincipal.userId)
         }
         assertEquals(HttpStatus.BAD_REQUEST, ex.statusCode)
     }
@@ -235,8 +235,8 @@ class PayoutControllerTest {
         )
         every { payouts.findById(13L) } returns Optional.of(already)
 
-        val ex = assertFailsWith<ResponseStatusException> {
-            controller.decide(13L, PayoutStatus.REJECTED, null, adminPrincipal)
+        val ex = assertFailsWithHttp {
+            service.decide(13L, PayoutStatus.REJECTED, null, adminPrincipal.userId)
         }
         assertEquals(HttpStatus.CONFLICT, ex.statusCode)
     }

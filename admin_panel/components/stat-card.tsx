@@ -23,9 +23,7 @@ export function StatCard({
         <div className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
           {label}
         </div>
-        {icon && (
-          <div className="text-[var(--color-text-muted)]">{icon}</div>
-        )}
+        {icon && <div className="text-[var(--color-text-muted)]">{icon}</div>}
       </div>
       <div className="mt-2 text-2xl font-extrabold tracking-tight text-[var(--color-text-primary)]">
         {value}

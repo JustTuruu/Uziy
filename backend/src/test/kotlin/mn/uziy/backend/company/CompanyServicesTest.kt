@@ -6,6 +6,8 @@ import io.mockk.slot
 import io.mockk.verify
 import mn.uziy.backend.config.AppProperties
 import mn.uziy.backend.domain.*
+import mn.uziy.backend.payment.PaymentReference
+import mn.uziy.backend.payment.SimulatedPaymentGateway
 import mn.uziy.backend.security.JwtPrincipal
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -13,7 +15,7 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
-import org.springframework.web.server.ResponseStatusException
+import mn.uziy.backend.support.assertFailsWithHttp
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.Optional
@@ -22,19 +24,22 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-class CompanyControllerTest {
+class CompanyServicesTest {
 
     private val campaigns = mockk<CampaignRepository>()
     private val questions = mockk<SurveyQuestionRepository>()
     private val platformSettings = mockk<PlatformSettingsRepository>()
     private val payments = mockk<CampaignPaymentRepository>()
 
-    private fun controller(simulated: Boolean = true) = CompanyController(
-        campaigns, questions, platformSettings, payments,
-        AppProperties(payments = AppProperties.Payments(simulated = simulated)),
+    private fun paymentService(simulated: Boolean = true) = CampaignPaymentServiceImpl(
+        campaigns, payments,
+        listOf(SimulatedPaymentGateway(
+            AppProperties(payments = AppProperties.Payments(simulated = simulated)),
+        )),
     )
 
-    private val controller = controller()
+    private val campaignSvc = CampaignServiceImpl(campaigns, questions, platformSettings)
+    private val paymentSvc = paymentService()
     private val principal = JwtPrincipal(userId = 500L, role = Role.COMPANY)
 
     private fun settings(commission: Int = 30, minReward: Int = 100) {
@@ -87,7 +92,7 @@ class CompanyControllerTest {
     }
 
     private fun assertBadRequest(message: String, block: () -> Unit) {
-        val ex = assertFailsWith<ResponseStatusException> { block() }
+        val ex = assertFailsWithHttp { block() }
         assertEquals(HttpStatus.BAD_REQUEST, ex.statusCode)
         assertEquals(message, ex.reason)
     }
@@ -101,14 +106,14 @@ class CompanyControllerTest {
         fun `list returns only own campaigns`() {
             every { campaigns.findAllByCompanyIdOrderByCreatedAtDesc(500L) } returns
                     listOf(sampleCampaign(1), sampleCampaign(2))
-            assertEquals(2, controller.list(principal).size)
+            assertEquals(2, campaignSvc.list(principal.userId).size)
             verify { campaigns.findAllByCompanyIdOrderByCreatedAtDesc(500L) }
         }
 
         @Test
         fun `get returns campaign owned by caller with the new pricing fields`() {
             every { campaigns.findById(1L) } returns Optional.of(sampleCampaign(1))
-            val dto = controller.get(1L, principal)
+            val dto = campaignSvc.get(principal.userId, 1L)
             assertEquals(1L, dto.id)
             assertEquals(1000, dto.targetViewers)
             assertEquals(30, dto.commissionPercent)
@@ -118,14 +123,14 @@ class CompanyControllerTest {
         @Test
         fun `get throws 403 for campaign owned by another company`() {
             every { campaigns.findById(1L) } returns Optional.of(sampleCampaign(1, ownerId = 999L))
-            val ex = assertFailsWith<ResponseStatusException> { controller.get(1L, principal) }
+            val ex = assertFailsWithHttp { campaignSvc.get(principal.userId, 1L) }
             assertEquals(HttpStatus.FORBIDDEN, ex.statusCode)
         }
 
         @Test
         fun `get throws 404 when campaign not found`() {
             every { campaigns.findById(any()) } returns Optional.empty()
-            val ex = assertFailsWith<ResponseStatusException> { controller.get(999L, principal) }
+            val ex = assertFailsWithHttp { campaignSvc.get(principal.userId, 999L) }
             assertEquals(HttpStatus.NOT_FOUND, ex.statusCode)
         }
     }
@@ -138,7 +143,7 @@ class CompanyControllerTest {
         @Test
         fun `VIEWERS mode - 1,000,000 for 1,000 viewers saves C=1000 R=700 in AWAITING_PAYMENT`() {
             val saved = captureSave()
-            val dto = controller.create(videoReq(targetViewers = 1_000), principal)
+            val dto = campaignSvc.create(principal.userId, videoReq(targetViewers = 1_000))
 
             assertEquals(77L, dto.id)
             val c = saved.captured
@@ -165,7 +170,7 @@ class CompanyControllerTest {
         @Test
         fun `VIEWERS mode charges only the payable amount, not the unused remainder`() {
             val saved = captureSave()
-            controller.create(videoReq(targetViewers = 1_428), principal)
+            campaignSvc.create(principal.userId, videoReq(targetViewers = 1_428))
             assertEquals(999_600.0, saved.captured.totalBudget)
             assertEquals(999_600.0, saved.captured.remainingBudget)
             assertEquals(700.0, saved.captured.costPerView)
@@ -176,7 +181,7 @@ class CompanyControllerTest {
         @Test
         fun `REWARD mode - 500 per viewer derives C=715 and N=1398`() {
             val saved = captureSave()
-            val dto = controller.create(videoReq(rewardPerUser = 500.0), principal)
+            val dto = campaignSvc.create(principal.userId, videoReq(rewardPerUser = 500.0))
             val c = saved.captured
             assertEquals(715.0, c.costPerView)
             assertEquals(500.0, c.rewardPerUser)
@@ -190,7 +195,7 @@ class CompanyControllerTest {
         fun `uses the CURRENT platform commission and snapshots it`() {
             settings(commission = 35)
             val saved = captureSave()
-            controller.create(videoReq(totalBudget = 500_000.0, targetViewers = 1_000), principal)
+            campaignSvc.create(principal.userId, videoReq(totalBudget = 500_000.0, targetViewers = 1_000))
             assertEquals(500.0, saved.captured.costPerView)
             assertEquals(325.0, saved.captured.rewardPerUser)
             assertEquals(35, saved.captured.commissionPercent)
@@ -198,8 +203,8 @@ class CompanyControllerTest {
 
         @Test
         fun `both targetViewers and rewardPerUser is 400`() {
-            assertBadRequest(CompanyController.EXACTLY_ONE_DRIVER_MESSAGE) {
-                controller.create(videoReq(targetViewers = 1_000, rewardPerUser = 700.0), principal)
+            assertBadRequest(CompanyMessages.EXACTLY_ONE_DRIVER_MESSAGE) {
+                campaignSvc.create(principal.userId, videoReq(targetViewers = 1_000, rewardPerUser = 700.0))
             }
             verify(exactly = 0) { campaigns.save(any()) }
         }
@@ -207,7 +212,7 @@ class CompanyControllerTest {
         @Test
         fun `neither targetViewers nor rewardPerUser is 400`() {
             assertBadRequest("Үзэгчийн тоо эсвэл нэг үзэгчийн урамшууллын аль нэгийг оруулна уу") {
-                controller.create(videoReq(), principal)
+                campaignSvc.create(principal.userId, videoReq())
             }
             verify(exactly = 0) { campaigns.save(any()) }
         }
@@ -215,10 +220,10 @@ class CompanyControllerTest {
         @Test
         fun `budget too small is 400 with the Mongolian pricing message`() {
             assertBadRequest("Төсөв хэт бага байна — үзэгчийн тоог багасгах эсвэл төсвөө нэмнэ үү") {
-                controller.create(videoReq(totalBudget = 500.0, targetViewers = 1_000), principal)
+                campaignSvc.create(principal.userId, videoReq(totalBudget = 500.0, targetViewers = 1_000))
             }
             assertBadRequest("Төсөв хэт бага байна — үзэгчийн тоог багасгах эсвэл төсвөө нэмнэ үү") {
-                controller.create(videoReq(totalBudget = 500.0, rewardPerUser = 700.0), principal)
+                campaignSvc.create(principal.userId, videoReq(totalBudget = 500.0, rewardPerUser = 700.0))
             }
             verify(exactly = 0) { campaigns.save(any()) }
         }
@@ -228,58 +233,58 @@ class CompanyControllerTest {
             settings(minReward = 150)
             // 100,000 / 1,000 = 100 → R = 70 < 150
             assertBadRequest("Нэг үзэгчид олгох урамшуулал хамгийн багадаа 150 ₮ байх ёстой") {
-                controller.create(videoReq(totalBudget = 100_000.0, targetViewers = 1_000), principal)
+                campaignSvc.create(principal.userId, videoReq(totalBudget = 100_000.0, targetViewers = 1_000))
             }
             assertBadRequest("Нэг үзэгчид олгох урамшуулал хамгийн багадаа 150 ₮ байх ёстой") {
-                controller.create(videoReq(rewardPerUser = 149.0), principal)
+                campaignSvc.create(principal.userId, videoReq(rewardPerUser = 149.0))
             }
         }
 
         @Test
         fun `missing or zero budget is 400 BUDGET_INVALID`() {
             assertBadRequest("Нийт төсвөө оруулна уу") {
-                controller.create(videoReq(totalBudget = null, targetViewers = 1_000), principal)
+                campaignSvc.create(principal.userId, videoReq(totalBudget = null, targetViewers = 1_000))
             }
             assertBadRequest("Нийт төсвөө оруулна уу") {
-                controller.create(videoReq(totalBudget = 0.0, targetViewers = 1_000), principal)
+                campaignSvc.create(principal.userId, videoReq(totalBudget = 0.0, targetViewers = 1_000))
             }
             assertBadRequest("Нийт төсвөө оруулна уу") {
-                controller.create(videoReq(totalBudget = -1.0, targetViewers = 1_000), principal)
+                campaignSvc.create(principal.userId, videoReq(totalBudget = -1.0, targetViewers = 1_000))
             }
         }
 
         @Test
         fun `zero viewers is 400 VIEWERS_INVALID, zero reward is 400 REWARD_INVALID`() {
             assertBadRequest("Үзэгчийн тоогоо оруулна уу") {
-                controller.create(videoReq(targetViewers = 0), principal)
+                campaignSvc.create(principal.userId, videoReq(targetViewers = 0))
             }
             assertBadRequest("Нэг үзэгчид олгох урамшууллаа оруулна уу") {
-                controller.create(videoReq(rewardPerUser = 0.0), principal)
+                campaignSvc.create(principal.userId, videoReq(rewardPerUser = 0.0))
             }
         }
 
         @Test
         fun `fractional tögrög is 400`() {
-            assertBadRequest(CompanyController.WHOLE_TUGRIK_MESSAGE) {
-                controller.create(videoReq(totalBudget = 1_000_000.5, targetViewers = 1_000), principal)
+            assertBadRequest(CompanyMessages.WHOLE_TUGRIK_MESSAGE) {
+                campaignSvc.create(principal.userId, videoReq(totalBudget = 1_000_000.5, targetViewers = 1_000))
             }
-            assertBadRequest(CompanyController.WHOLE_TUGRIK_MESSAGE) {
-                controller.create(videoReq(rewardPerUser = 700.25), principal)
+            assertBadRequest(CompanyMessages.WHOLE_TUGRIK_MESSAGE) {
+                campaignSvc.create(principal.userId, videoReq(rewardPerUser = 700.25))
             }
         }
 
         @Test
         fun `absurd budget is 400 instead of overflowing`() {
-            assertBadRequest(CompanyController.AMOUNT_TOO_LARGE_MESSAGE) {
-                controller.create(videoReq(totalBudget = 1e18, targetViewers = 1_000), principal)
+            assertBadRequest(CompanyMessages.AMOUNT_TOO_LARGE_MESSAGE) {
+                campaignSvc.create(principal.userId, videoReq(totalBudget = 1e18, targetViewers = 1_000))
             }
         }
 
         @Test
         fun `REWARD mode that would need more viewers than fit in an INT is 400`() {
             // 10^15 ₮ at 100 ₮ reward (C = 143) → ~7·10^12 viewers.
-            assertBadRequest(CompanyController.TOO_MANY_VIEWERS_MESSAGE) {
-                controller.create(videoReq(totalBudget = 1e15, rewardPerUser = 100.0), principal)
+            assertBadRequest(CompanyMessages.TOO_MANY_VIEWERS_MESSAGE) {
+                campaignSvc.create(principal.userId, videoReq(totalBudget = 1e15, rewardPerUser = 100.0))
             }
         }
 
@@ -290,18 +295,18 @@ class CompanyControllerTest {
             // test for the JSON path). The saved price is always C from pricing.
             assertTrue(CreateCampaignReq::class.members.none { it.name == "costPerView" })
             val saved = captureSave()
-            controller.create(videoReq(targetViewers = 2_000), principal)
+            campaignSvc.create(principal.userId, videoReq(targetViewers = 2_000))
             assertEquals(500.0, saved.captured.costPerView)
             assertEquals(350.0, saved.captured.rewardPerUser)
         }
 
         @Test
         fun `video campaign with duration outside 5-180 is 400`() {
-            assertBadRequest(CompanyController.DURATION_MESSAGE) {
-                controller.create(videoReq(targetViewers = 1_000, durationSeconds = 3), principal)
+            assertBadRequest(CompanyMessages.DURATION_MESSAGE) {
+                campaignSvc.create(principal.userId, videoReq(targetViewers = 1_000, durationSeconds = 3))
             }
-            assertBadRequest(CompanyController.DURATION_MESSAGE) {
-                controller.create(videoReq(targetViewers = 1_000, durationSeconds = 181), principal)
+            assertBadRequest(CompanyMessages.DURATION_MESSAGE) {
+                campaignSvc.create(principal.userId, videoReq(targetViewers = 1_000, durationSeconds = 181))
             }
         }
 
@@ -321,7 +326,7 @@ class CompanyControllerTest {
                     ),
                 ),
             )
-            val dto = controller.create(body, principal)
+            val dto = campaignSvc.create(principal.userId, body)
 
             assertEquals(88L, dto.id)
             assertEquals(false, dto.hasVideo)
@@ -338,8 +343,8 @@ class CompanyControllerTest {
                 title = "empty-survey", hasVideo = false,
                 totalBudget = 100_000.0, targetViewers = 100,
             )
-            assertBadRequest(CompanyController.NO_QUESTIONS_MESSAGE) {
-                controller.create(body, principal)
+            assertBadRequest(CompanyMessages.NO_QUESTIONS_MESSAGE) {
+                campaignSvc.create(principal.userId, body)
             }
         }
     }
@@ -364,7 +369,7 @@ class CompanyControllerTest {
                 payment.captured.also { it.id = 9L }
             }
 
-            val res = controller.pay(42L, principal)
+            val res = paymentSvc.pay(principal.userId, 42L)
 
             val p = payment.captured
             assertEquals(42L, p.campaignId)
@@ -373,7 +378,7 @@ class CompanyControllerTest {
             assertEquals(PaymentProvider.SIMULATED, p.provider)
             assertEquals(PaymentStatus.PAID, p.status)
             assertNotNull(p.paidAt)
-            assertEquals(CompanyController.paymentReference(42L, p.paidAt!!), p.reference)
+            assertEquals(PaymentReference.of(42L, p.paidAt!!), p.reference)
             assertTrue(p.reference.matches(Regex("UZ-\\d{8}-42")), p.reference)
 
             assertEquals(CampaignStatus.PENDING, res.campaign.status)
@@ -388,14 +393,14 @@ class CompanyControllerTest {
         @Test
         fun `404 when the campaign does not exist`() {
             every { campaigns.findById(any()) } returns Optional.empty()
-            val ex = assertFailsWith<ResponseStatusException> { controller.pay(1L, principal) }
+            val ex = assertFailsWithHttp { paymentSvc.pay(principal.userId, 1L) }
             assertEquals(HttpStatus.NOT_FOUND, ex.statusCode)
         }
 
         @Test
         fun `403 for another company's campaign - nothing is marked paid`() {
             every { campaigns.findById(42L) } returns Optional.of(awaiting(ownerId = 999L))
-            val ex = assertFailsWith<ResponseStatusException> { controller.pay(42L, principal) }
+            val ex = assertFailsWithHttp { paymentSvc.pay(principal.userId, 42L) }
             assertEquals(HttpStatus.FORBIDDEN, ex.statusCode)
             verify(exactly = 0) { campaigns.tryMarkPaid(any(), any()) }
             verify(exactly = 0) { payments.saveAndFlush(any()) }
@@ -405,9 +410,9 @@ class CompanyControllerTest {
         @CsvSource("PENDING", "ACTIVE", "PAUSED", "COMPLETED", "REJECTED")
         fun `409 unless AWAITING_PAYMENT`(status: CampaignStatus) {
             every { campaigns.findById(42L) } returns Optional.of(sampleCampaign(42L, status = status))
-            val ex = assertFailsWith<ResponseStatusException> { controller.pay(42L, principal) }
+            val ex = assertFailsWithHttp { paymentSvc.pay(principal.userId, 42L) }
             assertEquals(HttpStatus.CONFLICT, ex.statusCode)
-            assertEquals(CompanyController.NOT_PAYABLE_MESSAGE, ex.reason)
+            assertEquals(CompanyMessages.NOT_PAYABLE_MESSAGE, ex.reason)
             verify(exactly = 0) { campaigns.tryMarkPaid(any(), any()) }
         }
 
@@ -415,7 +420,7 @@ class CompanyControllerTest {
         fun `409 when a concurrent payment won the conditional update`() {
             every { campaigns.findById(42L) } returns Optional.of(awaiting())
             every { campaigns.tryMarkPaid(42L, any()) } returns 0
-            val ex = assertFailsWith<ResponseStatusException> { controller.pay(42L, principal) }
+            val ex = assertFailsWithHttp { paymentSvc.pay(principal.userId, 42L) }
             assertEquals(HttpStatus.CONFLICT, ex.statusCode)
             verify(exactly = 0) { payments.saveAndFlush(any()) }
         }
@@ -426,15 +431,15 @@ class CompanyControllerTest {
             every { campaigns.tryMarkPaid(42L, any()) } returns 1
             every { payments.saveAndFlush(any()) } throws
                     DataIntegrityViolationException("ux_campaign_payments_one_paid")
-            val ex = assertFailsWith<ResponseStatusException> { controller.pay(42L, principal) }
+            val ex = assertFailsWithHttp { paymentSvc.pay(principal.userId, 42L) }
             assertEquals(HttpStatus.CONFLICT, ex.statusCode)
         }
 
         @Test
         fun `503 when simulated payments are switched off`() {
             every { campaigns.findById(42L) } returns Optional.of(awaiting())
-            val ex = assertFailsWith<ResponseStatusException> {
-                controller(simulated = false).pay(42L, principal)
+            val ex = assertFailsWithHttp {
+                paymentService(simulated = false).pay(principal.userId, 42L)
             }
             assertEquals(HttpStatus.SERVICE_UNAVAILABLE, ex.statusCode)
             assertEquals("Төлбөрийн систем хараахан холбогдоогүй байна", ex.reason)
@@ -446,9 +451,9 @@ class CompanyControllerTest {
         fun `payment reference uses the Ulaanbaatar calendar date`() {
             // 20:00 UTC on the 28th is already 04:00 on the 29th in Ulaanbaatar (UTC+8).
             val at = OffsetDateTime.of(2026, 9, 28, 20, 0, 0, 0, ZoneOffset.UTC)
-            assertEquals("UZ-20260929-42", CompanyController.paymentReference(42L, at))
+            assertEquals("UZ-20260929-42", PaymentReference.of(42L, at))
             val morning = OffsetDateTime.of(2026, 9, 28, 1, 0, 0, 0, ZoneOffset.UTC)
-            assertEquals("UZ-20260928-7", CompanyController.paymentReference(7L, morning))
+            assertEquals("UZ-20260928-7", PaymentReference.of(7L, morning))
         }
     }
 
@@ -469,7 +474,7 @@ class CompanyControllerTest {
             every { campaigns.findAllById(listOf(11L, 10L)) } returns
                     listOf(sampleCampaign(10L), sampleCampaign(11L))
 
-            val list = controller.payments(principal)
+            val list = paymentSvc.list(principal.userId)
 
             assertEquals(listOf(2L, 1L), list.map { it.id })
             assertEquals("T11", list[0].campaignTitle)
@@ -484,7 +489,7 @@ class CompanyControllerTest {
         fun `empty when the company has never paid`() {
             every { payments.findAllByCompanyIdOrderByCreatedAtDescIdDesc(500L) } returns emptyList()
             every { campaigns.findAllById(emptyList()) } returns emptyList()
-            assertTrue(controller.payments(principal).isEmpty())
+            assertTrue(paymentSvc.list(principal.userId).isEmpty())
         }
     }
 
@@ -504,7 +509,7 @@ class CompanyControllerTest {
             every { campaigns.findById(1L) } returns Optional.of(sampleCampaign(1, status = from))
             every { campaigns.tryTransition(1L, from, to, any()) } returns 1
 
-            val dto = controller.setStatus(1L, to, principal)
+            val dto = campaignSvc.setStatus(principal.userId, 1L, to)
 
             assertEquals(to, dto.status)
             verify(exactly = 1) { campaigns.tryTransition(1L, from, to, any()) }
@@ -529,8 +534,8 @@ class CompanyControllerTest {
         )
         fun `denied company transitions are 409`(from: CampaignStatus, to: CampaignStatus) {
             every { campaigns.findById(1L) } returns Optional.of(sampleCampaign(1, status = from))
-            val ex = assertFailsWith<ResponseStatusException> {
-                controller.setStatus(1L, to, principal)
+            val ex = assertFailsWithHttp {
+                campaignSvc.setStatus(principal.userId, 1L, to)
             }
             assertEquals(HttpStatus.CONFLICT, ex.statusCode)
             assertEquals("Энэ төлөвөөс шилжих боломжгүй", ex.reason)
@@ -542,8 +547,8 @@ class CompanyControllerTest {
             every { campaigns.findById(1L) } returns
                     Optional.of(sampleCampaign(1, status = CampaignStatus.PAUSED))
             every { campaigns.tryTransition(1L, CampaignStatus.PAUSED, CampaignStatus.ACTIVE, any()) } returns 0
-            val ex = assertFailsWith<ResponseStatusException> {
-                controller.setStatus(1L, CampaignStatus.ACTIVE, principal)
+            val ex = assertFailsWithHttp {
+                campaignSvc.setStatus(principal.userId, 1L, CampaignStatus.ACTIVE)
             }
             assertEquals(HttpStatus.CONFLICT, ex.statusCode)
         }
@@ -551,8 +556,8 @@ class CompanyControllerTest {
         @Test
         fun `403 for non-owner`() {
             every { campaigns.findById(1L) } returns Optional.of(sampleCampaign(1, ownerId = 999L))
-            val ex = assertFailsWith<ResponseStatusException> {
-                controller.setStatus(1L, CampaignStatus.PAUSED, principal)
+            val ex = assertFailsWithHttp {
+                campaignSvc.setStatus(principal.userId, 1L, CampaignStatus.PAUSED)
             }
             assertEquals(HttpStatus.FORBIDDEN, ex.statusCode)
         }
@@ -560,8 +565,8 @@ class CompanyControllerTest {
         @Test
         fun `404 when missing`() {
             every { campaigns.findById(any()) } returns Optional.empty()
-            val ex = assertFailsWith<ResponseStatusException> {
-                controller.setStatus(1L, CampaignStatus.PAUSED, principal)
+            val ex = assertFailsWithHttp {
+                campaignSvc.setStatus(principal.userId, 1L, CampaignStatus.PAUSED)
             }
             assertEquals(HttpStatus.NOT_FOUND, ex.statusCode)
         }

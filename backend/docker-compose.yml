@@ -17,5 +17,26 @@ services:
       timeout: 5s
       retries: 5
 
+  # Dev-only DB browser → http://localhost:5050 (no login; server is pre-
+  # registered, password when asked: uziy_dev). Never expose this in prod.
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: uziy-pgadmin
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@uziy.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    volumes:
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+      - uziy_pgadmin:/var/lib/pgadmin
+
 volumes:
   uziy_pgdata:
+  uziy_pgadmin:

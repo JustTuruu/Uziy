@@ -82,7 +82,10 @@ interface RequestOptions {
   anonymous?: boolean;
 }
 
-export async function apiFetch<T>(path: string, opts: RequestOptions = {}): Promise<T> {
+export async function apiFetch<T>(
+  path: string,
+  opts: RequestOptions = {},
+): Promise<T> {
   const url = `${API_BASE_URL}${path}`;
   const headers: Record<string, string> = {};
 
@@ -308,13 +311,16 @@ export const adminApi = {
   campaign: (id: number) =>
     apiFetch<AdminCampaignDetail>(`/admin/campaigns/${id}`),
   moderate: (id: number, decision: "ACTIVE" | "REJECTED") =>
-    apiFetch<Campaign>(
-      `/admin/campaigns/${id}/moderate?decision=${decision}`,
-      { method: "PATCH" },
-    ),
+    apiFetch<Campaign>(`/admin/campaigns/${id}/moderate?decision=${decision}`, {
+      method: "PATCH",
+    }),
   pendingPayouts: () => apiFetch<Payout[]>("/admin/payouts"),
   payoutHistory: () => apiFetch<Payout[]>("/admin/payouts/history"),
-  decidePayout: (id: number, decision: "APPROVED" | "REJECTED", reason?: string) =>
+  decidePayout: (
+    id: number,
+    decision: "APPROVED" | "REJECTED",
+    reason?: string,
+  ) =>
     apiFetch<Payout>(
       `/admin/payouts/${id}/decision?decision=${decision}${
         reason ? `&reason=${encodeURIComponent(reason)}` : ""

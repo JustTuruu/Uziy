@@ -12,18 +12,18 @@ import mn.uziy.backend.security.JwtService
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus
 import org.springframework.security.crypto.password.PasswordEncoder
-import org.springframework.web.server.ResponseStatusException
+import mn.uziy.backend.support.assertFailsWithHttp
 import java.time.LocalDate
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
-class AuthControllerTest {
+class AuthServiceTest {
 
     private val users = mockk<UserRepository>()
     private val encoder = mockk<PasswordEncoder>()
     private val jwt = JwtService(AppProperties(jwt = AppProperties.Jwt("a".repeat(64), 1)))
-    private val controller = AuthController(users, encoder, jwt)
+    private val service = AuthServiceImpl(users, encoder, jwt)
 
     private fun seedUser(role: Role = Role.VIEWER) = UserEntity(
         id = 1L,
@@ -44,7 +44,7 @@ class AuthControllerTest {
         every { users.findByPhoneNumber("88112233") } returns u
         every { encoder.matches("password", "hashed") } returns true
 
-        val res = controller.login(LoginReq("88112233", "password"))
+        val res = service.login(LoginReq("88112233", "password"))
 
         assertTrue(res.token.isNotBlank())
         assertEquals(1L, res.user.id)
@@ -54,8 +54,8 @@ class AuthControllerTest {
     @Test
     fun `login throws 401 on unknown phone`() {
         every { users.findByPhoneNumber(any()) } returns null
-        val ex = assertFailsWith<ResponseStatusException> {
-            controller.login(LoginReq("99999999", "password"))
+        val ex = assertFailsWithHttp {
+            service.login(LoginReq("99999999", "password"))
         }
         assertEquals(HttpStatus.UNAUTHORIZED, ex.statusCode)
     }
@@ -64,8 +64,8 @@ class AuthControllerTest {
     fun `login throws 401 on bad password`() {
         every { users.findByPhoneNumber("88112233") } returns seedUser()
         every { encoder.matches("wrong", "hashed") } returns false
-        val ex = assertFailsWith<ResponseStatusException> {
-            controller.login(LoginReq("88112233", "wrong"))
+        val ex = assertFailsWithHttp {
+            service.login(LoginReq("88112233", "wrong"))
         }
         assertEquals(HttpStatus.UNAUTHORIZED, ex.statusCode)
     }
@@ -80,7 +80,7 @@ class AuthControllerTest {
             (firstArg<UserEntity>()).also { it.id = 100L }
         }
 
-        val res = controller.registerViewer(RegisterViewerReq(
+        val res = service.registerViewer(RegisterViewerReq(
             phoneNumber = "77000001",
             password = "password1",
             gender = Gender.MALE,
@@ -88,8 +88,7 @@ class AuthControllerTest {
             city = "Улаанбаатар",
         ))
 
-        assertEquals(HttpStatus.CREATED, res.statusCode)
-        val me = res.body!!.user
+        val me = res.user
         assertEquals(100L, me.id)
         assertEquals(Role.VIEWER, me.role)
         assertEquals("Улаанбаатар", me.city)
@@ -99,8 +98,8 @@ class AuthControllerTest {
     @Test
     fun `registerViewer throws 409 when phone already exists`() {
         every { users.existsByPhoneNumber("77000001") } returns true
-        val ex = assertFailsWith<ResponseStatusException> {
-            controller.registerViewer(RegisterViewerReq(
+        val ex = assertFailsWithHttp {
+            service.registerViewer(RegisterViewerReq(
                 phoneNumber = "77000001", password = "password1",
                 gender = Gender.MALE, birthDate = LocalDate.of(2000, 1, 1),
                 city = "Улаанбаатар",
@@ -119,20 +118,19 @@ class AuthControllerTest {
             (firstArg<UserEntity>()).also { it.id = 42L }
         }
 
-        val res = controller.registerCompany(RegisterCompanyReq(
+        val res = service.registerCompany(RegisterCompanyReq(
             phoneNumber = "88112233", password = "password1", companyName = "MobiCom",
         ))
 
-        assertEquals(HttpStatus.CREATED, res.statusCode)
-        assertEquals(Role.COMPANY, res.body!!.user.role)
-        assertEquals("MobiCom", res.body!!.user.companyName)
+        assertEquals(Role.COMPANY, res.user.role)
+        assertEquals("MobiCom", res.user.companyName)
     }
 
     @Test
     fun `registerCompany throws 409 when phone already exists`() {
         every { users.existsByPhoneNumber(any()) } returns true
-        val ex = assertFailsWith<ResponseStatusException> {
-            controller.registerCompany(RegisterCompanyReq("88112233", "password1", "X"))
+        val ex = assertFailsWithHttp {
+            service.registerCompany(RegisterCompanyReq("88112233", "password1", "X"))
         }
         assertEquals(HttpStatus.CONFLICT, ex.statusCode)
     }

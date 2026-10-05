@@ -60,28 +60,28 @@ Widget _button({
 
 void main() {
   group('formatPlaybackTime', () {
-    test('formats whole seconds as zero-padded mm:ss', () {
-      expect(formatPlaybackTime(0), '00:00');
-      expect(formatPlaybackTime(5), '00:05');
-      expect(formatPlaybackTime(59), '00:59');
-      expect(formatPlaybackTime(60), '01:00');
-      expect(formatPlaybackTime(61), '01:01');
-      expect(formatPlaybackTime(125), '02:05');
+    test('formats whole seconds as m:ss', () {
+      expect(formatPlaybackTime(0), '0:00');
+      expect(formatPlaybackTime(5), '0:05');
+      expect(formatPlaybackTime(59), '0:59');
+      expect(formatPlaybackTime(60), '1:00');
+      expect(formatPlaybackTime(61), '1:01');
+      expect(formatPlaybackTime(125), '2:05');
     });
 
     test('truncates fractions (player elapsed ticks by 0.25 s)', () {
-      expect(formatPlaybackTime(12.75), '00:12');
-      expect(formatPlaybackTime(59.99), '00:59');
+      expect(formatPlaybackTime(12.75), '0:12');
+      expect(formatPlaybackTime(59.99), '0:59');
     });
 
     test('treats negative and non-finite input as zero', () {
-      expect(formatPlaybackTime(-3), '00:00');
-      expect(formatPlaybackTime(double.nan), '00:00');
-      expect(formatPlaybackTime(double.infinity), '00:00');
+      expect(formatPlaybackTime(-3), '0:00');
+      expect(formatPlaybackTime(double.nan), '0:00');
+      expect(formatPlaybackTime(double.infinity), '0:00');
     });
 
-    test('does not wrap minutes into hours', () {
-      expect(formatPlaybackTime(3600), '60:00');
+    test('rolls over into hours', () {
+      expect(formatPlaybackTime(3600), '1:00:00');
     });
   });
 
@@ -312,7 +312,7 @@ void main() {
   });
 
   group('WatchTimeline', () {
-    testWidgets('shows elapsed and total as mm:ss', (tester) async {
+    testWidgets('shows elapsed and total as m:ss', (tester) async {
       await _pump(
         tester,
         const WatchTimeline(
@@ -322,8 +322,8 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('00:22'), findsOneWidget);
-      expect(find.text('00:45'), findsOneWidget);
+      expect(find.text('0:22'), findsOneWidget);
+      expect(find.text('0:45'), findsOneWidget);
     });
 
     testWidgets('exposes progress to screen readers', (tester) async {
@@ -345,7 +345,7 @@ void main() {
         tester.getSemantics(find.byType(WatchTimeline)),
         matchesSemantics(
           label: WatchTimeline.semanticLabel,
-          value: '02:05 / 02:05',
+          value: '2 мин 5 сек, нийт 2 мин 5 сек',
         ),
       );
       handle.dispose();

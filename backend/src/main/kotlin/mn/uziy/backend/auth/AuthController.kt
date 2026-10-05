@@ -5,12 +5,9 @@ import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 import mn.uziy.backend.domain.*
-import mn.uziy.backend.security.JwtService
-import org.springframework.http.ResponseEntity
-import org.springframework.security.crypto.password.PasswordEncoder
-import org.springframework.web.bind.annotation.*
-import org.springframework.web.server.ResponseStatusException
 import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.*
 import java.time.LocalDate
 
 data class LoginReq(
@@ -65,51 +62,19 @@ data class Me(
     }
 }
 
+/** HTTP adapter only — credential checking and account creation live in [AuthService]. */
 @RestController
 @RequestMapping("/auth")
-class AuthController(
-    private val users: UserRepository,
-    private val encoder: PasswordEncoder,
-    private val jwt: JwtService,
-) {
+class AuthController(private val auth: AuthService) {
 
     @PostMapping("/login")
-    fun login(@Valid @RequestBody body: LoginReq): AuthResponse {
-        val user = users.findByPhoneNumber(body.phoneNumber)
-            ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials")
-        if (!encoder.matches(body.password, user.passwordHash))
-            throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials")
-        return AuthResponse(token = jwt.issue(user), user = Me.of(user))
-    }
+    fun login(@Valid @RequestBody body: LoginReq): AuthResponse = auth.login(body)
 
     @PostMapping("/register/viewer")
-    fun registerViewer(@Valid @RequestBody body: RegisterViewerReq): ResponseEntity<AuthResponse> {
-        if (users.existsByPhoneNumber(body.phoneNumber))
-            throw ResponseStatusException(HttpStatus.CONFLICT, "Phone already registered")
-        val user = users.save(UserEntity(
-            phoneNumber   = body.phoneNumber,
-            passwordHash  = encoder.encode(body.password)!!,
-            role          = Role.VIEWER,
-            gender        = body.gender,
-            birthDate     = body.birthDate,
-            city          = body.city,
-            district      = body.district,
-        ))
-        return ResponseEntity.status(HttpStatus.CREATED)
-            .body(AuthResponse(token = jwt.issue(user), user = Me.of(user)))
-    }
+    fun registerViewer(@Valid @RequestBody body: RegisterViewerReq): ResponseEntity<AuthResponse> =
+        ResponseEntity.status(HttpStatus.CREATED).body(auth.registerViewer(body))
 
     @PostMapping("/register/company")
-    fun registerCompany(@Valid @RequestBody body: RegisterCompanyReq): ResponseEntity<AuthResponse> {
-        if (users.existsByPhoneNumber(body.phoneNumber))
-            throw ResponseStatusException(HttpStatus.CONFLICT, "Phone already registered")
-        val user = users.save(UserEntity(
-            phoneNumber   = body.phoneNumber,
-            passwordHash  = encoder.encode(body.password)!!,
-            role          = Role.COMPANY,
-            companyName   = body.companyName,
-        ))
-        return ResponseEntity.status(HttpStatus.CREATED)
-            .body(AuthResponse(token = jwt.issue(user), user = Me.of(user)))
-    }
+    fun registerCompany(@Valid @RequestBody body: RegisterCompanyReq): ResponseEntity<AuthResponse> =
+        ResponseEntity.status(HttpStatus.CREATED).body(auth.registerCompany(body))
 }

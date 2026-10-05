@@ -1,20 +1,10 @@
 import { formatDuration } from "./utils";
 
-/** Allowed video campaign length, in seconds. */
 export const MIN_VIDEO_SECONDS = 5;
 export const MAX_VIDEO_SECONDS = 180;
 
 export type VideoLengthStatus = "idle" | "reading" | "ready" | "error";
 
-/**
- * Reads a video file's length in whole seconds from its metadata, entirely
- * in the browser (no upload needed). Rounds DOWN so we never claim a video
- * is longer than it really is — the viewer app's full-watch gate unlocks at
- * `durationSeconds`, which must always be reachable.
- *
- * Rejects when the browser can't decode the file or reports no finite
- * duration. `createVideo` is injectable for tests.
- */
 export function readVideoDuration(
   file: Blob,
   createVideo: () => HTMLVideoElement = () => document.createElement("video"),
@@ -55,7 +45,6 @@ export function isVideoLengthAllowed(seconds: number | null): boolean {
   );
 }
 
-/** Status line shown under the file picker in the campaign wizard. */
 export function describeVideoLength(
   status: VideoLengthStatus,
   seconds: number | null,

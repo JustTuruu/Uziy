@@ -72,9 +72,7 @@ export function Sidebar({ brand, subtitle, items, footer }: Props) {
                 >
                   {item.icon}
                 </span>
-                <span
-                  className={cn("font-medium", active && "font-semibold")}
-                >
+                <span className={cn("font-medium", active && "font-semibold")}>
                   {item.label}
                 </span>
               </span>

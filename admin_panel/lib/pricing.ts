@@ -1,22 +1,5 @@
 import { formatNumber, formatTugrik } from "./utils";
 
-/**
- * Campaign pricing — the TypeScript twin of the backend's
- * mn.uziy.backend.pricing.CampaignPricing. Both sides MUST produce identical
- * numbers for the same inputs (the server recomputes on create and its
- * values win), so this uses integer arithmetic only: no floating percent
- * math, every division is an exact floor/ceil on whole tögrög.
- *
- * The company enters a total budget B plus ONE of:
- *   - VIEWERS mode: how many viewers N to reach → reward per viewer is derived
- *   - REWARD mode:  how much each viewer R receives → reach N is derived
- * The platform keeps `commissionPercent` of every viewer's cost C.
- *
- * Inputs must stay below ~9e13 so intermediate products (x100) remain safe
- * integers; the wizard's fields cap their length (MAX_MONEY_DIGITS) for this.
- */
-
-/** Max digits accepted by money / count fields feeding this module. */
 export const MAX_MONEY_DIGITS = 13;
 
 export type PricingMode = "VIEWERS" | "REWARD";
@@ -29,46 +12,28 @@ export type PricingErrorCode =
   | "REWARD_BELOW_MIN";
 
 export interface PricingInput {
-  /** Total budget the company is willing to spend, whole ₮. */
   budget: number;
-  /** Platform commission, whole percent 1..90 (admin setting). */
   commissionPercent: number;
-  /** Smallest reward a viewer may receive, whole ₮ >= 1 (admin setting). */
   minRewardPerViewer: number;
   mode: PricingMode;
-  /** Driver value in VIEWERS mode. */
   targetViewers?: number;
-  /** Driver value in REWARD mode, whole ₮. */
   rewardPerViewer?: number;
 }
 
 export interface PricingResult {
   mode: PricingMode;
   budget: number;
-  /** N — how many viewers the campaign reaches. */
   targetViewers: number;
-  /** C — what one viewer costs the company (reward + commission). */
   costPerViewer: number;
-  /** R — what one viewer receives. */
   rewardPerViewer: number;
   commissionPercent: number;
-  /** P = C × N — what the company is charged (never more than the budget). */
   payable: number;
-  /** (C − R) × N — the platform's total cut. */
   commissionTotal: number;
-  /** R × N — the total paid out to viewers. */
   rewardsTotal: number;
-  /** B − P — part of the budget that is simply not charged. */
   unused: number;
   error: PricingErrorCode | null;
 }
 
-/**
- * floor(a / b) for non-negative safe integers. Exact: the correctly rounded
- * quotient of two integers below 2^53 can never round up across an integer
- * boundary, so Math.floor gives the true integer quotient (the test suite
- * cross-checks this against BigInt).
- */
 function floorDiv(a: number, b: number): number {
   return Math.floor(a / b);
 }
@@ -77,13 +42,6 @@ function isWhole(n: number | undefined): n is number {
   return typeof n === "number" && Number.isSafeInteger(n);
 }
 
-/**
- * Computes the full price breakdown. Never throws for bad user input —
- * problems come back as `error` (first match wins, in contract order) while
- * every value that could be computed is still filled in so the UI can show
- * it. Throws RangeError only for an impossible admin setting (a programmer
- * or data error, since the DB constrains both).
- */
 export function computeCampaignPricing(input: PricingInput): PricingResult {
   const c = input.commissionPercent;
   const m = input.minRewardPerViewer;
@@ -147,7 +105,6 @@ export function computeCampaignPricing(input: PricingInput): PricingResult {
   return filled;
 }
 
-/** User-facing Mongolian message for a pricing error (same text as the API). */
 export function pricingErrorMessage(
   code: PricingErrorCode,
   minRewardPerViewer: number,
@@ -168,10 +125,6 @@ export function pricingErrorMessage(
   }
 }
 
-/**
- * One-line "how was this computed" explanation shown under the budget
- * summary. Returns null when there is nothing meaningful to explain.
- */
 export function describePricing(p: PricingResult): string | null {
   if (
     p.error === "BUDGET_INVALID" ||
@@ -197,11 +150,6 @@ export function describePricing(p: PricingResult): string | null {
   );
 }
 
-/**
- * The part of the create-campaign request that tells the server how to
- * price it: EXACTLY ONE of targetViewers / rewardPerUser, matching the
- * field the company typed in last. The server recomputes everything else.
- */
 export function pricingRequestFields(
   p: Pick<PricingResult, "mode" | "targetViewers" | "rewardPerViewer">,
 ): { targetViewers: number } | { rewardPerUser: number } {
@@ -213,7 +161,6 @@ export function pricingRequestFields(
 export const MIN_COMMISSION_PERCENT = 1;
 export const MAX_COMMISSION_PERCENT = 90;
 
-/** Validates the admin's commission settings form; null when valid. */
 export function validateCommissionSettings(
   commissionPercent: number,
   minRewardPerViewer: number,

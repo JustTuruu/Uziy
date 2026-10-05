@@ -1,16 +1,6 @@
 import type { BadgeTone } from "@/components/ui/badge";
 import type { CampaignStatus } from "./api";
 
-/**
- * Single source of truth for how a campaign status is labelled and coloured
- * in both the company and the admin panels, and which status changes a
- * company may make itself.
- *
- * Lifecycle: create → AWAITING_PAYMENT → (company pays) → PENDING (paid,
- * awaiting admin moderation) → ACTIVE | REJECTED. After that the company can
- * pause / resume / complete; everything else is admin-only.
- */
-
 export const CAMPAIGN_STATUS_LABEL: Record<CampaignStatus, string> = {
   AWAITING_PAYMENT: "Төлбөр хүлээгдэж буй",
   PENDING: "Хянагдаж буй",
@@ -37,7 +27,6 @@ export function campaignStatusTone(status: CampaignStatus): BadgeTone {
   return CAMPAIGN_STATUS_TONE[status] ?? "neutral";
 }
 
-/** Statuses a company may set on its own campaign via PATCH …/status. */
 export type CompanySettableStatus = "ACTIVE" | "PAUSED" | "COMPLETED";
 
 const COMPANY_TRANSITIONS: Partial<
@@ -47,10 +36,6 @@ const COMPANY_TRANSITIONS: Partial<
   PAUSED: ["ACTIVE", "COMPLETED"],
 };
 
-/**
- * What the company may switch this campaign to (mirrors the backend rule:
- * ACTIVE→PAUSED, PAUSED→ACTIVE, ACTIVE|PAUSED→COMPLETED; nothing else).
- */
 export function companyStatusTransitions(
   from: CampaignStatus,
 ): readonly CompanySettableStatus[] {
@@ -66,7 +51,6 @@ export function canCompanySetStatus(
   );
 }
 
-/** A campaign whose money has been received (paid or legacy pre-payment). */
 export function isCampaignPaid(status: CampaignStatus): boolean {
   return status !== "AWAITING_PAYMENT";
 }

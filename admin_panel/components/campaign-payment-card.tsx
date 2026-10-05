@@ -26,19 +26,12 @@ import { formatNumber, formatTugrik } from "@/lib/utils";
 
 type Phase = "idle" | "paying" | "paid" | "error";
 
-/**
- * Invoice + "Төлөх" for one AWAITING_PAYMENT campaign. Used as the last step
- * of the campaign wizard and on the campaign detail page. All amounts come
- * from the server-returned campaign (it priced it). Payment is simulated
- * for now — the backend marks it paid instantly — until QPay is wired.
- */
 export function CampaignPaymentCard({
   campaign,
   variant = "detail",
   onPaid,
 }: {
   campaign: Campaign;
-  /** "wizard" adds navigation after success and the "saved" note on error. */
   variant?: "wizard" | "detail";
   onPaid?: (result: PayCampaignResponse) => void;
 }) {
@@ -144,7 +137,10 @@ export function CampaignPaymentCard({
         </div>
 
         <div className="flex items-start gap-2 rounded-lg border border-[color-mix(in_oklab,var(--color-accent)_35%,transparent)] bg-[color-mix(in_oklab,var(--color-accent)_10%,transparent)] px-3 py-2 text-xs text-[var(--color-text-primary)]">
-          <FlaskConical size={14} className="mt-0.5 shrink-0 text-[var(--color-accent)]" />
+          <FlaskConical
+            size={14}
+            className="mt-0.5 shrink-0 text-[var(--color-accent)]"
+          />
           <span>Туршилтын горим: одоогоор бодит төлбөр хийгдэхгүй</span>
         </div>
 

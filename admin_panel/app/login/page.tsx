@@ -3,17 +3,14 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Building2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import { ApiError, auth, authApi } from "@/lib/api";
 
-type Role = "COMPANY" | "ADMIN";
+const ROLE = "ADMIN" as const;
 
 export default function LoginPage() {
   const router = useRouter();
-  const [role, setRole] = useState<Role>("COMPANY");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,31 +26,22 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await authApi.login({ phoneNumber: phone, password });
-      if (res.user.role !== role) {
-        setError(
-          role === "ADMIN"
-            ? "Энэ данс админ эрхгүй байна"
-            : "Энэ данс компани эрхгүй байна",
-        );
+      if (res.user.role !== ROLE) {
+        setError("Энэ данс админ эрхгүй байна");
         setLoading(false);
         return;
       }
       auth.setToken(res.token);
       auth.setUser(res.user);
-      router.push(role === "ADMIN" ? "/admin" : "/company");
+      router.push("/");
     } catch (e) {
-      // Log the real error to the browser console so it's easy to
-      // diagnose in DevTools (network error, CORS block, etc.).
       console.error("[login] request failed:", e);
       if (e instanceof ApiError && e.status === 401) {
         setError("Утас эсвэл нууц үг буруу байна");
       } else if (e instanceof ApiError) {
         setError(e.message || "Алдаа гарлаа");
       } else {
-        // Surface the real message rather than a generic string so the
-        // user can see whether it's DNS, CORS, refused connection, etc.
-        const detail =
-          e instanceof Error ? e.message : String(e);
+        const detail = e instanceof Error ? e.message : String(e);
         setError(`Сервертэй холбогдож чадсангүй: ${detail}`);
       }
       setLoading(false);
@@ -81,9 +69,7 @@ export default function LoginPage() {
         <div>
           <h2 className="max-w-md text-3xl font-extrabold leading-tight tracking-tight">
             Зорилтот үзэгчдэдээ хүрч,{" "}
-            <span className="text-[var(--color-primary)]">
-              жинхэнэ дата
-            </span>{" "}
+            <span className="text-[var(--color-primary)]">жинхэнэ дата</span>{" "}
             цуглуул.
           </h2>
           <p className="mt-4 max-w-md text-sm text-[var(--color-text-secondary)]">
@@ -103,28 +89,11 @@ export default function LoginPage() {
       <div className="flex w-full items-center justify-center px-6 py-12 lg:w-1/2">
         <div className="w-full max-w-sm">
           <h1 className="text-2xl font-extrabold tracking-tight">
-            Console-д нэвтрэх
+            Супер Админ самбарт нэвтрэх
           </h1>
           <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-            Өөрийн үүргийн дагуу нэвтрэнэ үү
+            Зөвхөн платформын админуудад
           </p>
-
-          <div className="mt-6 grid grid-cols-2 gap-2">
-            <RolePicker
-              active={role === "COMPANY"}
-              onClick={() => setRole("COMPANY")}
-              icon={<Building2 size={18} />}
-              label="Компани"
-              hint="Видео байршуулах"
-            />
-            <RolePicker
-              active={role === "ADMIN"}
-              onClick={() => setRole("ADMIN")}
-              icon={<ShieldCheck size={18} />}
-              label="Супер Админ"
-              hint="Платформын хяналт"
-            />
-          </div>
 
           <form onSubmit={submit} noValidate className="mt-6 space-y-4">
             <Input
@@ -158,61 +127,8 @@ export default function LoginPage() {
               {loading ? "Нэвтэрч байна..." : "Нэвтрэх"}
             </Button>
           </form>
-
-          <div className="mt-6 text-center text-xs text-[var(--color-text-muted)]">
-            Компаниар бүртгүүлэх бол{" "}
-            <a
-              href="mailto:sales@uziy.mn"
-              className="text-[var(--color-primary)] hover:underline"
-            >
-              sales@uziy.mn
-            </a>
-          </div>
         </div>
       </div>
     </div>
-  );
-}
-
-function RolePicker({
-  active,
-  onClick,
-  icon,
-  label,
-  hint,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  label: string;
-  hint: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition-colors",
-        active
-          ? "border-[var(--color-primary)] bg-[color-mix(in_oklab,var(--color-primary)_10%,transparent)]"
-          : "border-[var(--color-divider)] bg-[var(--color-surface)] hover:border-[var(--color-text-muted)]",
-      )}
-    >
-      <span
-        className={cn(
-          active
-            ? "text-[var(--color-primary)]"
-            : "text-[var(--color-text-secondary)]",
-        )}
-      >
-        {icon}
-      </span>
-      <span className="text-sm font-bold text-[var(--color-text-primary)]">
-        {label}
-      </span>
-      <span className="text-xs text-[var(--color-text-secondary)]">
-        {hint}
-      </span>
-    </button>
   );
 }

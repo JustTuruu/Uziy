@@ -65,7 +65,7 @@ The API listens on http://localhost:8080.
 - **Migrations** live in `src/main/resources/db/migration/` and run
   automatically on startup via Flyway. Add new migrations as `V<N>__desc.sql`.
 - The **atomic reward transaction** (spec §4C) lives in
-  `viewer/ViewerController.kt::submit`. It runs at `SERIALIZABLE` isolation
+  `viewer/RewardService.kt` (`RewardServiceImpl.submitSurvey`). It runs at `SERIALIZABLE` isolation
   and uses `CampaignRepository.tryDecrementBudget` for a conditional update
   that races safely with concurrent viewers.
 - Dev-seeded users all have password `password` (BCrypt cost 10, hash
@@ -91,3 +91,10 @@ The API listens on http://localhost:8080.
 docker compose down -v && docker compose up -d postgres
 ./gradlew bootRun
 ```
+
+## Browse the database (pgAdmin)
+
+`docker compose up -d pgadmin` → http://localhost:5050 (no login). The
+"Uziy (local)" server is pre-registered; when it asks for a password use
+`uziy_dev`. Tables: Servers → Uziy (local) → Databases → uziy → Schemas →
+public → Tables → right-click → View/Edit Data. Dev only.

@@ -13,11 +13,6 @@ import {
 } from "@/lib/pricing";
 import { cn, formatNumber, formatTugrik, parseIntInput } from "@/lib/utils";
 
-/**
- * Raw state of the budget step. Only the DRIVER field's text matters (the
- * one the company typed in last, per `mode`); the other field always shows
- * the value computed from it.
- */
 export interface BudgetFieldsValue {
   budgetText: string;
   mode: PricingMode;
@@ -37,7 +32,6 @@ export const DEFAULT_BUDGET_FIELDS: BudgetFieldsValue = {
   rewardText: "",
 };
 
-/** Prices the current field state (same function the server mirrors). */
 export function pricingFromFields(
   value: BudgetFieldsValue,
   settings: PricingSettings,
@@ -54,11 +48,6 @@ export function pricingFromFields(
 
 const COMPUTED_HINT = "Автоматаар тооцоолсон";
 
-/**
- * Total budget + two linked fields: "how many viewers" and "how much each
- * viewer gets". Typing in either one makes it the driver and the other is
- * recomputed; a summary shows the platform commission and the amount due.
- */
 export function CampaignBudgetFields({
   value,
   onChange,
@@ -73,8 +62,6 @@ export function CampaignBudgetFields({
     [value, settings],
   );
 
-  // With a missing input there is nothing sensible to show in the
-  // computed field — leave it blank rather than a misleading "0".
   const inputMissing =
     pricing.error === "BUDGET_INVALID" ||
     pricing.error === "VIEWERS_INVALID" ||
@@ -172,9 +159,7 @@ export function CampaignBudgetFields({
             {explanation}
           </div>
           {ok && pricing.unused > 0 && (
-            <div>
-              Үлдэгдэл {formatTugrik(pricing.unused)} төлбөрт орохгүй.
-            </div>
+            <div>Үлдэгдэл {formatTugrik(pricing.unused)} төлбөрт орохгүй.</div>
           )}
         </div>
       )}

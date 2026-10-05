@@ -25,6 +25,7 @@ class CorsConfigTest {
         cors = AppProperties.Cors(
             allowedOrigins = listOf(
                 "http://localhost:3000",
+                "http://localhost:3001",
                 "http://localhost:8080",
             ),
         ),
@@ -49,12 +50,13 @@ class CorsConfigTest {
     }
 
     @Test
-    fun `allowed origins include localhost 3000 and 8080`() {
+    fun `allowed origins include both consoles (3000, 3001) and 8080`() {
         val cfg = config.corsConfigurationSource()
             .getCorsConfiguration(MockHttpServletRequest("GET", "/x").apply {
                 addHeader("Origin", "http://localhost:3000")
             })!!
         assertTrue("http://localhost:3000" in cfg.allowedOrigins!!)
+        assertTrue("http://localhost:3001" in cfg.allowedOrigins!!)
         assertTrue("http://localhost:8080" in cfg.allowedOrigins!!)
     }
 

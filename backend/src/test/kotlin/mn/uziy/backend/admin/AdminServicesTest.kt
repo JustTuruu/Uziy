@@ -8,22 +8,23 @@ import mn.uziy.backend.domain.*
 import mn.uziy.backend.security.JwtPrincipal
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus
-import org.springframework.web.server.ResponseStatusException
+import mn.uziy.backend.support.assertFailsWithHttp
 import java.time.LocalDate
 import java.util.Optional
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
-class AdminControllerTest {
+class AdminServicesTest {
 
     private val users = mockk<UserRepository>()
     private val campaigns = mockk<CampaignRepository>()
     private val history = mockk<ViewHistoryRepository>()
     private val payouts = mockk<PayoutRepository>()
     private val platformSettings = mockk<PlatformSettingsRepository>()
-    private val controller =
-        AdminController(users, campaigns, history, payouts, platformSettings)
+    private val statsSvc = AdminStatsServiceImpl(users, campaigns, payouts, platformSettings)
+    private val userSvc = UserAdminServiceImpl(users)
+    private val moderation = CampaignModerationServiceImpl(campaigns, users, history)
 
     private val adminPrincipal = JwtPrincipal(userId = 1L, role = Role.ADMIN)
 
@@ -45,7 +46,7 @@ class AdminControllerTest {
         every { payouts.findAllByStatusOrderByRequestedAtAsc(PayoutStatus.PENDING) } returns
                 (1..3).map { mockPayout(it.toLong()) }
 
-        val s = controller.stats()
+        val s = statsSvc.stats()
 
         assertEquals(24_580, s.totalUsers)
         assertEquals(147, s.totalCampaigns)
@@ -67,7 +68,7 @@ class AdminControllerTest {
                 birthDate = LocalDate.now().minusYears(30),
                 city = "Улаанбаатар", balance = 5000.0, isVerified = true),
         )
-        val list = controller.listUsers()
+        val list = userSvc.list()
         assertEquals(1, list.size)
         assertEquals(30, list[0].age)
         assertTrue(list[0].isVerified)
@@ -83,7 +84,7 @@ class AdminControllerTest {
         val saved = slot<UserEntity>()
         every { users.save(capture(saved)) } answers { saved.captured }
 
-        val dto = controller.verify(10L)
+        val dto = userSvc.verify(10L)
 
         assertTrue(dto.isVerified)
         assertTrue(saved.captured.isVerified)
@@ -97,7 +98,7 @@ class AdminControllerTest {
             mockCampaign(1, CampaignStatus.ACTIVE),
             mockCampaign(2, CampaignStatus.PAUSED),
         )
-        val list = controller.listCampaigns(status = null, companyId = null)
+        val list = moderation.list(status = null, companyId = null)
         assertEquals(2, list.size)
     }
 
@@ -105,7 +106,7 @@ class AdminControllerTest {
     fun `listCampaigns with status filters by status`() {
         every { campaigns.findAllByStatusOrderByCreatedAtDesc(CampaignStatus.PENDING) } returns
                 listOf(mockCampaign(1, CampaignStatus.PENDING))
-        val list = controller.listCampaigns(
+        val list = moderation.list(
             status = CampaignStatus.PENDING, companyId = null,
         )
         assertEquals(1, list.size)
@@ -118,7 +119,7 @@ class AdminControllerTest {
             mockCampaign(1, CampaignStatus.ACTIVE),
             mockCampaign(2, CampaignStatus.PAUSED),
         )
-        val list = controller.listCampaigns(status = null, companyId = 500L)
+        val list = moderation.list(status = null, companyId = 500L)
         assertEquals(2, list.size)
     }
 
@@ -129,7 +130,7 @@ class AdminControllerTest {
             mockCampaign(2, CampaignStatus.PAUSED),
             mockCampaign(3, CampaignStatus.ACTIVE),
         )
-        val list = controller.listCampaigns(
+        val list = moderation.list(
             status = CampaignStatus.ACTIVE, companyId = 500L,
         )
         assertEquals(2, list.size)
@@ -145,7 +146,7 @@ class AdminControllerTest {
         every { users.findById(500L) } returns Optional.of(mockCompany(500L, "MobiCom"))
         every { history.countByCampaignId(9L) } returns 42L
 
-        val d = controller.getCampaign(9L)
+        val d = moderation.get(9L)
 
         assertEquals(9L, d.campaign.id)
         assertEquals(500L, d.companyId)
@@ -157,8 +158,8 @@ class AdminControllerTest {
     @Test
     fun `getCampaign 404s when the campaign does not exist`() {
         every { campaigns.findById(any()) } returns Optional.empty()
-        val ex = assertFailsWith<ResponseStatusException> {
-            controller.getCampaign(999L)
+        val ex = assertFailsWithHttp {
+            moderation.get(999L)
         }
         assertEquals(HttpStatus.NOT_FOUND, ex.statusCode)
     }
@@ -170,7 +171,7 @@ class AdminControllerTest {
         every { users.findById(500L) } returns Optional.empty()
         every { history.countByCampaignId(10L) } returns 0L
 
-        val d = controller.getCampaign(10L)
+        val d = moderation.get(10L)
         assertEquals(null, d.companyName)
     }
 
@@ -181,7 +182,7 @@ class AdminControllerTest {
         every { users.findById(500L) } returns Optional.of(
             mockCompany(500L, "MobiCom"),
         )
-        val u = controller.getUser(500L)
+        val u = userSvc.get(500L)
         assertEquals(500L, u.id)
         assertEquals(Role.COMPANY, u.role)
         assertEquals("MobiCom", u.companyName)
@@ -190,8 +191,8 @@ class AdminControllerTest {
     @Test
     fun `getUser 404s when missing`() {
         every { users.findById(any()) } returns Optional.empty()
-        val ex = assertFailsWith<ResponseStatusException> {
-            controller.getUser(999L)
+        val ex = assertFailsWithHttp {
+            userSvc.get(999L)
         }
         assertEquals(HttpStatus.NOT_FOUND, ex.statusCode)
     }
@@ -205,7 +206,7 @@ class AdminControllerTest {
         val saved = slot<CampaignEntity>()
         every { campaigns.save(capture(saved)) } answers { saved.captured }
 
-        val dto = controller.moderate(1L, CampaignStatus.ACTIVE, adminPrincipal)
+        val dto = moderation.moderate(1L, CampaignStatus.ACTIVE)
         assertEquals(CampaignStatus.ACTIVE, dto.status)
         assertEquals(CampaignStatus.ACTIVE, saved.captured.status)
     }
@@ -216,14 +217,14 @@ class AdminControllerTest {
         every { campaigns.findById(1L) } returns Optional.of(c)
         every { campaigns.save(any()) } answers { firstArg() }
 
-        val dto = controller.moderate(1L, CampaignStatus.REJECTED, adminPrincipal)
+        val dto = moderation.moderate(1L, CampaignStatus.REJECTED)
         assertEquals(CampaignStatus.REJECTED, dto.status)
     }
 
     @Test
     fun `moderate rejects invalid decisions like PAUSED`() {
-        val ex = assertFailsWith<ResponseStatusException> {
-            controller.moderate(1L, CampaignStatus.PAUSED, adminPrincipal)
+        val ex = assertFailsWithHttp {
+            moderation.moderate(1L, CampaignStatus.PAUSED)
         }
         assertEquals(HttpStatus.BAD_REQUEST, ex.statusCode)
     }
@@ -233,19 +234,19 @@ class AdminControllerTest {
         every { campaigns.findById(1L) } returns Optional.of(
             mockCampaign(1, CampaignStatus.AWAITING_PAYMENT),
         )
-        val ex = assertFailsWith<ResponseStatusException> {
-            controller.moderate(1L, CampaignStatus.ACTIVE, adminPrincipal)
+        val ex = assertFailsWithHttp {
+            moderation.moderate(1L, CampaignStatus.ACTIVE)
         }
         assertEquals(HttpStatus.CONFLICT, ex.statusCode)
-        assertEquals(AdminController.UNPAID_MESSAGE, ex.reason)
+        assertEquals(CampaignModerationServiceImpl.UNPAID_MESSAGE, ex.reason)
         verify(exactly = 0) { campaigns.save(any()) }
     }
 
     @Test
     fun `moderate 404s when the campaign does not exist`() {
         every { campaigns.findById(any()) } returns Optional.empty()
-        val ex = assertFailsWith<ResponseStatusException> {
-            controller.moderate(1L, CampaignStatus.ACTIVE, adminPrincipal)
+        val ex = assertFailsWithHttp {
+            moderation.moderate(1L, CampaignStatus.ACTIVE)
         }
         assertEquals(HttpStatus.NOT_FOUND, ex.statusCode)
     }
@@ -257,7 +258,7 @@ class AdminControllerTest {
             commissionPercent = 30; targetViewers = 1000; this.paidAt = paidAt
         }
         every { campaigns.findAllByStatusOrderByCreatedAtDesc(CampaignStatus.PENDING) } returns listOf(c)
-        val dto = controller.listCampaigns(status = CampaignStatus.PENDING, companyId = null).single()
+        val dto = moderation.list(status = CampaignStatus.PENDING, companyId = null).single()
         assertEquals(30, dto.commissionPercent)
         assertEquals(1000, dto.targetViewers)
         assertEquals(paidAt, dto.paidAt)
@@ -268,8 +269,8 @@ class AdminControllerTest {
         every { campaigns.findById(1L) } returns Optional.of(
             mockCampaign(1, CampaignStatus.ACTIVE),
         )
-        val ex = assertFailsWith<ResponseStatusException> {
-            controller.moderate(1L, CampaignStatus.ACTIVE, adminPrincipal)
+        val ex = assertFailsWithHttp {
+            moderation.moderate(1L, CampaignStatus.ACTIVE)
         }
         assertEquals(HttpStatus.CONFLICT, ex.statusCode)
     }

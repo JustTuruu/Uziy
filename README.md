@@ -174,7 +174,7 @@ flowchart LR
 </details>
 
 <details>
-<summary><b>Web consoles</b> — <code>admin_panel/</code></summary>
+<summary><b>Web consoles</b> — <code>company_panel/</code> + <code>admin_panel/</code></summary>
 
 - **Next.js 16** (App Router, Turbopack, Server Components by default)
 - **React 19**
@@ -241,7 +241,8 @@ uziy/
 │   ├── android/ ios/ web/ …   platform folders
 │   └── test/                  flutter_test smoke tests
 │
-├── admin_panel/               ← Next.js — company + admin consoles
+├── company_panel/             ← Next.js — company console (port 3000)
+├── admin_panel/               ← Next.js — super admin console (port 3001)
 │   ├── package.json
 │   ├── app/
 │   │   ├── layout.tsx         root <html lang="mn">
@@ -309,16 +310,23 @@ docker compose up -d postgres          # boots Postgres 16 on :5432
 # API up on http://localhost:8080
 ```
 
-**Terminal 2 — Admin + Company console**
+**Terminal 2 — Company console** (http://localhost:3000)
+
+```bash
+cd company_panel
+pnpm install
+pnpm dev
+```
+
+**Terminal 3 — Super Admin console** (http://localhost:3001)
 
 ```bash
 cd admin_panel
 pnpm install
 pnpm dev
-# open http://localhost:3000 → pick "Компани" or "Супер Админ"
 ```
 
-**Terminal 3 — Viewer app**
+**Terminal 4 — Viewer app**
 
 ```bash
 cd viewer_app
@@ -584,8 +592,9 @@ injected via systemd `EnvironmentFile=`.
 
 ### Web consoles (Next.js)
 
-Deploy to **Vercel** — the `admin_panel/` directory is a standard
-Next.js project.
+Deploy to **Vercel** — `company_panel/` and `admin_panel/` are each a
+standard Next.js project (two Vercel projects; add both origins to the
+backend's `uziy.cors.allowed-origins`).
 
 ```bash
 cd admin_panel
@@ -648,7 +657,8 @@ This is a private project, but the internal contribution flow is:
    ```bash
    ( cd backend      && ./gradlew test )
    ( cd viewer_app   && flutter test )
-   ( cd admin_panel  && pnpm test 2>/dev/null || echo "no tests yet" )
+   ( cd company_panel && pnpm test )
+   ( cd admin_panel  && pnpm test )
    ```
 4. Update `docs/SPEC.md` if the change touches the product model.
 5. Open a PR to `main`.
