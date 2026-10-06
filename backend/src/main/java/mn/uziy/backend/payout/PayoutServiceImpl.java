@@ -1,12 +1,12 @@
 package mn.uziy.backend.payout;
 
+import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-import mn.uziy.backend.common.BadRequestException;
 import mn.uziy.backend.common.ConflictException;
+import mn.uziy.backend.common.event.DomainEventPublisher;
 import mn.uziy.backend.domain.PayoutEntity;
 import mn.uziy.backend.domain.PayoutRepository;
 import mn.uziy.backend.domain.PayoutStatus;
@@ -21,19 +21,34 @@ public class PayoutServiceImpl implements PayoutService {
 
     private final PayoutRepository payouts;
     private final UserRepository users;
+    private final PayoutRuleChain requestRules;
+    private final PayoutDecisionStrategies decisionStrategies;
+    private final PayoutMapper mapper;
+    private final DomainEventPublisher events;
+    private final Clock clock;
 
-    public PayoutServiceImpl(PayoutRepository payouts, UserRepository users) {
+    public PayoutServiceImpl(
+            PayoutRepository payouts,
+            UserRepository users,
+            PayoutRuleChain requestRules,
+            PayoutDecisionStrategies decisionStrategies,
+            PayoutMapper mapper,
+            DomainEventPublisher events,
+            Clock clock) {
         this.payouts = payouts;
         this.users = users;
+        this.requestRules = requestRules;
+        this.decisionStrategies = decisionStrategies;
+        this.mapper = mapper;
+        this.events = events;
+        this.clock = clock;
     }
 
     @Override
     @Transactional
     public PayoutDto request(long userId, CreatePayoutReq req) {
         UserEntity user = users.findById(userId).orElseThrow();
-        if (user.getBalance() < req.amount()) {
-            throw new BadRequestException("Insufficient balance");
-        }
+        requestRules.validate(user, req);
 
         // Any prior APPROVED payout => not a first payout.
         boolean isFirst = !payouts.existsByUserIdAndStatus(user.getId(), PayoutStatus.APPROVED);
@@ -51,14 +66,16 @@ public class PayoutServiceImpl implements PayoutService {
         p.setAccountName(req.accountName());
         p.setNationalId(req.nationalId());
         p.setFirstPayout(isFirst);
-        return toDto(payouts.save(p), user.getPhoneNumber());
+        PayoutDto dto = mapper.toDto(payouts.save(p), user.getPhoneNumber());
+        events.publish(new PayoutRequested(dto.id(), dto.userId(), dto.amount()));
+        return dto;
     }
 
     @Override
     public List<PayoutDto> mine(long userId) {
         UserEntity user = users.findById(userId).orElseThrow();
         return payouts.findAllByUserIdOrderByRequestedAtDesc(user.getId()).stream()
-                .map(p -> toDto(p, user.getPhoneNumber()))
+                .map(p -> mapper.toDto(p, user.getPhoneNumber()))
                 .toList();
     }
 
@@ -76,9 +93,7 @@ public class PayoutServiceImpl implements PayoutService {
     @Override
     @Transactional
     public PayoutDto decide(long payoutId, PayoutStatus decision, @Nullable String reason, long adminId) {
-        if (decision == PayoutStatus.PENDING) {
-            throw new BadRequestException("Cannot set PENDING");
-        }
+        PayoutDecisionStrategy strategy = decisionStrategies.forDecision(decision); // rejects PENDING
 
         PayoutEntity p = payouts.findById(payoutId).orElseThrow();
         if (p.getStatus() != PayoutStatus.PENDING) {
@@ -86,21 +101,15 @@ public class PayoutServiceImpl implements PayoutService {
         }
 
         UserEntity user = users.findById(p.getUserId()).orElseThrow();
-        if (decision == PayoutStatus.APPROVED) {
-            if (p.isFirstPayout()) {
-                user.setVerified(true);
-            }
-            users.save(user);
-        } else if (decision == PayoutStatus.REJECTED) {
-            user.setBalance(user.getBalance() + p.getAmount()); // refund the reservation
-            users.save(user);
-        }
+        strategy.apply(user, p, reason);
+        users.save(user);
 
         p.setStatus(decision);
-        p.setRejectReason(decision == PayoutStatus.REJECTED ? reason : null);
         p.setDecidedBy(adminId);
-        p.setDecidedAt(OffsetDateTime.now());
-        return toDto(payouts.save(p), user.getPhoneNumber());
+        p.setDecidedAt(OffsetDateTime.now(clock));
+        PayoutDto dto = mapper.toDto(payouts.save(p), user.getPhoneNumber());
+        events.publish(new PayoutDecided(dto.id(), dto.userId(), decision, adminId));
+        return dto;
     }
 
     private List<PayoutDto> withPhones(List<PayoutEntity> list) {
@@ -108,17 +117,7 @@ public class PayoutServiceImpl implements PayoutService {
         Map<Long, String> phoneById = users.findAllById(userIds).stream()
                 .collect(Collectors.toMap(UserEntity::getId, UserEntity::getPhoneNumber, (a, b) -> a));
         return list.stream()
-                .map(p -> toDto(p, phoneById.getOrDefault(p.getUserId(), "")))
+                .map(p -> mapper.toDto(p, phoneById.getOrDefault(p.getUserId(), "")))
                 .toList();
-    }
-
-    private PayoutDto toDto(PayoutEntity p, String phone) {
-        return new PayoutDto(
-                p.getId(), p.getUserId(), phone,
-                p.getAmount(), p.getBank(), p.getAccountNumber(),
-                p.getAccountName(), p.getNationalId(),
-                p.getStatus(), p.isFirstPayout(),
-                p.getRequestedAt(), p.getDecidedAt(),
-                p.getRejectReason());
     }
 }

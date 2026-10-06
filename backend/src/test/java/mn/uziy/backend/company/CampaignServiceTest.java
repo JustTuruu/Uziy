@@ -15,10 +15,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.RecordComponent;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import mn.uziy.backend.common.event.DomainEventPublisher;
+import mn.uziy.backend.domain.CampaignActor;
 import mn.uziy.backend.domain.CampaignEntity;
 import mn.uziy.backend.domain.CampaignRepository;
 import mn.uziy.backend.domain.CampaignStatus;
@@ -40,8 +45,11 @@ class CampaignServiceTest {
     private final SurveyQuestionRepository questions = mock(SurveyQuestionRepository.class);
     private final PlatformSettingsRepository platformSettings = mock(PlatformSettingsRepository.class);
 
-    private final CampaignServiceImpl campaignSvc =
-            new CampaignServiceImpl(campaigns, questions, platformSettings);
+    private final DomainEventPublisher events = mock(DomainEventPublisher.class);
+    private final Clock clock = Clock.fixed(Instant.parse("2026-10-01T10:15:30.123456789Z"), ZoneOffset.UTC);
+
+    private final CampaignServiceImpl campaignSvc = new CampaignServiceImpl(
+            campaigns, questions, platformSettings, new CampaignFactory(), new CampaignMapper(), events, clock);
     private final long companyId = PRINCIPAL.userId();
 
     CampaignServiceTest() {
@@ -149,6 +157,7 @@ class CampaignServiceTest {
             assertThat(c.getPaidAt()).isNull();
             assertThat(dto.targetViewers()).isEqualTo(1000);
             assertThat(dto.commissionPercent()).isEqualTo(30);
+            verify(events).publish(new CampaignCreated(77L, 500L));
 
             ArgumentCaptor<SurveyQuestionEntity> q = ArgumentCaptor.forClass(SurveyQuestionEntity.class);
             verify(questions, times(1)).save(q.capture());
@@ -199,6 +208,7 @@ class CampaignServiceTest {
             assertBadRequest(CompanyMessages.EXACTLY_ONE_DRIVER_MESSAGE,
                     () -> campaignSvc.create(companyId, videoReq(1_000, 700.0)));
             verify(campaigns, never()).save(any());
+            verify(events, never()).publish(any());
         }
 
         @Test
@@ -337,6 +347,8 @@ class CampaignServiceTest {
             CampaignDto dto = campaignSvc.setStatus(companyId, 1L, to);
 
             assertThat(dto.status()).isEqualTo(to);
+            assertThat(dto.status()).isEqualTo(to);
+            verify(events).publish(new CampaignStatusChanged(1L, from, to, CampaignActor.COMPANY));
             verify(campaigns, times(1)).tryTransition(eq(1L), eq(from), eq(to), any());
             // Never a full-entity save: it would overwrite remaining_budget.
             verify(campaigns, never()).save(any());
@@ -363,6 +375,7 @@ class CampaignServiceTest {
             assertThat(ex.statusCode()).isEqualTo(HttpStatus.CONFLICT);
             assertThat(ex.reason()).isEqualTo("Энэ төлөвөөс шилжих боломжгүй");
             verify(campaigns, never()).tryTransition(anyLong(), any(), any(), any());
+            verify(events, never()).publish(any());
         }
 
         @Test
@@ -374,6 +387,16 @@ class CampaignServiceTest {
             HttpFailure ex = assertFailsWithHttp(
                     () -> campaignSvc.setStatus(companyId, 1L, CampaignStatus.ACTIVE));
             assertThat(ex.statusCode()).isEqualTo(HttpStatus.CONFLICT);
+            verify(events, never()).publish(any());
+        }
+
+        @Test
+        void stampsUpdatedAtFromTheInjectedClockTruncatedToMicros() {
+            when(campaigns.findById(1L)).thenReturn(Optional.of(sampleCampaign(1, 500L, CampaignStatus.ACTIVE)));
+            when(campaigns.tryTransition(eq(1L), any(), any(), any())).thenReturn(1);
+            campaignSvc.setStatus(companyId, 1L, CampaignStatus.PAUSED);
+            verify(campaigns).tryTransition(1L, CampaignStatus.ACTIVE, CampaignStatus.PAUSED,
+                    Instant.parse("2026-10-01T10:15:30.123456Z").atOffset(ZoneOffset.UTC));
         }
 
         @Test

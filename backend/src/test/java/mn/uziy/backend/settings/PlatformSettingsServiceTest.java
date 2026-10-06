@@ -9,6 +9,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import mn.uziy.backend.domain.PlatformSettingsEntity;
 import mn.uziy.backend.domain.PlatformSettingsRepository;
@@ -22,8 +26,10 @@ import org.springframework.http.HttpStatus;
 
 class PlatformSettingsServiceTest {
 
+    private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-06T10:00:00Z"), ZoneOffset.UTC);
+
     private final PlatformSettingsRepository repo = mock(PlatformSettingsRepository.class);
-    private final PlatformSettingsServiceImpl service = new PlatformSettingsServiceImpl(repo);
+    private final PlatformSettingsServiceImpl service = new PlatformSettingsServiceImpl(repo, new PlatformSettingsMapper(), CLOCK);
     private final JwtPrincipal admin = new JwtPrincipal(1L, Role.ADMIN);
 
     private PlatformSettingsEntity seed(int commission, int minReward) {
@@ -75,6 +81,7 @@ class PlatformSettingsServiceTest {
         assertThat(saved.getValue().getCommissionPercent()).isEqualTo(35);
         assertThat(saved.getValue().getMinRewardPerViewer()).isEqualTo(250);
         assertThat(saved.getValue().getUpdatedBy()).isEqualTo(1L);
+        assertThat(saved.getValue().getUpdatedAt()).isEqualTo(OffsetDateTime.now(CLOCK));
     }
 
     @ParameterizedTest

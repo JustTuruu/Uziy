@@ -1,10 +1,10 @@
 package mn.uziy.backend.viewer;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import mn.uziy.backend.auth.Me;
+import mn.uziy.backend.auth.MeMapper;
 import mn.uziy.backend.domain.CampaignEntity;
 import mn.uziy.backend.domain.CampaignRepository;
 import mn.uziy.backend.domain.SurveyQuestionRepository;
@@ -20,8 +20,16 @@ public class ViewerServiceImpl implements ViewerService {
     private final CampaignRepository campaigns;
     private final SurveyQuestionRepository questions;
 
+    private final MeMapper meMapper;
+    private final FeedItemMapper feedMapper;
+    private final QuestionMapper questionMapper;
+
     public ViewerServiceImpl(UserRepository users, CampaignRepository campaigns,
-                             SurveyQuestionRepository questions) {
+                             SurveyQuestionRepository questions, MeMapper meMapper,
+                             FeedItemMapper feedMapper, QuestionMapper questionMapper) {
+        this.meMapper = meMapper;
+        this.feedMapper = feedMapper;
+        this.questionMapper = questionMapper;
         this.users = users;
         this.campaigns = campaigns;
         this.questions = questions;
@@ -29,7 +37,7 @@ public class ViewerServiceImpl implements ViewerService {
 
     @Override
     public Me me(long userId) {
-        return Me.of(users.findById(userId).orElseThrow());
+        return meMapper.toMe(users.findById(userId).orElseThrow());
     }
 
     @Override
@@ -50,63 +58,14 @@ public class ViewerServiceImpl implements ViewerService {
             companyNames.put(company.getId(), company.getCompanyName() != null ? company.getCompanyName() : "");
         }
         return list.stream()
-                .map(c -> new FeedItemDto(
-                        c.getId(),
-                        c.getTitle(),
-                        c.getVideoUrl(),
-                        c.getThumbnailUrl(),
-                        c.getDurationSeconds(),
-                        c.hasVideo(),
-                        c.getRewardPerUser(),
-                        companyNames.getOrDefault(c.getCompanyId(), "")))
+                .map(c -> feedMapper.toDto(c, companyNames.getOrDefault(c.getCompanyId(), "")))
                 .toList();
     }
 
     @Override
     public List<QuestionDto> questions(long campaignId) {
         return questions.findAllByCampaignIdOrderByPosition(campaignId).stream()
-                .map(q -> new QuestionDto(
-                        q.getId(),
-                        q.getPosition(),
-                        q.getPrompt(),
-                        q.getQType(),
-                        parseOptions(q.getOptionsJson()),
-                        q.isRequired()))
+                .map(questionMapper::toDto)
                 .toList();
-    }
-
-    /** Cheap parser sufficient for a JSONB array of strings. */
-    private static List<String> parseOptions(String json) {
-        try {
-            String s = json.trim();
-            if (s.startsWith("[")) {
-                s = s.substring(1);
-            }
-            if (s.endsWith("]")) {
-                s = s.substring(0, s.length() - 1);
-            }
-            List<String> options = new ArrayList<>();
-            for (String part : s.split(",")) {
-                String option = stripQuotes(part.trim());
-                if (!option.isBlank()) {
-                    options.add(option);
-                }
-            }
-            return options;
-        } catch (RuntimeException e) {
-            return List.of();
-        }
-    }
-
-    private static String stripQuotes(String s) {
-        int start = 0;
-        int end = s.length();
-        while (start < end && s.charAt(start) == '"') {
-            start++;
-        }
-        while (end > start && s.charAt(end - 1) == '"') {
-            end--;
-        }
-        return s.substring(start, end);
     }
 }

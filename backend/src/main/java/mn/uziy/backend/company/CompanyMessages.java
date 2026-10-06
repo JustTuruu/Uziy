@@ -1,5 +1,7 @@
 package mn.uziy.backend.company;
 
+import mn.uziy.backend.payment.PaymentGatewaySelector;
+
 /** User-facing (Mongolian) error messages of the company use cases. */
 public final class CompanyMessages {
 
@@ -12,7 +14,7 @@ public final class CompanyMessages {
     public static final String NO_QUESTIONS_MESSAGE = "Судалгаанд дор хаяж нэг асуулт оруулна уу";
     public static final String NOT_PAYABLE_MESSAGE =
             "Энэ аяны төлбөр аль хэдийн төлөгдсөн эсвэл төлөх боломжгүй";
-    public static final String PAYMENTS_UNAVAILABLE_MESSAGE = "Төлбөрийн систем хараахан холбогдоогүй байна";
+    public static final String PAYMENTS_UNAVAILABLE_MESSAGE = PaymentGatewaySelector.UNAVAILABLE_MESSAGE;
     public static final String TRANSITION_MESSAGE = "Энэ төлөвөөс шилжих боломжгүй";
 
     private CompanyMessages() {

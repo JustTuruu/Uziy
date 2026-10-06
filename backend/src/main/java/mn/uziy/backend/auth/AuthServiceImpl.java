@@ -2,7 +2,7 @@ package mn.uziy.backend.auth;
 
 import mn.uziy.backend.common.ConflictException;
 import mn.uziy.backend.common.UnauthorizedException;
-import mn.uziy.backend.domain.Role;
+import mn.uziy.backend.common.event.DomainEventPublisher;
 import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
 import mn.uziy.backend.security.JwtService;
@@ -18,11 +18,18 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository users;
     private final PasswordEncoder encoder;
     private final JwtService jwt;
+    private final UserFactory userFactory;
+    private final MeMapper meMapper;
+    private final DomainEventPublisher events;
 
-    public AuthServiceImpl(UserRepository users, PasswordEncoder encoder, JwtService jwt) {
+    public AuthServiceImpl(UserRepository users, PasswordEncoder encoder, JwtService jwt,
+                           UserFactory userFactory, MeMapper meMapper, DomainEventPublisher events) {
         this.users = users;
         this.encoder = encoder;
         this.jwt = jwt;
+        this.userFactory = userFactory;
+        this.meMapper = meMapper;
+        this.events = events;
     }
 
     @Override
@@ -38,26 +45,15 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse registerViewer(RegisterViewerReq req) {
         requirePhoneFree(req.phoneNumber());
-        UserEntity user = new UserEntity();
-        user.setPhoneNumber(req.phoneNumber());
-        user.setPasswordHash(encoder.encode(req.password()));
-        user.setRole(Role.VIEWER);
-        user.setGender(req.gender());
-        user.setBirthDate(req.birthDate());
-        user.setCity(req.city());
-        user.setDistrict(req.district());
-        return respond(users.save(user));
+        UserEntity user = userFactory.newViewer(req, encoder.encode(req.password()));
+        return registered(users.save(user));
     }
 
     @Override
     public AuthResponse registerCompany(RegisterCompanyReq req) {
         requirePhoneFree(req.phoneNumber());
-        UserEntity user = new UserEntity();
-        user.setPhoneNumber(req.phoneNumber());
-        user.setPasswordHash(encoder.encode(req.password()));
-        user.setRole(Role.COMPANY);
-        user.setCompanyName(req.companyName());
-        return respond(users.save(user));
+        UserEntity user = userFactory.newCompany(req, encoder.encode(req.password()));
+        return registered(users.save(user));
     }
 
     private void requirePhoneFree(String phone) {
@@ -66,7 +62,12 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    private AuthResponse registered(UserEntity saved) {
+        events.publish(new UserRegistered(saved.getId(), saved.getRole()));
+        return respond(saved);
+    }
+
     private AuthResponse respond(UserEntity user) {
-        return new AuthResponse(jwt.issue(user), Me.of(user));
+        return new AuthResponse(jwt.issue(user), meMapper.toMe(user));
     }
 }

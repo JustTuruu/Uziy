@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import java.util.Optional;
 import mn.uziy.backend.common.ConflictException;
 import mn.uziy.backend.common.UnauthorizedException;
+import mn.uziy.backend.common.event.DomainEventPublisher;
 import mn.uziy.backend.config.AppProperties;
 import mn.uziy.backend.domain.Gender;
 import mn.uziy.backend.domain.Role;
@@ -30,7 +31,9 @@ class AuthServiceTest {
     private final PasswordEncoder encoder = mock(PasswordEncoder.class);
     private final JwtService jwt = new JwtService(new AppProperties(
             new AppProperties.Jwt("a".repeat(64), 1), new AppProperties.Cors(java.util.List.of()), new AppProperties.Payments(false)));
-    private final AuthServiceImpl service = new AuthServiceImpl(users, encoder, jwt);
+    private final DomainEventPublisher events = mock(DomainEventPublisher.class);
+    private final AuthServiceImpl service = new AuthServiceImpl(users, encoder, jwt,
+            new UserFactory(), new MeMapper(), events);
 
     private UserEntity seedUser(Role role) {
         UserEntity u = new UserEntity();
@@ -104,11 +107,13 @@ class AuthServiceTest {
         verify(users).save(saved.capture());
         assertThat(saved.getValue().getRole()).isEqualTo(Role.VIEWER);
         assertThat(saved.getValue().getPasswordHash()).isEqualTo("bcrypt-hash");
+        verify(events).publish(new UserRegistered(100L, Role.VIEWER));
     }
 
     @Test
     void registerViewerThrows409WhenPhoneAlreadyExists() {
         when(users.existsByPhoneNumber("77000001")).thenReturn(true);
+        org.mockito.Mockito.verifyNoInteractions(events);
         assertThat(statusOf(() -> service.registerViewer(new RegisterViewerReq(
                 "77000001", "password1", Gender.MALE, LocalDate.of(2000, 1, 1), "Улаанбаатар"))))
                 .isEqualTo(HttpStatus.CONFLICT);
@@ -131,6 +136,7 @@ class AuthServiceTest {
 
         assertThat(res.user().role()).isEqualTo(Role.COMPANY);
         assertThat(res.user().companyName()).isEqualTo("MobiCom");
+        verify(events).publish(new UserRegistered(42L, Role.COMPANY));
     }
 
     @Test

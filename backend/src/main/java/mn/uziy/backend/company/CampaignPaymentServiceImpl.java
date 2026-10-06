@@ -1,70 +1,78 @@
 package mn.uziy.backend.company;
 
 import static mn.uziy.backend.company.CompanyMessages.NOT_PAYABLE_MESSAGE;
-import static mn.uziy.backend.company.CompanyMessages.PAYMENTS_UNAVAILABLE_MESSAGE;
 
+import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import mn.uziy.backend.common.ConflictException;
-import mn.uziy.backend.common.UnavailableException;
+import mn.uziy.backend.common.event.DomainEventPublisher;
+import mn.uziy.backend.domain.CampaignActor;
 import mn.uziy.backend.domain.CampaignEntity;
 import mn.uziy.backend.domain.CampaignPaymentEntity;
 import mn.uziy.backend.domain.CampaignPaymentRepository;
 import mn.uziy.backend.domain.CampaignRepository;
 import mn.uziy.backend.domain.CampaignStatus;
-import mn.uziy.backend.domain.PaymentStatus;
 import mn.uziy.backend.payment.ChargeRequest;
 import mn.uziy.backend.payment.ChargeResult;
 import mn.uziy.backend.payment.PaymentGateway;
+import mn.uziy.backend.payment.PaymentGatewaySelector;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** Pattern: State — payability is {@code AWAITING_PAYMENT → PENDING} for the SYSTEM actor. */
 @Service
 public class CampaignPaymentServiceImpl implements CampaignPaymentService {
 
     private final CampaignRepository campaigns;
     private final CampaignPaymentRepository payments;
-    private final List<PaymentGateway> gateways;
+    private final PaymentGatewaySelector gateways;
+    private final CampaignFactory factory;
+    private final CampaignMapper campaignMapper;
+    private final PaymentMapper paymentMapper;
+    private final DomainEventPublisher events;
+    private final Clock clock;
 
     public CampaignPaymentServiceImpl(CampaignRepository campaigns,
                                       CampaignPaymentRepository payments,
-                                      List<PaymentGateway> gateways) {
+                                      PaymentGatewaySelector gateways,
+                                      CampaignFactory factory,
+                                      CampaignMapper campaignMapper,
+                                      PaymentMapper paymentMapper,
+                                      DomainEventPublisher events,
+                                      Clock clock) {
         this.campaigns = campaigns;
         this.payments = payments;
         this.gateways = gateways;
+        this.factory = factory;
+        this.campaignMapper = campaignMapper;
+        this.paymentMapper = paymentMapper;
+        this.events = events;
+        this.clock = clock;
     }
 
     @Override
     @Transactional
     public PayCampaignResponse pay(long companyId, long campaignId) {
         CampaignEntity c = OwnedCampaigns.owned(campaigns, companyId, campaignId);
-        if (c.getStatus() != CampaignStatus.AWAITING_PAYMENT) {
+        CampaignStatus from = c.getStatus();
+        if (!from.canTransitionTo(CampaignStatus.PENDING, CampaignActor.SYSTEM)) {
             throw new ConflictException(NOT_PAYABLE_MESSAGE);
         }
-        PaymentGateway gateway = gateways.stream()
-                .filter(PaymentGateway::isAvailable)
-                .findFirst()
-                .orElseThrow(() -> new UnavailableException(PAYMENTS_UNAVAILABLE_MESSAGE));
+        PaymentGateway gateway = gateways.select();
 
-        OffsetDateTime paidAt = CompanyClock.now();
+        OffsetDateTime paidAt = OffsetDateTime.now(clock).truncatedTo(ChronoUnit.MICROS);
         if (campaigns.tryMarkPaid(campaignId, paidAt) == 0) {
             throw new ConflictException(NOT_PAYABLE_MESSAGE);
         }
 
         ChargeResult charge = gateway.charge(
                 new ChargeRequest(campaignId, c.getCompanyId(), c.getTotalBudget(), paidAt));
-        CampaignPaymentEntity entity = new CampaignPaymentEntity();
-        entity.setCampaignId(campaignId);
-        entity.setCompanyId(c.getCompanyId());
-        entity.setAmount(c.getTotalBudget());
-        entity.setProvider(gateway.getProvider());
-        entity.setStatus(PaymentStatus.PAID);
-        entity.setReference(charge.reference());
-        entity.setCreatedAt(paidAt);
-        entity.setPaidAt(paidAt);
+        CampaignPaymentEntity entity = factory.newPaidPayment(c, gateway.getProvider(), charge.reference(), paidAt);
 
         CampaignPaymentEntity payment;
         try {
@@ -79,7 +87,9 @@ public class CampaignPaymentServiceImpl implements CampaignPaymentService {
         c.setStatus(CampaignStatus.PENDING);
         c.setPaidAt(paidAt);
         c.setUpdatedAt(paidAt);
-        return new PayCampaignResponse(CampaignDto.of(c), PaymentDto.of(payment, c.getTitle()));
+        events.publish(new CampaignPaid(campaignId, c.getCompanyId(), c.getTotalBudget(), payment.getReference()));
+        events.publish(new CampaignStatusChanged(campaignId, from, CampaignStatus.PENDING, CampaignActor.SYSTEM));
+        return new PayCampaignResponse(campaignMapper.toDto(c), paymentMapper.toDto(payment, c.getTitle()));
     }
 
     @Override
@@ -91,7 +101,7 @@ public class CampaignPaymentServiceImpl implements CampaignPaymentService {
             titles.put(c.getId(), c.getTitle());
         }
         return list.stream()
-                .map(p -> PaymentDto.of(p, titles.getOrDefault(p.getCampaignId(), "")))
+                .map(p -> paymentMapper.toDto(p, titles.getOrDefault(p.getCampaignId(), "")))
                 .toList();
     }
 }

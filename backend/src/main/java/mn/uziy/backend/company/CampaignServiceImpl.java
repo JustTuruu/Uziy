@@ -8,13 +8,14 @@ import static mn.uziy.backend.company.CompanyMessages.TOO_MANY_VIEWERS_MESSAGE;
 import static mn.uziy.backend.company.CompanyMessages.TRANSITION_MESSAGE;
 import static mn.uziy.backend.company.CompanyMessages.WHOLE_TUGRIK_MESSAGE;
 
+import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 import mn.uziy.backend.common.BadRequestException;
 import mn.uziy.backend.common.ConflictException;
+import mn.uziy.backend.common.event.DomainEventPublisher;
+import mn.uziy.backend.domain.CampaignActor;
 import mn.uziy.backend.domain.CampaignEntity;
 import mn.uziy.backend.domain.CampaignRepository;
 import mn.uziy.backend.domain.CampaignStatus;
@@ -31,6 +32,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** Pattern: State — status changes are decided by {@code CampaignStatus.canTransitionTo}. */
 @Service
 public class CampaignServiceImpl implements CampaignService {
 
@@ -43,33 +45,40 @@ public class CampaignServiceImpl implements CampaignService {
     static final int MIN_DURATION_SECONDS = 5;
     static final int MAX_DURATION_SECONDS = 180;
 
-    /** The only status changes a company may make on its own campaign. */
-    public static final Map<CampaignStatus, Set<CampaignStatus>> COMPANY_TRANSITIONS = Map.of(
-            CampaignStatus.ACTIVE, Set.of(CampaignStatus.PAUSED, CampaignStatus.COMPLETED),
-            CampaignStatus.PAUSED, Set.of(CampaignStatus.ACTIVE, CampaignStatus.COMPLETED));
-
     private final CampaignRepository campaigns;
     private final SurveyQuestionRepository questions;
     private final PlatformSettingsRepository platformSettings;
+    private final CampaignFactory factory;
+    private final CampaignMapper mapper;
+    private final DomainEventPublisher events;
+    private final Clock clock;
 
     public CampaignServiceImpl(CampaignRepository campaigns,
                                SurveyQuestionRepository questions,
-                               PlatformSettingsRepository platformSettings) {
+                               PlatformSettingsRepository platformSettings,
+                               CampaignFactory factory,
+                               CampaignMapper mapper,
+                               DomainEventPublisher events,
+                               Clock clock) {
         this.campaigns = campaigns;
         this.questions = questions;
         this.platformSettings = platformSettings;
+        this.factory = factory;
+        this.mapper = mapper;
+        this.events = events;
+        this.clock = clock;
     }
 
     @Override
     public List<CampaignDto> list(long companyId) {
         return campaigns.findAllByCompanyIdOrderByCreatedAtDesc(companyId).stream()
-                .map(CampaignDto::of)
+                .map(mapper::toDto)
                 .toList();
     }
 
     @Override
     public CampaignDto get(long companyId, long campaignId) {
-        return CampaignDto.of(OwnedCampaigns.owned(campaigns, companyId, campaignId));
+        return mapper.toDto(OwnedCampaigns.owned(campaigns, companyId, campaignId));
     }
 
     @Override
@@ -79,28 +88,10 @@ public class CampaignServiceImpl implements CampaignService {
         validateShape(req);
         PricingResult pricing = price(req, mode);
 
-        CampaignEntity entity = new CampaignEntity();
-        entity.setCompanyId(companyId);
-        entity.setTitle(req.title());
-        entity.setVideoUrl(req.hasVideo() ? req.videoUrl() : "");
-        entity.setDurationSeconds(req.hasVideo() ? req.durationSeconds() : 0);
-        entity.setHasVideo(req.hasVideo());
-        entity.setTargetGender(req.targetGender());
-        entity.setMinAge(req.minAge());
-        entity.setMaxAge(req.maxAge());
-        entity.setTargetCity(req.targetCity());
-        // Only P = C × N is charged; any remainder of B is not.
-        entity.setTotalBudget((double) pricing.payable());
-        entity.setRemainingBudget((double) pricing.payable());
-        entity.setCostPerView((double) pricing.costPerViewer());
-        entity.setRewardPerUser((double) pricing.rewardPerViewer());
-        entity.setTargetViewers((int) pricing.targetViewers());
-        entity.setCommissionPercent(pricing.commissionPercent());
-        entity.setStatus(CampaignStatus.AWAITING_PAYMENT);
-
-        CampaignEntity c = campaigns.save(entity);
+        CampaignEntity c = campaigns.save(factory.newCampaign(companyId, req, pricing));
         saveQuestions(c.getId(), req.questions());
-        return CampaignDto.of(c);
+        events.publish(new CampaignCreated(c.getId(), companyId));
+        return mapper.toDto(c);
     }
 
     @Override
@@ -108,11 +99,11 @@ public class CampaignServiceImpl implements CampaignService {
     public CampaignDto setStatus(long companyId, long campaignId, CampaignStatus status) {
         CampaignEntity c = OwnedCampaigns.owned(campaigns, companyId, campaignId);
         CampaignStatus from = c.getStatus();
-        if (!COMPANY_TRANSITIONS.getOrDefault(from, Set.of()).contains(status)) {
+        if (!from.canTransitionTo(status, CampaignActor.COMPANY)) {
             throw new ConflictException(TRANSITION_MESSAGE);
         }
 
-        OffsetDateTime at = CompanyClock.now();
+        OffsetDateTime at = OffsetDateTime.now(clock).truncatedTo(ChronoUnit.MICROS);
         if (campaigns.tryTransition(campaignId, from, status, at) == 0) {
             throw new ConflictException(TRANSITION_MESSAGE);
         }
@@ -120,7 +111,8 @@ public class CampaignServiceImpl implements CampaignService {
         // Detached (clearAutomatically) — response only, not written back.
         c.setStatus(status);
         c.setUpdatedAt(at);
-        return CampaignDto.of(c);
+        events.publish(new CampaignStatusChanged(campaignId, from, status, CampaignActor.COMPANY));
+        return mapper.toDto(c);
     }
 
     // --- create() steps ------------------------------------------------------
@@ -169,23 +161,9 @@ public class CampaignServiceImpl implements CampaignService {
     }
 
     private void saveQuestions(long campaignId, List<CreateCampaignReq.NewQuestion> newQuestions) {
-        int position = 1;
-        for (CreateCampaignReq.NewQuestion q : newQuestions) {
-            SurveyQuestionEntity e = new SurveyQuestionEntity();
-            e.setCampaignId(campaignId);
-            e.setPosition(position++);
-            e.setPrompt(q.prompt());
-            e.setQType(q.type());
-            e.setOptionsJson(optionsJson(q.options()));
-            e.setRequired(q.required());
+        for (SurveyQuestionEntity e : factory.newQuestions(campaignId, newQuestions)) {
             questions.save(e);
         }
-    }
-
-    private static String optionsJson(List<String> options) {
-        return options.stream()
-                .map(o -> "\"" + o.replace("\"", "\\\"") + "\"")
-                .collect(Collectors.joining(", ", "[", "]"));
     }
 
     /**

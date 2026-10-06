@@ -9,12 +9,20 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import mn.uziy.backend.common.event.DomainEventPublisher;
 import mn.uziy.backend.company.CampaignDto;
+import mn.uziy.backend.company.CampaignStatusChanged;
+import mn.uziy.backend.company.CampaignMapper;
+import mn.uziy.backend.domain.CampaignActor;
 import mn.uziy.backend.domain.CampaignEntity;
 import mn.uziy.backend.domain.CampaignRepository;
 import mn.uziy.backend.domain.CampaignStatus;
@@ -29,8 +37,12 @@ class CampaignModerationServiceTest {
     private final UserRepository users = mock(UserRepository.class);
     private final CampaignRepository campaigns = mock(CampaignRepository.class);
     private final ViewHistoryRepository history = mock(ViewHistoryRepository.class);
-    private final CampaignModerationServiceImpl moderation =
-            new CampaignModerationServiceImpl(campaigns, users, history);
+    private final DomainEventPublisher events = mock(DomainEventPublisher.class);
+    private final Clock clock = Clock.fixed(Instant.parse("2026-10-06T10:00:00Z"), ZoneOffset.UTC);
+    private final CampaignModerationServiceImpl moderation = new CampaignModerationServiceImpl(
+            campaigns, users, history, new AdminCampaignMapper(new CampaignMapper()),
+            new ModerationStrategyRegistry(List.of(new ApproveCampaignStrategy(), new RejectCampaignStrategy())),
+            events, clock);
 
     // ------- listCampaigns -------------------------------------------------
 
@@ -115,6 +127,25 @@ class CampaignModerationServiceTest {
 
         assertThat(dto.status()).isEqualTo(CampaignStatus.ACTIVE);
         assertThat(saved.getValue().getStatus()).isEqualTo(CampaignStatus.ACTIVE);
+        assertThat(saved.getValue().getUpdatedAt()).isEqualTo(OffsetDateTime.now(clock));
+    }
+
+    @Test
+    void moderatePublishesCampaignStatusChangedWithAdminActor() {
+        when(campaigns.findById(1L)).thenReturn(Optional.of(campaign(1, CampaignStatus.PENDING)));
+        when(campaigns.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        moderation.moderate(1L, CampaignStatus.REJECTED);
+
+        verify(events).publish(new CampaignStatusChanged(
+                1L, CampaignStatus.PENDING, CampaignStatus.REJECTED, CampaignActor.ADMIN));
+    }
+
+    @Test
+    void failedModerationPublishesNothing() {
+        when(campaigns.findById(1L)).thenReturn(Optional.of(campaign(1, CampaignStatus.ACTIVE)));
+        assertFailsWithHttp(() -> moderation.moderate(1L, CampaignStatus.ACTIVE));
+        verifyNoInteractions(events);
     }
 
     @Test

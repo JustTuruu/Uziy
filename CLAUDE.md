@@ -10,10 +10,143 @@
 > before reporting done. Exceptions are only typos, one-line style tweaks,
 > and purely cosmetic UI changes — and even then, say so explicitly so the
 > user knows the omission was deliberate. Frameworks per surface: Spring →
-> JUnit 5 (+ `@DataJpaTest` / `@SpringBootTest` for anything touching the
-> DB), Flutter → `flutter_test`, Next.js → whatever the project uses (check
+> JUnit 5 + Mockito + AssertJ (+ `@DataJpaTest` / `@SpringBootTest` /
+> Testcontainers for anything touching the DB), Flutter → `flutter_test`, Next.js → whatever the project uses (check
 > `package.json`; add Vitest if nothing is wired up yet). See also
 > `~/.claude/projects/-Users-justturuu-Documents/memory/feedback_write_tests.md`.
+
+---
+
+## 0. Engineering rules (MANDATORY — user's standing requirements)
+
+These come straight from the project owner. Follow them on EVERY change, in
+every surface, without being reminded. If a rule would be violated by what is
+asked, say so and propose the compliant way instead of silently bending it.
+
+### 0.1 Rules for all code (frontend + backend + mobile)
+
+1. **Always write unit tests** for every new function, feature, endpoint, hook,
+   component, or non-trivial logic — in the same turn — and **run them** before
+   reporting done. Bug fix → add a regression test that fails without the fix.
+   Only typos, one-line style tweaks and purely cosmetic changes are exempt, and
+   you must say explicitly that the omission is deliberate.
+2. **Use design patterns deliberately** where they remove duplication or make a
+   variation point explicit; name the pattern in a one-line Javadoc/comment
+   (`Pattern: Strategy — …`). Do not force a pattern where a plain function is
+   clearer (YAGNI), but never copy-paste instead of abstracting. Implemented in
+   the backend (keep following them; extend, don't bypass):
+   - **Strategy** — `PaymentGateway` (new provider = new `@Component`),
+     `PayoutDecisionStrategy` (Approve/Reject), `ModerationStrategy`
+     (ApproveCampaign/RejectCampaign). Picked by a **Registry/Factory**:
+     `PaymentGatewaySelector`, `PayoutDecisionStrategies`,
+     `ModerationStrategyRegistry`.
+   - **State** — `CampaignStatus.canTransitionTo(next, CampaignActor)` is the ONE
+     source of truth for the campaign lifecycle (SYSTEM pays, ADMIN moderates,
+     COMPANY pauses/resumes/completes). Never hand-write status `if/else`.
+   - **Observer / domain events** — services publish records implementing
+     `DomainEvent` through `DomainEventPublisher` (synchronous, inside the
+     transaction): `UserRegistered`, `CampaignCreated`, `CampaignPaid`,
+     `CampaignStatusChanged`, `RewardGranted`, `PayoutRequested`,
+     `PayoutDecided`. `AuditLogListener` logs each as `audit event=…`. New
+     side effects = new `@EventListener`, not edits to the service.
+   - **Chain of Responsibility** — `PayoutRule` chain (`PayoutRuleChain`); add a
+     validation rule = add a `@Component` rule.
+   - **Factory** — `CampaignFactory`, `UserFactory` build entities from requests.
+   - **Mapper** — `CampaignMapper`, `PaymentMapper`, `PayoutMapper`,
+     `UserMapper`, `AdminCampaignMapper`, `PlatformSettingsMapper`, `MeMapper`,
+     `FeedItemMapper`, `QuestionMapper`: services never build response DTOs
+     inline.
+   - **Facade / Service layer**, **Repository**, **DTO/Value Object** (`record`s,
+     e.g. `PricingResult`), **Dependency Injection** (constructor only), and
+     **Clock injection** (`java.time.Clock` bean; never call
+     `OffsetDateTime.now()` directly in services; tests use `Clock.fixed`).
+   Frontend/test patterns: **Composite components** (`Card`+`CardHeader`+
+   `CardBody`), **Custom hook** (`useStoredUser()`), **Builder/Factory** for
+   test fixtures (`*TestData`, `*TestFixtures`).
+3. **Clean code.** Small functions with one reason to change, intention-revealing
+   names, no magic numbers/strings (named constants), no dead code or leftover
+   files, no commented-out code, comments explain *why* (business rules in the
+   KDoc/Javadoc style already used). **DRY**: if two places need the same
+   control/logic, create ONE component/function and use it in both.
+4. **Do not swap technology** from the agreed stack without asking (see §1).
+5. **Keep this file current** whenever you add/rename/delete files or change a
+   rule.
+6. UI copy is **Cyrillic Mongolian** (short, informal-polite "Та"); currency is
+   ₮. Do not switch UI copy to Latin.
+7. Report faithfully: if tests fail or something was not run, say so.
+
+### 0.2 Backend rules (Spring Boot 4, **Java 17**, PostgreSQL)
+
+1. **Language is Java 17** (converted from Kotlin on 2026-10-06). No Lombok, no
+   new Kotlin. DTOs = `record`s; entities = plain classes with getters/setters;
+   "maybe missing" results = `Optional`, never `null`; annotate genuinely
+   nullable params/components with `org.jspecify.annotations.Nullable`.
+2. **SOLID, checked on every change:**
+   - **S** — controller = HTTP only; service = one use case; `DomainException`
+     subclasses carry business failures, `ApiExceptionHandler` is the ONE place
+     mapping them to HTTP.
+   - **O** — extend by adding beans (new `PaymentGateway`), not by editing
+     `if/else` chains.
+   - **L** — implementations honour the interface contract (tests prove it).
+   - **I** — small, client-specific interfaces (e.g. `PayoutRequestService` for
+     viewers vs `PayoutReviewService` for admins); never a fat interface.
+   - **D** — depend on interfaces/repositories, never on another service's
+     concrete class; constructor injection, `private final` fields.
+3. **Transactions & money safety:** `@Transactional` lives on service impls. The
+   reward flow (§4C) stays one atomic SERIALIZABLE transaction using the
+   conditional `UPDATE` (`tryDecrementBudget`, `tryMarkPaid`, `tryTransition`);
+   never replace those with read-modify-write saves. Never reward outside a
+   transaction.
+4. **Tests:** JUnit 5 + Mockito + AssertJ for services (pure unit tests, no
+   Spring context; every new Strategy/Rule/Mapper/Factory/event gets its own test); `@SpringBootTest` + Testcontainers for DB behaviour
+   (Docker must be running). Test names describe behaviour. Integration tests
+   must not depend on execution order or on rows other tests insert.
+5. **API contract:** routes, status codes and JSON field names are a contract
+   with both frontends and the Flutter app — a change needs the three clients
+   updated in the same change. Controller path/query params get explicit names.
+6. `./gradlew test` must be green before you say a backend task is done.
+
+### 0.3 Frontend rules (Next.js 16 / React 19 / Tailwind 4 — `company_panel`, `admin_panel`)
+
+1. **One UI kit.** All shared look-and-feel lives in `packages/ui` (`@uziy/ui`):
+   `Button`, `IconButton`, `SegmentedControl`, `Card*`, `Badge`, `Input`,
+   `NumericInput`, `Textarea`, `Select`, `PageHeader`, `StatCard`, `Sidebar`,
+   `SidebarUser`, `Topbar`, `ContentShell`, `PageContainer`, `cn`, plus tokens
+   in `src/theme.css`. If both panels need the same kind of button/control,
+   build it THERE once (with a test) and import it — never hand-write a raw
+   `<button>`/styled div in a page or copy a component between panels.
+2. **Design tokens only** — colours/spacing via CSS variables
+   (`var(--color-…)`); no hard-coded hex in components except the documented
+   gradient/contrast constants. Professional, restrained graphite look with the
+   gold accent used sparingly; sticky top bar + grouped sidebar; tables get the
+   shared styling.
+3. **Browser-only state** (localStorage etc.): read it with `useStoredUser()`
+   (or another `useSyncExternalStore` hook), **never** `auth.getUser()` during
+   render (hydration mismatch) and **never** `setState` synchronously inside
+   `useEffect` (ESLint `react-hooks/set-state-in-effect`).
+4. **Whole-number inputs** use `NumericInput`; never `type="number"` +
+   `Number(value)`.
+5. The company panel shows the **company's own name** (sidebar subtitle,
+   footer, greeting) — never a hard-coded one; the admin sidebar shows the
+   signed-in admin's phone.
+6. `pnpm exec tsc --noEmit`, `pnpm exec eslint` and `pnpm exec vitest run`
+   must be clean in the app(s) and in `packages/ui` before you say done.
+   Install/run from the repo root (`pnpm install`; `pnpm -C <app> dev`).
+
+### 0.4 Mobile rules (Flutter `viewer_app`)
+
+1. **Bottom navigation is fixed and static**: no sliding capsule or
+   transition animation; every tab is an icon with its **label underneath**;
+   the active tab is gold with the filled icon. The **Нүүр tab uses the custom
+   Instagram-Reels-style glyph** (`ReelsIcon`); Хэтэвч/Профайл use Material
+   icons. Custom glyphs go through `AppNavItem.glyphBuilder`.
+2. **Never wrap the `ShellRoute` child (the nested Navigator) in an
+   `AnimatedSwitcher`** — it throws `'_dependents.isEmpty'`. Tab animation, if
+   any, belongs in the page transition (`_tab`).
+3. Parse API JSON defensively and exactly as the backend sends it (e.g. question
+   `type` is `SINGLE_CHOICE`, no `campaign_id` field); every `fromJson` change
+   gets a model test.
+4. `flutter analyze` clean and `flutter test` green before reporting done.
 
 ---
 

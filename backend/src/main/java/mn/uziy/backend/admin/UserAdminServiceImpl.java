@@ -10,25 +10,27 @@ import org.springframework.stereotype.Service;
 public class UserAdminServiceImpl implements UserAdminService {
 
     private final UserRepository users;
+    private final UserMapper mapper;
 
-    public UserAdminServiceImpl(UserRepository users) {
+    public UserAdminServiceImpl(UserRepository users, UserMapper mapper) {
         this.users = users;
+        this.mapper = mapper;
     }
 
     @Override
     public List<UserDto> list() {
-        return users.findAll().stream().map(UserDto::of).toList();
+        return users.findAll().stream().map(mapper::toDto).toList();
     }
 
     @Override
     public UserDto get(long userId) {
-        return UserDto.of(users.findById(userId).orElseThrow(() -> new NotFoundException("User not found")));
+        return mapper.toDto(users.findById(userId).orElseThrow(() -> new NotFoundException("User not found")));
     }
 
     @Override
     public UserDto verify(long userId) {
         UserEntity u = users.findById(userId).orElseThrow();
         u.setVerified(true);
-        return UserDto.of(users.save(u));
+        return mapper.toDto(users.save(u));
     }
 }

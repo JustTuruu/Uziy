@@ -5,6 +5,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import mn.uziy.backend.common.ConflictException;
 import mn.uziy.backend.common.NotFoundException;
+import mn.uziy.backend.common.event.DomainEventPublisher;
 import mn.uziy.backend.domain.CampaignEntity;
 import mn.uziy.backend.domain.CampaignRepository;
 import mn.uziy.backend.domain.SurveyQuestionEntity;
@@ -30,9 +31,12 @@ public class RewardServiceImpl implements RewardService {
     private final ViewHistoryRepository history;
     private final SurveyResponseRepository responses;
 
+    private final DomainEventPublisher events;
+
     public RewardServiceImpl(UserRepository users, CampaignRepository campaigns,
                              SurveyQuestionRepository questions, ViewHistoryRepository history,
-                             SurveyResponseRepository responses) {
+                             SurveyResponseRepository responses, DomainEventPublisher events) {
+        this.events = events;
         this.users = users;
         this.campaigns = campaigns;
         this.questions = questions;
@@ -66,6 +70,7 @@ public class RewardServiceImpl implements RewardService {
         user.setBalance(user.getBalance() + campaign.getRewardPerUser());
         users.save(user);
 
+        events.publish(new RewardGranted(userId, campaign.getId(), campaign.getRewardPerUser()));
         return new RewardResult(campaign.getRewardPerUser(), user.getBalance());
     }
 

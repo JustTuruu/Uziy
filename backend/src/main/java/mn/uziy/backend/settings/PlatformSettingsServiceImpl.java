@@ -1,5 +1,6 @@
 package mn.uziy.backend.settings;
 
+import java.time.Clock;
 import java.time.OffsetDateTime;
 import mn.uziy.backend.common.BadRequestException;
 import mn.uziy.backend.domain.PlatformSettings;
@@ -18,14 +19,18 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
     private static final int MIN_REWARD_FLOOR = 1;
 
     private final PlatformSettingsRepository repo;
+    private final PlatformSettingsMapper mapper;
+    private final Clock clock;
 
-    public PlatformSettingsServiceImpl(PlatformSettingsRepository repo) {
+    public PlatformSettingsServiceImpl(PlatformSettingsRepository repo, PlatformSettingsMapper mapper, Clock clock) {
         this.repo = repo;
+        this.mapper = mapper;
+        this.clock = clock;
     }
 
     @Override
     public PlatformSettingsDto get() {
-        return PlatformSettingsDto.of(PlatformSettings.current(repo));
+        return mapper.toDto(PlatformSettings.current(repo));
     }
 
     @Override
@@ -46,8 +51,8 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
         PlatformSettingsEntity e = PlatformSettings.current(repo);
         e.setCommissionPercent(commission);
         e.setMinRewardPerViewer(minReward);
-        e.setUpdatedAt(OffsetDateTime.now());
+        e.setUpdatedAt(OffsetDateTime.now(clock));
         e.setUpdatedBy(adminId);
-        return PlatformSettingsDto.of(repo.save(e));
+        return mapper.toDto(repo.save(e));
     }
 }

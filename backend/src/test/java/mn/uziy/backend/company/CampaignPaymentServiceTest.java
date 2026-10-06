@@ -13,12 +13,16 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import mn.uziy.backend.common.event.DomainEventPublisher;
 import mn.uziy.backend.config.AppProperties;
+import mn.uziy.backend.domain.CampaignActor;
 import mn.uziy.backend.domain.CampaignEntity;
 import mn.uziy.backend.domain.CampaignPaymentEntity;
 import mn.uziy.backend.domain.CampaignPaymentRepository;
@@ -27,6 +31,7 @@ import mn.uziy.backend.domain.CampaignStatus;
 import mn.uziy.backend.domain.PaymentProvider;
 import mn.uziy.backend.domain.PaymentStatus;
 import mn.uziy.backend.payment.PaymentReference;
+import mn.uziy.backend.payment.PaymentGatewaySelector;
 import mn.uziy.backend.payment.SimulatedPaymentGateway;
 import mn.uziy.backend.support.HttpAssertions.HttpFailure;
 import org.junit.jupiter.api.Nested;
@@ -41,14 +46,18 @@ class CampaignPaymentServiceTest {
     private final CampaignRepository campaigns = mock(CampaignRepository.class);
     private final CampaignPaymentRepository payments = mock(CampaignPaymentRepository.class);
 
+    private final DomainEventPublisher events = mock(DomainEventPublisher.class);
+    private final Clock clock = Clock.fixed(Instant.parse("2026-10-01T10:15:30.123456789Z"), ZoneOffset.UTC);
+
     private final CampaignPaymentServiceImpl paymentSvc = paymentService(true);
     private final long companyId = PRINCIPAL.userId();
 
     private CampaignPaymentServiceImpl paymentService(boolean simulated) {
         return new CampaignPaymentServiceImpl(campaigns, payments,
-                List.of(new SimulatedPaymentGateway(
+                new PaymentGatewaySelector(List.of(new SimulatedPaymentGateway(
                         new AppProperties(new AppProperties.Jwt("", 24), new AppProperties.Cors(List.of()),
-                                new AppProperties.Payments(simulated)))));
+                                new AppProperties.Payments(simulated))))),
+                new CampaignFactory(), new CampaignMapper(), new PaymentMapper(), events, clock);
     }
 
     private CampaignEntity awaiting(long id, long ownerId) {
@@ -90,6 +99,10 @@ class CampaignPaymentServiceTest {
             assertThat(res.payment().id()).isEqualTo(9L);
             assertThat(res.payment().campaignTitle()).isEqualTo("T42");
             assertThat(res.payment().amount()).isEqualTo(999_570.0);
+            assertThat(p.getPaidAt()).isEqualTo(Instant.parse("2026-10-01T10:15:30.123456Z").atOffset(ZoneOffset.UTC));
+            verify(events).publish(new CampaignPaid(42L, 500L, 999_570.0, p.getReference()));
+            verify(events).publish(new CampaignStatusChanged(
+                    42L, CampaignStatus.AWAITING_PAYMENT, CampaignStatus.PENDING, CampaignActor.SYSTEM));
             verify(campaigns, times(1)).tryMarkPaid(42L, p.getPaidAt());
             verify(campaigns, never()).save(any());
         }
@@ -118,6 +131,7 @@ class CampaignPaymentServiceTest {
             assertThat(ex.statusCode()).isEqualTo(HttpStatus.CONFLICT);
             assertThat(ex.reason()).isEqualTo(CompanyMessages.NOT_PAYABLE_MESSAGE);
             verify(campaigns, never()).tryMarkPaid(anyLong(), any());
+            verify(events, never()).publish(any());
         }
 
         @Test
@@ -127,6 +141,7 @@ class CampaignPaymentServiceTest {
             HttpFailure ex = assertFailsWithHttp(() -> paymentSvc.pay(companyId, 42L));
             assertThat(ex.statusCode()).isEqualTo(HttpStatus.CONFLICT);
             verify(payments, never()).saveAndFlush(any());
+            verify(events, never()).publish(any());
         }
 
         @Test

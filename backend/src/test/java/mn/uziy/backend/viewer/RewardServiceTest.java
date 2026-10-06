@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Optional;
+import mn.uziy.backend.common.event.DomainEventPublisher;
 import mn.uziy.backend.domain.CampaignRepository;
 import mn.uziy.backend.domain.SurveyQuestionEntity;
 import mn.uziy.backend.domain.SurveyQuestionRepository;
@@ -34,8 +35,10 @@ class RewardServiceTest {
     private final ViewHistoryRepository history = mock(ViewHistoryRepository.class);
     private final SurveyResponseRepository responses = mock(SurveyResponseRepository.class);
 
+    private final DomainEventPublisher events = mock(DomainEventPublisher.class);
+
     private final RewardServiceImpl service =
-            new RewardServiceImpl(users, campaigns, questions, history, responses);
+            new RewardServiceImpl(users, campaigns, questions, history, responses, events);
 
     private final UserEntity viewer = viewer();
 
@@ -75,6 +78,7 @@ class RewardServiceTest {
         assertThat(saved.getValue().getBalance()).isEqualTo(700.0);
         // Only the real question's answer should have been persisted (1 call, not 2).
         verify(responses, times(1)).save(any());
+        verify(events).publish(new RewardGranted(42L, 1L, 700.0));
     }
 
     @Test
@@ -84,6 +88,7 @@ class RewardServiceTest {
                 service.submitSurvey(42L, 1L, List.of(new SubmitSurveyReq.Answer(1L, "\"x\""))));
         assertThat(ex.statusCode()).isEqualTo(HttpStatus.CONFLICT);
         verify(campaigns, never()).tryDecrementBudget(anyLong());
+        verify(events, never()).publish(any());
     }
 
     @Test

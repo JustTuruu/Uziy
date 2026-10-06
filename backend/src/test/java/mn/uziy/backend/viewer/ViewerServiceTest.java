@@ -28,7 +28,8 @@ class ViewerServiceTest {
     private final CampaignRepository campaigns = mock(CampaignRepository.class);
     private final SurveyQuestionRepository questions = mock(SurveyQuestionRepository.class);
 
-    private final ViewerServiceImpl service = new ViewerServiceImpl(users, campaigns, questions);
+    private final ViewerServiceImpl service = new ViewerServiceImpl(users, campaigns, questions,
+            new mn.uziy.backend.auth.MeMapper(), new FeedItemMapper(), new QuestionMapper());
 
     private final UserEntity viewer = viewer();
 

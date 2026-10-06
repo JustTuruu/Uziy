@@ -8,8 +8,13 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import mn.uziy.backend.common.event.DomainEventPublisher;
 import mn.uziy.backend.domain.PayoutEntity;
 import mn.uziy.backend.domain.PayoutRepository;
 import mn.uziy.backend.domain.PayoutStatus;
@@ -25,7 +30,13 @@ class PayoutServiceTest {
 
     private final PayoutRepository payouts = mock(PayoutRepository.class);
     private final UserRepository users = mock(UserRepository.class);
-    private final PayoutServiceImpl service = new PayoutServiceImpl(payouts, users);
+    private final DomainEventPublisher events = mock(DomainEventPublisher.class);
+    private final Clock clock = Clock.fixed(Instant.parse("2026-10-06T00:00:00Z"), ZoneOffset.UTC);
+    private final PayoutServiceImpl service = new PayoutServiceImpl(
+            payouts, users,
+            new PayoutRuleChain(List.of(new SufficientBalanceRule())),
+            new PayoutDecisionStrategies(List.of(new ApprovePayoutStrategy(), new RejectPayoutStrategy())),
+            new PayoutMapper(), events, clock);
 
     private final UserEntity viewer = newViewer();
     private final JwtPrincipal viewerPrincipal = new JwtPrincipal(42L, Role.VIEWER);
@@ -91,6 +102,7 @@ class PayoutServiceTest {
         assertThat(dto.isFirstPayout()).isTrue();
         assertThat(dto.status()).isEqualTo(PayoutStatus.PENDING);
         assertThat(savedUser.getValue().getBalance()).isEqualTo(1000.0); // 1500 - 500
+        verify(events).publish(new PayoutRequested(1L, 42L, 500.0));
     }
 
     @Test
@@ -183,7 +195,9 @@ class PayoutServiceTest {
         assertThat(savedUser.getValue().isVerified()).isTrue();
         assertThat(savedPayout.getValue().getStatus()).isEqualTo(PayoutStatus.APPROVED);
         assertThat(savedPayout.getValue().getDecidedBy()).isEqualTo(1L);
-        assertThat(savedPayout.getValue().getDecidedAt()).isNotNull();
+        assertThat(savedPayout.getValue().getDecidedAt())
+                .isEqualTo(OffsetDateTime.now(clock));
+        verify(events).publish(new PayoutDecided(10L, 42L, PayoutStatus.APPROVED, 1L));
     }
 
     @Test
@@ -215,6 +229,7 @@ class PayoutServiceTest {
         service.decide(12L, PayoutStatus.REJECTED, "wrong name", adminPrincipal.userId());
 
         assertThat(savedUser.getValue().getBalance()).isEqualTo(700.0); // refunded
+        assertThat(p.getRejectReason()).isEqualTo("wrong name");
     }
 
     @Test

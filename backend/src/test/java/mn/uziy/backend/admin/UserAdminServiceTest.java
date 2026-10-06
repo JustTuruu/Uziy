@@ -21,7 +21,7 @@ import org.springframework.http.HttpStatus;
 class UserAdminServiceTest {
 
     private final UserRepository users = mock(UserRepository.class);
-    private final UserAdminServiceImpl service = new UserAdminServiceImpl(users);
+    private final UserAdminServiceImpl service = new UserAdminServiceImpl(users, new UserMapper());
 
     @Test
     void listUsersMapsAllUsersToUserDto() {
