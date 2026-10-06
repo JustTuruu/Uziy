@@ -1,6 +1,6 @@
 # Uziy backend
 
-Spring Boot 4 + Kotlin + PostgreSQL. Implements the API consumed by
+Spring Boot 4 + Java 17 + PostgreSQL. Implements the API consumed by
 `viewer_app/` (Flutter) and `admin_panel/` (Next.js).
 
 ## Prerequisites

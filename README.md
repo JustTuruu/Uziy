@@ -11,7 +11,7 @@ commission on every transaction.
   <a href="#tech-stack"><img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.22+-02569B?logo=flutter&logoColor=white"></a>
   <a href="#tech-stack"><img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-000?logo=nextdotjs&logoColor=white"></a>
   <a href="#tech-stack"><img alt="Spring Boot" src="https://img.shields.io/badge/Spring%20Boot-4-6DB33F?logo=springboot&logoColor=white"></a>
-  <a href="#tech-stack"><img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.3-7F52FF?logo=kotlin&logoColor=white"></a>
+  <a href="#tech-stack"><img alt="Java" src="https://img.shields.io/badge/Java-17-ED8B00?logo=openjdk&logoColor=white"></a>
   <a href="#tech-stack"><img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white"></a>
   <a href="#tech-stack"><img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white"></a>
   <a href="#testing"><img alt="Tests" src="https://img.shields.io/badge/tests-55%20passing-22C55E"></a>
@@ -121,7 +121,7 @@ flowchart LR
     end
 
     subgraph Backend
-        API[Spring Boot 4 + Kotlin<br/>REST + JWT auth<br/>DigitalOcean/Hetzner VPS]
+        API[Spring Boot 4 + Java 17<br/>REST + JWT auth<br/>DigitalOcean/Hetzner VPS]
         DB[(PostgreSQL 16<br/>Flyway migrations)]
         W[Video Worker<br/>FFmpeg → HLS<br/>separate container]
     end
@@ -148,7 +148,7 @@ flowchart LR
 | Component | Choice | Why |
 |---|---|---|
 | Video storage | **Cloudflare R2** | S3-compatible API, **zero egress fees** — a rewarded-video product is bandwidth-heavy, and R2 saves ~99 % of the bill vs S3. |
-| Backend language | **Kotlin** on Spring Boot 4 | Null-safety + data classes cut boilerplate ~40 % vs Java. `@Transactional(SERIALIZABLE)` gives us the atomicity guarantee we need for reward payouts. |
+| Backend language | **Java 17** on Spring Boot 4 | Records for DTOs, mature tooling and hiring pool. `@Transactional(SERIALIZABLE)` gives us the atomicity guarantee we need for reward payouts. |
 | Database | **PostgreSQL 16** | Reward payouts must be atomic and race-safe. Postgres transactions, `JSONB` for survey answers, and `RETURNING` for conditional updates make this straightforward. |
 | Mobile client | **Flutter** | One codebase → iOS + Android from day one; Mongolian market has both. |
 | Web consoles | **Next.js 16 App Router** | Company + admin panels share auth, layout, and UI kit → one Vercel project, one deploy. |
@@ -188,14 +188,14 @@ flowchart LR
 <details>
 <summary><b>Backend API</b> — <code>backend/</code></summary>
 
-- **Spring Boot 4** on **Kotlin 2.3**
+- **Spring Boot 4** on **Java 17**
 - **Java 17** toolchain (LTS)
 - **Spring Web MVC** for REST endpoints
 - **Spring Security 6** with a custom **JWT filter** (JJWT 0.12)
 - **Spring Data JPA** + **Hibernate 7**
 - **PostgreSQL 16** via HikariCP
 - **Flyway** for schema migrations
-- **Testcontainers 1.20** + **MockK 1.13** for testing (55 tests, all passing)
+- **Testcontainers 1.20** + **Mockito/AssertJ** for testing (55 tests, all passing)
 - **Gradle 9** with the Kotlin DSL
 
 </details>
@@ -262,14 +262,14 @@ uziy/
 │       └── mock-data.ts       fixtures used until backend is wired
 │
 ├── backend/                   ← Spring Boot — REST API
-│   ├── build.gradle.kts       Boot 4, Kotlin 2.3, JJWT, MockK, Testcontainers
+│   ├── build.gradle.kts       Boot 4, Java 17, JJWT, Mockito, Testcontainers
 │   ├── docker-compose.yml     local Postgres 16 on :5432
 │   ├── README.md              per-endpoint reference + env vars
 │   ├── src/main/resources/
 │   │   ├── application.yml    env-driven config
 │   │   └── db/migration/      Flyway (V1 schema + V2 dev seed)
-│   └── src/main/kotlin/mn/uziy/backend/
-│       ├── UziyBackendApplication.kt
+│   └── src/main/java/mn/uziy/backend/
+│       ├── UziyBackendApplication.java
 │       ├── config/            AppProperties, WebConfig
 │       ├── domain/            JPA entities + Spring Data repositories
 │       ├── security/          JwtService, JwtAuthFilter, SecurityConfig
@@ -558,7 +558,7 @@ The backend has **55 tests across 8 classes**, run with `./gradlew test`:
 | `UserEntityTest` | 4 | `age` getter (null, birthday passed / today / not yet) |
 | `AtomicRewardIntegrationTest` | 3 | Testcontainers Postgres — reward tx, duplicate reject, budget-exhausted rollback |
 
-Controller tests are pure JUnit + MockK (millisecond-fast, no Spring
+Controller tests are pure JUnit + Mockito (millisecond-fast, no Spring
 context). The integration test boots Spring against a real Postgres 16 in
 Docker via Testcontainers and asserts the SERIALIZABLE reward transaction
 holds under real DB semantics.
@@ -651,7 +651,7 @@ This is a private project, but the internal contribution flow is:
 
 1. Branch off `main`.
 2. Add tests for any new function / endpoint / non-trivial logic. Backend
-   uses JUnit 5 + MockK + Testcontainers; Flutter uses `flutter_test`;
+   uses JUnit 5 + Mockito + Testcontainers; Flutter uses `flutter_test`;
    Next.js will use Vitest.
 3. Run **all three test suites** before opening a PR:
    ```bash

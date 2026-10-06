@@ -36,7 +36,7 @@ UI is in Cyrillic Mongolian; currency is ₮ (tögrög).
 
 - Flutter (viewer + company apps) — this repo's `viewer_app/` starts that.
 - React or Flutter Web for the Super Admin dashboard (not started yet).
-- Spring Boot (Java/Kotlin) backend (not started yet).
+- Spring Boot (Java 17) backend.
 - PostgreSQL (schema drafted in `docs/SPEC.md` §3).
 - Cloudflare R2 for video storage (chosen for zero egress cost).
 - FFmpeg or AWS MediaConvert for HLS transcoding.
@@ -215,20 +215,25 @@ consistent.
 user" is hardcoded to company-100 (MobiCom) / an admin. Swap these for real
 session data once the backend + auth are wired.
 
-### `backend/` — Spring Boot 4 + Kotlin + PostgreSQL
+### `backend/` — Spring Boot 4 + Java 17 + PostgreSQL
 
 **Layering rule (SOLID, refactored 2026-10-01):** controllers are thin HTTP
 adapters; every use case is a `FooService` interface + `FooServiceImpl`
 (`@Service`, owns `@Transactional`); services depend on repositories and
 interfaces only and throw `DomainException`s. Put new logic in a service,
-not a controller, and write the service's unit test with MockK.
+not a controller, and write the service's unit test with JUnit 5 + Mockito + AssertJ.
+**(2026-10-06) The backend was converted from Kotlin to Java 17** (no Lombok; DTOs are
+`record`s, entities are plain classes with getters/setters, nullable lookups return
+`Optional`). Sources are `src/main/java` / `src/test/java`. SOLID rules: one use-case
+interface per client (e.g. `PayoutRequestService` / `PayoutReviewService`), constructor
+injection only, depend on interfaces, extend via new beans (`PaymentGateway`).
 
 The API consumed by both frontends. **Fully working end-to-end** as of
 this session — every endpoint below has been smoke-tested with curl.
 
 ```
 backend/
-├── build.gradle.kts                Spring Boot 4.1.1, Kotlin 2.3, JJWT 0.12
+├── build.gradle.kts                Spring Boot 4.1.1, Java 17, JJWT 0.12
 ├── docker-compose.yml              uziy-postgres (Postgres 16, port 5432)
 ├── README.md                       run/env/endpoint reference
 ├── gradlew, gradle/                bundled wrapper
@@ -237,30 +242,30 @@ backend/
 │   └── db/migration/
 │       ├── V1__init_schema.sql     spec §3 tables + indexes + constraints
 │       └── V2__seed_dev_data.sql   dev users + 3 campaigns + questions
-└── src/main/kotlin/mn/uziy/backend/
-    ├── UziyBackendApplication.kt
+└── src/main/java/mn/uziy/backend/
+    ├── UziyBackendApplication.java
     ├── config/
-    │   ├── AppProperties.kt        @ConfigurationProperties("uziy")
-    │   └── WebConfig.kt            registers AuthArgumentResolver
+    │   ├── AppProperties.java        @ConfigurationProperties("uziy")
+    │   └── WebConfig.java            registers AuthArgumentResolver
     ├── domain/
-    │   ├── UserEntity.kt           + Role, Gender enums, computed .age
-    │   ├── CampaignEntity.kt       + SurveyQuestion, ViewHistory,
+    │   ├── UserEntity.java           + Role, Gender enums, computed .age
+    │   ├── CampaignEntity.java       + SurveyQuestion, ViewHistory,
     │   │                           SurveyResponse (JSONB via @JdbcTypeCode)
-    │   ├── PayoutEntity.kt         + PayoutStatus
-    │   └── *Repository.kt          split per aggregate (User, Campaign+Payment,
+    │   ├── PayoutEntity.java         + PayoutStatus
+    │   └── *Repository.java          split per aggregate (User, Campaign+Payment,
     │                               Survey*/ViewHistory, Payout); findFeedFor()
     │                               implements §4B; tryDecrementBudget() is the
     │                               conditional UPDATE for §4C.
-    ├── common/DomainException.kt   NotFound/Forbidden/BadRequest/Conflict/
+    ├── common/DomainException.java   NotFound/Forbidden/BadRequest/Conflict/
     │                               Unauthorized/Unavailable — services throw
     │                               these, never ResponseStatusException.
-    ├── web/ApiExceptionHandler.kt  the ONE place domain exceptions → HTTP status
+    ├── web/ApiExceptionHandler.java  the ONE place domain exceptions → HTTP status
     │                               (sendError, so the JSON `message` is unchanged)
     ├── security/
-    │   ├── JwtService.kt           issue/parse; HS512 signed with app secret
-    │   ├── JwtAuthFilter.kt        Bearer → SecurityContext
-    │   ├── SecurityConfig.kt       stateless, CORS, role-gated routes
-    │   └── CurrentUser.kt          @Auth param resolver → JwtPrincipal
+    │   ├── JwtService.java           issue/parse; HS512 signed with app secret
+    │   ├── JwtAuthFilter.java        Bearer → SecurityContext
+    │   ├── SecurityConfig.java       stateless, CORS, role-gated routes
+    │   └── CurrentUser.java          @Auth param resolver → JwtPrincipal
     ├── auth/                       AuthController (HTTP) → AuthService
     ├── viewer/                     ViewerController → ViewerService (me/feed/
     │                               questions) + RewardService.submitSurvey
