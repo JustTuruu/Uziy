@@ -5,14 +5,14 @@
 
 import { useMemo, useSyncExternalStore } from "react";
 
-export const API_BASE_URL =
+const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
 
 const TOKEN_KEY = "uziy.jwt";
 const USER_KEY = "uziy.user";
 
-export type Role = "VIEWER" | "COMPANY" | "ADMIN";
-export type Gender = "MALE" | "FEMALE";
+type Role = "VIEWER" | "COMPANY" | "ADMIN";
+type Gender = "MALE" | "FEMALE";
 
 export interface Me {
   id: number;
@@ -198,7 +198,7 @@ export interface Campaign {
   createdAt: string;
 }
 
-export interface NewCampaignQuestion {
+interface NewCampaignQuestion {
   prompt: string;
   type: "SINGLE_CHOICE" | "MULTI_CHOICE" | "TEXT";
   options: string[];
@@ -227,7 +227,7 @@ export type CreateCampaignBody = {
   | { rewardPerUser: number; targetViewers?: never }
 );
 
-export type PaymentProvider = "SIMULATED" | "QPAY" | "BANK_TRANSFER";
+type PaymentProvider = "SIMULATED" | "QPAY" | "BANK_TRANSFER";
 export type PaymentStatus = "PAID" | "FAILED" | "REFUNDED";
 
 export interface Payment {
@@ -270,95 +270,6 @@ export const companyApi = {
   /** The caller's campaign payments, newest first. */
   payments: () => apiFetch<Payment[]>("/company/payments"),
 };
-
-export interface AdminStats {
-  totalUsers: number;
-  totalCampaigns: number;
-  activeCampaigns: number;
-  pendingCampaigns: number;
-  pendingPayouts: number;
-  commissionRate: number;
-}
-
-export interface AdminUser {
-  id: number;
-  phoneNumber: string;
-  role: Role;
-  gender: Gender | null;
-  age: number | null;
-  city: string | null;
-  balance: number;
-  isVerified: boolean;
-  companyName: string | null;
-  createdAt: string;
-}
-
-export interface Payout {
-  id: number;
-  userId: number;
-  userPhone: string;
-  amount: number;
-  bank: string;
-  accountNumber: string;
-  accountName: string;
-  nationalId: string;
-  status: "PENDING" | "APPROVED" | "REJECTED";
-  isFirstPayout: boolean;
-  requestedAt: string;
-  decidedAt: string | null;
-  rejectReason: string | null;
-}
-
-export interface AdminCampaignDetail {
-  campaign: Campaign;
-  companyId: number;
-  companyName: string | null;
-  completedViews: number;
-  spentBudget: number;
-}
-
-export const adminApi = {
-  stats: () => apiFetch<AdminStats>("/admin/stats"),
-  users: () => apiFetch<AdminUser[]>("/admin/users"),
-  user: (id: number) => apiFetch<AdminUser>(`/admin/users/${id}`),
-  verify: (id: number) =>
-    apiFetch<AdminUser>(`/admin/users/${id}/verify`, { method: "PATCH" }),
-  campaigns: (opts?: { status?: CampaignStatus; companyId?: number }) => {
-    const params = new URLSearchParams();
-    if (opts?.status) params.set("status", opts.status);
-    if (opts?.companyId !== undefined)
-      params.set("companyId", String(opts.companyId));
-    const qs = params.toString();
-    return apiFetch<Campaign[]>(
-      qs ? `/admin/campaigns?${qs}` : "/admin/campaigns",
-    );
-  },
-  campaign: (id: number) =>
-    apiFetch<AdminCampaignDetail>(`/admin/campaigns/${id}`),
-  moderate: (id: number, decision: "ACTIVE" | "REJECTED") =>
-    apiFetch<Campaign>(
-      `/admin/campaigns/${id}/moderate?decision=${decision}`,
-      { method: "PATCH" },
-    ),
-  pendingPayouts: () => apiFetch<Payout[]>("/admin/payouts"),
-  payoutHistory: () => apiFetch<Payout[]>("/admin/payouts/history"),
-  decidePayout: (id: number, decision: "APPROVED" | "REJECTED", reason?: string) =>
-    apiFetch<Payout>(
-      `/admin/payouts/${id}/decision?decision=${decision}${
-        reason ? `&reason=${encodeURIComponent(reason)}` : ""
-      }`,
-      { method: "PATCH" },
-    ),
-  updateSettings: (body: {
-    commissionPercent: number;
-    minRewardPerViewer: number;
-  }) =>
-    apiFetch<PlatformSettings>("/admin/platform-settings", {
-      method: "PATCH",
-      body,
-    }),
-};
-
 // --- Platform settings (public read; admin write) --------------------------
 
 export interface PlatformSettings {

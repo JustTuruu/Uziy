@@ -1,5 +1,5 @@
 // Shared with every panel; re-exported so `@/lib/utils` keeps working.
-export { cn, parseIntInput, sanitizeIntInput } from "@uziy/ui";
+export { cn, parseIntInput } from "@uziy/ui";
 
 export function formatTugrik(amount: number): string {
   return new Intl.NumberFormat("mn-MN").format(Math.round(amount)) + " ₮";

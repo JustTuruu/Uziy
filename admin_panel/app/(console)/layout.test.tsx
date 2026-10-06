@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { auth, type Me } from "@/lib/api";
+import { adminApi, auth, type AdminStats, type Me } from "@/lib/api";
 import AdminLayout from "./layout";
 
 let path = "/";
@@ -18,10 +18,20 @@ const admin: Me = {
   companyName: null,
 };
 
+const stats = (pendingPayouts: number, pendingCampaigns: number): AdminStats => ({
+  totalUsers: 0,
+  totalCampaigns: 0,
+  activeCampaigns: 0,
+  pendingCampaigns,
+  pendingPayouts,
+  commissionRate: 0.3,
+});
+
 describe("Admin console layout", () => {
   beforeEach(() => {
     path = "/";
     window.localStorage.clear();
+    vi.spyOn(adminApi, "stats").mockResolvedValue(stats(0, 0));
   });
   afterEach(() => window.localStorage.clear());
 
@@ -62,5 +72,26 @@ describe("Admin console layout", () => {
     render(<AdminLayout>x</AdminLayout>);
     screen.getByRole("link", { name: "Гарах" }).click();
     expect(auth.getToken()).toBeNull();
+  });
+
+  it("shows the live pending counts as sidebar badges", async () => {
+    vi.spyOn(adminApi, "stats").mockResolvedValue(stats(3, 5));
+    render(<AdminLayout>x</AdminLayout>);
+    expect(
+      await screen.findByRole("link", { name: /Мөнгө татах\s*3/ }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: /Кампани модераци\s*5/ }),
+    ).toBeTruthy();
+    expect(screen.getByRole("img", { name: "8 хүлээгдэж буй" })).toBeTruthy();
+  });
+
+  it("shows no badges when the stats request fails", async () => {
+    vi.spyOn(adminApi, "stats").mockRejectedValue(new Error("down"));
+    render(<AdminLayout>x</AdminLayout>);
+    // Exact name: with a badge the accessible name would be "Мөнгө татах 3".
+    expect(
+      await screen.findByRole("link", { name: "Мөнгө татах" }),
+    ).toBeTruthy();
   });
 });

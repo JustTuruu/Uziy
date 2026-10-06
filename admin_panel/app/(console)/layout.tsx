@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   Banknote,
@@ -18,47 +19,49 @@ import {
   Topbar,
   type NavItem,
 } from "@uziy/ui";
-import { auth, useStoredUser } from "@/lib/api";
+import { adminApi, auth, useStoredUser } from "@/lib/api";
 import { formatPhone } from "@/lib/utils";
-import { platformStats } from "@/lib/mock-data";
 
-const nav: NavItem[] = [
-  {
-    href: "/",
-    label: "Хяналтын самбар",
-    icon: <LayoutDashboard size={16} />,
-    section: "Ерөнхий",
-  },
-  {
-    href: "/payouts",
-    label: "Мөнгө татах",
-    icon: <Wallet size={16} />,
-    badge: platformStats.pendingPayouts,
-    section: "Хяналт",
-  },
-  {
-    href: "/campaigns",
-    label: "Кампани модераци",
-    icon: <PlaySquare size={16} />,
-    badge: platformStats.pendingCampaigns,
-  },
-  {
-    href: "/users",
-    label: "Хэрэглэгчид",
-    icon: <Users size={16} />,
-  },
-  {
-    href: "/finance",
-    label: "Санхүү",
-    icon: <Banknote size={16} />,
-    section: "Тохиргоо",
-  },
-  {
-    href: "/pricing",
-    label: "Шимтгэл",
-    icon: <Percent size={16} />,
-  },
-];
+/** Sidebar entries; the badges are the live pending counts from the backend. */
+function buildNav(pendingPayouts: number, pendingCampaigns: number): NavItem[] {
+  return [
+    {
+      href: "/",
+      label: "Хяналтын самбар",
+      icon: <LayoutDashboard size={16} />,
+      section: "Ерөнхий",
+    },
+    {
+      href: "/payouts",
+      label: "Мөнгө татах",
+      icon: <Wallet size={16} />,
+      badge: pendingPayouts,
+      section: "Хяналт",
+    },
+    {
+      href: "/campaigns",
+      label: "Кампани модераци",
+      icon: <PlaySquare size={16} />,
+      badge: pendingCampaigns,
+    },
+    {
+      href: "/users",
+      label: "Хэрэглэгчид",
+      icon: <Users size={16} />,
+    },
+    {
+      href: "/finance",
+      label: "Санхүү",
+      icon: <Banknote size={16} />,
+      section: "Тохиргоо",
+    },
+    {
+      href: "/pricing",
+      label: "Шимтгэл",
+      icon: <Percent size={16} />,
+    },
+  ];
+}
 
 export default function AdminLayout({
   children,
@@ -67,8 +70,21 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const phone = useStoredUser()?.phoneNumber ?? null;
+  const [pendingPayouts, setPendingPayouts] = useState(0);
+  const [pendingCampaigns, setPendingCampaigns] = useState(0);
+  useEffect(() => {
+    // Best effort: the badges are decoration, each page handles auth errors itself.
+    adminApi
+      .stats()
+      .then((st) => {
+        setPendingPayouts(st.pendingPayouts);
+        setPendingCampaigns(st.pendingCampaigns);
+      })
+      .catch(() => {});
+  }, []);
+  const nav = buildNav(pendingPayouts, pendingCampaigns);
 
-  const pending = platformStats.pendingPayouts + platformStats.pendingCampaigns;
+  const pending = pendingPayouts + pendingCampaigns;
 
   return (
     <div>

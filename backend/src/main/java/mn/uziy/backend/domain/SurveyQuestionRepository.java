@@ -8,6 +8,4 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface SurveyQuestionRepository extends JpaRepository<SurveyQuestionEntity, Long> {
     List<SurveyQuestionEntity> findAllByCampaignIdOrderByPosition(long campaignId);
-
-    void deleteAllByCampaignId(long campaignId);
 }

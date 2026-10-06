@@ -210,23 +210,3 @@ export function pricingRequestFields(
     : { rewardPerUser: p.rewardPerViewer };
 }
 
-export const MIN_COMMISSION_PERCENT = 1;
-export const MAX_COMMISSION_PERCENT = 90;
-
-/** Validates the admin's commission settings form; null when valid. */
-export function validateCommissionSettings(
-  commissionPercent: number,
-  minRewardPerViewer: number,
-): string | null {
-  if (
-    !Number.isInteger(commissionPercent) ||
-    commissionPercent < MIN_COMMISSION_PERCENT ||
-    commissionPercent > MAX_COMMISSION_PERCENT
-  ) {
-    return `Платформын шимтгэл ${MIN_COMMISSION_PERCENT}–${MAX_COMMISSION_PERCENT}% хооронд байх ёстой`;
-  }
-  if (!Number.isInteger(minRewardPerViewer) || minRewardPerViewer < 1) {
-    return "Нэг үзэгчид олгох хамгийн бага урамшуулал 1 ₮-с багагүй байх ёстой";
-  }
-  return null;
-}

@@ -11,7 +11,7 @@ import type { CampaignStatus } from "./api";
  * pause / resume / complete; everything else is admin-only.
  */
 
-export const CAMPAIGN_STATUS_LABEL: Record<CampaignStatus, string> = {
+const CAMPAIGN_STATUS_LABEL: Record<CampaignStatus, string> = {
   AWAITING_PAYMENT: "Төлбөр хүлээгдэж буй",
   PENDING: "Хянагдаж буй",
   ACTIVE: "Идэвхтэй",
@@ -20,7 +20,7 @@ export const CAMPAIGN_STATUS_LABEL: Record<CampaignStatus, string> = {
   REJECTED: "Татгалзсан",
 };
 
-export const CAMPAIGN_STATUS_TONE: Record<CampaignStatus, BadgeTone> = {
+const CAMPAIGN_STATUS_TONE: Record<CampaignStatus, BadgeTone> = {
   AWAITING_PAYMENT: "warning",
   PENDING: "info",
   ACTIVE: "success",
@@ -55,15 +55,6 @@ export function companyStatusTransitions(
   from: CampaignStatus,
 ): readonly CompanySettableStatus[] {
   return COMPANY_TRANSITIONS[from] ?? [];
-}
-
-export function canCompanySetStatus(
-  from: CampaignStatus,
-  to: CampaignStatus,
-): boolean {
-  return (companyStatusTransitions(from) as readonly CampaignStatus[]).includes(
-    to,
-  );
 }
 
 /** A campaign whose money has been received (paid or legacy pre-payment). */

@@ -237,9 +237,9 @@ rewarded-video-platform/
   per-app copies. Install/run from the repo root: `pnpm install`, then
   `pnpm -C admin_panel dev` / `pnpm -C company_panel dev`. Backend CORS allows both
   origins. Older notes below that say "one codebase / `/company/*` /
-  `/admin/*`" are superseded. Leftover unused files from the split (not yet
-  deleted): `admin_panel/components/campaign-{budget-fields,payment-card}*`,
-  `admin_panel/lib/video*`, `company_panel/lib/mock-data.ts`.
+  `/admin/*`" are superseded. The leftover files from the split were deleted on 2026-10-06 (admin no longer
+  carries company-only code; mock data is gone — the admin sidebar badges use the live
+  `/admin/stats` counts).
 - The **Company panel is a web app**, not mobile. (Originally merged into
   `admin_panel/` with role-based routing; see the split above.) Rationale: uploading videos, drawing targeting filters, and
   reviewing charts are painful on a phone.
@@ -460,8 +460,9 @@ super-admin bootstrap flow before shipping.
 ### `pubspec.yaml`
 
 Dart SDK ≥ 3.4, Flutter ≥ 3.22. Deps: `go_router`, `flutter_riverpod`, `dio`,
-`video_player`, `chewie`, `flutter_secure_storage`, `shared_preferences`,
-`intl`. **The `video_player` package is declared but not yet used** —
+`flutter_secure_storage`, `intl` (`video_player`/`chewie`/`shared_preferences` were
+removed on 2026-10-06 as unused — re-add `video_player` + `chewie` when the real player lands).
+**Playback is still a placeholder** —
 `VideoPlayerScreen` renders a placeholder timer; wire the real player later.
 
 ### `lib/main.dart`

@@ -135,7 +135,7 @@ describe("authApi.login", () => {
   });
 });
 
-describe("platformSettingsApi + adminApi.updateSettings", () => {
+describe("platformSettingsApi", () => {
   const originalFetch = globalThis.fetch;
   afterEach(() => {
     globalThis.fetch = originalFetch;
@@ -169,41 +169,6 @@ describe("platformSettingsApi + adminApi.updateSettings", () => {
     ).toBeUndefined();
     expect(res.commissionPercent).toBe(30);
     expect(res.minRewardPerViewer).toBe(100);
-  });
-
-  it("updateSettings PATCHes /admin/platform-settings with the commission body", async () => {
-    auth.setToken("admin-tok");
-    let captured: RequestInit | undefined;
-    let capturedUrl: RequestInfo | URL | undefined;
-    globalThis.fetch = vi.fn(async (url, init) => {
-      capturedUrl = url;
-      captured = init ?? {};
-      return new Response(
-        JSON.stringify({
-          commissionPercent: 35,
-          minRewardPerViewer: 150,
-          updatedAt: "2026-09-28T11:00:00Z",
-        }),
-        { status: 200, headers: { "content-type": "application/json" } },
-      );
-    }) as typeof fetch;
-
-    const { adminApi } = await import("./api");
-    const res = await adminApi.updateSettings({
-      commissionPercent: 35,
-      minRewardPerViewer: 150,
-    });
-
-    expect(String(capturedUrl)).toContain("/admin/platform-settings");
-    expect(captured!.method).toBe("PATCH");
-    expect(
-      (captured!.headers as Record<string, string>).Authorization,
-    ).toBe("Bearer admin-tok");
-    expect(JSON.parse(captured!.body as string)).toEqual({
-      commissionPercent: 35,
-      minRewardPerViewer: 150,
-    });
-    expect(res.commissionPercent).toBe(35);
   });
 });
 

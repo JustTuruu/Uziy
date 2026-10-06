@@ -1,10 +1,6 @@
-import { formatNumber, formatTugrik } from "./utils";
+type PricingMode = "VIEWERS" | "REWARD";
 
-export const MAX_MONEY_DIGITS = 13;
-
-export type PricingMode = "VIEWERS" | "REWARD";
-
-export type PricingErrorCode =
+type PricingErrorCode =
   | "BUDGET_INVALID"
   | "VIEWERS_INVALID"
   | "REWARD_INVALID"
@@ -103,59 +99,6 @@ export function computeCampaignPricing(input: PricingInput): PricingResult {
   if (tooSmall) return { ...filled, error: "BUDGET_TOO_SMALL" };
   if (R < m) return { ...filled, error: "REWARD_BELOW_MIN" };
   return filled;
-}
-
-export function pricingErrorMessage(
-  code: PricingErrorCode,
-  minRewardPerViewer: number,
-): string {
-  switch (code) {
-    case "BUDGET_INVALID":
-      return "Нийт төсвөө оруулна уу";
-    case "VIEWERS_INVALID":
-      return "Үзэгчийн тоогоо оруулна уу";
-    case "REWARD_INVALID":
-      return "Нэг үзэгчид олгох урамшууллаа оруулна уу";
-    case "BUDGET_TOO_SMALL":
-      return "Төсөв хэт бага байна — үзэгчийн тоог багасгах эсвэл төсвөө нэмнэ үү";
-    case "REWARD_BELOW_MIN":
-      return `Нэг үзэгчид олгох урамшуулал хамгийн багадаа ${formatNumber(
-        minRewardPerViewer,
-      )} ₮ байх ёстой`;
-  }
-}
-
-export function describePricing(p: PricingResult): string | null {
-  if (
-    p.error === "BUDGET_INVALID" ||
-    p.error === "VIEWERS_INVALID" ||
-    p.error === "REWARD_INVALID" ||
-    p.error === "BUDGET_TOO_SMALL"
-  ) {
-    return null;
-  }
-  if (p.mode === "VIEWERS") {
-    return (
-      `${formatTugrik(p.budget)} ÷ ${formatNumber(p.targetViewers)} үзэгч = ` +
-      `${formatTugrik(p.costPerViewer)} / үзэгч → платформын ` +
-      `${p.commissionPercent}% шимтгэлийн дараа үзэгч бүр ` +
-      `${formatTugrik(p.rewardPerViewer)} авна.`
-    );
-  }
-  return (
-    `Үзэгч бүр ${formatTugrik(p.rewardPerViewer)} авна → платформын ` +
-    `${p.commissionPercent}% шимтгэлтэй нийлээд нэг үзэгчийн зардал ` +
-    `${formatTugrik(p.costPerViewer)} → ${formatTugrik(p.budget)} ÷ ` +
-    `${formatTugrik(p.costPerViewer)} = ${formatNumber(p.targetViewers)} үзэгч.`
-  );
-}
-
-export function pricingRequestFields(
-  p: Pick<PricingResult, "mode" | "targetViewers" | "rewardPerViewer">,
-): { targetViewers: number } | { rewardPerUser: number } {
-  return p.mode === "VIEWERS"
-    ? { targetViewers: p.targetViewers }
-    : { rewardPerUser: p.rewardPerViewer };
 }
 
 export const MIN_COMMISSION_PERCENT = 1;

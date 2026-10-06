@@ -1,13 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   computeCampaignPricing,
-  describePricing,
-  pricingErrorMessage,
-  pricingRequestFields,
   validateCommissionSettings,
   type PricingInput,
 } from "./pricing";
-import { formatTugrik } from "./utils";
 
 const base = { commissionPercent: 30, minRewardPerViewer: 100 };
 
@@ -189,61 +185,6 @@ describe("computeCampaignPricing — details", () => {
       expect(p.unused).toBe(p.budget - p.payable);
     }
     expect(checked).toBeGreaterThan(1_000);
-  });
-});
-
-describe("pricingErrorMessage", () => {
-  it("returns the shared Mongolian messages", () => {
-    expect(pricingErrorMessage("BUDGET_INVALID", 100)).toBe("Нийт төсвөө оруулна уу");
-    expect(pricingErrorMessage("VIEWERS_INVALID", 100)).toBe("Үзэгчийн тоогоо оруулна уу");
-    expect(pricingErrorMessage("REWARD_INVALID", 100)).toBe(
-      "Нэг үзэгчид олгох урамшууллаа оруулна уу",
-    );
-    expect(pricingErrorMessage("BUDGET_TOO_SMALL", 100)).toBe(
-      "Төсөв хэт бага байна — үзэгчийн тоог багасгах эсвэл төсвөө нэмнэ үү",
-    );
-    expect(pricingErrorMessage("REWARD_BELOW_MIN", 100)).toBe(
-      "Нэг үзэгчид олгох урамшуулал хамгийн багадаа 100 ₮ байх ёстой",
-    );
-  });
-});
-
-describe("describePricing", () => {
-  it("explains VIEWERS mode as budget ÷ viewers minus commission", () => {
-    expect(describePricing(viewers(1_000_000, 1_000))).toBe(
-      `${formatTugrik(1_000_000)} ÷ 1,000 үзэгч = ${formatTugrik(1_000)} / үзэгч → ` +
-        `платформын 30% шимтгэлийн дараа үзэгч бүр ${formatTugrik(700)} авна.`,
-    );
-  });
-
-  it("explains REWARD mode as reward + commission → reach", () => {
-    const text = describePricing(reward(1_000_000, 500));
-    expect(text).toContain(`Үзэгч бүр ${formatTugrik(500)} авна`);
-    expect(text).toContain(`нэг үзэгчийн зардал ${formatTugrik(715)}`);
-    expect(text).toContain("= 1,398 үзэгч.");
-  });
-
-  it("stays quiet when inputs are missing or the budget is too small", () => {
-    expect(describePricing(viewers(0, 1_000))).toBeNull();
-    expect(describePricing(viewers(500, 1_000))).toBeNull();
-  });
-
-  it("still explains a below-minimum reward so the user sees why", () => {
-    expect(describePricing(viewers(100_000, 1_000))).toContain(formatTugrik(70));
-  });
-});
-
-describe("pricingRequestFields", () => {
-  it("sends only targetViewers in VIEWERS mode", () => {
-    expect(pricingRequestFields(viewers(1_000_000, 1_000))).toEqual({
-      targetViewers: 1_000,
-    });
-  });
-
-  it("sends only rewardPerUser in REWARD mode", () => {
-    expect(pricingRequestFields(reward(1_000_000, 500))).toEqual({
-      rewardPerUser: 500,
-    });
   });
 });
 

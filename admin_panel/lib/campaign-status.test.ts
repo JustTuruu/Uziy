@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { CampaignStatus } from "./api";
 import {
-  CAMPAIGN_STATUS_LABEL,
   campaignStatusLabel,
   campaignStatusTone,
-  canCompanySetStatus,
-  companyStatusTransitions,
   isCampaignPaid,
 } from "./campaign-status";
 
@@ -29,7 +26,7 @@ describe("campaign status labels", () => {
   });
 
   it("uses distinct labels so AWAITING_PAYMENT and PENDING cannot be confused", () => {
-    const labels = ALL.map((s) => CAMPAIGN_STATUS_LABEL[s]);
+    const labels = ALL.map((s) => campaignStatusLabel(s));
     expect(new Set(labels).size).toBe(ALL.length);
   });
 
@@ -46,37 +43,6 @@ describe("campaign status labels", () => {
     const unknown = "ARCHIVED" as CampaignStatus;
     expect(campaignStatusLabel(unknown)).toBe("ARCHIVED");
     expect(campaignStatusTone(unknown)).toBe("neutral");
-  });
-});
-
-describe("company status transitions", () => {
-  it("allows pause/complete from ACTIVE and resume/complete from PAUSED", () => {
-    expect(companyStatusTransitions("ACTIVE")).toEqual(["PAUSED", "COMPLETED"]);
-    expect(companyStatusTransitions("PAUSED")).toEqual(["ACTIVE", "COMPLETED"]);
-  });
-
-  it("allows nothing from unpaid, under-review, finished or rejected campaigns", () => {
-    for (const s of ["AWAITING_PAYMENT", "PENDING", "COMPLETED", "REJECTED"] as const) {
-      expect(companyStatusTransitions(s)).toEqual([]);
-    }
-  });
-
-  it("closes the moderation bypass: PENDING → ACTIVE is not allowed", () => {
-    expect(canCompanySetStatus("PENDING", "ACTIVE")).toBe(false);
-    expect(canCompanySetStatus("AWAITING_PAYMENT", "ACTIVE")).toBe(false);
-  });
-
-  it("canCompanySetStatus agrees with the transition table", () => {
-    for (const from of ALL) {
-      for (const to of ALL) {
-        const expected = (companyStatusTransitions(from) as readonly string[]).includes(to);
-        expect(canCompanySetStatus(from, to)).toBe(expected);
-      }
-    }
-    expect(canCompanySetStatus("ACTIVE", "PAUSED")).toBe(true);
-    expect(canCompanySetStatus("PAUSED", "ACTIVE")).toBe(true);
-    expect(canCompanySetStatus("PAUSED", "COMPLETED")).toBe(true);
-    expect(canCompanySetStatus("ACTIVE", "ACTIVE")).toBe(false);
   });
 });
 

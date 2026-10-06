@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { Campaign, Payment } from "./api";
+import type { Campaign } from "./api";
 import {
-  PAYMENT_STATUS_LABEL,
   campaignInvoice,
   summarizeCampaignBudgets,
-  summarizePayments,
 } from "./billing";
 
 function campaign(over: Partial<Campaign> = {}): Campaign {
@@ -27,21 +25,6 @@ function campaign(over: Partial<Campaign> = {}): Campaign {
     paidAt: null,
     status: "AWAITING_PAYMENT",
     createdAt: "2026-09-28T10:00:00Z",
-    ...over,
-  };
-}
-
-function payment(over: Partial<Payment> = {}): Payment {
-  return {
-    id: 1,
-    campaignId: 1,
-    campaignTitle: "Шинэ 5G багц",
-    amount: 1_000_000,
-    provider: "SIMULATED",
-    status: "PAID",
-    reference: "UZ-20260928-1",
-    createdAt: "2026-09-28T10:00:00Z",
-    paidAt: "2026-09-28T10:00:05Z",
     ...over,
   };
 }
@@ -80,37 +63,6 @@ describe("campaignInvoice", () => {
     );
     expect(inv.targetViewers).toBe(1_250);
     expect(inv.commissionPercent).toBeNull();
-  });
-});
-
-describe("summarizePayments", () => {
-  it("sums only PAID payments and finds the latest one", () => {
-    const s = summarizePayments([
-      payment({ id: 1, amount: 500_000, paidAt: "2026-09-01T00:00:00Z" }),
-      payment({ id: 2, amount: 1_000_000, paidAt: "2026-09-20T00:00:00Z" }),
-      payment({ id: 3, amount: 9_999, status: "FAILED", paidAt: null, createdAt: "2026-09-27T00:00:00Z" }),
-      payment({ id: 4, amount: 7_777, status: "REFUNDED", paidAt: "2026-09-25T00:00:00Z" }),
-    ]);
-    expect(s).toEqual({
-      totalPaid: 1_500_000,
-      paidCount: 2,
-      lastPaidAt: "2026-09-20T00:00:00Z",
-    });
-  });
-
-  it("is empty-safe", () => {
-    expect(summarizePayments([])).toEqual({ totalPaid: 0, paidCount: 0, lastPaidAt: null });
-  });
-
-  it("falls back to createdAt when paidAt is missing", () => {
-    expect(
-      summarizePayments([payment({ paidAt: null, createdAt: "2026-09-10T00:00:00Z" })])
-        .lastPaidAt,
-    ).toBe("2026-09-10T00:00:00Z");
-  });
-
-  it("labels payment statuses in Mongolian", () => {
-    expect(PAYMENT_STATUS_LABEL.PAID).toBe("Төлөгдсөн");
   });
 });
 

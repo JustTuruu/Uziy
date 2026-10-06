@@ -1,30 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
-  cn,
   formatDate,
-  formatDuration,
   formatNumber,
   formatPhone,
   formatTugrik,
   parseIntInput,
   relativeTime,
-  sanitizeIntInput,
 } from "./utils";
-
-describe("cn", () => {
-  it("joins truthy classNames", () => {
-    expect(cn("a", "b")).toBe("a b");
-  });
-
-  it("skips falsy values", () => {
-    expect(cn("a", false, null, undefined, "b")).toBe("a b");
-  });
-
-  it("dedupes and lets later Tailwind classes override earlier ones", () => {
-    // twMerge behavior — the last conflicting utility wins.
-    expect(cn("p-2", "p-4")).toBe("p-4");
-  });
-});
 
 describe("formatTugrik", () => {
   it("appends the ₮ symbol and separates thousands", () => {
@@ -93,32 +75,6 @@ describe("relativeTime", () => {
   });
 });
 
-describe("sanitizeIntInput", () => {
-  it("allows an empty field so the user can clear the value", () => {
-    expect(sanitizeIntInput("")).toBe("");
-  });
-
-  it("strips leading zeros left over after clearing and retyping", () => {
-    expect(sanitizeIntInput("05")).toBe("5");
-    expect(sanitizeIntInput("0025")).toBe("25");
-    expect(sanitizeIntInput("0001000000")).toBe("1000000");
-  });
-
-  it("keeps a lone zero and zeros inside the number", () => {
-    expect(sanitizeIntInput("0")).toBe("0");
-    expect(sanitizeIntInput("000")).toBe("0");
-    expect(sanitizeIntInput("1000")).toBe("1000");
-  });
-
-  it("drops non-digit characters (signs, decimals, separators, letters)", () => {
-    expect(sanitizeIntInput("-12")).toBe("12");
-    expect(sanitizeIntInput("1,000,000")).toBe("1000000");
-    expect(sanitizeIntInput("12.5")).toBe("125");
-    expect(sanitizeIntInput("1e5")).toBe("15");
-    expect(sanitizeIntInput(" 45 ₮")).toBe("45");
-  });
-});
-
 describe("parseIntInput", () => {
   it("parses digits", () => {
     expect(parseIntInput("45")).toBe(45);
@@ -127,22 +83,6 @@ describe("parseIntInput", () => {
 
   it("treats an empty field as 0", () => {
     expect(parseIntInput("")).toBe(0);
-  });
-});
-
-describe("formatDuration", () => {
-  it("formats seconds as m:ss", () => {
-    expect(formatDuration(0)).toBe("0:00");
-    expect(formatDuration(5)).toBe("0:05");
-    expect(formatDuration(45)).toBe("0:45");
-    expect(formatDuration(60)).toBe("1:00");
-    expect(formatDuration(90)).toBe("1:30");
-    expect(formatDuration(180)).toBe("3:00");
-  });
-
-  it("floors fractions and clamps negatives to zero", () => {
-    expect(formatDuration(44.9)).toBe("0:44");
-    expect(formatDuration(-3)).toBe("0:00");
   });
 });
 

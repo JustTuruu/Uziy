@@ -8,7 +8,5 @@ import org.springframework.stereotype.Repository;
 public interface ViewHistoryRepository extends JpaRepository<ViewHistoryEntity, Long> {
     boolean existsByUserIdAndCampaignId(long userId, long campaignId);
 
-    long countByUserId(long userId);
-
     long countByCampaignId(long campaignId);
 }

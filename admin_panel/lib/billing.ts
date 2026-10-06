@@ -1,18 +1,5 @@
-import type { BadgeTone } from "@uziy/ui";
-import type { Campaign, Payment, PaymentStatus } from "./api";
+import type { Campaign } from "./api";
 import { isCampaignPaid } from "./campaign-status";
-
-export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
-  PAID: "Төлөгдсөн",
-  FAILED: "Амжилтгүй",
-  REFUNDED: "Буцаагдсан",
-};
-
-export const PAYMENT_STATUS_TONE: Record<PaymentStatus, BadgeTone> = {
-  PAID: "success",
-  FAILED: "danger",
-  REFUNDED: "neutral",
-};
 
 export interface CampaignInvoice {
   payable: number;
@@ -37,31 +24,6 @@ export function campaignInvoice(c: Campaign): CampaignInvoice {
     commissionTotal: Math.max(0, payable - rewardsTotal),
     commissionPercent: c.commissionPercent,
   };
-}
-
-export interface PaymentSummary {
-  totalPaid: number;
-  paidCount: number;
-  lastPaidAt: string | null;
-}
-
-export function summarizePayments(payments: Payment[]): PaymentSummary {
-  let totalPaid = 0;
-  let paidCount = 0;
-  let lastPaidAt: string | null = null;
-  let lastMs = -Infinity;
-  for (const p of payments) {
-    if (p.status !== "PAID") continue;
-    totalPaid += p.amount;
-    paidCount += 1;
-    const at = p.paidAt ?? p.createdAt;
-    const ms = Date.parse(at);
-    if (Number.isFinite(ms) && ms > lastMs) {
-      lastMs = ms;
-      lastPaidAt = at;
-    }
-  }
-  return { totalPaid, paidCount, lastPaidAt };
 }
 
 export interface CampaignBudgetSummary {

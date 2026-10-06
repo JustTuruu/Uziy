@@ -5,14 +5,14 @@
 
 import { useMemo, useSyncExternalStore } from "react";
 
-export const API_BASE_URL =
+const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
 
 const TOKEN_KEY = "uziy.jwt";
 const USER_KEY = "uziy.user";
 
-export type Role = "VIEWER" | "COMPANY" | "ADMIN";
-export type Gender = "MALE" | "FEMALE";
+type Role = "VIEWER" | "COMPANY" | "ADMIN";
+type Gender = "MALE" | "FEMALE";
 
 export interface Me {
   id: number;
@@ -200,79 +200,6 @@ export interface Campaign {
   status: CampaignStatus;
   createdAt: string;
 }
-
-export interface NewCampaignQuestion {
-  prompt: string;
-  type: "SINGLE_CHOICE" | "MULTI_CHOICE" | "TEXT";
-  options: string[];
-  required: boolean;
-}
-
-/**
- * POST /company/campaigns body. The server prices the campaign itself from
- * the current platform settings, so the client sends the budget plus
- * EXACTLY ONE of targetViewers / rewardPerUser (never a cost per view).
- */
-export type CreateCampaignBody = {
-  title: string;
-  hasVideo: boolean;
-  videoUrl: string;
-  durationSeconds: number;
-  targetGender: "ALL" | Gender;
-  minAge: number;
-  maxAge: number;
-  targetCity: string;
-  /** Whole ₮ the company is willing to spend; it is charged at most this. */
-  totalBudget: number;
-  questions: NewCampaignQuestion[];
-} & (
-  | { targetViewers: number; rewardPerUser?: never }
-  | { rewardPerUser: number; targetViewers?: never }
-);
-
-export type PaymentProvider = "SIMULATED" | "QPAY" | "BANK_TRANSFER";
-export type PaymentStatus = "PAID" | "FAILED" | "REFUNDED";
-
-export interface Payment {
-  id: number;
-  campaignId: number;
-  campaignTitle: string;
-  amount: number;
-  provider: PaymentProvider;
-  status: PaymentStatus;
-  /** Human-facing invoice number, e.g. "UZ-20260928-42". */
-  reference: string;
-  createdAt: string;
-  paidAt: string | null;
-}
-
-export interface PayCampaignResponse {
-  campaign: Campaign;
-  payment: Payment;
-}
-
-export const companyApi = {
-  list: () => apiFetch<Campaign[]>("/company/campaigns"),
-  get: (id: number) => apiFetch<Campaign>(`/company/campaigns/${id}`),
-  /** Creates the campaign in AWAITING_PAYMENT; pay it with `pay(id)`. */
-  create: (body: CreateCampaignBody) =>
-    apiFetch<Campaign>("/company/campaigns", { method: "POST", body }),
-  /** ACTIVE→PAUSED, PAUSED→ACTIVE, ACTIVE|PAUSED→COMPLETED only (else 409). */
-  setStatus: (id: number, status: "ACTIVE" | "PAUSED" | "COMPLETED") =>
-    apiFetch<Campaign>(`/company/campaigns/${id}/status?status=${status}`, {
-      method: "PATCH",
-    }),
-  /**
-   * Pays for an AWAITING_PAYMENT campaign (simulated for now; QPay later).
-   * On success the campaign moves to PENDING for admin moderation.
-   */
-  pay: (id: number) =>
-    apiFetch<PayCampaignResponse>(`/company/campaigns/${id}/pay`, {
-      method: "POST",
-    }),
-  /** The caller's campaign payments, newest first. */
-  payments: () => apiFetch<Payment[]>("/company/payments"),
-};
 
 export interface AdminStats {
   totalUsers: number;

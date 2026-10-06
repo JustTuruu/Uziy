@@ -168,13 +168,6 @@ abstract final class AppGradients {
     stops: [0.45, 1.0],
   );
 
-  /// Top scrim (status bar / close button legibility over video).
-  static const LinearGradient scrimTop = LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [Color(0x99000000), Color(0x00000000)],
-  );
-
   /// Curated rich, dark-friendly brand gradients for generated campaign art
   /// (see `campaignPalette()` in widgets/campaign_art.dart). Each entry is
   /// [bright, mid, deep], painted top-left -> bottom-right.

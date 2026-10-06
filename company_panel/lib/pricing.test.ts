@@ -4,7 +4,6 @@ import {
   describePricing,
   pricingErrorMessage,
   pricingRequestFields,
-  validateCommissionSettings,
   type PricingInput,
 } from "./pricing";
 import { formatTugrik } from "./utils";
@@ -247,19 +246,3 @@ describe("pricingRequestFields", () => {
   });
 });
 
-describe("validateCommissionSettings", () => {
-  it("accepts the documented range", () => {
-    expect(validateCommissionSettings(1, 1)).toBeNull();
-    expect(validateCommissionSettings(30, 100)).toBeNull();
-    expect(validateCommissionSettings(90, 5_000)).toBeNull();
-  });
-
-  it("rejects a commission outside 1..90", () => {
-    expect(validateCommissionSettings(0, 100)).toMatch(/1–90%/);
-    expect(validateCommissionSettings(91, 100)).toMatch(/1–90%/);
-  });
-
-  it("rejects a minimum reward below 1", () => {
-    expect(validateCommissionSettings(30, 0)).toMatch(/1 ₮/);
-  });
-});

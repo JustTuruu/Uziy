@@ -1,5 +1,3 @@
-enum CampaignStatus { active, paused, completed }
-
 /// Mirrors the backend's `FeedItemDto` (ViewerController.kt). `hasVideo`
 /// distinguishes plain-video campaigns from survey-only ones — the viewer
 /// app skips the video player and jumps straight to the survey for the

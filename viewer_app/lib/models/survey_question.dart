@@ -35,28 +35,4 @@ class SurveyQuestion {
       required: json['required'] as bool? ?? true,
     );
   }
-
-  static List<SurveyQuestion> mockFor(int campaignId) => [
-        SurveyQuestion(
-          id: 1,
-          campaignId: campaignId,
-          prompt: 'Энэ реклам танд сонирхолтой санагдсан уу?',
-          type: QuestionType.singleChoice,
-          options: const ['Тийм', 'Дунд зэрэг', 'Үгүй'],
-        ),
-        SurveyQuestion(
-          id: 2,
-          campaignId: campaignId,
-          prompt: 'Та энэ бүтээгдэхүүнийг өмнө нь ашиглаж байсан уу?',
-          type: QuestionType.singleChoice,
-          options: const ['Тогтмол ашигладаг', 'Хааяа', 'Үгүй'],
-        ),
-        SurveyQuestion(
-          id: 3,
-          campaignId: campaignId,
-          prompt: 'Ямар шинэ санал болмоор байна вэ?',
-          type: QuestionType.text,
-          required: false,
-        ),
-      ];
 }

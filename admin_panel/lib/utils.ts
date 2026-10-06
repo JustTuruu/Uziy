@@ -1,5 +1,5 @@
 // Shared with every panel; re-exported so `@/lib/utils` keeps working.
-export { cn, parseIntInput, sanitizeIntInput } from "@uziy/ui";
+export { parseIntInput } from "@uziy/ui";
 
 export function formatTugrik(amount: number): string {
   return new Intl.NumberFormat("mn-MN").format(Math.round(amount)) + " ₮";
@@ -30,11 +30,6 @@ export function relativeTime(iso: string | Date): string {
   const days = Math.round(hrs / 24);
   if (days < 7) return `${days} өдрийн өмнө`;
   return formatDate(d);
-}
-
-export function formatDuration(totalSeconds: number): string {
-  const s = Math.max(0, Math.floor(totalSeconds));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
 /** "99001122" → "9900 1122" (other lengths are returned unchanged). */
