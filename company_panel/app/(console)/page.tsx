@@ -14,7 +14,13 @@ import {
 } from "lucide-react";
 import { CampaignStatusBadge } from "@/components/campaign-status-badge";
 import { Button, Card, CardBody, CardHeader, PageHeader, StatCard } from "@uziy/ui";
-import { ApiError, auth, companyApi, type Campaign } from "@/lib/api";
+import {
+  ApiError,
+  auth,
+  companyApi,
+  useStoredUser,
+  type Campaign,
+} from "@/lib/api";
 import { summarizeCampaignBudgets } from "@/lib/billing";
 import { formatTugrik } from "@/lib/utils";
 
@@ -51,7 +57,7 @@ export default function CompanyDashboard() {
     totalRemaining,
   } = summarizeCampaignBudgets(campaigns ?? []);
 
-  const me = auth.getUser();
+  const me = useStoredUser();
   const companyName = me?.companyName ?? "Компани";
 
   return (

@@ -14,6 +14,7 @@ import '../screens/wallet/payout_request_screen.dart';
 import '../screens/wallet/wallet_screen.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_nav_bar.dart';
+import '../widgets/reels_icon.dart';
 
 class Routes {
   static const splash = '/';
@@ -175,8 +176,7 @@ class _MainShell extends StatelessWidget {
 
   static const _tabs = [
     AppNavItem(
-      icon: Icons.play_circle_outline_rounded,
-      selectedIcon: Icons.play_circle_rounded,
+      glyphBuilder: ReelsIcon.glyph,
       label: 'Нүүр',
     ),
     AppNavItem(

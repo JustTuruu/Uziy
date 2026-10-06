@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:viewer_app/widgets/app_nav_bar.dart';
+import 'package:viewer_app/widgets/reels_icon.dart';
 import 'package:viewer_app/widgets/ui.dart';
 
 const _items = [
   AppNavItem(
-    icon: Icons.play_circle_outline_rounded,
-    selectedIcon: Icons.play_circle_rounded,
+    glyphBuilder: ReelsIcon.glyph,
     label: 'Нүүр',
   ),
   AppNavItem(
@@ -96,12 +96,13 @@ void main() {
       expect(_labelColor(tester, 'Профайл'), AppColors.textSecondary);
       // Filled icon for the active tab, outlined for the rest.
       expect(find.byIcon(Icons.account_balance_wallet_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.play_circle_outline_rounded), findsOneWidget);
+      final reels = tester.widget<ReelsIcon>(find.byType(ReelsIcon));
+      expect(reels.filled, isFalse); // Нүүр is not selected here
     });
 
     testWidgets('label sits below its icon', (tester) async {
       await _pumpBar(tester, index: 0);
-      final icon = tester.getRect(find.byIcon(Icons.play_circle_rounded));
+      final icon = tester.getRect(find.byType(ReelsIcon));
       final label = tester.getRect(find.text('Нүүр'));
       expect(label.top, greaterThanOrEqualTo(icon.bottom));
       expect((label.center.dx - icon.center.dx).abs(), lessThan(1));

@@ -9,17 +9,29 @@ import '../theme/app_theme.dart';
 /// One destination of [AppNavBar].
 @immutable
 class AppNavItem {
+  /// Either [icon] (a Material icon, optionally with a filled [selectedIcon])
+  /// or a custom [glyphBuilder] must be given.
   const AppNavItem({
-    required this.icon,
+    this.icon,
+    this.glyphBuilder,
     required this.label,
     IconData? selectedIcon,
-  }) : selectedIcon = selectedIcon ?? icon;
+  })  : selectedIcon = selectedIcon ?? icon,
+        assert(
+          icon != null || glyphBuilder != null,
+          'AppNavItem needs an icon or a glyphBuilder',
+        );
 
   /// Icon shown while the destination is not selected (outlined style).
-  final IconData icon;
+  final IconData? icon;
 
   /// Icon shown while selected (filled style). Defaults to [icon].
-  final IconData selectedIcon;
+  final IconData? selectedIcon;
+
+  /// Custom-drawn glyph (for icons Material doesn't have). Receives the
+  /// colour to draw in and whether the destination is selected. Takes
+  /// precedence over [icon].
+  final Widget Function(Color color, bool selected)? glyphBuilder;
 
   /// Short Mongolian label, always shown under the icon (and used as the
   /// screen-reader label).
@@ -227,8 +239,12 @@ class _NavButton extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(selected ? item.selectedIcon : item.icon,
-                size: 24, color: color),
+            item.glyphBuilder?.call(color, selected) ??
+                Icon(
+                  selected ? item.selectedIcon : item.icon,
+                  size: 24,
+                  color: color,
+                ),
             const SizedBox(height: 4),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),

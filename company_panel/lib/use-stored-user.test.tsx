@@ -1,4 +1,5 @@
 import { renderHook } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { auth, useStoredUser, type Me } from "./api";
 
@@ -30,5 +31,14 @@ describe("useStoredUser", () => {
   it("ignores corrupt storage", () => {
     window.localStorage.setItem("uziy.user", "{not json");
     expect(renderHook(() => useStoredUser()).result.current).toBeNull();
+  });
+
+  it("renders as signed-out on the server even when storage has a user", () => {
+    // Hydration safety: the server snapshot must not depend on localStorage.
+    auth.setUser(me);
+    function Probe() {
+      return <span>{useStoredUser()?.phoneNumber ?? "anon"}</span>;
+    }
+    expect(renderToString(<Probe />)).toContain("anon");
   });
 });
