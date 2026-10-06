@@ -3,10 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Check, ShieldAlert, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { PageHeader } from "@/components/page-header";
+import {
+  Badge,
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  PageHeader,
+} from "@uziy/ui";
 import { adminApi, ApiError, auth, type Payout } from "@/lib/api";
 import { formatTugrik, relativeTime } from "@/lib/utils";
 

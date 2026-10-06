@@ -1,0 +1,8 @@
+packages:
+  - admin_panel
+  - company_panel
+  - packages/*
+
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver

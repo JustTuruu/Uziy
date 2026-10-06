@@ -5,9 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ClipboardList, CreditCard, Play, Plus } from "lucide-react";
 import { CampaignStatusBadge } from "@/components/campaign-status-badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardBody } from "@/components/ui/card";
-import { PageHeader } from "@/components/page-header";
+import { Button, Card, CardBody, PageHeader } from "@uziy/ui";
 import { ApiError, auth, companyApi, type Campaign } from "@/lib/api";
 import { formatNumber, formatTugrik, relativeTime } from "@/lib/utils";
 
@@ -41,7 +39,7 @@ export default function CampaignsPage() {
         description="Таны бүх судалгааны бүртгэл"
         actions={
           <Link href="/campaigns/new">
-            <Button leftIcon={<Plus size={16} />}>Шинэ аян</Button>
+            <Button leftIcon={<Plus size={16} />}>Шинэ судалгаа</Button>
           </Link>
         }
       />
@@ -75,11 +73,7 @@ export default function CampaignsPage() {
             const awaitingPayment = c.status === "AWAITING_PAYMENT";
 
             return (
-              <Link
-                key={c.id}
-                href={`/campaigns/${c.id}`}
-                className="group"
-              >
+              <Link key={c.id} href={`/campaigns/${c.id}`} className="group">
                 <Card className="h-full overflow-hidden transition-colors hover:border-[var(--color-text-muted)]">
                   <div className="relative flex aspect-video items-center justify-center bg-gradient-to-br from-[#2c2c38] to-[#17171e]">
                     {c.hasVideo ? (
@@ -148,7 +142,8 @@ export default function CampaignsPage() {
                         <div className="mb-1 flex items-center justify-between text-xs text-[var(--color-text-secondary)]">
                           <span>Төсөв</span>
                           <span className="font-mono text-[var(--color-text-primary)]">
-                            {formatTugrik(spent)} / {formatTugrik(c.totalBudget)}
+                            {formatTugrik(spent)} /{" "}
+                            {formatTugrik(c.totalBudget)}
                           </span>
                         </div>
                         <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-divider)]">

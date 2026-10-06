@@ -1,38 +1,49 @@
+"use client";
+
+import { usePathname } from "next/navigation";
 import {
   BarChart3,
   CreditCard,
   LayoutDashboard,
-  LogOut,
   PlaySquare,
   Settings,
 } from "lucide-react";
-import { ContentShell, Sidebar, type NavItem } from "@/components/sidebar";
+import {
+  ContentShell,
+  PageContainer,
+  Sidebar,
+  SidebarUser,
+  Topbar,
+  type NavItem,
+} from "@uziy/ui";
+import { auth, useStoredUser } from "@/lib/api";
+import { formatPhone } from "@/lib/utils";
 
 const nav: NavItem[] = [
   {
     href: "/",
     label: "Хяналтын самбар",
-    icon: <LayoutDashboard size={18} />,
+    icon: <LayoutDashboard size={16} />,
   },
   {
     href: "/campaigns",
     label: "Судалгаа",
-    icon: <PlaySquare size={18} />,
+    icon: <PlaySquare size={16} />,
   },
   {
     href: "/analytics",
     label: "Аналитик",
-    icon: <BarChart3 size={18} />,
+    icon: <BarChart3 size={16} />,
   },
   {
     href: "/billing",
     label: "Төлбөр",
-    icon: <CreditCard size={18} />,
+    icon: <CreditCard size={16} />,
   },
   {
     href: "/settings",
     label: "Тохиргоо",
-    icon: <Settings size={18} />,
+    icon: <Settings size={16} />,
   },
 ];
 
@@ -41,33 +52,28 @@ export default function CompanyLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const me = useStoredUser();
+
   return (
     <div>
       <Sidebar
         brand="Uziy"
-        subtitle="Компанийн самбар"
+        subtitle={me?.companyName || "Компани"}
         items={nav}
         footer={
-          <div className="flex items-center justify-between">
-            <div className="min-w-0">
-              <div className="truncate text-xs font-semibold text-[var(--color-text-primary)]">
-                MobiCom
-              </div>
-              <div className="truncate text-[10px] text-[var(--color-text-muted)]">
-                +976 8811 2233
-              </div>
-            </div>
-            <a
-              href="/login"
-              className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-              title="Гарах"
-            >
-              <LogOut size={16} />
-            </a>
-          </div>
+          <SidebarUser
+            initials={(me?.companyName || "К").slice(0, 2).toUpperCase()}
+            name={me?.companyName || "Компани"}
+            detail={me ? `+976 ${formatPhone(me.phoneNumber)}` : "—"}
+            onLogout={() => auth.clear()}
+          />
         }
       />
-      <ContentShell>{children}</ContentShell>
+      <ContentShell>
+        <Topbar items={nav} pathname={pathname} />
+        <PageContainer>{children}</PageContainer>
+      </ContentShell>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ArrowLeft,
   Building2,
@@ -13,10 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { CampaignStatusBadge } from "@/components/campaign-status-badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { PageHeader } from "@/components/page-header";
-import { StatCard } from "@/components/stat-card";
+import { Button, Card, CardBody, CardHeader, PageHeader, StatCard } from "@uziy/ui";
 import { adminApi, ApiError, auth, type AdminCampaignDetail } from "@/lib/api";
 import { campaignInvoice } from "@/lib/billing";
 import {
@@ -35,7 +32,7 @@ export default function AdminCampaignDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const reload = () => {
+  const reload = useCallback(() => {
     if (!Number.isFinite(id)) return; // shown as `invalidId` below
     adminApi
       .campaign(id)
@@ -52,7 +49,7 @@ export default function AdminCampaignDetailPage() {
         }
         setError(e instanceof Error ? e.message : "Алдаа гарлаа");
       });
-  };
+  }, [id, router]);
 
   useEffect(() => {
     if (!auth.getToken()) {
@@ -60,7 +57,7 @@ export default function AdminCampaignDetailPage() {
       return;
     }
     reload();
-  }, [id, router]);
+  }, [reload, router]);
 
   const moderate = async (decision: "ACTIVE" | "REJECTED") => {
     setBusy(true);

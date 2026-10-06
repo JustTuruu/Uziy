@@ -46,3 +46,6 @@ backend/build/
 backend/out/
 backend/bin/
 backend/HELP.md
+
+# pnpm workspace
+node_modules/

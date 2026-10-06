@@ -23,10 +23,18 @@ import {
   type BudgetFieldsValue,
 } from "@/components/campaign-budget-fields";
 import { CampaignPaymentCard } from "@/components/campaign-payment-card";
-import { Button } from "@/components/ui/button";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { Input, NumericInput, Select } from "@/components/ui/input";
-import { PageHeader } from "@/components/page-header";
+import {
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  IconButton,
+  Input,
+  NumericInput,
+  PageHeader,
+  SegmentedControl,
+  Select,
+} from "@uziy/ui";
 import {
   ApiError,
   auth,
@@ -80,6 +88,14 @@ interface SurveyQ {
   options: string[];
 }
 
+type TargetGender = "ALL" | "MALE" | "FEMALE";
+
+const GENDER_OPTIONS = [
+  { value: "ALL", label: "Бүгд" },
+  { value: "MALE", label: "Эрэгтэй" },
+  { value: "FEMALE", label: "Эмэгтэй" },
+] as const satisfies readonly { value: TargetGender; label: string }[];
+
 export default function NewCampaignPage() {
   const router = useRouter();
 
@@ -132,7 +148,7 @@ export default function NewCampaignPage() {
   // (numeric state would snap an empty field back to "0").
 
   // Step: targeting
-  const [gender, setGender] = useState<"ALL" | "MALE" | "FEMALE">("ALL");
+  const [gender, setGender] = useState<TargetGender>("ALL");
   const [minAgeText, setMinAgeText] = useState("18");
   const [maxAgeText, setMaxAgeText] = useState("45");
   const minAge = parseIntInput(minAgeText);
@@ -141,11 +157,14 @@ export default function NewCampaignPage() {
 
   // Step: budget. The company enters a total budget plus EITHER a viewer
   // count or a per-viewer reward; the other is derived (lib/pricing.ts).
-  const [budgetFields, setBudgetFields] =
-    useState<BudgetFieldsValue>(DEFAULT_BUDGET_FIELDS);
+  const [budgetFields, setBudgetFields] = useState<BudgetFieldsValue>(
+    DEFAULT_BUDGET_FIELDS,
+  );
   const pricing = useMemo(
     () =>
-      platformSettings ? pricingFromFields(budgetFields, platformSettings) : null,
+      platformSettings
+        ? pricingFromFields(budgetFields, platformSettings)
+        : null,
     [budgetFields, platformSettings],
   );
 
@@ -306,7 +325,8 @@ export default function NewCampaignPage() {
         videoUrl: "",
         durationSeconds: kind === "VIDEO" ? (duration ?? 0) : 0,
         targetGender: gender,
-        minAge, maxAge,
+        minAge,
+        maxAge,
         targetCity: city,
         totalBudget: pricing.budget,
         ...pricingRequestFields(pricing),
@@ -325,7 +345,9 @@ export default function NewCampaignPage() {
         router.replace("/login");
         return;
       }
-      setSubmitError(e instanceof ApiError ? e.message : "Илгээхэд алдаа гарлаа");
+      setSubmitError(
+        e instanceof ApiError ? e.message : "Илгээхэд алдаа гарлаа",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -334,7 +356,7 @@ export default function NewCampaignPage() {
   return (
     <>
       <PageHeader
-        title="Шинэ аян үүсгэх"
+        title="Шинэ судалгаа үүсгэх"
         description={
           step === "payment"
             ? "Аян үүслээ. Төлбөрөө төлснөөр админы шалгалтад орно."
@@ -444,7 +466,11 @@ export default function NewCampaignPage() {
                 ) : (
                   <Clock size={16} className="shrink-0" />
                 )}
-                <span className={videoLength.tone === "ok" ? "font-semibold" : undefined}>
+                <span
+                  className={
+                    videoLength.tone === "ok" ? "font-semibold" : undefined
+                  }
+                >
                   {videoLength.text}
                 </span>
               </div>
@@ -467,23 +493,13 @@ export default function NewCampaignPage() {
                 <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
                   Хүйс
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {(["ALL", "MALE", "FEMALE"] as const).map((g) => (
-                    <button
-                      key={g}
-                      type="button"
-                      onClick={() => setGender(g)}
-                      className={cn(
-                        "rounded-xl border py-2 text-sm font-semibold transition-colors",
-                        gender === g
-                          ? "border-[var(--color-primary)] bg-[color-mix(in_oklab,var(--color-primary)_12%,transparent)] text-[var(--color-primary)]"
-                          : "border-[var(--color-divider)] text-[var(--color-text-secondary)] hover:border-[var(--color-text-muted)]",
-                      )}
-                    >
-                      {g === "ALL" ? "Бүгд" : g === "MALE" ? "Эрэгтэй" : "Эмэгтэй"}
-                    </button>
-                  ))}
-                </div>
+                <SegmentedControl
+                  label="Хүйс"
+                  value={gender}
+                  onChange={setGender}
+                  options={GENDER_OPTIONS}
+                  className="w-full [&>button]:flex-1"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -512,7 +528,6 @@ export default function NewCampaignPage() {
                   </option>
                 ))}
               </Select>
-
             </CardBody>
           </Card>
         )}
@@ -535,7 +550,9 @@ export default function NewCampaignPage() {
                   role="alert"
                   className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--color-danger)]/40 bg-[color-mix(in_oklab,var(--color-danger)_10%,transparent)] px-3 py-2 text-xs text-[var(--color-danger)]"
                 >
-                  <span>Шимтгэлийн тохиргоо ачаалахад алдаа гарлаа: {loadError}</span>
+                  <span>
+                    Шимтгэлийн тохиргоо ачаалахад алдаа гарлаа: {loadError}
+                  </span>
                   <Button
                     variant="secondary"
                     size="sm"
@@ -672,14 +689,15 @@ export default function NewCampaignPage() {
                         </div>
                       )}
                     </div>
-                    <button
+                    <IconButton
+                      label="Асуулт устгах"
+                      tone="danger"
                       onClick={() =>
                         setQuestions((qs) => qs.filter((x) => x.id !== q.id))
                       }
-                      className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-danger)]"
                     >
                       <Trash2 size={16} />
-                    </button>
+                    </IconButton>
                   </div>
                 </div>
               ))}

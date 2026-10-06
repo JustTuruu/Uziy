@@ -1,9 +1,5 @@
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+// Shared with every panel; re-exported so `@/lib/utils` keeps working.
+export { cn, parseIntInput, sanitizeIntInput } from "@uziy/ui";
 
 export function formatTugrik(amount: number): string {
   return new Intl.NumberFormat("mn-MN").format(Math.round(amount)) + " ₮";
@@ -42,24 +38,13 @@ export function relativeTime(iso: string | Date): string {
   return formatDate(d);
 }
 
-/**
- * Normalises raw text typed into a whole-number field: keeps digits only and
- * drops leading zeros ("007" → "7") while still allowing an empty field, so
- * the user can clear a value and type a new one without a "0" sticking to
- * the front. A lone "0" is kept.
- */
-export function sanitizeIntInput(raw: string): string {
-  return raw.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
-}
-
-/** Parses a whole-number field's text; an empty field counts as 0. */
-export function parseIntInput(text: string): number {
-  const n = Number.parseInt(text, 10);
-  return Number.isFinite(n) ? n : 0;
-}
-
 /** Video length as "m:ss" — 45 → "0:45", 90 → "1:30". */
 export function formatDuration(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/** "99001122" → "9900 1122" (other lengths are returned unchanged). */
+export function formatPhone(phone: string): string {
+  return phone.length === 8 ? `${phone.slice(0, 4)} ${phone.slice(4)}` : phone;
 }

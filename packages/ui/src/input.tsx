@@ -1,4 +1,5 @@
-import { cn, sanitizeIntInput } from "@/lib/utils";
+import { cn } from "./cn";
+import { sanitizeIntInput } from "./numeric";
 import type { InputHTMLAttributes, TextareaHTMLAttributes } from "react";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -8,7 +9,7 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 const fieldBase =
-  "w-full rounded-xl border bg-[var(--color-surface)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] transition-colors focus:outline-none focus:border-[var(--color-primary)]";
+  "w-full rounded-lg border bg-[var(--color-background)] px-3.5 py-2 text-[13px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] transition-colors focus:outline-none focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[color-mix(in_oklab,var(--color-primary)_14%,transparent)]";
 const okBorder = "border-[var(--color-divider)]";
 const errBorder = "border-[var(--color-danger)]";
 
@@ -22,7 +23,7 @@ export function Input({
   return (
     <label className="block">
       {label && (
-        <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
+        <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
           {label}
         </div>
       )}
@@ -93,7 +94,7 @@ export function Textarea({
   return (
     <label className="block">
       {label && (
-        <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
+        <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
           {label}
         </div>
       )}
@@ -131,7 +132,7 @@ export function Select({ label, className, children, ...rest }: SelectProps) {
   return (
     <label className="block">
       {label && (
-        <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
+        <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
           {label}
         </div>
       )}

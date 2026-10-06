@@ -63,17 +63,9 @@ Future<void> _pumpBar(
   );
 }
 
-/// Alpha (0..1) of the label text color, i.e. how visible the label is.
-/// Labels are drawn in two masked layers (outside / inside the gold
-/// capsule) that always share the same alpha.
-double _labelAlpha(WidgetTester tester, String label) {
-  final alphas = tester
-      .widgetList<Text>(find.text(label))
-      .map((t) => t.style!.color!.a)
-      .toSet();
-  expect(alphas, hasLength(1));
-  return alphas.single;
-}
+/// Color of the label text.
+Color _labelColor(WidgetTester tester, String label) =>
+    tester.widget<Text>(find.text(label)).style!.color!;
 
 void main() {
   group('AppNavBar.bottomGap', () {
@@ -90,99 +82,51 @@ void main() {
     });
   });
 
-  group('AppNavBar.weightsAt', () {
-    test('interpolates from the old selection to the new one', () {
-      expect(AppNavBar.weightsAt(const [1, 0, 0], 2, 0), [1, 0, 0]);
-      expect(AppNavBar.weightsAt(const [1, 0, 0], 2, 0.5), [0.5, 0, 0.5]);
-      expect(AppNavBar.weightsAt(const [1, 0, 0], 2, 1), [0, 0, 1]);
-    });
-
-    test('clamps progress and resumes from mixed weights', () {
-      expect(AppNavBar.weightsAt(const [1, 0, 0], 1, 3), [0, 1, 0]);
-      expect(AppNavBar.weightsAt(const [1, 0, 0], 1, -1), [1, 0, 0]);
-      expect(AppNavBar.weightsAt(const [0.5, 0.5, 0], 2, 0.5), [
-        0.25,
-        0.25,
-        0.5,
-      ]);
-    });
-  });
-
-  group('AppNavBar.itemWidths', () {
-    test('selected item gets the bonus, the rest is shared evenly', () {
-      // 300 - 3 * 56 = 132 spare; bonus capped at 96; base (300 - 96) / 3.
-      final widths = AppNavBar.itemWidths(300, const [1, 0, 0]);
-      expect(widths, [164, 68, 68]);
-      expect(widths.reduce((a, b) => a + b), 300);
-    });
-
-    test('bonus shrinks to the spare room on narrow bars', () {
-      // 200 - 168 = 32 spare: all of it goes to the selected item.
-      expect(AppNavBar.itemWidths(200, const [0, 1, 0]), [56, 88, 56]);
-    });
-
-    test('splits the bonus by weight mid-animation', () {
-      final widths = AppNavBar.itemWidths(300, const [0.5, 0, 0.5]);
-      expect(widths, [116, 68, 116]);
-    });
-
-    test('never collapses below 44pt and splits evenly when too narrow', () {
-      expect(AppNavBar.collapsedItemWidth, greaterThanOrEqualTo(44));
-      expect(AppNavBar.itemWidths(120, const [1, 0, 0]), [40, 40, 40]);
-    });
-
-    test('handles empty, zero and negative weights', () {
-      expect(AppNavBar.itemWidths(300, const []), isEmpty);
-      expect(AppNavBar.itemWidths(300, const [0, 0, 0]), [100, 100, 100]);
-      expect(AppNavBar.itemWidths(300, const [-1, 1, 0]), [68, 164, 68]);
-      expect(
-        AppNavBar.itemWidths(double.infinity, const [1, 0]),
-        [0, 0],
-      );
-    });
-  });
-
-  group('AppNavBar.indicatorRect', () {
-    test('covers the selected item exactly when settled', () {
-      expect(
-        AppNavBar.indicatorRect(const [188, 56, 56], const [1, 0, 0], 52),
-        const Rect.fromLTWH(0, 0, 188, 52),
-      );
-      expect(
-        AppNavBar.indicatorRect(const [56, 56, 188], const [0, 0, 1], 52),
-        const Rect.fromLTWH(112, 0, 188, 52),
-      );
-    });
-
-    test('slides between the two items mid-animation', () {
-      expect(
-        AppNavBar.indicatorRect(const [122, 56, 122], const [0.5, 0, 0.5], 52),
-        const Rect.fromLTWH(89, 0, 122, 52),
-      );
-    });
-
-    test('is empty when nothing is selected', () {
-      expect(
-        AppNavBar.indicatorRect(const [100, 100], const [0, 0], 52).width,
-        0,
-      );
-    });
-  });
-
   group('AppNavBar widget', () {
-    testWidgets('renders every label; only the selected one is shown', (
+    testWidgets('every label is always visible; selected one is gold', (
       tester,
     ) async {
       await _pumpBar(tester, index: 1);
 
       for (final item in _items) {
-        expect(find.text(item.label), findsWidgets);
+        expect(find.text(item.label), findsOneWidget);
       }
-      expect(_labelAlpha(tester, 'Хэтэвч'), 1);
-      expect(_labelAlpha(tester, 'Нүүр'), 0);
-      expect(_labelAlpha(tester, 'Профайл'), 0);
-      // The selected (filled) icon is used for the active tab.
-      expect(find.byIcon(Icons.account_balance_wallet_rounded), findsWidgets);
+      expect(_labelColor(tester, 'Хэтэвч'), AppColors.primary);
+      expect(_labelColor(tester, 'Нүүр'), AppColors.textSecondary);
+      expect(_labelColor(tester, 'Профайл'), AppColors.textSecondary);
+      // Filled icon for the active tab, outlined for the rest.
+      expect(find.byIcon(Icons.account_balance_wallet_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.play_circle_outline_rounded), findsOneWidget);
+    });
+
+    testWidgets('label sits below its icon', (tester) async {
+      await _pumpBar(tester, index: 0);
+      final icon = tester.getRect(find.byIcon(Icons.play_circle_rounded));
+      final label = tester.getRect(find.text('Нүүр'));
+      expect(label.top, greaterThanOrEqualTo(icon.bottom));
+      expect((label.center.dx - icon.center.dx).abs(), lessThan(1));
+    });
+
+    testWidgets('items are fixed: equal width, no animation on change', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpBar(tester, index: 0);
+      final before = [
+        for (final i in _items) tester.getRect(find.bySemanticsLabel(i.label)),
+      ];
+      expect(before[0].width, before[1].width);
+      expect(before[1].width, before[2].width);
+
+      await _pumpBar(tester, index: 2);
+      expect(tester.binding.hasScheduledFrame, isFalse);
+      final after = [
+        for (final i in _items) tester.getRect(find.bySemanticsLabel(i.label)),
+      ];
+      expect(after, before);
+      expect(_labelColor(tester, 'Профайл'), AppColors.primary);
+      expect(_labelColor(tester, 'Нүүр'), AppColors.textSecondary);
+      semantics.dispose();
     });
 
     testWidgets('exposes button + selected semantics per item', (
@@ -262,46 +206,6 @@ void main() {
       semantics.dispose();
     });
 
-    testWidgets('animates the capsule to the new selection', (tester) async {
-      final semantics = tester.ensureSemantics();
-      await _pumpBar(tester, index: 0);
-      final homeBefore = tester.getSize(find.bySemanticsLabel('Нүүр')).width;
-
-      await _pumpBar(tester, index: 2);
-      // Mid-flight: still animating, both items partly open.
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(tester.binding.hasScheduledFrame, isTrue);
-      final homeMid = tester.getSize(find.bySemanticsLabel('Нүүр')).width;
-      final walletMid = tester.getSize(find.bySemanticsLabel('Хэтэвч')).width;
-      expect(homeMid, lessThan(homeBefore));
-      expect(homeMid, greaterThan(walletMid));
-
-      await tester.pumpAndSettle();
-      expect(_labelAlpha(tester, 'Профайл'), 1);
-      expect(_labelAlpha(tester, 'Нүүр'), 0);
-      // Unselected items share the same width; the new one took the bonus.
-      expect(
-        tester.getSize(find.bySemanticsLabel('Нүүр')).width,
-        tester.getSize(find.bySemanticsLabel('Хэтэвч')).width,
-      );
-      expect(
-        tester.getSize(find.bySemanticsLabel('Профайл')).width,
-        homeBefore,
-      );
-      semantics.dispose();
-    });
-
-    testWidgets('reduce motion switches instantly with no animation', (
-      tester,
-    ) async {
-      await _pumpBar(tester, index: 0, reduceMotion: true);
-      await _pumpBar(tester, index: 2, reduceMotion: true);
-
-      expect(tester.binding.hasScheduledFrame, isFalse);
-      expect(_labelAlpha(tester, 'Профайл'), 1);
-      expect(_labelAlpha(tester, 'Нүүр'), 0);
-    });
-
     testWidgets('floats above the safe area and pads the body for it', (
       tester,
     ) async {
@@ -325,7 +229,7 @@ void main() {
 
       final screen = tester.view.physicalSize / tester.view.devicePixelRatio;
       final item = tester.getRect(find.bySemanticsLabel('Нүүр'));
-      expect(item.bottom, screen.height - gap - AppNavBar.innerPadding);
+      expect(item.bottom, screen.height - gap);
       expect(item.height, greaterThanOrEqualTo(44));
       semantics.dispose();
     });

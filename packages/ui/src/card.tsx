@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "./cn";
 import type { HTMLAttributes, ReactNode } from "react";
 
 export function Card({
@@ -10,7 +10,7 @@ export function Card({
     <div
       {...rest}
       className={cn(
-        "rounded-2xl border border-[var(--color-divider)] bg-[var(--color-surface)]",
+        "rounded-xl border border-[var(--color-divider)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]",
         className,
       )}
     >
@@ -33,12 +33,12 @@ export function CardHeader({
   return (
     <div
       className={cn(
-        "flex items-start justify-between gap-4 border-b border-[var(--color-divider)] px-5 py-4",
+        "flex items-start justify-between gap-4 border-b border-[var(--color-divider)] px-5 py-3.5",
         className,
       )}
     >
       <div>
-        <div className="text-sm font-semibold text-[var(--color-text-primary)]">
+        <div className="text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">
           {title}
         </div>
         {description && (

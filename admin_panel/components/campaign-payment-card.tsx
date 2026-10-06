@@ -11,8 +11,7 @@ import {
   LoaderCircle,
   RotateCcw,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { Button, Card, CardBody, CardHeader } from "@uziy/ui";
 import {
   ApiError,
   auth,

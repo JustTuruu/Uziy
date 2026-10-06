@@ -13,16 +13,8 @@ import {
 } from "lucide-react";
 import { CampaignPaymentCard } from "@/components/campaign-payment-card";
 import { CampaignStatusBadge } from "@/components/campaign-status-badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { PageHeader } from "@/components/page-header";
-import { StatCard } from "@/components/stat-card";
-import {
-  ApiError,
-  auth,
-  companyApi,
-  type Campaign,
-} from "@/lib/api";
+import { Button, Card, CardBody, CardHeader, PageHeader, StatCard } from "@uziy/ui";
+import { ApiError, auth, companyApi, type Campaign } from "@/lib/api";
 import { campaignInvoice } from "@/lib/billing";
 import {
   companyStatusTransitions,
@@ -130,7 +122,7 @@ export default function CampaignDetailPage() {
         href="/campaigns"
         className="mb-4 inline-flex items-center gap-1 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
       >
-        <ArrowLeft size={12} /> Бүх кампани
+        <ArrowLeft size={12} /> Буцах
       </Link>
 
       <PageHeader
@@ -199,7 +191,10 @@ export default function CampaignDetailPage() {
 
       {campaign.status === "PENDING" && !justPaid && (
         <div className="mb-6 flex items-center gap-2 rounded-xl border border-[color-mix(in_oklab,var(--color-accent)_35%,transparent)] bg-[color-mix(in_oklab,var(--color-accent)_10%,transparent)] px-4 py-3 text-xs text-[var(--color-text-primary)]">
-          <Hourglass size={14} className="shrink-0 text-[var(--color-accent)]" />
+          <Hourglass
+            size={14}
+            className="shrink-0 text-[var(--color-accent)]"
+          />
           Төлбөр төлөгдсөн. Админ шалгаж баталгаажуулсны дараа аян идэвхжинэ.
         </div>
       )}
@@ -237,7 +232,8 @@ export default function CampaignDetailPage() {
               </div>
             ) : (
               <div className="flex items-center justify-center gap-2">
-                <ClipboardList size={16} /> Судалгааны agregate endpoint удахгүй.
+                <ClipboardList size={16} /> Судалгааны agregate endpoint
+                удахгүй.
               </div>
             )}
           </CardBody>
@@ -262,7 +258,10 @@ export default function CampaignDetailPage() {
                 k="Хот"
                 v={campaign.targetCity === "ALL" ? "Бүх" : campaign.targetCity}
               />
-              <KV k="Төрөл" v={campaign.hasVideo ? "Видеотой" : "Судалгаа зөвхөн"} />
+              <KV
+                k="Төрөл"
+                v={campaign.hasVideo ? "Видеотой" : "Судалгаа зөвхөн"}
+              />
             </CardBody>
           </Card>
 

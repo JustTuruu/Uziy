@@ -95,9 +95,14 @@ rewarded-video-platform/
 - **(2026-10-01) Company panel and Super Admin panel are now SEPARATE apps**:
   `company_panel/` (port 3000, routes at `/`, `/campaigns`, `/billing`, …) and
   `admin_panel/` (Super Admin only, port 3001, routes at `/`, `/payouts`,
-  `/users`, …). Each has its own `/login` that only admits its own role. They
-  share no code package — `components/ui`, `lib/utils|api|pricing|billing`
-  are duplicated copies, so keep them in sync by hand. Backend CORS allows both
+  `/users`, …). Each has its own `/login` that only admits its own role. UI is shared through
+  the pnpm workspace package **`packages/ui` (`@uziy/ui`)**: Button, IconButton,
+  SegmentedControl, Card, Badge, Input/NumericInput/Textarea/Select, PageHeader,
+  StatCard, Sidebar/SidebarUser/Topbar/ContentShell/PageContainer, `cn`, and the
+  design tokens in `src/theme.css`. Need a new look-alike control? Add it THERE
+  (with a test), never copy it into a panel. `lib/api|pricing|billing` are still
+  per-app copies. Install/run from the repo root: `pnpm install`, then
+  `pnpm -C admin_panel dev` / `pnpm -C company_panel dev`. Backend CORS allows both
   origins. Older notes below that say "one codebase / `/company/*` /
   `/admin/*`" are superseded. Leftover unused files from the split (not yet
   deleted): `admin_panel/components/campaign-{budget-fields,payment-card}*`,

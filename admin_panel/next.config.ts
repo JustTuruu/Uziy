@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Shared design system ships as TypeScript source.
+  transpilePackages: ["@uziy/ui"],
   // Whitelist non-localhost origins for the dev server so HMR, fonts, and
   // other /_next/* resources load when hitting the machine over the LAN
   // (e.g. from a phone). Only applies to `next dev`, not production.

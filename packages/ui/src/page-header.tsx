@@ -10,13 +10,13 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+    <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-[var(--color-text-primary)]">
+        <h1 className="text-[22px] font-semibold tracking-tight text-[var(--color-text-primary)]">
           {title}
         </h1>
         {description && (
-          <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+          <p className="mt-1 text-[13px] text-[var(--color-text-secondary)]">
             {description}
           </p>
         )}

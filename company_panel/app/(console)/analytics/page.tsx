@@ -1,5 +1,4 @@
-import { PageHeader } from "@/components/page-header";
-import { Card, CardBody } from "@/components/ui/card";
+import { Card, CardBody, PageHeader } from "@uziy/ui";
 
 export default function AnalyticsPage() {
   return (

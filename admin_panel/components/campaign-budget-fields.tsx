@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { CircleAlert } from "lucide-react";
-import { NumericInput } from "@/components/ui/input";
+import { NumericInput } from "@uziy/ui";
 import {
   MAX_MONEY_DIGITS,
   computeCampaignPricing,

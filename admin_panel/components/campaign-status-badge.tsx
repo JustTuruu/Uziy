@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@uziy/ui";
 import type { CampaignStatus } from "@/lib/api";
 import { campaignStatusLabel, campaignStatusTone } from "@/lib/campaign-status";
 

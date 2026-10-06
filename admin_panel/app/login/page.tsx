@@ -3,8 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button, Input } from "@uziy/ui";
 import { ApiError, auth, authApi } from "@/lib/api";
 
 const ROLE = "ADMIN" as const;
@@ -51,9 +50,18 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen">
       {/* Left: brand */}
-      <div className="hidden w-1/2 flex-col justify-between bg-[var(--color-surface)] p-12 lg:flex">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/95">
+      <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden border-r border-[var(--color-divider)] bg-[var(--color-surface)] p-12 lg:flex">
+        {/* faint grid + gold glow */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-60 [background-image:linear-gradient(var(--color-divider)_1px,transparent_1px),linear-gradient(90deg,var(--color-divider)_1px,transparent_1px)] [background-size:48px_48px] [mask-image:radial-gradient(ellipse_at_30%_40%,black,transparent_70%)]"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-32 -left-24 h-96 w-96 rounded-full bg-[var(--color-primary)] opacity-[0.07] blur-3xl"
+        />
+        <div className="relative flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white shadow-[0_0_0_1px_rgb(255_255_255/0.1)]">
             <Image
               src="/logo.png"
               alt="Uziy"
@@ -66,8 +74,8 @@ export default function LoginPage() {
           <div className="text-xl font-extrabold tracking-tight">Uziy</div>
         </div>
 
-        <div>
-          <h2 className="max-w-md text-3xl font-extrabold leading-tight tracking-tight">
+        <div className="relative">
+          <h2 className="max-w-md text-3xl font-semibold leading-tight tracking-tight">
             Зорилтот үзэгчдэдээ хүрч,{" "}
             <span className="text-[var(--color-primary)]">жинхэнэ дата</span>{" "}
             цуглуул.
@@ -79,7 +87,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <div className="flex gap-6 text-xs text-[var(--color-text-secondary)]">
+        <div className="relative flex gap-6 text-xs text-[var(--color-text-muted)]">
           <span>© 2026 Uziy</span>
           <span>support@uziy.mn</span>
         </div>
@@ -88,7 +96,7 @@ export default function LoginPage() {
       {/* Right: form */}
       <div className="flex w-full items-center justify-center px-6 py-12 lg:w-1/2">
         <div className="w-full max-w-sm">
-          <h1 className="text-2xl font-extrabold tracking-tight">
+          <h1 className="text-2xl font-semibold tracking-tight">
             Супер Админ самбарт нэвтрэх
           </h1>
           <p className="mt-1 text-sm text-[var(--color-text-secondary)]">

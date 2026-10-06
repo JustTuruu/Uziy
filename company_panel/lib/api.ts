@@ -3,6 +3,8 @@
 // - Stores the JWT in localStorage (client-side only) and forwards it on every call.
 // - Throws ApiError on non-2xx responses with the status code + parsed body.
 
+import { useMemo, useSyncExternalStore } from "react";
+
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
 
@@ -74,6 +76,32 @@ export const auth = {
     }
   },
 };
+
+function subscribeToStorage(onChange: () => void): () => void {
+  window.addEventListener("storage", onChange);
+  return () => window.removeEventListener("storage", onChange);
+}
+
+/**
+ * The signed-in user from localStorage, or null (also null during SSR and the
+ * first hydration pass, so server and client markup match). Read it with this
+ * hook instead of `auth.getUser()` + an effect.
+ */
+export function useStoredUser(): Me | null {
+  const raw = useSyncExternalStore(
+    subscribeToStorage,
+    () => window.localStorage.getItem(USER_KEY),
+    () => null,
+  );
+  return useMemo(() => {
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as Me;
+    } catch {
+      return null;
+    }
+  }, [raw]);
+}
 
 interface RequestOptions {
   method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";

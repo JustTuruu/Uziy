@@ -11,10 +11,7 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { PageHeader } from "@/components/page-header";
-import { StatCard } from "@/components/stat-card";
+import { Badge, Card, CardBody, CardHeader, PageHeader, StatCard } from "@uziy/ui";
 import {
   ApiError,
   adminApi,

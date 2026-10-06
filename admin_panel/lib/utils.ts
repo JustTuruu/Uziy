@@ -1,9 +1,5 @@
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+// Shared with every panel; re-exported so `@/lib/utils` keeps working.
+export { cn, parseIntInput, sanitizeIntInput } from "@uziy/ui";
 
 export function formatTugrik(amount: number): string {
   return new Intl.NumberFormat("mn-MN").format(Math.round(amount)) + " ₮";
@@ -36,16 +32,12 @@ export function relativeTime(iso: string | Date): string {
   return formatDate(d);
 }
 
-export function sanitizeIntInput(raw: string): string {
-  return raw.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
-}
-
-export function parseIntInput(text: string): number {
-  const n = Number.parseInt(text, 10);
-  return Number.isFinite(n) ? n : 0;
-}
-
 export function formatDuration(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/** "99001122" → "9900 1122" (other lengths are returned unchanged). */
+export function formatPhone(phone: string): string {
+  return phone.length === 8 ? `${phone.slice(0, 4)} ${phone.slice(4)}` : phone;
 }

@@ -5,9 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Check, ClipboardList, Play, X } from "lucide-react";
 import { CampaignStatusBadge } from "@/components/campaign-status-badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { PageHeader } from "@/components/page-header";
+import { Button, Card, CardBody, CardHeader, PageHeader } from "@uziy/ui";
 import { adminApi, ApiError, auth, type Campaign } from "@/lib/api";
 import { formatTugrik, relativeTime } from "@/lib/utils";
 

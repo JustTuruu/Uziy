@@ -1,7 +1,4 @@
-import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Button, Card, CardBody, CardHeader, Input, PageHeader } from "@uziy/ui";
 
 export default function CompanySettingsPage() {
   return (

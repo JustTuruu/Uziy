@@ -4,11 +4,16 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Search, ShieldCheck } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { PageHeader } from "@/components/page-header";
+import {
+  Badge,
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  Input,
+  PageHeader,
+  SegmentedControl,
+} from "@uziy/ui";
 import { adminApi, ApiError, auth, type AdminUser } from "@/lib/api";
 import { formatTugrik, relativeTime } from "@/lib/utils";
 
@@ -30,12 +35,20 @@ export function filterUsers(
   });
 }
 
+type UserFilter = "ALL" | "VERIFIED" | "UNVERIFIED";
+
+const USER_FILTERS = [
+  { value: "ALL", label: "Бүгд" },
+  { value: "VERIFIED", label: "Баталгаажсан" },
+  { value: "UNVERIFIED", label: "Баталгаажаагүй" },
+] as const satisfies readonly { value: UserFilter; label: string }[];
+
 export default function UsersPage() {
   const router = useRouter();
   const [users, setUsers] = useState<AdminUser[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<"ALL" | "VERIFIED" | "UNVERIFIED">(
+  const [filter, setFilter] = useState<UserFilter>(
     "ALL",
   );
   const [pendingVerify, setPendingVerify] = useState<Set<number>>(new Set());
@@ -101,27 +114,12 @@ export default function UsersPage() {
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
-        <div className="flex gap-1 rounded-xl border border-[var(--color-divider)] bg-[var(--color-surface)] p-1">
-          {(
-            [
-              ["ALL", "Бүгд"],
-              ["VERIFIED", "Баталгаажсан"],
-              ["UNVERIFIED", "Баталгаажаагүй"],
-            ] as const
-          ).map(([k, label]) => (
-            <button
-              key={k}
-              onClick={() => setFilter(k)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                filter === k
-                  ? "bg-[var(--color-primary)] text-black"
-                  : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          label="Статусын шүүлт"
+          value={filter}
+          onChange={setFilter}
+          options={USER_FILTERS}
+        />
       </div>
 
       <Card>

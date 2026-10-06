@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "./cn";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "success";
@@ -13,21 +13,21 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variants: Record<Variant, string> = {
   primary:
-    "bg-[var(--color-primary)] text-black hover:bg-[var(--color-primary-dark)] disabled:bg-[var(--color-surface-elevated)] disabled:text-[var(--color-text-muted)]",
+    "bg-[var(--color-primary)] text-[#14110a] shadow-[0_1px_0_rgb(255_255_255/0.35)_inset,0_1px_2px_rgb(0_0_0/0.4)] hover:bg-[var(--color-primary-dark)] disabled:bg-[var(--color-surface-elevated)] disabled:text-[var(--color-text-muted)]",
   secondary:
-    "bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)] hover:bg-[var(--color-divider)] border border-[var(--color-divider)]",
+    "bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border-strong)]",
   ghost:
     "bg-transparent text-[var(--color-text-primary)] hover:bg-[var(--color-surface-elevated)]",
   danger:
     "bg-[var(--color-danger)] text-white hover:brightness-110 disabled:opacity-40",
   success:
-    "bg-[var(--color-success)] text-black hover:brightness-110 disabled:opacity-40",
+    "bg-[var(--color-success)] text-[#04120c] hover:brightness-110 disabled:opacity-40",
 };
 
 const sizes: Record<Size, string> = {
-  sm: "h-8 px-3 text-xs rounded-lg",
-  md: "h-10 px-4 text-sm rounded-xl",
-  lg: "h-12 px-5 text-base rounded-xl",
+  sm: "h-7 px-2.5 text-xs rounded-md",
+  md: "h-9 px-3.5 text-[13px] rounded-lg",
+  lg: "h-11 px-5 text-sm rounded-lg",
 };
 
 export function Button({

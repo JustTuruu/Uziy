@@ -1,4 +1,4 @@
-import type { BadgeTone } from "@/components/ui/badge";
+import type { BadgeTone } from "@uziy/ui";
 import type { CampaignStatus } from "./api";
 
 export const CAMPAIGN_STATUS_LABEL: Record<CampaignStatus, string> = {

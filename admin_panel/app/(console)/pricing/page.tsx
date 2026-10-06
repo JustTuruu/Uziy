@@ -3,10 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AlertCircle, Percent, Save, ShieldCheck, Wallet } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { NumericInput } from "@/components/ui/input";
-import { PageHeader } from "@/components/page-header";
+import { Button, Card, CardBody, CardHeader, NumericInput, PageHeader } from "@uziy/ui";
 import {
   adminApi,
   ApiError,

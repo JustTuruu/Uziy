@@ -1,4 +1,4 @@
-import type { BadgeTone } from "@/components/ui/badge";
+import type { BadgeTone } from "@uziy/ui";
 import type { Campaign, Payment, PaymentStatus } from "./api";
 import { isCampaignPaid } from "./campaign-status";
 

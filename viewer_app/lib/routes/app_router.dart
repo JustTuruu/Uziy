@@ -29,9 +29,28 @@ class Routes {
 
 // --- Transition helpers -----------------------------------------------------
 
-/// Instant swap. Used for bottom-nav tabs so tab switching doesn't slide.
-Page<T> _instant<T>(Widget child, LocalKey key) =>
-    NoTransitionPage<T>(key: key, child: child);
+/// Bottom-nav tab: short fade + slight upward drift, run inside the shell's
+/// nested Navigator.
+Page<T> _tab<T>(Widget child, LocalKey key) => CustomTransitionPage<T>(
+      key: key,
+      child: child,
+      transitionDuration: const Duration(milliseconds: 220),
+      reverseTransitionDuration: const Duration(milliseconds: 120),
+      transitionsBuilder: (context, animation, secondary, child) {
+        final curved =
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+        return FadeTransition(
+          opacity: curved,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.012),
+              end: Offset.zero,
+            ).animate(curved),
+            child: child,
+          ),
+        );
+      },
+    );
 
 /// Subtle fade. Used for the splash → login handoff.
 Page<T> _fade<T>(Widget child, LocalKey key) => CustomTransitionPage<T>(
@@ -106,17 +125,17 @@ final GoRouter appRouter = GoRouter(
         GoRoute(
           path: Routes.home,
           pageBuilder: (_, state) =>
-              _instant(const HomeFeedScreen(), state.pageKey),
+              _tab(const HomeFeedScreen(), state.pageKey),
         ),
         GoRoute(
           path: Routes.wallet,
           pageBuilder: (_, state) =>
-              _instant(const WalletScreen(), state.pageKey),
+              _tab(const WalletScreen(), state.pageKey),
         ),
         GoRoute(
           path: Routes.profile,
           pageBuilder: (_, state) =>
-              _instant(const ProfileScreen(), state.pageKey),
+              _tab(const ProfileScreen(), state.pageKey),
         ),
       ],
     ),
@@ -172,9 +191,6 @@ class _MainShell extends StatelessWidget {
     ),
   ];
 
-  /// Tab content drifts up this far (fraction of its height) as it fades in.
-  static const _tabEnterOffset = Offset(0, 0.012);
-
   int _indexForLocation(String location) {
     if (location.startsWith(Routes.wallet)) return 1;
     if (location.startsWith(Routes.profile)) return 2;
@@ -206,26 +222,10 @@ class _MainShell extends StatelessWidget {
       // (see AppLayout.scrollBottomPadding).
       extendBody: true,
       backgroundColor: AppColors.background,
-      body: AnimatedSwitcher(
-        duration:
-            AppMotion.duration(context, const Duration(milliseconds: 220)),
-        switchInCurve: AppMotion.standard,
-        switchOutCurve: AppMotion.exit,
-        transitionBuilder: (child, animation) => FadeTransition(
-          opacity: animation,
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: _tabEnterOffset,
-              end: Offset.zero,
-            ).animate(animation),
-            child: child,
-          ),
-        ),
-        child: KeyedSubtree(
-          key: ValueKey(index),
-          child: child,
-        ),
-      ),
+      // `child` is the shell's Navigator (GlobalKey). It must not be wrapped
+      // in an AnimatedSwitcher: that mounts it twice during the transition
+      // and trips `_dependents.isEmpty`. Tab animation lives in [_tab].
+      body: child,
       bottomNavigationBar: AppNavBar(
         currentIndex: index,
         onTap: (i) => _onTap(context, i),

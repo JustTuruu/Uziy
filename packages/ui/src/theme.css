@@ -1,0 +1,156 @@
+/* Shared design tokens + base styles for every Uziy web panel. */
+
+@theme {
+  /* Graphite surfaces: near-neutral with a cool tint, stepped in small
+     increments so hierarchy comes from tone + hairlines, not heavy fills. */
+  --color-background: #0a0b0e;
+  --color-surface: #111317;
+  --color-surface-elevated: #181b21;
+  --color-surface-hover: #1d2128;
+  --color-primary: #f5c518;
+  --color-primary-dark: #d9ac0a;
+  --color-accent: #5b9dff;
+  --color-success: #34d399;
+  --color-danger: #f87171;
+  --color-warning: #fbbf24;
+  --color-text-primary: #eceef2;
+  --color-text-secondary: #9aa2b1;
+  --color-text-muted: #6b7384;
+  --color-divider: #20242c;
+  --color-border-strong: #2d323d;
+  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.03) inset,
+    0 1px 2px rgb(0 0 0 / 0.4);
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system,
+    "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Monaco, "Cascadia Mono",
+    "Roboto Mono", monospace;
+}
+
+html,
+body {
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01", "tnum";
+  letter-spacing: -0.006em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtle ambient glow behind the content so the canvas isn't flat black. */
+body {
+  background-image:
+    radial-gradient(
+      900px 420px at 80% -120px,
+      rgb(245 197 24 / 0.05),
+      transparent 70%
+    ),
+    radial-gradient(
+      700px 380px at 0% 0%,
+      rgb(91 157 255 / 0.04),
+      transparent 70%
+    );
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+*,
+*::before,
+*::after {
+  border-color: var(--color-divider);
+}
+
+/* --- Data tables ---------------------------------------------------------
+   Every page renders plain <table>s; style them once here. */
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+thead tr {
+  background: color-mix(in oklab, var(--color-surface-elevated) 70%, transparent);
+  font-size: 11px !important;
+  letter-spacing: 0.06em !important;
+  color: var(--color-text-muted) !important;
+}
+thead th {
+  white-space: nowrap;
+}
+tbody tr {
+  transition: background-color 120ms ease;
+}
+tbody tr:not(:last-child) td {
+  border-bottom: 1px solid var(--color-divider);
+}
+tbody tr:hover {
+  background: color-mix(in oklab, var(--color-surface-hover) 60%, transparent);
+}
+td {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--color-primary) 70%, transparent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--color-primary);
+  color: #000;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-divider);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* --- Form controls -------------------------------------------------------
+   Kill the browser-default UI on dark theme (up/down spinners on
+   number inputs, dropdown arrows, calendar pickers, invalid-input
+   tooltips). We handle validation in JS at submit time. */
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox red glow for :invalid — we prefer to show errors inline. */
+input:invalid,
+textarea:invalid,
+select:invalid {
+  box-shadow: none;
+}
+
+/* Autofill styling on Chrome/Safari — otherwise the input turns baby-blue. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: var(--color-text-primary);
+  -webkit-box-shadow: 0 0 0px 1000px var(--color-surface) inset;
+  caret-color: var(--color-text-primary);
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Placeholder color matches --color-text-muted on all inputs so it's
+   consistent across native + our components. */
+::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
+}

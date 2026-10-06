@@ -3,9 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Banknote, PiggyBank, TrendingUp } from "lucide-react";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { PageHeader } from "@/components/page-header";
-import { StatCard } from "@/components/stat-card";
+import { Card, CardBody, CardHeader, PageHeader, StatCard } from "@uziy/ui";
 import {
   adminApi,
   ApiError,

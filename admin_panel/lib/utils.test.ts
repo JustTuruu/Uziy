@@ -4,6 +4,7 @@ import {
   formatDate,
   formatDuration,
   formatNumber,
+  formatPhone,
   formatTugrik,
   parseIntInput,
   relativeTime,
@@ -142,5 +143,15 @@ describe("formatDuration", () => {
   it("floors fractions and clamps negatives to zero", () => {
     expect(formatDuration(44.9)).toBe("0:44");
     expect(formatDuration(-3)).toBe("0:00");
+  });
+});
+
+describe("formatPhone", () => {
+  it("groups 8-digit numbers as 4 + 4", () => {
+    expect(formatPhone("99001122")).toBe("9900 1122");
+  });
+  it("leaves other lengths untouched", () => {
+    expect(formatPhone("123")).toBe("123");
+    expect(formatPhone("")).toBe("");
   });
 });

@@ -3,8 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button, Input } from "@uziy/ui";
 import { ApiError, auth, authApi } from "@/lib/api";
 
 // This console only admits one role; the other console lives in its own app.

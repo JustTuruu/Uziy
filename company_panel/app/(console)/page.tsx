@@ -13,10 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import { CampaignStatusBadge } from "@/components/campaign-status-badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { PageHeader } from "@/components/page-header";
-import { StatCard } from "@/components/stat-card";
+import { Button, Card, CardBody, CardHeader, PageHeader, StatCard } from "@uziy/ui";
 import { ApiError, auth, companyApi, type Campaign } from "@/lib/api";
 import { summarizeCampaignBudgets } from "@/lib/billing";
 import { formatTugrik } from "@/lib/utils";
@@ -61,10 +58,10 @@ export default function CompanyDashboard() {
     <>
       <PageHeader
         title={`Сайн байна уу, ${companyName}`}
-        description="Судалгаануудынхаа өнөөгийн байдлыг доор харна уу"
+        description="Судалгаануудынхаа одоогийн байдлыг доорх самбарнаас харна уу."
         actions={
           <Link href="/campaigns/new">
-            <Button leftIcon={<Plus size={16} />}>Шинэ аян</Button>
+            <Button leftIcon={<Plus size={16} />}>Шинэ судалгаа</Button>
           </Link>
         }
       />
@@ -78,7 +75,10 @@ export default function CompanyDashboard() {
       {awaitingPayment.length > 0 && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[color-mix(in_oklab,var(--color-warning)_35%,transparent)] bg-[color-mix(in_oklab,var(--color-warning)_10%,transparent)] px-4 py-3 text-sm">
           <div className="flex items-center gap-2 text-[var(--color-text-primary)]">
-            <CreditCard size={16} className="shrink-0 text-[var(--color-warning)]" />
+            <CreditCard
+              size={16}
+              className="shrink-0 text-[var(--color-warning)]"
+            />
             Төлбөр хүлээгдэж буй {awaitingPayment.length} аян байна ·{" "}
             <span className="font-mono font-semibold">
               {formatTugrik(awaitingPaymentTotal)}
@@ -145,7 +145,7 @@ export default function CompanyDashboard() {
                   href="/campaigns/new"
                   className="text-[var(--color-primary)] hover:underline"
                 >
-                  Шинэ аян
+                  Шинэ судалгаа
                 </Link>{" "}
                 дараарай.
               </div>
