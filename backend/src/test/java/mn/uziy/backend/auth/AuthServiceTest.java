@@ -30,7 +30,8 @@ class AuthServiceTest {
     private final UserRepository users = mock(UserRepository.class);
     private final PasswordEncoder encoder = mock(PasswordEncoder.class);
     private final JwtService jwt = new JwtService(new AppProperties(
-            new AppProperties.Jwt("a".repeat(64), 1), new AppProperties.Cors(java.util.List.of()), new AppProperties.Payments(false)));
+            new AppProperties.Jwt("a".repeat(64), 1), new AppProperties.Cors(java.util.List.of()), new AppProperties.Payments(false),
+            new AppProperties.Push(false, "")));
     private final DomainEventPublisher events = mock(DomainEventPublisher.class);
     private final AuthServiceImpl service = new AuthServiceImpl(users, encoder, jwt,
             new UserFactory(), new MeMapper(), events);

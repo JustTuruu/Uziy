@@ -29,7 +29,8 @@ class CorsConfigTest {
                     "http://localhost:3000",
                     "http://localhost:3001",
                     "http://localhost:8080")),
-            new AppProperties.Payments(false));
+            new AppProperties.Payments(false),
+            new AppProperties.Push(false, ""));
 
     private final SecurityConfig config = new SecurityConfig(
             new JwtAuthFilter(new JwtService(props)), props);

@@ -12,7 +12,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 public record AppProperties(
         @DefaultValue Jwt jwt,
         @DefaultValue Cors cors,
-        @DefaultValue Payments payments) {
+        @DefaultValue Payments payments,
+        @DefaultValue Push push) {
 
     /** JWT signing secret and token lifetime. */
     public record Jwt(@DefaultValue("") String secret, @DefaultValue("24") long ttlHours) {
@@ -38,5 +39,18 @@ public record AppProperties(
      * application.yml turns it on for dev via PAYMENTS_SIMULATED.
      */
     public record Payments(@DefaultValue("false") boolean simulated) {
+    }
+
+    /**
+     * Push notifications. {@code enabled = false} (default) → a logging sender is used and no
+     * Firebase credentials are needed; {@code true} → Firebase Cloud Messaging with the
+     * service-account JSON at {@code credentialsPath}.
+     */
+    public record Push(@DefaultValue("false") boolean enabled, @DefaultValue("") String credentialsPath) {
+        public Push {
+            if (credentialsPath == null) {
+                credentialsPath = "";
+            }
+        }
     }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'routes/app_router.dart';
+import 'routes/router_push_target.dart';
 import 'theme/app_theme.dart';
 
 class ViewerApp extends StatelessWidget {
@@ -14,6 +15,7 @@ class ViewerApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark(),
       routerConfig: appRouter,
+      scaffoldMessengerKey: rootMessengerKey,
       // Force Mongolian for the entire app: showDatePicker, showTimePicker,
       // "Cancel/OK" buttons, weekday abbreviations, back-button tooltips,
       // etc. Falls back to English if a specific string hasn't been

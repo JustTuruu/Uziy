@@ -453,6 +453,25 @@ docker exec uziy-postgres psql -U uziy -d uziy \
 This is intentional: admins should never be self-created. Add a proper
 super-admin bootstrap flow before shipping.
 
+### Push notifications (added 2026-10-06)
+
+When an admin approves a campaign for the first time (PENDING → ACTIVE; resuming PAUSED →
+ACTIVE does NOT notify) every matching viewer's phone (Android + iOS) gets an FCM push:
+title "Шинэ видео" / "Шинэ судалгаа", body "{company} · Үзээд {reward} ₮ аваарай", data
+`{type: CAMPAIGN, campaignId, hasVideo}`. Matching = the feed rules (gender, age, city, not
+already completed).
+- **Backend** (`notification/`): `POST /viewer/devices {token, platform: ANDROID|IOS}` (204),
+  `DELETE /viewer/devices?token=` (204); table `device_tokens` (V6). `PushSender` Strategy
+  (`FcmPushSender` | `LoggingPushSender`), `CampaignPushNotifier` (Observer, @Async, AFTER_COMMIT,
+  never fails the approval), `PushMessageFactory`. Off by default: `PUSH_ENABLED=true` +
+  `FCM_CREDENTIALS_PATH=<service-account.json>` turn real sending on.
+- **Flutter** (`lib/services/push/`): `PushClient` interface over firebase_messaging,
+  `PushService` facade (permission asked on reaching Home, token register/refresh, unregister on
+  logout), `PushNavigator` opens the video/survey screen. Firebase init failure ⇒ push silently
+  off, app unaffected (no `google-services.json` / `GoogleService-Info.plist` are committed).
+- Owner setup steps: `docs/PUSH_SETUP.md`. Placeholder app ids still
+  `com.example.viewer_app` / `com.example.viewerApp`.
+
 ---
 
 ## 3. What each file does (viewer_app)

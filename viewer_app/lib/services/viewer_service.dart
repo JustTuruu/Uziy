@@ -116,6 +116,37 @@ class ViewerService {
     }
   }
 
+  /// POST /viewer/devices — register an FCM token for push (204).
+  Future<void> registerDevice({
+    required String token,
+    required String platform, // 'ANDROID' | 'IOS'
+  }) async {
+    const fallback = 'Мэдэгдэл бүртгэж чадсангүй';
+    try {
+      final r = await _dio.post<dynamic>(
+        '/viewer/devices',
+        data: {'token': token, 'platform': platform},
+      );
+      _check(r, fallback);
+    } on DioException catch (e) {
+      throw _map(e, fallback);
+    }
+  }
+
+  /// DELETE /viewer/devices?token=… — forget this device (logout).
+  Future<void> unregisterDevice({required String token}) async {
+    const fallback = 'Мэдэгдэл цуцалж чадсангүй';
+    try {
+      final r = await _dio.delete<dynamic>(
+        '/viewer/devices',
+        queryParameters: {'token': token},
+      );
+      _check(r, fallback);
+    } on DioException catch (e) {
+      throw _map(e, fallback);
+    }
+  }
+
   String _encodeAnswer(dynamic v) {
     if (v is String) return '"${v.replaceAll('"', r'\"')}"';
     if (v is List) {

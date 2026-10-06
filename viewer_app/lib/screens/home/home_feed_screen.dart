@@ -7,6 +7,7 @@ import '../../models/campaign.dart';
 import '../../models/user.dart';
 import '../../routes/app_router.dart';
 import '../../services/auth_service.dart';
+import '../../services/push/push_runtime.dart';
 import '../../services/viewer_service.dart';
 import '../../widgets/ui.dart';
 import 'feed_logic.dart';
@@ -39,6 +40,8 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
   void initState() {
     super.initState();
     _load();
+    // Logged in and on Home: the right moment for the notification prompt.
+    PushRuntime.instance.onHomeReached();
   }
 
   Future<void> _load() async {

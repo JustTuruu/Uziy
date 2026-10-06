@@ -37,7 +37,14 @@ class AuthService {
     ApiService.instance.setAuthToken(token);
   }
 
+  /// Runs before the token is cleared (still authenticated), e.g. to
+  /// unregister the push device. Failures are swallowed: logout never blocks.
+  Future<void> Function()? onBeforeLogout;
+
   Future<void> logout() async {
+    try {
+      await onBeforeLogout?.call();
+    } catch (_) {}
     await _storage.delete(key: _tokenKey);
     ApiService.instance.setAuthToken(null);
   }

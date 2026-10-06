@@ -99,7 +99,7 @@ class V5MigrationIntegrationTest {
                 """);
         exec("UPDATE platform_settings SET survey_only_cost_per_response = 600, survey_only_reward_per_user = 350");
 
-        MigrateResult result = flyway(null).migrate();
+        MigrateResult result = flyway("5").migrate();
         assertThat(result.targetSchemaVersion).isEqualTo("5");
     }
 

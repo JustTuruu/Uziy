@@ -41,6 +41,12 @@ uziy:
     # The platform commission itself is NOT configured here — the Super Admin
     # sets it in platform_settings (PATCH /admin/platform-settings).
     simulated: ${PAYMENTS_SIMULATED:true}
+  push:
+    # false -> pushes are only logged (no Firebase needed). true -> Firebase Cloud
+    # Messaging (Android + iOS); FCM_CREDENTIALS_PATH must point at the Firebase
+    # service-account JSON, otherwise startup fails.
+    enabled: ${PUSH_ENABLED:false}
+    credentials-path: ${FCM_CREDENTIALS_PATH:}
   cors:
     allowed-origins:
       - http://localhost:3000 # company_panel

@@ -13,7 +13,8 @@ class JwtServiceTest {
 
     private static JwtService svc(String secret) {
         return new JwtService(new AppProperties(
-                new AppProperties.Jwt(secret, 1), new AppProperties.Cors(java.util.List.of()), new AppProperties.Payments(false)));
+                new AppProperties.Jwt(secret, 1), new AppProperties.Cors(java.util.List.of()), new AppProperties.Payments(false),
+            new AppProperties.Push(false, "")));
     }
 
     private static JwtService svc() {
