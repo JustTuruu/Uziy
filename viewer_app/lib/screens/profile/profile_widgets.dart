@@ -35,10 +35,6 @@ void showProfileSnackBar(
     );
 }
 
-/// 'Удахгүй' (coming soon) for menu items that are not built yet.
-void showComingSoonSnackBar(BuildContext context) =>
-    showProfileSnackBar(context, kComingSoon);
-
 /// Logout could not clear the stored token; the user stays signed in.
 void showLogoutFailedSnackBar(BuildContext context) => showProfileSnackBar(
       context,
@@ -801,6 +797,9 @@ class ProfileBody extends StatelessWidget {
     this.error,
     this.onRetry,
     this.onBalanceTap,
+    this.onHistoryTap,
+    this.onHelpTap,
+    this.onPrivacyTap,
     this.loggingOut = false,
   });
 
@@ -812,6 +811,11 @@ class ProfileBody extends StatelessWidget {
   /// Opens the wallet from the balance tile.
   final VoidCallback? onBalanceTap;
 
+  /// Open the pages behind the 'Бусад' menu rows.
+  final VoidCallback? onHistoryTap;
+  final VoidCallback? onHelpTap;
+  final VoidCallback? onPrivacyTap;
+
   /// While true the logout row shows a spinner and ignores taps.
   final bool loggingOut;
 
@@ -821,9 +825,13 @@ class ProfileBody extends StatelessWidget {
   /// Gap between the tab title and the first content block.
   static const double titleGap = AppSpacing.xxl;
 
-  void _comingSoon(BuildContext context) {
-    HapticFeedback.selectionClick();
-    showComingSoonSnackBar(context);
+  /// Menu-row tap: a light haptic, then [open].
+  VoidCallback? _menuTap(VoidCallback? open) {
+    if (open == null) return null;
+    return () {
+      HapticFeedback.selectionClick();
+      open();
+    };
   }
 
   Widget _section({
@@ -916,20 +924,20 @@ class ProfileBody extends StatelessWidget {
                     icon: Icons.history_rounded,
                     iconColor: AppColors.accent,
                     label: 'Үзсэн видеонуудын түүх',
-                    onTap: () => _comingSoon(context),
+                    onTap: _menuTap(onHistoryTap),
                   ),
                   InfoRow(
                     icon: Icons.help_outline_rounded,
                     iconColor: AppColors.violet,
                     label: 'Тусламж',
                     subtitle: 'Түгээмэл асуулт, хариулт',
-                    onTap: () => _comingSoon(context),
+                    onTap: _menuTap(onHelpTap),
                   ),
                   InfoRow(
                     icon: Icons.privacy_tip_outlined,
                     iconColor: AppColors.success,
                     label: 'Нууцлалын бодлого',
-                    onTap: () => _comingSoon(context),
+                    onTap: _menuTap(onPrivacyTap),
                   ),
                 ],
               ),

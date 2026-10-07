@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../models/campaign.dart';
 import '../models/survey_question.dart';
 import '../models/user.dart';
+import '../models/view_history_item.dart';
 import 'api_service.dart';
 
 class ApiException implements Exception {
@@ -44,6 +45,21 @@ class ViewerService {
     }
   }
 
+  /// GET /viewer/history — the viewer's completed views, newest first.
+  Future<List<ViewHistoryItem>> history() async {
+    const fallback = 'Түүх ачаалж чадсангүй';
+    try {
+      final r = await _dio.get<dynamic>('/viewer/history');
+      _check(r, fallback);
+      return (r.data as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map(ViewHistoryItem.fromJson)
+          .toList();
+    } on DioException catch (e) {
+      throw _map(e, fallback);
+    }
+  }
+
   /// GET /viewer/campaigns/{id}/questions
   Future<List<SurveyQuestion>> questions(int campaignId) async {
     try {
@@ -63,7 +79,8 @@ class ViewerService {
   /// POST /viewer/campaigns/{id}/submit — the atomic reward transaction.
   Future<RewardResult> submitSurvey({
     required int campaignId,
-    required Map<int, dynamic> answers, // questionId → answer (String / List<String>)
+    required Map<int, dynamic>
+        answers, // questionId → answer (String / List<String>)
   }) async {
     try {
       final body = {
@@ -168,8 +185,8 @@ class ViewerService {
     throw _apiError(s, r.data, null, fallback);
   }
 
-  ApiException _map(DioException e, String fallback) =>
-      _apiError(e.response?.statusCode ?? 0, e.response?.data, e.type, fallback);
+  ApiException _map(DioException e, String fallback) => _apiError(
+      e.response?.statusCode ?? 0, e.response?.data, e.type, fallback);
 
   ApiException _apiError(
     int s,

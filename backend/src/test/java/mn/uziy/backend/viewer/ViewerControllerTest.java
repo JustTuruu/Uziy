@@ -29,6 +29,13 @@ class ViewerControllerTest {
     }
 
     @Test
+    void historyUsesTheCallersId() {
+        when(profile.history(42L)).thenReturn(List.of());
+
+        assertThat(controller.history(principal)).isEmpty();
+    }
+
+    @Test
     void questionsDelegatesByCampaignId() {
         when(profile.questions(7L)).thenReturn(List.of());
         assertThat(controller.questions(7L)).isEmpty();

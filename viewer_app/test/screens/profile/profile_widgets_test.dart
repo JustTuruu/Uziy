@@ -428,16 +428,32 @@ void main() {
       expect(find.byType(ProfileHeader), findsOneWidget);
     });
 
-    testWidgets('menu items show the coming-soon snackbar', (tester) async {
-      await _pump(tester, ProfileBody(user: _user(), onLogout: () {}));
+    testWidgets('each menu row calls its own callback', (tester) async {
+      final taps = <String>[];
+      await _pump(
+        tester,
+        ProfileBody(
+          user: _user(),
+          onLogout: () {},
+          onHistoryTap: () => taps.add('history'),
+          onHelpTap: () => taps.add('help'),
+          onPrivacyTap: () => taps.add('privacy'),
+        ),
+      );
       await tester.pumpAndSettle();
 
-      await tester.ensureVisible(find.text('Нууцлалын бодлого'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Нууцлалын бодлого'));
-      await tester.pump();
-      expect(find.text(kComingSoon), findsOneWidget);
-      expect(find.byIcon(Icons.schedule_rounded), findsOneWidget);
+      for (final label in [
+        'Үзсэн видеонуудын түүх',
+        'Тусламж',
+        'Нууцлалын бодлого',
+      ]) {
+        await tester.ensureVisible(find.text(label));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(label));
+        await tester.pump();
+      }
+
+      expect(taps, ['history', 'help', 'privacy']);
     });
 
     testWidgets('logout row calls onLogout, and is inert while logging out',
@@ -568,10 +584,13 @@ void main() {
       await tester.pump();
     }
 
-    testWidgets('coming soon: gold clock icon', (tester) async {
-      await pumpTrigger(tester, showComingSoonSnackBar);
+    testWidgets('default: gold clock icon', (tester) async {
+      await pumpTrigger(
+        tester,
+        (context) => showProfileSnackBar(context, 'Хадгаллаа'),
+      );
 
-      expect(find.text(kComingSoon), findsOneWidget);
+      expect(find.text('Хадгаллаа'), findsOneWidget);
       final icon = tester.widget<Icon>(find.byIcon(Icons.schedule_rounded));
       expect(icon.color, AppColors.primary);
     });
@@ -596,7 +615,7 @@ void main() {
               builder: (context) => Column(
                 children: [
                   TextButton(
-                    onPressed: () => showComingSoonSnackBar(context),
+                    onPressed: () => showProfileSnackBar(context, 'first'),
                     child: const Text('a'),
                   ),
                   TextButton(
@@ -613,7 +632,7 @@ void main() {
       await tester.pump();
       await tester.tap(find.text('b'));
       await tester.pumpAndSettle();
-      expect(find.text(kComingSoon), findsNothing);
+      expect(find.text('first'), findsNothing);
       expect(find.text(kLogoutFailed), findsOneWidget);
     });
   });

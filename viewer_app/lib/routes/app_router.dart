@@ -7,6 +7,9 @@ import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/home/home_feed_screen.dart';
 import '../screens/home/video_player_screen.dart';
+import '../screens/profile/help_screen.dart';
+import '../screens/profile/history_screen.dart';
+import '../screens/profile/privacy_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/splash_screen.dart';
 import '../screens/survey/survey_screen.dart';
@@ -24,6 +27,9 @@ class Routes {
   static const wallet = '/wallet';
   static const profile = '/profile';
   static const payout = '/wallet/payout';
+  static const history = '/profile/history';
+  static const help = '/profile/help';
+  static const privacy = '/profile/privacy';
   static const video = '/video'; // /video/:campaignId
   static const survey = '/survey'; // /survey/:campaignId
 }
@@ -107,13 +113,11 @@ final GoRouter appRouter = GoRouter(
   routes: [
     GoRoute(
       path: Routes.splash,
-      pageBuilder: (_, state) =>
-          _fade(const SplashScreen(), state.pageKey),
+      pageBuilder: (_, state) => _fade(const SplashScreen(), state.pageKey),
     ),
     GoRoute(
       path: Routes.login,
-      pageBuilder: (_, state) =>
-          _fade(const LoginScreen(), state.pageKey),
+      pageBuilder: (_, state) => _fade(const LoginScreen(), state.pageKey),
     ),
     GoRoute(
       path: Routes.register,
@@ -130,13 +134,11 @@ final GoRouter appRouter = GoRouter(
         ),
         GoRoute(
           path: Routes.wallet,
-          pageBuilder: (_, state) =>
-              _tab(const WalletScreen(), state.pageKey),
+          pageBuilder: (_, state) => _tab(const WalletScreen(), state.pageKey),
         ),
         GoRoute(
           path: Routes.profile,
-          pageBuilder: (_, state) =>
-              _tab(const ProfileScreen(), state.pageKey),
+          pageBuilder: (_, state) => _tab(const ProfileScreen(), state.pageKey),
         ),
       ],
     ),
@@ -144,6 +146,20 @@ final GoRouter appRouter = GoRouter(
       path: Routes.payout,
       pageBuilder: (_, state) =>
           _cupertino(const PayoutRequestScreen(), state.pageKey),
+    ),
+    GoRoute(
+      path: Routes.history,
+      pageBuilder: (_, state) =>
+          _cupertino(const HistoryScreen(), state.pageKey),
+    ),
+    GoRoute(
+      path: Routes.help,
+      pageBuilder: (_, state) => _cupertino(const HelpScreen(), state.pageKey),
+    ),
+    GoRoute(
+      path: Routes.privacy,
+      pageBuilder: (_, state) =>
+          _cupertino(const PrivacyScreen(), state.pageKey),
     ),
     GoRoute(
       path: '${Routes.video}/:campaignId',

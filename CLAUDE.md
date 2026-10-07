@@ -453,6 +453,18 @@ docker exec uziy-postgres psql -U uziy -d uziy \
 This is intentional: admins should never be self-created. Add a proper
 super-admin bootstrap flow before shipping.
 
+### Profile menu pages (added 2026-10-07)
+
+The three 'Бусад' rows of the profile tab open real pages (routes `/profile/history|help|privacy`,
+Cupertino push), all inside `ProfilePageShell` (`screens/profile/profile_page_shell.dart`):
+- **History** (`history_screen.dart`, `history_logic.dart`, model `view_history_item.dart`) reads
+  `GET /viewer/history` → `List<ViewHistoryItemDto {campaignId,title,companyName,rewardPaid,watchedAt}>`,
+  newest first, capped at 100 (`ViewerService.HISTORY_LIMIT`). Backend: `ViewHistoryMapper`,
+  `ViewHistoryRepository.findByUserIdOrderByWatchedAtDesc`.
+- **Help** (`help_screen.dart`) — FAQ accordion; copy lives in `help_content.dart`.
+- **Privacy** (`privacy_screen.dart`) — copy in `privacy_content.dart`. The text is a first draft
+  and needs the owner's / a lawyer's review before release.
+
 ### Push notifications (added 2026-10-06)
 
 When an admin approves a campaign for the first time (PENDING → ACTIVE; resuming PAUSED →

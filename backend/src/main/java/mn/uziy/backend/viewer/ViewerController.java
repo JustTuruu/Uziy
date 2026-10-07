@@ -37,6 +37,11 @@ public class ViewerController {
         return profile.feed(principal.userId());
     }
 
+    @GetMapping("/history")
+    public List<ViewHistoryItemDto> history(@Auth JwtPrincipal principal) {
+        return profile.history(principal.userId());
+    }
+
     @GetMapping("/campaigns/{id}/questions")
     public List<QuestionDto> questions(@PathVariable("id") long id) {
         return profile.questions(id);

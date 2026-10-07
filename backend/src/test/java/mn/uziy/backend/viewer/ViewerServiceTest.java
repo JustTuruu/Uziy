@@ -20,6 +20,10 @@ import mn.uziy.backend.domain.SurveyQuestionRepository;
 import mn.uziy.backend.domain.TargetGender;
 import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
+import mn.uziy.backend.domain.ViewHistoryEntity;
+import mn.uziy.backend.domain.ViewHistoryRepository;
+import java.time.OffsetDateTime;
+import org.springframework.data.domain.PageRequest;
 import org.junit.jupiter.api.Test;
 
 class ViewerServiceTest {
@@ -28,8 +32,11 @@ class ViewerServiceTest {
     private final CampaignRepository campaigns = mock(CampaignRepository.class);
     private final SurveyQuestionRepository questions = mock(SurveyQuestionRepository.class);
 
-    private final ViewerServiceImpl service = new ViewerServiceImpl(users, campaigns, questions,
-            new mn.uziy.backend.auth.MeMapper(), new FeedItemMapper(), new QuestionMapper());
+    private final ViewHistoryRepository views = mock(ViewHistoryRepository.class);
+
+    private final ViewerServiceImpl service = new ViewerServiceImpl(users, campaigns, questions, views,
+            new mn.uziy.backend.auth.MeMapper(), new FeedItemMapper(), new QuestionMapper(),
+            new ViewHistoryMapper());
 
     private final UserEntity viewer = viewer();
 
@@ -109,5 +116,69 @@ class ViewerServiceTest {
         assertThat(qs.get(0).options()).containsExactly("A", "B", "C");
         assertThat(qs.get(1).options()).isEmpty();
         assertThat(qs.get(1).type()).isEqualTo("TEXT");
+    }
+
+    // ------- history -------------------------------------------------------
+
+    private static ViewHistoryEntity view(long campaignId, double reward, OffsetDateTime at) {
+        ViewHistoryEntity v = new ViewHistoryEntity();
+        v.setUserId(42L);
+        v.setCampaignId(campaignId);
+        v.setRewardPaid(reward);
+        v.setWatchedAt(at);
+        return v;
+    }
+
+    private static UserEntity company(String name) {
+        UserEntity company = new UserEntity();
+        company.setId(500L);
+        company.setCompanyName(name);
+        return company;
+    }
+
+    @Test
+    void historyReturnsViewsWithCampaignTitleAndCompanyNameKeepingRepositoryOrder() {
+        OffsetDateTime newer = OffsetDateTime.parse("2026-10-06T10:00:00+08:00");
+        OffsetDateTime older = OffsetDateTime.parse("2026-10-05T10:00:00+08:00");
+        when(views.findByUserIdOrderByWatchedAtDesc(42L, PageRequest.ofSize(ViewerService.HISTORY_LIMIT)))
+                .thenReturn(List.of(view(2L, 500.0, newer), view(1L, 700.0, older)));
+        when(campaigns.findAllById(List.of(2L, 1L)))
+                .thenReturn(List.of(sampleCampaign(1), sampleCampaign(2)));
+        when(users.findAllById(List.of(500L))).thenReturn(List.of(company("MobiCom")));
+
+        List<ViewHistoryItemDto> history = service.history(42L);
+
+        assertThat(history).extracting(ViewHistoryItemDto::campaignId).containsExactly(2L, 1L);
+        assertThat(history.get(0).rewardPaid()).isEqualTo(500.0);
+        assertThat(history.get(0).watchedAt()).isEqualTo(newer);
+        assertThat(history.get(0).companyName()).isEqualTo("MobiCom");
+        assertThat(history.get(0).title()).isEqualTo("Test");
+    }
+
+    @Test
+    void historyIsEmptyWhenTheViewerHasNotWatchedAnything() {
+        when(views.findByUserIdOrderByWatchedAtDesc(42L, PageRequest.ofSize(ViewerService.HISTORY_LIMIT)))
+                .thenReturn(List.of());
+
+        assertThat(service.history(42L)).isEmpty();
+    }
+
+    @Test
+    void historySkipsViewsWhoseCampaignNoLongerExists() {
+        when(views.findByUserIdOrderByWatchedAtDesc(42L, PageRequest.ofSize(ViewerService.HISTORY_LIMIT)))
+                .thenReturn(List.of(view(9L, 700.0, OffsetDateTime.now())));
+        when(campaigns.findAllById(List.of(9L))).thenReturn(List.of());
+
+        assertThat(service.history(42L)).isEmpty();
+    }
+
+    @Test
+    void historyUsesAnEmptyCompanyNameWhenTheCompanyHasNone() {
+        when(views.findByUserIdOrderByWatchedAtDesc(42L, PageRequest.ofSize(ViewerService.HISTORY_LIMIT)))
+                .thenReturn(List.of(view(1L, 700.0, OffsetDateTime.now())));
+        when(campaigns.findAllById(List.of(1L))).thenReturn(List.of(sampleCampaign(1)));
+        when(users.findAllById(List.of(500L))).thenReturn(List.of(company(null)));
+
+        assertThat(service.history(42L).get(0).companyName()).isEmpty();
     }
 }

@@ -60,6 +60,13 @@ void main() {
       expect((await _catch(svc.me)).statusCode, 403);
     });
 
+    test('history 403', () async {
+      _reply(403, forbidden);
+      final e = await _catch(svc.history);
+      expect(e.statusCode, 403);
+      expect(e.message, 'Дахин нэвтэрнэ үү');
+    });
+
     test('questions 403', () async {
       _reply(403, forbidden);
       expect((await _catch(() => svc.questions(1))).statusCode, 403);
@@ -110,6 +117,26 @@ void main() {
       _reply(200, const {'rewardPaid': 700.0, 'newBalance': 1200.0});
       final r = await svc.submitSurvey(campaignId: 1, answers: const {});
       expect(r.newBalance, 1200);
+    });
+  });
+
+  group('history', () {
+    test('parses the list the backend sends', () async {
+      _reply(200, [
+        {
+          'campaignId': 3,
+          'title': 'Шинэ 5G багц',
+          'companyName': 'MobiCom',
+          'rewardPaid': 700.0,
+          'watchedAt': '2026-10-06T10:00:00+08:00',
+        },
+      ]);
+
+      final items = await svc.history();
+
+      expect(items, hasLength(1));
+      expect(items.single.campaignId, 3);
+      expect(items.single.rewardPaid, 700);
     });
   });
 }

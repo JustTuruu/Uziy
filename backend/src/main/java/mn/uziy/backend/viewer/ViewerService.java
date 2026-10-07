@@ -3,7 +3,7 @@ package mn.uziy.backend.viewer;
 import java.util.List;
 import mn.uziy.backend.auth.Me;
 
-/** Read-side use cases of the viewer app: profile, home feed, survey questions. */
+/** Read-side use cases of the viewer app: profile, home feed, survey questions, watch history. */
 public interface ViewerService {
     Me me(long userId);
 
@@ -14,4 +14,9 @@ public interface ViewerService {
     List<FeedItemDto> feed(long userId);
 
     List<QuestionDto> questions(long campaignId);
+
+    /** The viewer's most recent completed views (newest first), capped at {@link #HISTORY_LIMIT}. */
+    List<ViewHistoryItemDto> history(long userId);
+
+    int HISTORY_LIMIT = 100;
 }

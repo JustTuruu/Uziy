@@ -19,7 +19,6 @@ const String kUnverifiedLabel = 'Баталгаажаагүй';
 const String kUnverifiedHint = 'Анхны мөнгө татахад баталгаажна';
 
 /// Snackbar copy.
-const String kComingSoon = 'Удахгүй';
 const String kLogoutFailed = 'Гарахад алдаа гарлаа. Дахин оролдоно уу.';
 
 /// Load error for anything that is not an [ApiException] (no network,
