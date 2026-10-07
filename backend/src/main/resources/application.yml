@@ -47,6 +47,11 @@ uziy:
     # service-account JSON, otherwise startup fails.
     enabled: ${PUSH_ENABLED:false}
     credentials-path: ${FCM_CREDENTIALS_PATH:}
+  otp:
+    # logging -> one-time codes are only written to the log (development).
+    # A real SMS channel = a new OtpSender @Component selected by this value; with
+    # "logging" left on in production nobody receives a code and nobody can register.
+    sender: ${OTP_SENDER:logging}
   cors:
     allowed-origins:
       - http://localhost:3000 # company_panel

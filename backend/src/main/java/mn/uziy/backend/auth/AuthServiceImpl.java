@@ -5,6 +5,8 @@ import mn.uziy.backend.common.UnauthorizedException;
 import mn.uziy.backend.common.event.DomainEventPublisher;
 import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
+import mn.uziy.backend.otp.OtpPurpose;
+import mn.uziy.backend.otp.OtpService;
 import mn.uziy.backend.security.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -21,9 +23,12 @@ public class AuthServiceImpl implements AuthService {
     private final UserFactory userFactory;
     private final MeMapper meMapper;
     private final DomainEventPublisher events;
+    private final OtpService otp;
 
     public AuthServiceImpl(UserRepository users, PasswordEncoder encoder, JwtService jwt,
-                           UserFactory userFactory, MeMapper meMapper, DomainEventPublisher events) {
+                           UserFactory userFactory, MeMapper meMapper, DomainEventPublisher events,
+                           OtpService otp) {
+        this.otp = otp;
         this.users = users;
         this.encoder = encoder;
         this.jwt = jwt;
@@ -45,6 +50,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse registerViewer(RegisterViewerReq req) {
         requirePhoneFree(req.phoneNumber());
+        otp.verifyAndConsume(req.phoneNumber(), OtpPurpose.REGISTER, req.otpCode());
         UserEntity user = userFactory.newViewer(req, encoder.encode(req.password()));
         return registered(users.save(user));
     }

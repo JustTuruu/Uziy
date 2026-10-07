@@ -131,6 +131,28 @@ void main() {
     });
   });
 
+  testWidgets('the phone field opens the digits-only keyboard', (tester) async {
+    await _pump(
+      tester,
+      PhonePrefixField(controller: TextEditingController()),
+    );
+
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.keyboardType, TextInputType.number);
+  });
+
+  testWidgets('the password field opens the ordinary text keyboard',
+      (tester) async {
+    await _pump(
+      tester,
+      PasswordField(controller: TextEditingController()),
+    );
+
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.keyboardType, TextInputType.text);
+    expect(field.obscureText, isTrue);
+  });
+
   group('PasswordField', () {
     testWidgets('is obscured until the toggle is tapped', (tester) async {
       final ctrl = TextEditingController();

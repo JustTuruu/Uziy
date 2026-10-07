@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_icons.dart';
 import '../theme/app_theme.dart';
 import 'app_card.dart';
 
@@ -43,8 +44,8 @@ class InfoRow extends StatelessWidget {
     final trail = trailing ??
         (onTap != null
             ? const Icon(
-                Icons.chevron_right_rounded,
-                size: 22,
+                AppIcons.chevron,
+                size: 16,
                 color: AppColors.textTertiary,
               )
             : null);
@@ -63,7 +64,7 @@ class InfoRow extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
               ),
               alignment: Alignment.center,
-              child: Icon(icon, size: 18, color: iconFg),
+              child: Icon(icon, size: 20, color: iconFg),
             ),
             const SizedBox(width: 12),
             Expanded(

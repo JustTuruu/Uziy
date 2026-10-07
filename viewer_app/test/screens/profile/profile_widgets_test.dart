@@ -113,13 +113,13 @@ void main() {
       expect(
         find.descendant(
           of: hint,
-          matching: find.byIcon(Icons.info_outline_rounded),
+          matching: find.byIcon(AppIcons.hint),
         ),
         findsOneWidget,
       );
       // The hint wraps at this size; the icon sits on its first line.
       final hintRect = tester.getRect(hint);
-      final iconRect = tester.getRect(find.byIcon(Icons.info_outline_rounded));
+      final iconRect = tester.getRect(find.byIcon(AppIcons.hint));
       expect(hintRect.height, greaterThan(iconRect.height * 1.5));
       expect(iconRect.top - hintRect.top, lessThan(iconRect.height));
       expect(tester.takeException(), isNull);
@@ -187,7 +187,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
+      expect(find.byIcon(AppIcons.chevron), findsOneWidget);
       expect(
         find.bySemanticsLabel(balanceSemantics(3400, opensWallet: true)),
         findsOneWidget,
@@ -201,7 +201,7 @@ void main() {
       await _pump(tester, ProfileStatsRow(user: _user()));
       await tester.pumpAndSettle();
 
-      expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
+      expect(find.byIcon(AppIcons.chevron), findsNothing);
       expect(find.bySemanticsLabel(balanceSemantics(3400)), findsOneWidget);
     });
 

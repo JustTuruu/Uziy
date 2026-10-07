@@ -15,6 +15,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(kPrivacyTitle), findsOneWidget);
+    expect(find.byType(PrivacyIntroCard), findsOneWidget);
+    expect(find.text(kPrivacyIntroTitle), findsOneWidget);
     expect(find.text(kPrivacyIntro), findsOneWidget);
     expect(
         find.byType(PolicySectionView), findsNWidgets(kPrivacySections.length));

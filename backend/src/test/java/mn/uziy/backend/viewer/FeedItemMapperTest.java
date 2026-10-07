@@ -16,4 +16,17 @@ class FeedItemMapperTest {
         assertThat(dto.rewardPerUser()).isEqualTo(700.0);
         assertThat(dto.companyName()).isEqualTo("MobiCom");
     }
+
+    @Test
+    void guestCardKeepsTheTeaserButDropsTheVideoUrl() {
+        var campaign = sampleCampaign(3);
+        campaign.setVideoUrl("https://cdn/x.m3u8");
+
+        FeedItemDto dto = new FeedItemMapper().toGuestDto(campaign, "MobiCom");
+
+        assertThat(dto.videoUrl()).isEmpty();
+        assertThat(dto.title()).isEqualTo("Test");
+        assertThat(dto.rewardPerUser()).isEqualTo(700.0);
+        assertThat(dto.companyName()).isEqualTo("MobiCom");
+    }
 }

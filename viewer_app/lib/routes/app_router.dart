@@ -3,7 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/campaign.dart';
+import '../models/register_draft.dart';
+import '../screens/auth/forgot_password_screen.dart';
 import '../screens/auth/login_screen.dart';
+import '../screens/auth/otp_verify_screen.dart';
+import '../screens/auth/reset_password_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/home/home_feed_screen.dart';
 import '../screens/home/video_player_screen.dart';
@@ -12,17 +16,22 @@ import '../screens/profile/history_screen.dart';
 import '../screens/profile/privacy_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/splash_screen.dart';
+import '../services/auth_service.dart';
 import '../screens/survey/survey_screen.dart';
 import '../screens/wallet/payout_request_screen.dart';
 import '../screens/wallet/wallet_screen.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_nav_bar.dart';
 import '../widgets/reels_icon.dart';
+import 'auth_gate.dart';
 
 class Routes {
   static const splash = '/';
   static const login = '/login';
   static const register = '/register';
+  static const verify = '/register/verify';
+  static const forgot = '/forgot';
+  static const resetPassword = '/forgot/reset';
   static const home = '/home';
   static const wallet = '/wallet';
   static const profile = '/profile';
@@ -110,6 +119,10 @@ Page<T> _cupertino<T>(Widget child, LocalKey key) =>
 
 final GoRouter appRouter = GoRouter(
   initialLocation: Routes.splash,
+  redirect: (context, state) => guestRedirect(
+    location: state.uri.path,
+    signedIn: AuthService.instance.isSignedIn,
+  ),
   routes: [
     GoRoute(
       path: Routes.splash,
@@ -117,12 +130,51 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: Routes.login,
-      pageBuilder: (_, state) => _fade(const LoginScreen(), state.pageKey),
+      pageBuilder: (_, state) => _fade(
+        LoginScreen(next: state.uri.queryParameters[kNextParam]),
+        state.pageKey,
+      ),
     ),
     GoRoute(
       path: Routes.register,
+      pageBuilder: (_, state) => _cupertino(
+        RegisterScreen(next: state.uri.queryParameters[kNextParam]),
+        state.pageKey,
+      ),
+    ),
+    GoRoute(
+      path: Routes.verify,
+      pageBuilder: (_, state) {
+        // Without the form (a deep link, a restored app) there is nothing to
+        // verify: start registration over.
+        final draft = state.extra;
+        return _cupertino(
+          draft is RegisterDraft
+              ? OtpVerifyScreen(
+                  draft: draft,
+                  next: state.uri.queryParameters[kNextParam],
+                )
+              : RegisterScreen(next: state.uri.queryParameters[kNextParam]),
+          state.pageKey,
+        );
+      },
+    ),
+    GoRoute(
+      path: Routes.forgot,
       pageBuilder: (_, state) =>
-          _cupertino(const RegisterScreen(), state.pageKey),
+          _cupertino(const ForgotPasswordScreen(), state.pageKey),
+    ),
+    GoRoute(
+      path: Routes.resetPassword,
+      pageBuilder: (_, state) {
+        final phone = state.extra;
+        return _cupertino(
+          phone is String
+              ? ResetPasswordScreen(phone: phone)
+              : const ForgotPasswordScreen(),
+          state.pageKey,
+        );
+      },
     ),
     ShellRoute(
       builder: (context, state, child) => _MainShell(child: child),

@@ -6,12 +6,14 @@ import 'package:go_router/go_router.dart';
 import '../../models/campaign.dart';
 import '../../models/user.dart';
 import '../../routes/app_router.dart';
+import '../../routes/auth_gate.dart';
 import '../../services/auth_service.dart';
 import '../../services/push/push_runtime.dart';
 import '../../services/viewer_service.dart';
 import '../../widgets/ui.dart';
 import 'feed_logic.dart';
 import 'feed_widgets.dart';
+import 'guest_gate_sheet.dart';
 
 /// Home tab: greeting + balance, earning-potential hero, kind filter and the
 /// targeted campaign feed.
@@ -31,6 +33,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
   List<Campaign>? _feed;
   AppUser? _me;
   String? _error;
+
+  /// Not signed in: a few sample cards, and tapping one asks to sign in.
+  /// Fixed for this screen's life (signing in leaves it for a fresh one).
+  final bool _guest = !AuthService.instance.isSignedIn;
   FeedFilter _filter = FeedFilter.all;
 
   /// True while a button-triggered reload (retry / 'Шинэчлэх') is running.
@@ -41,10 +47,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     super.initState();
     _load();
     // Logged in and on Home: the right moment for the notification prompt.
-    PushRuntime.instance.onHomeReached();
+    if (!_guest) PushRuntime.instance.onHomeReached();
   }
 
   Future<void> _load() async {
+    if (_guest) return _loadGuest();
     try {
       final results = await Future.wait([
         ViewerService.instance.feed(),
@@ -71,6 +78,23 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     }
   }
 
+  Future<void> _loadGuest() async {
+    try {
+      final feed = await ViewerService.instance.guestFeed();
+      if (!mounted) return;
+      setState(() {
+        _feed = feed;
+        _error = null;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.message);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _error = 'Сервертэй холбогдож чадсангүй');
+    }
+  }
+
   /// Button-driven reload. [clearError] hides the banner while retrying, so
   /// a feed that never loaded shows skeletons again instead of a stale
   /// error. The fetch itself is always [_load].
@@ -88,10 +112,24 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
   }
 
   void _openCampaign(Campaign c) {
+    if (_guest) {
+      _askToSignIn(next: campaignRoute(c));
+      return;
+    }
     // Survey-only campaigns skip the video player.
-    final target =
-        c.hasVideo ? '${Routes.video}/${c.id}' : '${Routes.survey}/${c.id}';
-    context.push(target, extra: c);
+    context.push(campaignRoute(c), extra: c);
+  }
+
+  /// Guest tapped a campaign: offer register / login and bring them back to
+  /// [next] once they are in.
+  Future<void> _askToSignIn({required String next}) async {
+    final choice = await showGuestGateSheet(context);
+    if (choice == null || !mounted) return;
+    final route = switch (choice) {
+      GuestChoice.register => Routes.register,
+      GuestChoice.login => Routes.login,
+    };
+    context.push(authLocation(route, next: next));
   }
 
   void _onFilterChanged(FeedFilter f) => setState(() => _filter = f);
@@ -135,7 +173,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                       child: FeedHeader(
                         now: DateTime.now(),
                         balance: _me?.balance,
-                        onBalanceTap: () => context.go(Routes.wallet),
+                        guest: _guest,
+                        // The guest pill is plain 'Нэвтрэх': straight to login.
+                        onBalanceTap: _guest
+                            ? () => context.push(Routes.login)
+                            : () => context.go(Routes.wallet),
                       ),
                     ),
                   ),
@@ -188,7 +230,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                         child: Center(
                           child: EmptyState(
                             icon: Icons.video_library_outlined,
-                            title: 'Танд тохирсон видео түр байхгүй байна',
+                            title: 'Одоогоор видео алга байна',
                             message: 'Дараа дахин шалгаарай. Шинэ видео, '
                                 'судалгаа нэмэгдэхэд энд харагдана.',
                             action: AppButton(

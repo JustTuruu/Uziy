@@ -156,3 +156,51 @@ String campaignSemanticLabel(Campaign c) {
   ].where((p) => p.isNotEmpty);
   return parts.join('. ');
 }
+
+/// A campaign title split into a bold headline and a lighter tagline.
+class TitleParts {
+  const TitleParts(this.headline, [this.tagline]);
+
+  final String headline;
+
+  /// Null when the title has no separator worth splitting at.
+  final String? tagline;
+
+  @override
+  bool operator ==(Object other) =>
+      other is TitleParts &&
+      other.headline == headline &&
+      other.tagline == tagline;
+
+  @override
+  int get hashCode => Object.hash(headline, tagline);
+
+  @override
+  String toString() => 'TitleParts($headline | $tagline)';
+}
+
+const List<String> _titleSeparators = [' - ', ' – ', ' — '];
+
+/// Splits "Шинэ 5G багц - Танд хамгийн тохирсон" at its first separator
+/// (' - ', ' – ' or ' — ') into headline "Шинэ 5G багц" and tagline
+/// "Танд хамгийн тохирсон", so a card can show the product big and the pitch
+/// small. A colon is deliberately not a separator ('Судалгаа: …' is one
+/// phrase). No separator, or an empty side, leaves the whole title as the
+/// headline.
+TitleParts splitCampaignTitle(String title) {
+  final trimmed = title.trim();
+  var cut = -1;
+  var sepLength = 0;
+  for (final sep in _titleSeparators) {
+    final i = trimmed.indexOf(sep);
+    if (i >= 0 && (cut < 0 || i < cut)) {
+      cut = i;
+      sepLength = sep.length;
+    }
+  }
+  if (cut < 0) return TitleParts(trimmed);
+  final headline = trimmed.substring(0, cut).trim();
+  final tagline = trimmed.substring(cut + sepLength).trim();
+  if (headline.isEmpty || tagline.isEmpty) return TitleParts(trimmed);
+  return TitleParts(headline, tagline);
+}

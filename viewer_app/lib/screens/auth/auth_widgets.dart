@@ -68,12 +68,15 @@ DateTime birthDatePickerInitial(DateTime? current, DateTime now) {
 /// hero, so the primary button stays above the fold.
 const double kCompactAuthHeight = 700;
 
-/// Logo size and the large hero gaps of the login screen for a screen of
-/// [screenHeight] points.
-({double logoSize, double gap}) authHeroMetrics(double screenHeight) =>
+/// Logo size, the large hero gaps and whether to drop optional extras (the
+/// how-it-works strip) on the login screen for a screen of [screenHeight]
+/// points.
+({double logoSize, double gap, bool compact}) authHeroMetrics(
+  double screenHeight,
+) =>
     screenHeight < kCompactAuthHeight
-        ? (logoSize: 56, gap: AppSpacing.xl)
-        : (logoSize: 76, gap: AppSpacing.xxxl);
+        ? (logoSize: 56, gap: AppSpacing.xl, compact: true)
+        : (logoSize: 76, gap: AppSpacing.xxxl, compact: false);
 
 // ---------------------------------------------------------------------------
 // Layout
@@ -180,7 +183,9 @@ class PhonePrefixField extends StatelessWidget {
     return TextFormField(
       controller: controller,
       focusNode: focusNode,
-      keyboardType: TextInputType.phone,
+      // Digits only (iOS number pad). TextInputType.phone would also offer
+      // + * # and letters on the keypad.
+      keyboardType: TextInputType.number,
       textInputAction: textInputAction,
       onFieldSubmitted: onFieldSubmitted,
       onChanged: onChanged,
@@ -288,6 +293,9 @@ class _PasswordFieldState extends State<PasswordField> {
       controller: widget.controller,
       focusNode: widget.focusNode,
       obscureText: _obscure,
+      // The ordinary keyboard (letters, symbols, any language). Not
+      // visiblePassword: on iOS that is ASCII-only and blocks Cyrillic.
+      keyboardType: TextInputType.text,
       textInputAction: widget.textInputAction,
       onFieldSubmitted: widget.onFieldSubmitted,
       onChanged: widget.onChanged,
@@ -381,10 +389,9 @@ class FieldError extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final inputTheme = theme.inputDecorationTheme;
-    final contentStart = inputTheme.contentPadding
-            ?.resolve(Directionality.of(context))
-            .left ??
-        AppSpacing.md;
+    final contentStart =
+        inputTheme.contentPadding?.resolve(Directionality.of(context)).left ??
+            AppSpacing.md;
     // What InputDecorator does: M3 bodySmall defaults merged with the
     // theme's errorStyle.
     final style = (theme.textTheme.bodySmall ?? const TextStyle())
@@ -930,6 +937,59 @@ class AuthFooterLink extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// How it works
+// ---------------------------------------------------------------------------
+
+/// The three steps of the product in one row of icon + label, shown under the
+/// login form so a new visitor sees what signing in is for.
+class HowItWorksStrip extends StatelessWidget {
+  const HowItWorksStrip({super.key});
+
+  static const List<({IconData icon, String label})> steps = [
+    (icon: AppIcons.watched, label: 'Видео үз'),
+    (icon: AppIcons.answer, label: 'Асуултад хариул'),
+    (icon: AppIcons.reward, label: 'Урамшуулал ав'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final step in steps)
+          Expanded(
+            child: Column(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.primary.withValues(alpha: 0.10),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.22),
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(step.icon, size: 20, color: AppColors.primary),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  step.label,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

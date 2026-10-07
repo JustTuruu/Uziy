@@ -71,6 +71,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/auth/**",
                                 "/platform-settings",
+                                "/public/**",
                                 "/actuator/health",
                                 "/actuator/info",
                                 "/error").permitAll()

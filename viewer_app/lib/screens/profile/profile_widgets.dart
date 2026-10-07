@@ -95,8 +95,8 @@ class LogoutConfirmSheet extends StatelessWidget {
                 ),
                 alignment: Alignment.center,
                 child: const Icon(
-                  Icons.logout_rounded,
-                  size: 28,
+                  AppIcons.logout,
+                  size: 30,
                   color: AppColors.dangerLight,
                 ),
               ),
@@ -121,7 +121,7 @@ class LogoutConfirmSheet extends StatelessWidget {
             const SizedBox(height: AppSpacing.xxl),
             AppButton(
               label: 'Гарах',
-              icon: Icons.logout_rounded,
+              icon: AppIcons.logout,
               variant: AppButtonVariant.danger,
               haptic: true,
               onPressed: () => Navigator.of(context).pop(true),
@@ -224,7 +224,7 @@ class ProfileAvatar extends StatelessWidget {
                             blendMode: BlendMode.srcIn,
                             shaderCallback: AppGradients.gold.createShader,
                             child: Icon(
-                              Icons.person_rounded,
+                              AppIcons.user,
                               key: const ValueKey('profile-avatar-icon'),
                               size: size * 0.5,
                               color: AppColors.primary,
@@ -255,7 +255,7 @@ class ProfileAvatar extends StatelessWidget {
                   ),
                   alignment: Alignment.center,
                   child: Icon(
-                    Icons.check_rounded,
+                    AppIcons.check,
                     size: size * 0.16,
                     color: AppColors.onPrimary,
                   ),
@@ -279,12 +279,12 @@ class VerificationBadge extends StatelessWidget {
     return verified
         ? const TagChip(
             label: kVerifiedLabel,
-            icon: Icons.verified_rounded,
+            icon: AppIcons.verified,
             tone: TagTone.success,
           )
         : const TagChip(
             label: kUnverifiedLabel,
-            icon: Icons.shield_outlined,
+            icon: AppIcons.unverified,
           );
   }
 }
@@ -351,7 +351,7 @@ class ProfileHeader extends StatelessWidget {
                     alignment: PlaceholderAlignment.middle,
                     child: ExcludeSemantics(
                       child: Icon(
-                        Icons.info_outline_rounded,
+                        AppIcons.hint,
                         size: 15,
                         color: hintStyle.color,
                       ),
@@ -422,7 +422,7 @@ class ProfileBalanceTile extends StatelessWidget {
           if (onTap != null) ...[
             const SizedBox(width: AppSpacing.sm),
             const Icon(
-              Icons.chevron_right_rounded,
+              AppIcons.chevron,
               color: AppColors.textSecondary,
             ),
           ],
@@ -519,7 +519,7 @@ class _StatIcon extends StatelessWidget {
         color: color.withValues(alpha: 0.16),
       ),
       alignment: Alignment.center,
-      child: Icon(icon, size: 16, color: color),
+      child: Icon(icon, size: 17, color: color),
     );
   }
 }
@@ -552,7 +552,7 @@ class ProfileStatsRow extends StatelessWidget {
                 label: 'Нас',
                 value: ageLabel(user.age),
                 leading: const _StatIcon(
-                  icon: Icons.cake_outlined,
+                  icon: AppIcons.age,
                   color: AppColors.violet,
                 ),
               ),
@@ -563,7 +563,7 @@ class ProfileStatsRow extends StatelessWidget {
                 label: 'Хот',
                 value: displayOrDash(user.city),
                 leading: const _StatIcon(
-                  icon: Icons.location_on_outlined,
+                  icon: AppIcons.district,
                   color: AppColors.accent,
                 ),
               ),
@@ -577,13 +577,13 @@ class ProfileStatsRow extends StatelessWidget {
 
 IconData _iconFor(ProfileFieldKind kind, Gender? gender) => switch (kind) {
       ProfileFieldKind.gender => switch (gender) {
-          Gender.male => Icons.male_rounded,
-          Gender.female => Icons.female_rounded,
-          null => Icons.person_outline_rounded,
+          Gender.male => AppIcons.male,
+          Gender.female => AppIcons.female,
+          null => AppIcons.genderUnknown,
         },
-      ProfileFieldKind.age => Icons.cake_outlined,
-      ProfileFieldKind.city => Icons.location_city_rounded,
-      ProfileFieldKind.district => Icons.place_outlined,
+      ProfileFieldKind.age => AppIcons.age,
+      ProfileFieldKind.city => AppIcons.city,
+      ProfileFieldKind.district => AppIcons.district,
     };
 
 /// 'Хувийн мэдээлэл' card: Хүйс, Нас, Хот (+ Дүүрэг when present).
@@ -652,7 +652,7 @@ class ProfileDetailRow extends StatelessWidget {
                     borderRadius: BorderRadius.circular(_iconTileRadius),
                   ),
                   alignment: Alignment.center,
-                  child: Icon(icon, size: 18, color: AppColors.textSecondary),
+                  child: Icon(icon, size: 20, color: AppColors.textSecondary),
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
@@ -720,7 +720,7 @@ class ProfileErrorBanner extends StatelessWidget {
             AppButton(
               key: const ValueKey('profile-retry-stacked'),
               label: retryLabel,
-              icon: Icons.refresh_rounded,
+              icon: AppIcons.retry,
               variant: AppButtonVariant.secondary,
               size: AppButtonSize.small,
               haptic: true,
@@ -921,20 +921,20 @@ class ProfileBody extends StatelessWidget {
               GroupedCard(
                 children: [
                   InfoRow(
-                    icon: Icons.history_rounded,
+                    icon: AppIcons.history,
                     iconColor: AppColors.accent,
                     label: 'Үзсэн видеонуудын түүх',
                     onTap: _menuTap(onHistoryTap),
                   ),
                   InfoRow(
-                    icon: Icons.help_outline_rounded,
+                    icon: AppIcons.help,
                     iconColor: AppColors.violet,
                     label: 'Тусламж',
                     subtitle: 'Түгээмэл асуулт, хариулт',
                     onTap: _menuTap(onHelpTap),
                   ),
                   InfoRow(
-                    icon: Icons.privacy_tip_outlined,
+                    icon: AppIcons.privacy,
                     iconColor: AppColors.success,
                     label: 'Нууцлалын бодлого',
                     onTap: _menuTap(onPrivacyTap),
@@ -951,7 +951,7 @@ class ProfileBody extends StatelessWidget {
           child: GroupedCard(
             children: [
               InfoRow(
-                icon: Icons.logout_rounded,
+                icon: AppIcons.logout,
                 label: 'Гарах',
                 danger: true,
                 onTap: loggingOut ? null : onLogout,

@@ -12,11 +12,12 @@ public record RegisterViewerReq(
         Gender gender,
         LocalDate birthDate,
         @Size(max = 50) String city,
-        @Size(max = 50) @Nullable String district) {
+        @Size(max = 50) @Nullable String district,
+        @Pattern(regexp = "\\d{6}") String otpCode) {
 
-    /** Convenience for callers that omit the optional district (Kotlin default null). */
+    /** Convenience for callers that omit the optional district. */
     public RegisterViewerReq(String phoneNumber, String password, Gender gender,
-                             LocalDate birthDate, String city) {
-        this(phoneNumber, password, gender, birthDate, city, null);
+                             LocalDate birthDate, String city, String otpCode) {
+        this(phoneNumber, password, gender, birthDate, city, null, otpCode);
     }
 }

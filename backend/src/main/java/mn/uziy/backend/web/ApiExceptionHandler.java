@@ -7,6 +7,7 @@ import mn.uziy.backend.common.ConflictException;
 import mn.uziy.backend.common.DomainException;
 import mn.uziy.backend.common.ForbiddenException;
 import mn.uziy.backend.common.NotFoundException;
+import mn.uziy.backend.common.TooManyRequestsException;
 import mn.uziy.backend.common.UnauthorizedException;
 import mn.uziy.backend.common.UnavailableException;
 import org.springframework.http.HttpStatus;
@@ -35,6 +36,7 @@ public class ApiExceptionHandler {
         if (e instanceof ConflictException) return HttpStatus.CONFLICT;
         if (e instanceof UnauthorizedException) return HttpStatus.UNAUTHORIZED;
         if (e instanceof UnavailableException) return HttpStatus.SERVICE_UNAVAILABLE;
+        if (e instanceof TooManyRequestsException) return HttpStatus.TOO_MANY_REQUESTS;
         throw new IllegalStateException("Unmapped domain exception: " + e.getClass());
     }
 }

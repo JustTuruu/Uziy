@@ -83,7 +83,7 @@ CREATE TABLE campaigns (
 On registration, prominently display this message in Flutter:
 
 > 💡 "Та өөрийн нас, хүйс, байршлыг үнэн зөв оруулснаар өөрт тохирсон илүү олон,
-> илүү өндөр дүнтэй видео судалгаануудыг хүлээн авч, орлогоо нэмэгдүүлэх боломжтой
+> илүү өндөр дүнтэй видео судалгаануудыг хүлээн авч, урамшууллаа нэмэгдүүлэх боломжтой
 > болно."
 
 When the user requests their **first payout**, the Admin verifies that the bank

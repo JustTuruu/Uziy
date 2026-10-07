@@ -3,6 +3,7 @@
 library;
 
 const String kPrivacyTitle = 'Нууцлалын бодлого';
+const String kPrivacyIntroTitle = 'Таны мэдээлэл аюулгүй';
 const String kPrivacyIntro =
     'Бид таны мэдээллийг зөвхөн урамшууллыг зөв олгох, залилангаас '
     'хамгаалах, үйлчилгээгээ сайжруулахад ашиглана.';

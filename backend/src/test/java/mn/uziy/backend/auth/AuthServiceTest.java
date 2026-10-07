@@ -18,6 +18,8 @@ import mn.uziy.backend.domain.Gender;
 import mn.uziy.backend.domain.Role;
 import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
+import mn.uziy.backend.otp.OtpPurpose;
+import mn.uziy.backend.otp.OtpService;
 import mn.uziy.backend.security.JwtService;
 import mn.uziy.backend.web.ApiExceptionHandler;
 import org.junit.jupiter.api.Test;
@@ -33,8 +35,9 @@ class AuthServiceTest {
             new AppProperties.Jwt("a".repeat(64), 1), new AppProperties.Cors(java.util.List.of()), new AppProperties.Payments(false),
             new AppProperties.Push(false, "")));
     private final DomainEventPublisher events = mock(DomainEventPublisher.class);
+    private final OtpService otp = mock(OtpService.class);
     private final AuthServiceImpl service = new AuthServiceImpl(users, encoder, jwt,
-            new UserFactory(), new MeMapper(), events);
+            new UserFactory(), new MeMapper(), events, otp);
 
     private UserEntity seedUser(Role role) {
         UserEntity u = new UserEntity();
@@ -98,7 +101,7 @@ class AuthServiceTest {
         });
 
         AuthResponse res = service.registerViewer(new RegisterViewerReq(
-                "77000001", "password1", Gender.MALE, LocalDate.of(2000, 5, 5), "Улаанбаатар", null));
+                "77000001", "password1", Gender.MALE, LocalDate.of(2000, 5, 5), "Улаанбаатар", "123456"));
 
         Me me = res.user();
         assertThat(me.id()).isEqualTo(100L);
@@ -109,6 +112,20 @@ class AuthServiceTest {
         assertThat(saved.getValue().getRole()).isEqualTo(Role.VIEWER);
         assertThat(saved.getValue().getPasswordHash()).isEqualTo("bcrypt-hash");
         verify(events).publish(new UserRegistered(100L, Role.VIEWER));
+        verify(otp).verifyAndConsume("77000001", OtpPurpose.REGISTER, "123456");
+    }
+
+    @Test
+    void registerViewerWithAWrongCodeCreatesNoUser() {
+        when(users.existsByPhoneNumber("77000001")).thenReturn(false);
+        org.mockito.Mockito.doThrow(new mn.uziy.backend.common.BadRequestException(OtpService.INVALID_CODE))
+                .when(otp).verifyAndConsume("77000001", OtpPurpose.REGISTER, "000000");
+
+        assertThat(statusOf(() -> service.registerViewer(new RegisterViewerReq(
+                "77000001", "password1", Gender.MALE, LocalDate.of(2000, 1, 1), "Улаанбаатар", "000000"))))
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        org.mockito.Mockito.verify(users, org.mockito.Mockito.never()).save(any(UserEntity.class));
+        org.mockito.Mockito.verifyNoInteractions(events);
     }
 
     @Test
@@ -116,8 +133,9 @@ class AuthServiceTest {
         when(users.existsByPhoneNumber("77000001")).thenReturn(true);
         org.mockito.Mockito.verifyNoInteractions(events);
         assertThat(statusOf(() -> service.registerViewer(new RegisterViewerReq(
-                "77000001", "password1", Gender.MALE, LocalDate.of(2000, 1, 1), "Улаанбаатар"))))
+                "77000001", "password1", Gender.MALE, LocalDate.of(2000, 1, 1), "Улаанбаатар", "123456"))))
                 .isEqualTo(HttpStatus.CONFLICT);
+        org.mockito.Mockito.verifyNoInteractions(otp);
     }
 
     // ------- register company ----------------------------------------------

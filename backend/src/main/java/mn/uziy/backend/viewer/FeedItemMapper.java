@@ -7,6 +7,13 @@ import org.springframework.stereotype.Component;
 @Component
 public class FeedItemMapper {
 
+    /** Same card for a guest, but without the video URL: watching requires an account. */
+    public FeedItemDto toGuestDto(CampaignEntity c, String companyName) {
+        FeedItemDto full = toDto(c, companyName);
+        return new FeedItemDto(full.id(), full.title(), "", full.thumbnailUrl(),
+                full.durationSeconds(), full.hasVideo(), full.rewardPerUser(), full.companyName());
+    }
+
     public FeedItemDto toDto(CampaignEntity c, String companyName) {
         return new FeedItemDto(
                 c.getId(),

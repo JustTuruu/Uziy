@@ -2,6 +2,7 @@ package mn.uziy.backend.domain;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -42,6 +43,18 @@ public interface CampaignRepository extends JpaRepository<CampaignEntity, Long> 
             @Param("userGender") TargetGender userGender,
             @Param("userAge") int userAge,
             @Param("userCity") String userCity);
+
+    /**
+     * Newest ACTIVE campaigns that still have budget for one more view, with no
+     * demographic filter — the sample a not-signed-in visitor sees.
+     */
+    @Query("""
+        SELECT c FROM CampaignEntity c
+        WHERE c.status = mn.uziy.backend.domain.CampaignStatus.ACTIVE
+          AND c.remainingBudget >= c.costPerView
+        ORDER BY c.createdAt DESC
+    """)
+    List<CampaignEntity> findPayableNewestFirst(Pageable limit);
 
     /**
      * Atomic budget decrement — decrements iff the campaign still has enough

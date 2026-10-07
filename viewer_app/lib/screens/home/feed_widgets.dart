@@ -16,7 +16,7 @@ import 'feed_logic.dart';
 // Header
 // ---------------------------------------------------------------------------
 
-/// Greeting line + balance pill, then the big 'Танд тохирсон' title and a
+/// Greeting line + balance pill, then the big 'Шинэ видеонууд' title and a
 /// one-line explainer.
 class FeedHeader extends StatelessWidget {
   const FeedHeader({
@@ -24,6 +24,7 @@ class FeedHeader extends StatelessWidget {
     required this.now,
     required this.balance,
     required this.onBalanceTap,
+    this.guest = false,
   });
 
   /// Drives the greeting ('Өглөөний мэнд', ...). Injected for tests.
@@ -33,9 +34,12 @@ class FeedHeader extends StatelessWidget {
   final double? balance;
   final VoidCallback onBalanceTap;
 
-  static const String title = 'Танд тохирсон';
-  static const String subtitle =
-      'Видео үзэж, асуултад хариулаад урамшуулал аваарай';
+  /// A not-signed-in visitor: the balance pill becomes a 'Нэвтрэх' pill
+  /// ([onBalanceTap] then opens sign-in).
+  final bool guest;
+
+  static const String title = 'Шинэ видеонууд';
+  static const String subtitle = 'Үзэж, хариулж, урамшуулал аваарай';
 
   /// Share of the header width the balance pill may use.
   static const double pillMaxWidthFactor = 0.62;
@@ -81,7 +85,9 @@ class FeedHeader extends StatelessWidget {
                 constraints: BoxConstraints(
                   maxWidth: box.maxWidth * pillMaxWidthFactor,
                 ),
-                child: BalancePill(balance: balance, onTap: onBalanceTap),
+                child: guest
+                    ? GuestSignInPill(onTap: onBalanceTap)
+                    : BalancePill(balance: balance, onTap: onBalanceTap),
               ),
             ],
           ),
@@ -94,6 +100,40 @@ class FeedHeader extends StatelessWidget {
         const SizedBox(height: 6),
         const Text(subtitle, style: AppTextStyles.bodySmall),
       ],
+    );
+  }
+}
+
+/// Header pill for a guest: a gold 'Нэвтрэх' call to action.
+class GuestSignInPill extends StatelessWidget {
+  const GuestSignInPill({super.key, required this.onTap});
+
+  final VoidCallback onTap;
+
+  static const String label = 'Нэвтрэх';
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: onTap,
+      haptic: true,
+      scale: 0.95,
+      semanticLabel: label,
+      excludeSemantics: true,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: AppLayout.minTapTarget),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceElevated,
+          borderRadius: AppRadii.brPill,
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.28)),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: AppTextStyles.label.copyWith(color: AppColors.primary),
+        ),
+      ),
     );
   }
 }
@@ -574,12 +614,7 @@ class CampaignCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    c.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.titleSmall,
-                  ),
+                  CardTitle(title: c.title),
                   const SizedBox(height: AppSpacing.md),
                   Row(
                     children: [
@@ -622,6 +657,56 @@ class CampaignCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Card title: the headline big and bold, the tagline underneath in a
+/// lighter, smaller weight. A title without a separator is just the headline.
+class CardTitle extends StatelessWidget {
+  const CardTitle({super.key, required this.title});
+
+  final String title;
+
+  static const TextStyle headlineStyle = TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.w800,
+    letterSpacing: -0.4,
+    height: 1.2,
+    color: AppColors.textPrimary,
+  );
+
+  static const TextStyle taglineStyle = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    height: 1.35,
+    color: AppColors.textSecondary,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = splitCampaignTitle(title);
+    final tagline = parts.tagline;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          parts.headline,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: headlineStyle,
+        ),
+        if (tagline != null) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            tagline,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: taglineStyle,
+          ),
+        ],
+      ],
     );
   }
 }

@@ -9,7 +9,7 @@ import mn.uziy.backend.domain.TargetGender;
 import mn.uziy.backend.domain.UserEntity;
 
 /** Entity fixtures shared by the viewer service tests. */
-final class ViewerTestData {
+public final class ViewerTestData {
 
     private ViewerTestData() {
     }
@@ -27,7 +27,7 @@ final class ViewerTestData {
         return u;
     }
 
-    static CampaignEntity sampleCampaign(long id) {
+    public static CampaignEntity sampleCampaign(long id) {
         CampaignEntity c = new CampaignEntity();
         c.setId(id);
         c.setCompanyId(500L);

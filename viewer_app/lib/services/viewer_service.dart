@@ -45,6 +45,22 @@ class ViewerService {
     }
   }
 
+  /// GET /public/feed — a few sample cards for a not-signed-in visitor
+  /// (no demographic targeting, no video URL).
+  Future<List<Campaign>> guestFeed() async {
+    const fallback = 'Санал болгосон видеонуудыг ачаалж чадсангүй';
+    try {
+      final r = await _dio.get<dynamic>('/public/feed');
+      _check(r, fallback);
+      return (r.data as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map(Campaign.fromJson)
+          .toList();
+    } on DioException catch (e) {
+      throw _map(e, fallback);
+    }
+  }
+
   /// GET /viewer/history — the viewer's completed views, newest first.
   Future<List<ViewHistoryItem>> history() async {
     const fallback = 'Түүх ачаалж чадсангүй';

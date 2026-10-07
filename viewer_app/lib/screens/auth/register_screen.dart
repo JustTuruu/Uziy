@@ -2,15 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../models/register_draft.dart';
 import '../../models/user.dart';
-import '../../routes/app_router.dart';
+import '../../routes/app_router.dart' show Routes;
+import '../../routes/auth_gate.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/incentive_banner.dart';
 import '../../widgets/ui.dart';
 import 'auth_widgets.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  const RegisterScreen({super.key, this.next});
+
+  /// Page to open after registering (see `auth_gate.dart`); null means Home.
+  final String? next;
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -128,19 +133,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
     FocusScope.of(context).unfocus();
     setState(() => _loading = true);
+    final phone = _phoneCtrl.text.trim();
     try {
-      await AuthService.instance.register(
-        phone: _phoneCtrl.text.trim(),
-        password: _passCtrl.text,
-        gender: _gender!,
-        birthDate: _birthDate!,
-        city: _cityCtrl.text,
-        district: _districtCtrl.text.trim().isEmpty
-            ? null
-            : _districtCtrl.text.trim(),
+      // The account is created on the next screen, with the texted code.
+      await AuthService.instance.requestOtp(
+        phone: phone,
+        purpose: OtpPurpose.register,
       );
       if (!mounted) return;
-      context.go(Routes.home);
+      setState(() => _loading = false);
+      await context.push(
+        authLocation(Routes.verify, next: widget.next),
+        extra: RegisterDraft(
+          phone: phone,
+          password: _passCtrl.text,
+          gender: _gender!,
+          birthDate: _birthDate!,
+          city: _cityCtrl.text,
+          district: _districtCtrl.text.trim().isEmpty
+              ? null
+              : _districtCtrl.text.trim(),
+        ),
+      );
     } on AuthException catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -255,8 +269,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           const SizedBox(height: AppSpacing.sm),
                           Text(
-                            'Хэдхэн мэдээллээ оруулаад урамшуулалт видео '
-                            'үзэж эхлээрэй.',
+                            'Мэдээллээ оруулаад урамшуулалт видео үзэж '
+                            'эхлээрэй.',
                             style: AppTextStyles.body.copyWith(
                               color: AppColors.textSecondary,
                             ),
@@ -300,8 +314,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       index: 3,
                       child: _FormSection(
                         title: 'Таны тухай',
-                        subtitle: 'Танд тохирсон видеог санал болгоход '
-                            'ашиглана',
+                        subtitle: 'Таны мэдээлэл нууцлагдан хадгалагдана',
                         children: [
                           const FieldLabel('Хүйс'),
                           Row(
@@ -634,14 +647,8 @@ class _PrivacySheet extends StatelessWidget {
               'нь тэдэнд харагдахгүй.',
         ),
         _LegalP(
-          '4. Хадгалалт',
-          'Мэдээлэл нь Cloudflare R2 болон PostgreSQL сервер дээр '
-              'шифрлэгдэн хадгалагдана. Данс устгах хүсэлт гаргасан '
-              'тохиолдолд 30 хоногийн дотор бүх мэдээллийг устгана.',
-        ),
-        _LegalP(
-          '5. Холбоо барих',
-          'Асуулт, гомдол, санал байвал: support@rewardedvideo.mn',
+          '4. Холбоо барих',
+          'Асуулт, гомдол, санал байвал: uziy@gmail.com',
         ),
       ],
     );

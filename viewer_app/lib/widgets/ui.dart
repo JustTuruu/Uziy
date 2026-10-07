@@ -10,6 +10,7 @@
 /// independent of sibling screens.
 library;
 
+export '../theme/app_icons.dart';
 export '../theme/app_theme.dart';
 export '../theme/tokens.dart';
 export '../utils/format.dart';
@@ -23,8 +24,10 @@ export 'coin.dart';
 export 'confetti.dart';
 export 'empty_state.dart';
 export 'fade_slide_in.dart';
+export 'falling_coins.dart';
 export 'fill_width.dart';
 export 'info_row.dart';
+export 'otp_input.dart';
 export 'pressable.dart';
 export 'section_header.dart';
 export 'segmented_progress.dart';

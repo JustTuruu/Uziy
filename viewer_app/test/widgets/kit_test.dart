@@ -446,7 +446,7 @@ void main() {
           ],
         ),
       );
-      expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
+      expect(find.byIcon(AppIcons.chevron), findsOneWidget);
       await tester.tap(find.text('Гарах'));
       await tester.pumpAndSettle();
       expect(taps, 1);

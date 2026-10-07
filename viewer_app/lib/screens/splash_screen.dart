@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../routes/app_router.dart';
-import '../services/auth_service.dart';
 import '../widgets/ui.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -26,12 +25,12 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _bootstrap() async {
-    // Minimum splash time so the logo has time to breathe.
-    final delay = Future<void>.delayed(const Duration(milliseconds: 1200));
-    final token = await AuthService.instance.readToken();
-    await delay;
+    // Minimum splash time so the logo has time to breathe. Everyone lands on
+    // Home: a guest browses there and is asked to sign in only when they
+    // try to watch (the stored token was already restored in main()).
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
     if (!mounted) return;
-    context.go(token == null ? Routes.login : Routes.home);
+    context.go(Routes.home);
   }
 
   @override
@@ -65,8 +64,8 @@ class _SplashMark extends StatefulWidget {
   /// One half-cycle of the breathing glow (it runs forward and back).
   static const Duration breathDuration = Duration(milliseconds: 2400);
 
-  /// Half-cycles to breathe (~10 s). Far longer than any real token check;
-  /// after that the halo rests, so a stuck splash never animates forever.
+  /// Half-cycles to breathe (~10 s). Far longer than the splash is shown;
+  /// after that the halo rests, so it can never animate forever.
   static const int breathCycles = 4;
 
   @override

@@ -8,7 +8,8 @@ package mn.uziy.backend.common;
  */
 public abstract sealed class DomainException extends RuntimeException
         permits NotFoundException, ForbiddenException, BadRequestException,
-                ConflictException, UnauthorizedException, UnavailableException {
+                ConflictException, UnauthorizedException, UnavailableException,
+                TooManyRequestsException {
 
     protected DomainException(String message) {
         super(message);

@@ -139,4 +139,31 @@ void main() {
       expect(items.single.rewardPaid, 700);
     });
   });
+
+  group('guestFeed', () {
+    test('parses the public sample cards', () async {
+      _reply(200, [
+        {
+          'id': 4,
+          'title': 'Шинэ 5G багц',
+          'videoUrl': '',
+          'durationSeconds': 45,
+          'hasVideo': true,
+          'rewardPerUser': 700,
+          'companyName': 'MobiCom',
+        },
+      ]);
+
+      final feed = await svc.guestFeed();
+
+      expect(feed.single.id, 4);
+      expect(feed.single.videoUrl, '');
+    });
+
+    test('a server error becomes an ApiException', () async {
+      _reply(500, const {'message': 'boom'});
+      final e = await _catch(svc.guestFeed);
+      expect(e.statusCode, 500);
+    });
+  });
 }

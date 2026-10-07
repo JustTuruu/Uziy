@@ -94,7 +94,7 @@ class HistoryBody extends StatelessWidget {
       return const Padding(
         padding: EdgeInsets.only(top: AppSpacing.xxxl),
         child: EmptyState(
-          icon: Icons.history_rounded,
+          icon: AppIcons.history,
           title: kHistoryEmptyTitle,
           message: kHistoryEmptyMessage,
         ),
@@ -175,7 +175,7 @@ class HistoryRow extends StatelessWidget {
     final subtitle =
         item.companyName.isEmpty ? when : '${item.companyName} · $when';
     return InfoRow(
-      icon: Icons.play_circle_outline_rounded,
+      icon: AppIcons.watched,
       iconColor: AppColors.accent,
       label: item.title,
       subtitle: subtitle,

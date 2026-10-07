@@ -8,7 +8,7 @@ import 'package:viewer_app/widgets/ui.dart';
 /// The spec-verbatim message (docs/SPEC.md §4A). Must never change.
 const _specMessage =
     'Та өөрийн нас, хүйс, байршлыг үнэн зөв оруулснаар өөрт тохирсон илүү '
-    'олон, илүү өндөр дүнтэй видео судалгаануудыг хүлээн авч, орлогоо '
+    'олон, илүү өндөр дүнтэй видео судалгаануудыг хүлээн авч, урамшууллаа '
     'нэмэгдүүлэх боломжтой болно.';
 
 Future<void> _pump(

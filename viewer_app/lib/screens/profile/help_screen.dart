@@ -92,7 +92,8 @@ class FaqTile extends StatelessWidget {
                     turns: expanded ? 0.5 : 0,
                     duration: AppDurations.fast,
                     child: const Icon(
-                      Icons.keyboard_arrow_down_rounded,
+                      AppIcons.expand,
+                      size: 16,
                       color: AppColors.textTertiary,
                     ),
                   ),

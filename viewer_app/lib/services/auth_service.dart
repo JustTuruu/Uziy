@@ -15,12 +15,27 @@ class AuthException implements Exception {
   String toString() => 'AuthException($statusCode): $message';
 }
 
+/// Why a one-time code is asked for; [wire] is the backend's `OtpPurpose`.
+enum OtpPurpose {
+  register('REGISTER'),
+  passwordReset('PASSWORD_RESET');
+
+  const OtpPurpose(this.wire);
+  final String wire;
+}
+
 class AuthService {
   AuthService._();
   static final AuthService instance = AuthService._();
 
   static const _tokenKey = 'auth_token';
   final _storage = const FlutterSecureStorage();
+
+  /// True while a JWT is loaded into the HTTP client (after login,
+  /// registration or [restore]); false for a guest. Synchronous on purpose:
+  /// the router's redirect cannot await secure storage.
+  bool get isSignedIn =>
+      ApiService.instance.dio.options.headers['Authorization'] != null;
 
   Future<String?> readToken() async {
     try {
@@ -83,6 +98,7 @@ class AuthService {
     required DateTime birthDate,
     required String city,
     String? district,
+    required String otpCode,
   }) async {
     try {
       final res = await ApiService.instance.dio.post<Map<String, dynamic>>(
@@ -91,12 +107,12 @@ class AuthService {
           'phoneNumber': phone,
           'password': password,
           'gender': gender.name.toUpperCase(),
-          'birthDate':
-              '${birthDate.year.toString().padLeft(4, '0')}-'
+          'birthDate': '${birthDate.year.toString().padLeft(4, '0')}-'
               '${birthDate.month.toString().padLeft(2, '0')}-'
               '${birthDate.day.toString().padLeft(2, '0')}',
           'city': city,
           if (district != null) 'district': district,
+          'otpCode': otpCode,
         },
       );
       _throwIfNotOk(res, fallback: 'Бүртгүүлэхэд алдаа гарлаа');
@@ -105,6 +121,44 @@ class AuthService {
       return AppUser.fromJson(body['user'] as Map<String, dynamic>);
     } on DioException catch (e) {
       throw _mapDioError(e, 'Бүртгүүлэхэд алдаа гарлаа');
+    }
+  }
+
+  /// POST /auth/otp/request — texts a 6-digit code to [phone].
+  /// REGISTER answers 409 for a taken phone; every purpose answers 429 when
+  /// asked again too soon.
+  Future<void> requestOtp({
+    required String phone,
+    required OtpPurpose purpose,
+  }) async {
+    const fallback = 'Код илгээж чадсангүй';
+    try {
+      final res = await ApiService.instance.dio.post<dynamic>(
+        '/auth/otp/request',
+        data: {'phoneNumber': phone, 'purpose': purpose.wire},
+      );
+      _throwIfNotOk(res, fallback: fallback);
+    } on DioException catch (e) {
+      throw _mapDioError(e, fallback);
+    }
+  }
+
+  /// POST /auth/password/reset — sets a new password using a code from
+  /// [requestOtp] (purpose passwordReset).
+  Future<void> resetPassword({
+    required String phone,
+    required String code,
+    required String newPassword,
+  }) async {
+    const fallback = 'Нууц үг шинэчилж чадсангүй';
+    try {
+      final res = await ApiService.instance.dio.post<dynamic>(
+        '/auth/password/reset',
+        data: {'phoneNumber': phone, 'code': code, 'newPassword': newPassword},
+      );
+      _throwIfNotOk(res, fallback: fallback);
+    } on DioException catch (e) {
+      throw _mapDioError(e, fallback);
     }
   }
 

@@ -461,9 +461,47 @@ Cupertino push), all inside `ProfilePageShell` (`screens/profile/profile_page_sh
   `GET /viewer/history` → `List<ViewHistoryItemDto {campaignId,title,companyName,rewardPaid,watchedAt}>`,
   newest first, capped at 100 (`ViewerService.HISTORY_LIMIT`). Backend: `ViewHistoryMapper`,
   `ViewHistoryRepository.findByUserIdOrderByWatchedAtDesc`.
+- **Icons**: the profile area uses the Lucide set (`lucide_icons_flutter`) through one vocabulary,
+  `lib/theme/app_icons.dart` (`AppIcons.history`, …) — ask there, never pick a glyph in a screen.
+  (`phosphor_flutter` was tried but does not compile on Flutter 3.47: `IconData` is final.)
 - **Help** (`help_screen.dart`) — FAQ accordion; copy lives in `help_content.dart`.
 - **Privacy** (`privacy_screen.dart`) — copy in `privacy_content.dart`. The text is a first draft
   and needs the owner's / a lawyer's review before release.
+
+### Guest browsing (added 2026-10-07)
+
+The app opens on Home for everyone — no forced login. Splash always goes to `/home`.
+- **Backend**: `GET /public/feed` (open in `SecurityConfig`, package `guest/`) returns up to
+  `GuestFeedService.SAMPLE_SIZE` (5) newest campaigns that can still pay, **untargeted and with
+  `videoUrl` blanked**. `/viewer/**` stays VIEWER-only.
+- **Flutter**: `AuthService.isSignedIn` (sync, = Authorization header set). `HomeFeedScreen` reads
+  the guest feed when signed out; a card tap or the header 'Нэвтрэх' pill opens `GuestGateSheet`
+  (Бүртгүүлэх / Нэвтрэх). `routes/auth_gate.dart` holds the rules: router `redirect` sends a guest
+  from `/wallet*` and `/profile*` to `/login?next=<page>`; `next` travels through login/register and
+  `finishAuth` opens it afterwards (a tapped campaign is looked up in the viewer's own feed; if it
+  is not there the viewer stays on Home with a note). Login has a 'Зочноор үзэх' button back to Home.
+
+### One-time codes (OTP) (added 2026-10-07)
+
+Used to **verify registration** and to **reset a forgotten password**; the code goes to the account's
+phone number (accounts are phone-based).
+- **Backend** (`otp/`): `POST /auth/otp/request {phoneNumber, purpose: REGISTER|PASSWORD_RESET}` → 204;
+  `POST /auth/register/viewer` now REQUIRES `otpCode`; `POST /auth/password/reset {phoneNumber, code,
+  newPassword}` → 204 (viewers only). Table `otp_codes` (V7) keeps only a bcrypt hash. Rules in
+  `OtpServiceImpl`: 6 digits, 5 min TTL, 60 s cool-down, 5 requests/hour, 5 wrong guesses kill the code
+  (`noRollbackFor` so the count survives the failed call), only the newest code is valid. A password
+  reset for an unknown phone answers 204 and sends nothing. 429 is the new `TooManyRequestsException`.
+- **Sending** is `OtpSender` (Strategy). Only `LoggingOtpSender` exists (`uziy.otp.sender=logging`,
+  env `OTP_SENDER`): **the code is written to the backend log and nothing is texted** — a real SMS
+  gateway sender must be added before release.
+- **Flutter** (`screens/auth/`): register form → `requestOtp` → `OtpVerifyScreen` (`/register/verify`,
+  gets the `RegisterDraft` via `extra`; a full code submits itself and creates the account) ;
+  login's 'Нууц үг мартсан?' → `ForgotPasswordScreen` (`/forgot`) → `ResetPasswordScreen`
+  (`/forgot/reset`). Shared pieces: `widgets/otp_input.dart` (`OtpInput`: 6 boxes over one hidden
+  numeric field; no `LayoutBuilder`, it must work inside `SliverFillRemaining`), `otp_widgets.dart`
+  (`ResendCooldown` mixin, `OtpHeader`, `ResendCodeButton`), `otp_logic.dart`. Test helper:
+  `test/support/fake_api.dart`.
+- Company registration (`/auth/register/company`) is unchanged and has no OTP.
 
 ### Push notifications (added 2026-10-06)
 

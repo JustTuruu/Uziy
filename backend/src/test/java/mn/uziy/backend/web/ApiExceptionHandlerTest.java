@@ -10,6 +10,7 @@ import mn.uziy.backend.common.ConflictException;
 import mn.uziy.backend.common.DomainException;
 import mn.uziy.backend.common.ForbiddenException;
 import mn.uziy.backend.common.NotFoundException;
+import mn.uziy.backend.common.TooManyRequestsException;
 import mn.uziy.backend.common.UnauthorizedException;
 import mn.uziy.backend.common.UnavailableException;
 import org.junit.jupiter.api.Test;
@@ -56,7 +57,8 @@ class ApiExceptionHandlerTest {
                 Arguments.of(new BadRequestException("x"), HttpStatus.BAD_REQUEST),
                 Arguments.of(new ConflictException("x"), HttpStatus.CONFLICT),
                 Arguments.of(new UnauthorizedException("x"), HttpStatus.UNAUTHORIZED),
-                Arguments.of(new UnavailableException("x"), HttpStatus.SERVICE_UNAVAILABLE));
+                Arguments.of(new UnavailableException("x"), HttpStatus.SERVICE_UNAVAILABLE),
+                Arguments.of(new TooManyRequestsException("x"), HttpStatus.TOO_MANY_REQUESTS));
     }
 
     @ParameterizedTest

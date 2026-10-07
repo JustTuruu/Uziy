@@ -256,4 +256,46 @@ void main() {
       );
     });
   });
+
+  group('splitCampaignTitle', () {
+    test('splits at " - " into headline and tagline', () {
+      expect(
+        splitCampaignTitle('Шинэ 5G багц - Танд хамгийн тохирсон'),
+        const TitleParts('Шинэ 5G багц', 'Танд хамгийн тохирсон'),
+      );
+    });
+
+    test('splits at en and em dashes too', () {
+      expect(splitCampaignTitle('A – B'), const TitleParts('A', 'B'));
+      expect(splitCampaignTitle('A — B'), const TitleParts('A', 'B'));
+    });
+
+    test('a colon is not a separator', () {
+      expect(
+        splitCampaignTitle('Судалгаа: Дуртай интернэт үйлчилгээ'),
+        const TitleParts('Судалгаа: Дуртай интернэт үйлчилгээ'),
+      );
+    });
+
+    test('splits at the first separator only', () {
+      expect(
+        splitCampaignTitle('A - B - C'),
+        const TitleParts('A', 'B - C'),
+      );
+    });
+
+    test('a hyphen inside a word is not a separator', () {
+      expect(splitCampaignTitle('Wi-Fi багц'), const TitleParts('Wi-Fi багц'));
+    });
+
+    test('no separator keeps the whole title as the headline', () {
+      expect(splitCampaignTitle('  Зуны хямдрал '),
+          const TitleParts('Зуны хямдрал'));
+    });
+
+    test('an empty side is not split', () {
+      expect(splitCampaignTitle('Багц - '), const TitleParts('Багц -'));
+      expect(splitCampaignTitle('- Багц'), const TitleParts('- Багц'));
+    });
+  });
 }

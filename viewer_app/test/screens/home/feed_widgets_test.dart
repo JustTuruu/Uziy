@@ -66,7 +66,8 @@ void main() {
       await _pump(tester, CampaignCard(campaign: _video, onTap: () {}));
       await tester.pumpAndSettle();
 
-      expect(find.text(_video.title), findsOneWidget);
+      expect(find.text('Шинэ 5G багц'), findsOneWidget);
+      expect(find.text('Танд хамгийн тохирсон'), findsOneWidget);
       expect(find.text('MobiCom'), findsOneWidget);
       expect(find.text('+700 ₮'), findsOneWidget);
       expect(find.text('45 сек'), findsOneWidget);
@@ -138,7 +139,33 @@ void main() {
         reduceMotion: true,
       );
       await tester.pump();
-      expect(find.text(_video.title), findsOneWidget);
+      expect(find.text('Шинэ 5G багц'), findsOneWidget);
+    });
+  });
+
+  group('CardTitle', () {
+    testWidgets('shows the headline big and the tagline lighter beneath it',
+        (tester) async {
+      await _pump(tester, const CardTitle(title: 'Шинэ 5G багц - Танд'));
+      await tester.pumpAndSettle();
+
+      final headline = tester.widget<Text>(find.text('Шинэ 5G багц'));
+      final tagline = tester.widget<Text>(find.text('Танд'));
+      expect(headline.style, CardTitle.headlineStyle);
+      expect(tagline.style, CardTitle.taglineStyle);
+      expect(
+        tester.getTopLeft(find.text('Танд')).dy,
+        greaterThan(tester.getBottomLeft(find.text('Шинэ 5G багц')).dy - 1),
+      );
+    });
+
+    testWidgets('a title without a separator is only the headline',
+        (tester) async {
+      await _pump(tester, const CardTitle(title: 'Зуны хямдрал'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Text), findsOneWidget);
+      expect(find.text('Зуны хямдрал'), findsOneWidget);
     });
   });
 
@@ -278,6 +305,26 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(AnimatedMoney), findsNothing);
       expect(find.byKey(const ValueKey('balance-placeholder')), findsOneWidget);
+    });
+
+    testWidgets('guest header shows a sign-in pill instead of the balance',
+        (tester) async {
+      var taps = 0;
+      await _pump(
+        tester,
+        FeedHeader(
+          now: DateTime(2026, 9, 28, 8),
+          balance: null,
+          guest: true,
+          onBalanceTap: () => taps++,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BalancePill), findsNothing);
+      expect(find.text(GuestSignInPill.label), findsOneWidget);
+      await tester.tap(find.byType(GuestSignInPill));
+      expect(taps, 1);
     });
 
     testWidgets('header greets by time of day and shows the title',
