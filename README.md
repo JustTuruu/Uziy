@@ -74,7 +74,7 @@ product — companies can buy aggregate results on demand.
 1. Register with phone + age + gender + city.
 2. Open the feed — see only ads matched to your profile.
 3. Watch a video to completion (skipping is blocked).
-4. Answer 2–3 survey questions.
+4. Answer survey questions.
 5. Get 500–700 ₮ credited to your wallet.
 6. Request cash-out to a bank account.
 
@@ -88,7 +88,7 @@ product — companies can buy aggregate results on demand.
    - target age range, gender, city
    - total budget
    - reward per viewer
-   - 2–3 survey questions
+   - a few survey questions
 3. Submit for moderation.
 4. Once approved, campaign runs until the budget is exhausted.
 5. Watch real-time analytics; export survey results.
@@ -203,8 +203,8 @@ flowchart LR
 <details>
 <summary><b>Cloud & infra</b></summary>
 
-- **Cloudflare R2** — video storage (SigV4-compatible)
-- **DigitalOcean** or **Hetzner** — API + DB hosting ($6–$12 / mo droplet)
+- **Cloudflare R** — video storage (SigV4-compatible)
+- **DigitalOcean** or **Hetzner** — API + DB hosting ($6–$1 / mo droplet)
 - **Vercel** — Next.js consoles
 - **Docker Compose** — local dev Postgres
 - **FFmpeg** — transcoding worker (containerized)
