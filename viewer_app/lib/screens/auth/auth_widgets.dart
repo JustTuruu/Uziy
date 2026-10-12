@@ -21,12 +21,78 @@ abstract final class AuthValidators {
   static const int minPasswordLength = 6;
   static const String passwordTooShort = 'Дор хаяж 6 тэмдэгт';
 
-  /// Returns [message] unless [v] is exactly [phoneLength] characters.
+  /// Returns [message] unless [v] holds exactly [phoneLength] digits (the
+  /// `8877 8899` typing group of [BigPhoneField] is ignored).
   static String? phone(String? v, {required String message}) =>
-      (v == null || v.length != phoneLength) ? message : null;
+      phoneDigits(v).length != phoneLength ? message : null;
 
   static String? password(String? v) =>
       (v == null || v.length < minPasswordLength) ? passwordTooShort : null;
+}
+
+final RegExp _nonDigits = RegExp(r'\D');
+
+/// The digits of a typed phone number, grouping removed:
+/// `'8877 8899'` -> `'88778899'`. This is what goes to the backend.
+String phoneDigits(String? text) => (text ?? '').replaceAll(_nonDigits, '');
+
+/// Local 8-digit number grouped the way it is typed and read in Mongolia:
+/// `'88778899'` -> `'8877 8899'`, `'8877'` -> `'8877'`, `'88775'` ->
+/// `'8877 5'`. Longer input is cut to [AuthValidators.phoneLength] digits.
+String groupPhoneDigits(String digits) {
+  final d = phoneDigits(digits);
+  final local = d.length > AuthValidators.phoneLength
+      ? d.substring(0, AuthValidators.phoneLength)
+      : d;
+  if (local.length <= MnPhoneInputFormatter.groupSize) return local;
+  return '${local.substring(0, MnPhoneInputFormatter.groupSize)} '
+      '${local.substring(MnPhoneInputFormatter.groupSize)}';
+}
+
+/// Pattern: Strategy (a `TextInputFormatter`) — keeps a phone field to at
+/// most 8 digits shown as `8877 8899`, re-grouping on every edit and keeping
+/// the caret after the same digit it was after before the edit (so typing,
+/// deleting the space, or pasting `+976 8877-8899` all behave).
+class MnPhoneInputFormatter extends TextInputFormatter {
+  const MnPhoneInputFormatter();
+
+  static const int _zero = 0x30;
+  static const int _nine = 0x39;
+  static bool _isDigit(int codeUnit) => codeUnit >= _zero && codeUnit <= _nine;
+
+  /// Digits before the single separator space.
+  static const int groupSize = 4;
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text;
+    final caret = newValue.selection.baseOffset < 0
+        ? text.length
+        : newValue.selection.baseOffset.clamp(0, text.length);
+    final digitsBeforeCaret = phoneDigits(text.substring(0, caret))
+        .length
+        .clamp(0, AuthValidators.phoneLength);
+    final grouped = groupPhoneDigits(text);
+    // One separator sits after the first group; the caret skips it once it
+    // is past that group. Exactly at the group boundary it stays after the
+    // separator only if it already was (a digit after the space was
+    // deleted) — never when the separator itself was just deleted, or
+    // backspace would re-insert it and get stuck.
+    final hasSeparator = grouped.length > groupSize;
+    final caretAfterSeparator =
+        caret > 0 && !_isDigit(text.codeUnitAt(caret - 1));
+    final skipsSeparator = digitsBeforeCaret > groupSize ||
+        (digitsBeforeCaret == groupSize && hasSeparator && caretAfterSeparator);
+    final offset = digitsBeforeCaret + (skipsSeparator ? 1 : 0);
+    return TextEditingValue(
+      text: grouped,
+      selection:
+          TextSelection.collapsed(offset: offset.clamp(0, grouped.length)),
+    );
+  }
 }
 
 /// Birth date as shown in the register form: `2001.03.09`.
@@ -143,22 +209,28 @@ class AuthScrollShell extends StatelessWidget {
 // Fields
 // ---------------------------------------------------------------------------
 
-/// Phone number field with a `+976` prefix pill. Accepts digits only, at
-/// most [AuthValidators.phoneLength] of them.
-class PhonePrefixField extends StatelessWidget {
-  const PhonePrefixField({
+/// Phone number typed as one big line of digits — `+976 8877 8899` — with no
+/// box around it, only a line underneath that marks it as the place to type
+/// (grey at rest, gold and thicker when focused, red on an error). The
+/// `+976` is fixed text; the 8 digits are grouped live by
+/// [MnPhoneInputFormatter]. Read the number back with [phoneDigits].
+class BigPhoneField extends StatelessWidget {
+  const BigPhoneField({
     super.key,
     required this.controller,
     this.validator,
-    this.hintText = 'Утасны дугаар',
     this.focusNode,
     this.textInputAction,
     this.onFieldSubmitted,
     this.onChanged,
+    this.autofocus = false,
     this.autofillHints = defaultAutofillHints,
   });
 
   static const String countryCode = '+976';
+
+  /// Shown before the digits, same size as the digits.
+  static const String prefix = '$countryCode ';
 
   /// The phone number is the account login, so it is offered to password
   /// managers as the username (iOS reads only the first hint), plus the
@@ -169,20 +241,59 @@ class PhonePrefixField extends StatelessWidget {
     AutofillHints.telephoneNumberNational,
   ];
 
+  /// Placeholder in the shape of a real number.
+  static const String hint = '8877 8899';
+
+  /// Big, heavy, tabular: a number read at a glance, digits never jitter.
+  static const TextStyle style = TextStyle(
+    fontSize: 30,
+    fontWeight: FontWeight.w800,
+    letterSpacing: -0.4,
+    height: 1.2,
+    color: AppColors.textPrimary,
+    fontFeatures: AppTextStyles.tabular,
+  );
+
+  /// The placeholder is much fainter than typed digits, so an empty field
+  /// never reads as an already filled-in number.
+  static const double hintOpacity = 0.45;
+
+  static const double lineWidth = 1.5;
+  static const double focusedLineWidth = 2.5;
+  static const double restingLineOpacity = 0.6;
+
+  /// Gap between the digits and the line under them.
+  static const EdgeInsets contentPadding = EdgeInsets.only(
+    top: AppSpacing.sm,
+    bottom: AppSpacing.md,
+  );
+
+  static Color get restingLineColor =>
+      AppColors.textTertiary.withValues(alpha: restingLineOpacity);
+  static Color get hintColor =>
+      AppColors.textTertiary.withValues(alpha: hintOpacity);
+
+  static UnderlineInputBorder _line(Color color, [double width = lineWidth]) =>
+      UnderlineInputBorder(
+        borderSide: BorderSide(color: color, width: width),
+      );
+
   final TextEditingController controller;
   final FormFieldValidator<String>? validator;
-  final String hintText;
   final FocusNode? focusNode;
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onFieldSubmitted;
   final ValueChanged<String>? onChanged;
+  final bool autofocus;
   final Iterable<String>? autofillHints;
 
   @override
   Widget build(BuildContext context) {
+    final resting = _line(restingLineColor);
     return TextFormField(
       controller: controller,
       focusNode: focusNode,
+      autofocus: autofocus,
       // Digits only (iOS number pad). TextInputType.phone would also offer
       // + * # and letters on the keypad.
       keyboardType: TextInputType.number,
@@ -190,58 +301,81 @@ class PhonePrefixField extends StatelessWidget {
       onFieldSubmitted: onFieldSubmitted,
       onChanged: onChanged,
       autofillHints: autofillHints,
-      inputFormatters: [
-        FilteringTextInputFormatter.digitsOnly,
-        LengthLimitingTextInputFormatter(AuthValidators.phoneLength),
-      ],
-      style: AppTextStyles.body.copyWith(
-        fontFeatures: AppTextStyles.tabular,
-        letterSpacing: 0.4,
-      ),
+      inputFormatters: const [MnPhoneInputFormatter()],
+      style: style,
+      cursorColor: AppColors.primary,
       decoration: InputDecoration(
-        hintText: hintText,
-        prefixIcon: const _CountryCodePill(),
-        prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+        filled: false,
+        isDense: true,
+        contentPadding: contentPadding,
+        border: resting,
+        enabledBorder: resting,
+        disabledBorder: resting,
+        focusedBorder: _line(AppColors.primary, focusedLineWidth),
+        errorBorder: _line(AppColors.danger),
+        focusedErrorBorder: _line(AppColors.danger, focusedLineWidth),
+        // Without this the prefix is hidden until the field is focused.
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+        prefixText: prefix,
+        prefixStyle: style,
+        hintText: hint,
+        hintStyle: style.copyWith(color: hintColor),
       ),
       validator: validator,
     );
   }
 }
 
-class _CountryCodePill extends StatelessWidget {
-  const _CountryCodePill();
+/// The phone step as one block: a heading, one line saying what the number
+/// is for, then the [BigPhoneField].
+class PhoneNumberSection extends StatelessWidget {
+  const PhoneNumberSection({
+    super.key,
+    required this.controller,
+    this.validator,
+    this.focusNode,
+    this.textInputAction,
+    this.onFieldSubmitted,
+    this.autofocus = false,
+  });
+
+  static const String title = 'Утасны дугаар';
+  static const String helper =
+      'Дугаарыг зөвхөн баталгаажуулахад ашиглана. Бусад хэрэглэгчдэд '
+      'харагдахгүй.';
+
+  final TextEditingController controller;
+  final FormFieldValidator<String>? validator;
+  final FocusNode? focusNode;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onFieldSubmitted;
+  final bool autofocus;
 
   @override
   Widget build(BuildContext context) {
-    // The decorator resolves prefixIconColor from the field state (grey,
-    // gold on focus, red on error) into the IconTheme; the pill's icon AND
-    // its text follow it.
-    final stateColor = IconTheme.of(context).color ?? AppColors.textSecondary;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-      child: Container(
-        height: 34,
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceElevated,
-          borderRadius: AppRadii.brXs,
-          border: Border.all(color: AppColors.borderStrong),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Semantics(
+          header: true,
+          child: const Text(title, style: AppTextStyles.headline),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.phone_iphone_rounded, size: 16),
-            const SizedBox(width: AppSpacing.xs),
-            Text(
-              PhonePrefixField.countryCode,
-              style: AppTextStyles.label.copyWith(
-                color: stateColor,
-                fontFeatures: AppTextStyles.tabular,
-              ),
-            ),
-          ],
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          helper,
+          style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
         ),
-      ),
+        const SizedBox(height: AppSpacing.lg),
+        BigPhoneField(
+          controller: controller,
+          validator: validator,
+          focusNode: focusNode,
+          textInputAction: textInputAction,
+          onFieldSubmitted: onFieldSubmitted,
+          autofocus: autofocus,
+        ),
+      ],
     );
   }
 }

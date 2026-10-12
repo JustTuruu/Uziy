@@ -53,7 +53,7 @@ export default function AdminCampaignsPage() {
   return (
     <>
       <PageHeader
-        title="Кампани модераци"
+        title="Сурталчилгаа"
         description="Шинэ видео агуулга, зорилтот тохиргоог шалгаж баталгаажуулна"
       />
 
@@ -68,7 +68,7 @@ export default function AdminCampaignsPage() {
           title={
             all === null
               ? "Ачаалж байна..."
-              : `Модераци хүлээж буй (${pending.length})`
+              : `Хүлээгдэж буй (${pending.length})`
           }
           description="Төлбөр нь төлөгдсөн аянууд. Видеог бүтэн үзэж, зорилтот бодлогод нийцэж байгаа эсэхийг шалгана"
         />
@@ -94,7 +94,7 @@ export default function AdminCampaignsPage() {
                       colSpan={4}
                       className="px-5 py-10 text-center text-sm text-[var(--color-text-muted)]"
                     >
-                      Модераци хүлээж буй кампани байхгүй.
+                      Хүлээгдэж буй суртчилгаа байхгүй.
                     </td>
                   </tr>
                 )}

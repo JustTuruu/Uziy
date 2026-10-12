@@ -481,6 +481,21 @@ The app opens on Home for everyone — no forced login. Splash always goes to `/
   `finishAuth` opens it afterwards (a tapped campaign is looked up in the viewer's own feed; if it
   is not there the viewer stays on Home with a note). Login has a 'Зочноор үзэх' button back to Home.
 
+### Landing page (added 2026-10-12)
+
+`landing/` — public marketing site for viewers (Next.js 16, port 3002, static, in the pnpm workspace).
+Hero + 4 steps + benefits + FAQ (native `<details>`) + a 'Компаниудад' block linking to the company panel.
+- Copy lives in `lib/content.ts` (Cyrillic, "Та"; reward 500–700 ₮, videos 30 s–2 min, min age 13 — keep in
+  step with `docs/SPEC.md`). Sections are `components/*`, framed by `Section`.
+- Links are deploy-time config (`lib/links.ts`, see `.env.example`): `NEXT_PUBLIC_APP_STORE_URL`,
+  `NEXT_PUBLIC_PLAY_STORE_URL`, `NEXT_PUBLIC_COMPANY_PANEL_URL`, `NEXT_PUBLIC_SITE_URL`. Empty store URL ⇒
+  the store button is disabled and says 'Удахгүй' (no fake links).
+- **Positioning rule (owner, 2026-10-12)**: the page sells brands' introductions + the viewer's opinion (surveys).
+  It must NOT mention money at all — no ₮ amounts, reward, wallet, payout (`lib/content.test.ts` enforces it).
+- `@uziy/ui` gained `ButtonLink` (an `<a>` with the exact `Button` look; shared `buttonClasses`).
+- Run: `pnpm -C landing dev`. Checks: `tsc --noEmit`, `eslint`, `vitest run`, `build` all clean.
+- Real store URLs, app screenshots in the phone mock, and a privacy/terms page are still to do.
+
 ### Company analytics (added 2026-10-07)
 
 `company_panel` `/analytics` (page + `lib/analytics.ts` + `components/daily-bars.tsx`, `distribution-bars.tsx`;
@@ -537,7 +552,19 @@ phone number (accounts are phone-based).
   numeric field; no `LayoutBuilder`, it must work inside `SliverFillRemaining`), `otp_widgets.dart`
   (`ResendCooldown` mixin, `OtpHeader`, `ResendCodeButton`), `otp_logic.dart`. Test helper:
   `test/support/fake_api.dart`.
+- **Done state (2026-10-12)**: when every digit is typed `OtpInput` runs one 1.1 s sequence
+  (`_done` controller): the boxes slide together into the centre (`FractionalTranslation`, digits
+  travel with them), `OtpDoneBadge` pops up, then `CheckPainter` strokes the check left to right
+  (`PathMetric.extractPath`). `hasError` or clearing the code reverses it; reduce-motion jumps to the end.
+  Works on the register-verify and password-reset screens alike (the widget owns it).
 - Company registration (`/auth/register/company`) is unchanged and has no OTP.
+- **Phone entry design (2026-10-12)**: register and forgot-password use `PhoneNumberSection` /
+  `BigPhoneField` (`auth_widgets.dart`): heading 'Утасны дугаар', one helper line, then the number as
+  one big line `+976 8877 8899` (no box, only an underline: grey at rest, gold + thicker on focus, red on
+  error; the placeholder is deliberately faint; `MnPhoneInputFormatter` groups the 8 digits live and
+  keeps the caret sane). The controller text is grouped, so always read it with `phoneDigits(...)`;
+  `AuthValidators.phone` already ignores the grouping. Login uses `BigPhoneField` under a `FieldLabel`; the
+  old boxed `PhonePrefixField` is gone.
 
 ### Push notifications (added 2026-10-06)
 

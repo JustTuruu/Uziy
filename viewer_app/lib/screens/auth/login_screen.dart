@@ -47,7 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
     try {
       await AuthService.instance.login(
-        phone: _phoneCtrl.text.trim(),
+        phone: phoneDigits(_phoneCtrl.text),
         password: _passCtrl.text,
       );
       if (!mounted) return;
@@ -156,7 +156,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.stretch,
                                     children: [
-                                      PhonePrefixField(
+                                      const FieldLabel('Утасны дугаар'),
+                                      BigPhoneField(
                                         controller: _phoneCtrl,
                                         textInputAction: TextInputAction.next,
                                         onFieldSubmitted: (_) =>
@@ -166,7 +167,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                           message: 'Утасны дугаараа шалгана уу',
                                         ),
                                       ),
-                                      const SizedBox(height: 14),
+                                      const SizedBox(height: AppSpacing.lg),
+                                      const FieldLabel('Нууц үг'),
                                       PasswordField(
                                         controller: _passCtrl,
                                         focusNode: _passFocus,

@@ -11,7 +11,14 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
-import { Badge, Card, CardBody, CardHeader, PageHeader, StatCard } from "@uziy/ui";
+import {
+  Badge,
+  Card,
+  CardBody,
+  CardHeader,
+  PageHeader,
+  StatCard,
+} from "@uziy/ui";
 import {
   ApiError,
   adminApi,
@@ -111,9 +118,7 @@ export default function AdminDashboard() {
         />
         <StatCard
           label="Хүлээгдэж буй"
-          value={formatNumber(
-            stats.pendingCampaigns + stats.pendingPayouts,
-          )}
+          value={formatNumber(stats.pendingCampaigns + stats.pendingPayouts)}
           icon={<UserPlus size={16} />}
           hint={`${stats.pendingCampaigns} кампани · ${stats.pendingPayouts} татах`}
         />
@@ -169,7 +174,7 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader
-            title="Модераци хүлээж буй кампани"
+            title="Хүлээж буй кампанийн суртчилгаа"
             description="Видео контент, зорилтот тохиргоог шалгах"
             action={
               <Link
@@ -183,7 +188,7 @@ export default function AdminDashboard() {
           <CardBody className="space-y-3">
             {pendingCampaigns.length === 0 && (
               <div className="text-sm text-[var(--color-text-muted)]">
-                Модераци хүлээж буй кампани байхгүй.
+                Хүлээгдэж буй кампани байхгүй.
               </div>
             )}
             {pendingCampaigns.slice(0, 4).map((c) => (

@@ -133,7 +133,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
     FocusScope.of(context).unfocus();
     setState(() => _loading = true);
-    final phone = _phoneCtrl.text.trim();
+    final phone = phoneDigits(_phoneCtrl.text);
     try {
       // The account is created on the next screen, with the texted code.
       await AuthService.instance.requestOtp(
@@ -284,11 +284,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     FadeSlideIn(
                       key: _credentialsKey,
                       index: 2,
-                      child: _FormSection(
-                        title: 'Нэвтрэх мэдээлэл',
-                        subtitle: 'Дараа нэвтрэхдээ эдгээрийг ашиглана',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          PhonePrefixField(
+                          PhoneNumberSection(
                             controller: _phoneCtrl,
                             textInputAction: TextInputAction.next,
                             onFieldSubmitted: (_) => _passFocus.requestFocus(),
@@ -297,13 +296,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               message: '8 оронтой утасны дугаар',
                             ),
                           ),
-                          const SizedBox(height: AppSpacing.md),
-                          PasswordField(
-                            controller: _passCtrl,
-                            focusNode: _passFocus,
-                            hintText: 'Нууц үг (доод тал нь 6 тэмдэгт)',
-                            textInputAction: TextInputAction.done,
-                            validator: AuthValidators.password,
+                          const SizedBox(height: AppSpacing.xxl),
+                          _FormSection(
+                            title: 'Нууц үг',
+                            subtitle: 'Дараа нэвтрэхдээ ашиглана',
+                            children: [
+                              PasswordField(
+                                controller: _passCtrl,
+                                focusNode: _passFocus,
+                                hintText: 'Нууц үг (доод тал нь 6 тэмдэгт)',
+                                textInputAction: TextInputAction.done,
+                                validator: AuthValidators.password,
+                              ),
+                            ],
                           ),
                         ],
                       ),

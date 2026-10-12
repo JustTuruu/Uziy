@@ -53,25 +53,21 @@ void main() {
   testWidgets('video payload opens the video screen with the campaign',
       (tester) async {
     await pumpApp(tester, [campaign(1)]);
-    await navigator
-        .open(const CampaignPush(campaignId: 1, hasVideo: true));
+    await navigator.open(const CampaignPush(campaignId: 1, hasVideo: true));
     await tester.pumpAndSettle();
     expect(find.text('VIDEO 1 T1'), findsOneWidget);
   });
 
   testWidgets('survey payload opens the survey screen', (tester) async {
     await pumpApp(tester, [campaign(2, hasVideo: false)]);
-    await navigator
-        .open(const CampaignPush(campaignId: 2, hasVideo: false));
+    await navigator.open(const CampaignPush(campaignId: 2, hasVideo: false));
     await tester.pumpAndSettle();
     expect(find.text('SURVEY 2'), findsOneWidget);
   });
 
-  testWidgets('unknown campaign stays on Home with a snackbar',
-      (tester) async {
+  testWidgets('unknown campaign stays on Home with a snackbar', (tester) async {
     await pumpApp(tester, []);
-    await navigator
-        .open(const CampaignPush(campaignId: 9, hasVideo: true));
+    await navigator.open(const CampaignPush(campaignId: 9, hasVideo: true));
     await tester.pumpAndSettle();
     expect(find.text('HOME'), findsOneWidget);
     expect(find.text(PushNavigator.notFoundMessage), findsOneWidget);

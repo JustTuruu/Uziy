@@ -19,8 +19,7 @@ void main() {
 
   setUp(() => target = FakeTarget());
 
-  test('hasVideo=true opens the video route with the real campaign',
-      () async {
+  test('hasVideo=true opens the video route with the real campaign', () async {
     final c = campaign(5);
     final n = build(() async => [c]);
     await n.markReady();

@@ -41,7 +41,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       _loading = true;
       _error = null;
     });
-    final phone = _phone.text.trim();
+    final phone = phoneDigits(_phone.text);
     try {
       await AuthService.instance.requestOtp(
         phone: phone,
@@ -103,7 +103,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     subtitle: kForgotSubtitle,
                   ),
                   const SizedBox(height: AppSpacing.xxxl),
-                  PhonePrefixField(
+                  BigPhoneField(
                     controller: _phone,
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => _submit(),

@@ -14,7 +14,14 @@ import {
   Wallet,
 } from "lucide-react";
 import { CampaignStatusBadge } from "@/components/campaign-status-badge";
-import { Badge, Card, CardBody, CardHeader, PageHeader, StatCard } from "@uziy/ui";
+import {
+  Badge,
+  Card,
+  CardBody,
+  CardHeader,
+  PageHeader,
+  StatCard,
+} from "@uziy/ui";
 import {
   adminApi,
   ApiError,
@@ -135,7 +142,7 @@ export default function AdminCompanyDetailPage() {
           icon={<Play size={16} />}
         />
         <StatCard
-          label="Модераци хүлээж буй"
+          label="Хүлээгдэж буй"
           value={String(pendingCount)}
           icon={<Users size={16} />}
         />

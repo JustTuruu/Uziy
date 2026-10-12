@@ -28,9 +28,11 @@ void main() {
 
   test('hasVideo is case-insensitive', () {
     expect(
-      parser
-          .parseData({'type': 'CAMPAIGN', 'campaignId': '7', 'hasVideo': 'FALSE'})
-          ?.hasVideo,
+      parser.parseData({
+        'type': 'CAMPAIGN',
+        'campaignId': '7',
+        'hasVideo': 'FALSE'
+      })?.hasVideo,
       isFalse,
     );
   });

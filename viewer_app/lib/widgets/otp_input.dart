@@ -1,3 +1,5 @@
+import 'dart:ui' show PathMetric;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -13,6 +15,10 @@ import '../theme/app_theme.dart';
 /// [onCompleted] fires once each time the code reaches full length; edit it
 /// and it can fire again. Pass a [controller] to clear the code from outside
 /// (e.g. after a wrong code, together with [hasError]).
+///
+/// Once every digit is typed the boxes slide together into the centre, then a
+/// glowing [OtpDoneBadge] pops up and its check is drawn by hand, left to
+/// right; clearing or editing the code (or [hasError]) spreads them back out.
 class OtpInput extends StatefulWidget {
   const OtpInput({
     super.key,
@@ -28,6 +34,19 @@ class OtpInput extends StatefulWidget {
 
   static const int defaultLength = 6;
 
+  /// The whole 'gather, pop, draw the check' sequence.
+  static const Duration doneDuration = Duration(milliseconds: 1100);
+
+  /// Slice of [doneDuration] the boxes spend sliding together; the badge
+  /// takes over from here.
+  static const double gatherEnd = 0.45;
+  static const Interval gatherSlice =
+      Interval(0, gatherEnd, curve: AppMotion.exit);
+
+  /// A box's centre sits one box-width plus the gap from its neighbour; the
+  /// gap is small next to the box, so this stretches the slide a touch.
+  static const double slidePerBox = 1.1;
+
   final int length;
   final TextEditingController? controller;
   final FocusNode? focusNode;
@@ -39,16 +58,27 @@ class OtpInput extends StatefulWidget {
   final bool enabled;
   final bool autofocus;
 
+  @visibleForTesting
+  static const Key boxesKey = Key('otp-boxes');
+
   static const String semanticLabel = 'Баталгаажуулах код';
 
   @override
   State<OtpInput> createState() => _OtpInputState();
 }
 
-class _OtpInputState extends State<OtpInput> {
+class _OtpInputState extends State<OtpInput>
+    with SingleTickerProviderStateMixin {
   TextEditingController? _ownController;
   FocusNode? _ownFocus;
   bool _completed = false;
+
+  /// 0 = boxes in a row, 1 = finished check.
+  late final AnimationController _done = AnimationController(
+    vsync: this,
+    duration: OtpInput.doneDuration,
+    reverseDuration: AppDurations.medium,
+  );
 
   /// The controller also notifies on cursor / selection changes; only a real
   /// text change may reach [OtpInput.onChanged].
@@ -64,6 +94,18 @@ class _OtpInputState extends State<OtpInput> {
     _lastText = _controller.text;
     _controller.addListener(_onText);
     _focus.addListener(_onFocus);
+    if (_isDone) _done.value = 1;
+  }
+
+  bool get _isDone =>
+      _controller.text.length == widget.length && !widget.hasError;
+
+  void _syncDone() {
+    if (_isDone) {
+      AppMotion.reduced(context) ? _done.value = 1 : _done.forward();
+    } else {
+      AppMotion.reduced(context) ? _done.value = 0 : _done.reverse();
+    }
   }
 
   @override
@@ -77,10 +119,12 @@ class _OtpInputState extends State<OtpInput> {
       (old.focusNode ?? _ownFocus)?.removeListener(_onFocus);
       _focus.addListener(_onFocus);
     }
+    if (old.hasError != widget.hasError) _syncDone();
   }
 
   @override
   void dispose() {
+    _done.dispose();
     _controller.removeListener(_onText);
     _focus.removeListener(_onFocus);
     _ownController?.dispose();
@@ -95,6 +139,7 @@ class _OtpInputState extends State<OtpInput> {
     if (code == _lastText) return;
     _lastText = code;
     setState(() {});
+    _syncDone();
     widget.onChanged?.call(code);
     final full = code.length == widget.length;
     if (full && !_completed) {
@@ -122,28 +167,52 @@ class _OtpInputState extends State<OtpInput> {
         alignment: Alignment.center,
         children: [
           ExcludeSemantics(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var i = 0; i < widget.length; i++) ...[
-                  if (i > 0) const SizedBox(width: AppSpacing.sm),
-                  Flexible(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        maxWidth: OtpBox.maxWidth,
-                      ),
-                      child: AspectRatio(
-                        aspectRatio: 1 / OtpBox.heightFactor,
-                        child: OtpBox(
-                          digit: i < code.length ? code[i] : null,
-                          active: i == active,
-                          error: widget.hasError,
+            child: AnimatedBuilder(
+              animation: _done,
+              builder: (context, child) {
+                final gather = OtpInput.gatherSlice.transform(_done.value);
+                return Opacity(
+                  key: OtpInput.boxesKey,
+                  opacity: _done.value < OtpInput.gatherEnd ? 1 : 0,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      for (var i = 0; i < widget.length; i++) ...[
+                        if (i > 0) const SizedBox(width: AppSpacing.sm),
+                        Flexible(
+                          child: FractionalTranslation(
+                            translation: Offset(
+                              -(i - (widget.length - 1) / 2) *
+                                  OtpInput.slidePerBox *
+                                  gather,
+                              0,
+                            ),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                maxWidth: OtpBox.maxWidth,
+                              ),
+                              child: AspectRatio(
+                                aspectRatio: 1 / OtpBox.heightFactor,
+                                child: OtpBox(
+                                  digit: i < code.length ? code[i] : null,
+                                  active: i == active,
+                                  error: widget.hasError,
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
+                      ],
+                    ],
                   ),
-                ],
-              ],
+                );
+              },
+            ),
+          ),
+          ExcludeSemantics(
+            child: AnimatedBuilder(
+              animation: _done,
+              builder: (context, _) => OtpDoneBadge(progress: _done.value),
             ),
           ),
           // Invisible but hit-testable: a tap anywhere on the boxes lands
@@ -225,4 +294,80 @@ class OtpBox extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The glowing check that replaces the boxes of a finished [OtpInput].
+///
+/// [progress] is the whole sequence (0..1): the badge pops up after the boxes
+/// have gathered, then its check is stroked from the short stroke's start to
+/// the long stroke's tip, like a hand drawing it.
+class OtpDoneBadge extends StatelessWidget {
+  const OtpDoneBadge({super.key, required this.progress});
+
+  final double progress;
+
+  static const double size = 64;
+  static const double strokeWidth = 4;
+
+  /// Slice of the sequence spent popping up, then drawing.
+  static const Interval popSlice = Interval(OtpInput.gatherEnd, 0.65);
+  static const Interval drawSlice = Interval(0.6, 1);
+
+  @override
+  Widget build(BuildContext context) {
+    final pop = popSlice.transform(progress);
+    final draw = AppMotion.standard.transform(drawSlice.transform(progress));
+    return IgnorePointer(
+      child: Opacity(
+        opacity: pop,
+        child: Transform.scale(
+          scale: 0.6 + 0.4 * AppMotion.emphasized.transform(pop),
+          child: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceElevated,
+              borderRadius: AppRadii.brLg,
+              border: Border.all(color: AppColors.primary, width: 1.6),
+              boxShadow: AppShadows.glow(AppColors.primary,
+                  strength: 0.6, blur: 22, offset: Offset.zero),
+            ),
+            child: CustomPaint(
+              painter: CheckPainter(progress: draw, color: AppColors.primary),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Strokes a check mark; [progress] 0..1 is how much of it is drawn so far.
+class CheckPainter extends CustomPainter {
+  const CheckPainter({required this.progress, required this.color});
+
+  final double progress;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..moveTo(size.width * 0.28, size.height * 0.52)
+      ..lineTo(size.width * 0.44, size.height * 0.68)
+      ..lineTo(size.width * 0.74, size.height * 0.36);
+    final PathMetric metric = path.computeMetrics().first;
+    canvas.drawPath(
+      metric.extractPath(0, metric.length * progress),
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = OtpDoneBadge.strokeWidth
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(CheckPainter old) =>
+      old.progress != progress || old.color != color;
 }

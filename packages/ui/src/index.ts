@@ -1,6 +1,6 @@
 export { cn } from "./cn";
 export { sanitizeIntInput, parseIntInput } from "./numeric";
-export { Button } from "./button";
+export { Button, ButtonLink } from "./button";
 export { IconButton } from "./icon-button";
 export { SegmentedControl, type SegmentOption } from "./segmented-control";
 export { Card, CardHeader, CardBody } from "./card";

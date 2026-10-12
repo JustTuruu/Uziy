@@ -1,0 +1,17 @@
+@import "tailwindcss";
+@import "../../packages/ui/src/theme.css";
+
+/* Tailwind must scan the shared components for class names. */
+@source "../../packages/ui/src";
+
+html {
+  scroll-behavior: smooth;
+  /* Anchor targets stop below the sticky header. */
+  scroll-padding-top: 5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

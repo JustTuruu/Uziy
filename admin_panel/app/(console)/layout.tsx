@@ -40,7 +40,7 @@ function buildNav(pendingPayouts: number, pendingCampaigns: number): NavItem[] {
     },
     {
       href: "/campaigns",
-      label: "Кампани модераци",
+      label: "Сурталчилгаа",
       icon: <PlaySquare size={16} />,
       badge: pendingCampaigns,
     },

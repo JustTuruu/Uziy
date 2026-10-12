@@ -245,4 +245,104 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.byType(OtpBox), findsNWidgets(6));
   });
+
+  group('done state', () {
+    double badgeProgress(WidgetTester tester) =>
+        tester.widget<OtpDoneBadge>(find.byType(OtpDoneBadge)).progress;
+    double boxesOpacity(WidgetTester tester) =>
+        tester.widget<Opacity>(find.byKey(OtpInput.boxesKey)).opacity;
+    double checkDrawn(WidgetTester tester) => tester
+            .widget<CustomPaint>(
+              find.descendant(
+                of: find.byType(OtpDoneBadge),
+                matching: find.byType(CustomPaint),
+              ),
+            )
+            .painter is CheckPainter
+        ? (tester
+                .widget<CustomPaint>(
+                  find.descendant(
+                    of: find.byType(OtpDoneBadge),
+                    matching: find.byType(CustomPaint),
+                  ),
+                )
+                .painter! as CheckPainter)
+            .progress
+        : -1;
+
+    testWidgets('a half-typed code keeps the boxes and hides the check',
+        (tester) async {
+      await _pump(tester);
+      await _type(tester, '123');
+      await tester.pumpAndSettle();
+
+      expect(badgeProgress(tester), 0);
+      expect(boxesOpacity(tester), 1);
+    });
+
+    testWidgets('boxes slide together first, the check is drawn after',
+        (tester) async {
+      await _pump(tester);
+      final spread = tester.getCenter(find.byType(OtpBox).first).dx;
+      await _type(tester, '123456');
+
+      await tester.pump(OtpInput.doneDuration * 0.3);
+      final sliding = tester.getCenter(find.byType(OtpBox).first).dx;
+      expect(sliding, greaterThan(spread));
+      expect(checkDrawn(tester), 0);
+
+      await tester.pump(OtpInput.doneDuration * 0.5);
+      final midDraw = checkDrawn(tester);
+      expect(midDraw, inExclusiveRange(0, 1));
+
+      await tester.pumpAndSettle();
+      expect(checkDrawn(tester), 1);
+      expect(boxesOpacity(tester), 0);
+    });
+
+    testWidgets('clearing the code brings the boxes back', (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+      await _pump(tester, controller: controller);
+      await _type(tester, '123456');
+      await tester.pumpAndSettle();
+      controller.clear();
+      await tester.pumpAndSettle();
+
+      expect(badgeProgress(tester), 0);
+      expect(boxesOpacity(tester), 1);
+    });
+
+    testWidgets('a rejected full code shows the red boxes, not the check',
+        (tester) async {
+      await _pump(tester, hasError: true);
+      await _type(tester, '123456');
+      await tester.pumpAndSettle();
+
+      expect(badgeProgress(tester), 0);
+      expect(boxesOpacity(tester), 1);
+    });
+
+    testWidgets('reduce-motion jumps straight to the finished check',
+        (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+          tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      await _pump(tester);
+      await _type(tester, '123456');
+
+      expect(badgeProgress(tester), 1);
+    });
+  });
+
+  test('CheckPainter repaints only when something changed', () {
+    const a = CheckPainter(progress: 0.5, color: Colors.white);
+    expect(
+        a.shouldRepaint(const CheckPainter(progress: 0.5, color: Colors.white)),
+        isFalse);
+    expect(
+        a.shouldRepaint(const CheckPainter(progress: 0.6, color: Colors.white)),
+        isTrue);
+  });
 }

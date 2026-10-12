@@ -1,6 +1,7 @@
 packages:
   - admin_panel
   - company_panel
+  - landing
   - packages/*
 
 ignoredBuiltDependencies:

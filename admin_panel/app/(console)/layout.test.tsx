@@ -18,7 +18,10 @@ const admin: Me = {
   companyName: null,
 };
 
-const stats = (pendingPayouts: number, pendingCampaigns: number): AdminStats => ({
+const stats = (
+  pendingPayouts: number,
+  pendingCampaigns: number,
+): AdminStats => ({
   totalUsers: 0,
   totalCampaigns: 0,
   activeCampaigns: 0,
@@ -80,9 +83,7 @@ describe("Admin console layout", () => {
     expect(
       await screen.findByRole("link", { name: /Мөнгө татах\s*3/ }),
     ).toBeTruthy();
-    expect(
-      screen.getByRole("link", { name: /Кампани модераци\s*5/ }),
-    ).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Clients\s*5/ })).toBeTruthy();
     expect(screen.getByRole("img", { name: "8 хүлээгдэж буй" })).toBeTruthy();
   });
 

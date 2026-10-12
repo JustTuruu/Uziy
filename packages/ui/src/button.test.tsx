@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { Button } from "./button";
+import { Button, ButtonLink } from "./button";
 
 describe("<Button>", () => {
   it("renders its children", () => {
@@ -40,6 +40,40 @@ describe("<Button>", () => {
       >
         Save
       </Button>,
+    );
+    expect(screen.getByTestId("l")).toBeInTheDocument();
+    expect(screen.getByTestId("r")).toBeInTheDocument();
+  });
+});
+
+describe("<ButtonLink>", () => {
+  it("renders a real link with the given href", () => {
+    render(<ButtonLink href="/login">Нэвтрэх</ButtonLink>);
+    expect(screen.getByRole("link", { name: "Нэвтрэх" })).toHaveAttribute(
+      "href",
+      "/login",
+    );
+  });
+
+  it("looks like the matching Button variant", () => {
+    render(
+      <>
+        <Button variant="secondary">B</Button>
+        <ButtonLink variant="secondary" href="/x">
+          L
+        </ButtonLink>
+      </>,
+    );
+    expect(screen.getByRole("link").className).toBe(
+      screen.getByRole("button").className,
+    );
+  });
+
+  it("shows icons around the label", () => {
+    render(
+      <ButtonLink href="/x" leftIcon={<i data-testid="l" />} rightIcon={<i data-testid="r" />}>
+        Go
+      </ButtonLink>,
     );
     expect(screen.getByTestId("l")).toBeInTheDocument();
     expect(screen.getByTestId("r")).toBeInTheDocument();

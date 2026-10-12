@@ -24,7 +24,8 @@ class ReelsIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox.square(
       dimension: size,
-      child: CustomPaint(painter: ReelsIconPainter(color: color, filled: filled)),
+      child:
+          CustomPaint(painter: ReelsIconPainter(color: color, filled: filled)),
     );
   }
 }

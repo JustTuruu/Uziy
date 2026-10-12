@@ -20,12 +20,22 @@ void main() {
 
   test('painter repaints only when colour or fill changes', () {
     const a = ReelsIconPainter(color: Colors.white, filled: false);
-    expect(a.shouldRepaint(const ReelsIconPainter(color: Colors.white, filled: false)), isFalse);
-    expect(a.shouldRepaint(const ReelsIconPainter(color: Colors.white, filled: true)), isTrue);
-    expect(a.shouldRepaint(const ReelsIconPainter(color: Colors.black, filled: false)), isTrue);
+    expect(
+        a.shouldRepaint(
+            const ReelsIconPainter(color: Colors.white, filled: false)),
+        isFalse);
+    expect(
+        a.shouldRepaint(
+            const ReelsIconPainter(color: Colors.white, filled: true)),
+        isTrue);
+    expect(
+        a.shouldRepaint(
+            const ReelsIconPainter(color: Colors.black, filled: false)),
+        isTrue);
   });
 
-  testWidgets('glyph() builds a filled icon only when selected', (tester) async {
+  testWidgets('glyph() builds a filled icon only when selected',
+      (tester) async {
     await tester.pumpWidget(MaterialApp(
       home: Column(children: [
         ReelsIcon.glyph(Colors.white, true),

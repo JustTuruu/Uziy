@@ -90,7 +90,7 @@ void main() {
 
     expect(find.text('Тавтай морил'), findsOneWidget);
     expect(find.text('Нэвтрэх'), findsNWidgets(2)); // title + button
-    expect(find.byType(PhonePrefixField), findsOneWidget);
+    expect(find.byType(BigPhoneField), findsOneWidget);
     expect(find.byType(PasswordField), findsOneWidget);
     expect(
       find.ancestor(

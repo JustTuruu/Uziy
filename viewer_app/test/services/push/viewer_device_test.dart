@@ -51,8 +51,7 @@ void main() {
     ApiService.instance.dio.httpClientAdapter = _Capture(403);
     expect(
       svc.registerDevice(token: 't', platform: 'IOS'),
-      throwsA(isA<ApiException>()
-          .having((e) => e.statusCode, 'status', 403)),
+      throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 403)),
     );
   });
 

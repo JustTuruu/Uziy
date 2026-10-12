@@ -5,7 +5,8 @@
 class Campaign {
   final int id;
   final String companyName;
-  final String videoUrl; // .m3u8 HLS manifest on Cloudflare R2 (empty for survey-only)
+  final String
+      videoUrl; // .m3u8 HLS manifest on Cloudflare R2 (empty for survey-only)
   final String? thumbnailUrl;
   final String title;
   final int durationSeconds;
