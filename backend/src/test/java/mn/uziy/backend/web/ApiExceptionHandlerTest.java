@@ -44,6 +44,18 @@ class ApiExceptionHandlerTest {
 
         @GetMapping("/boom/unavailable")
         void f() { throw new UnavailableException("uv"); }
+
+        @GetMapping("/boom/integrity")
+        void g() {
+            throw new org.springframework.dao.DataIntegrityViolationException(
+                    "could not execute statement [insert into secret_table]");
+        }
+
+        @GetMapping("/boom/lock")
+        void h() { throw new org.springframework.dao.CannotAcquireLockException("serialization failure"); }
+
+        @org.springframework.web.bind.annotation.PostMapping("/boom/body")
+        void i(@org.springframework.web.bind.annotation.RequestBody java.util.Map<String, String> body) { }
     }
 
     private final MockMvc mvc = MockMvcBuilders.standaloneSetup(new Boom())
@@ -83,5 +95,30 @@ class ApiExceptionHandlerTest {
             int status = mvc.perform(get("/boom/" + entry.getKey())).andReturn().getResponse().getStatus();
             assertThat(status).as(entry.getKey()).isEqualTo(entry.getValue());
         }
+    }
+
+    @org.junit.jupiter.api.Test
+    void aRefusedWriteIsA400ThatDoesNotEchoTheSql() throws Exception {
+        var res = mvc.perform(get("/boom/integrity")).andReturn().getResponse();
+
+        assertThat(res.getStatus()).isEqualTo(400);
+        assertThat(res.getErrorMessage()).isEqualTo(ApiExceptionHandler.INVALID_DATA).doesNotContain("secret_table");
+    }
+
+    @org.junit.jupiter.api.Test
+    void aDatabaseRaceIsA409AskingToRetry() throws Exception {
+        var res = mvc.perform(get("/boom/lock")).andReturn().getResponse();
+
+        assertThat(res.getStatus()).isEqualTo(409);
+        assertThat(res.getErrorMessage()).isEqualTo(ApiExceptionHandler.BUSY);
+    }
+
+    @org.junit.jupiter.api.Test
+    void aMalformedBodyIsA400WithAGenericMessage() throws Exception {
+        var res = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/boom/body")
+                .contentType("application/json").content("{bad")).andReturn().getResponse();
+
+        assertThat(res.getStatus()).isEqualTo(400);
+        assertThat(res.getErrorMessage()).isEqualTo(ApiExceptionHandler.MALFORMED_BODY);
     }
 }

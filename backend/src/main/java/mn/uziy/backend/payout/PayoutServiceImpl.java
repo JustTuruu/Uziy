@@ -5,7 +5,9 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import mn.uziy.backend.common.BadRequestException;
 import mn.uziy.backend.common.ConflictException;
+import mn.uziy.backend.common.NotFoundException;
 import mn.uziy.backend.common.event.DomainEventPublisher;
 import mn.uziy.backend.domain.PayoutEntity;
 import mn.uziy.backend.domain.PayoutRepository;
@@ -18,6 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class PayoutServiceImpl implements PayoutService {
+
+    static final String USER_NOT_FOUND = "User not found";
+    static final String INSUFFICIENT_BALANCE = "Insufficient balance";
 
     private final PayoutRepository payouts;
     private final UserRepository users;
@@ -47,7 +52,7 @@ public class PayoutServiceImpl implements PayoutService {
     @Override
     @Transactional
     public PayoutDto request(long userId, CreatePayoutReq req) {
-        UserEntity user = users.findById(userId).orElseThrow();
+        UserEntity user = users.findById(userId).orElseThrow(() -> new NotFoundException(USER_NOT_FOUND));
         requestRules.validate(user, req);
 
         // Any prior APPROVED payout => not a first payout.
@@ -55,8 +60,11 @@ public class PayoutServiceImpl implements PayoutService {
 
         // Reserve the amount by decrementing balance immediately so it can't
         // be spent twice while the request is PENDING. Refund on rejection.
-        user.setBalance(user.getBalance() - req.amount());
-        users.save(user);
+        // One conditional UPDATE: the rules above are a friendly early answer, this is what makes it safe
+        // when several requests race for the same balance.
+        if (users.tryDeductBalance(user.getId(), req.amount()) == 0) {
+            throw new BadRequestException(INSUFFICIENT_BALANCE);
+        }
 
         PayoutEntity p = new PayoutEntity();
         p.setUserId(user.getId());
@@ -73,7 +81,7 @@ public class PayoutServiceImpl implements PayoutService {
 
     @Override
     public List<PayoutDto> mine(long userId) {
-        UserEntity user = users.findById(userId).orElseThrow();
+        UserEntity user = users.findById(userId).orElseThrow(() -> new NotFoundException(USER_NOT_FOUND));
         return payouts.findAllByUserIdOrderByRequestedAtDesc(user.getId()).stream()
                 .map(p -> mapper.toDto(p, user.getPhoneNumber()))
                 .toList();
@@ -95,12 +103,16 @@ public class PayoutServiceImpl implements PayoutService {
     public PayoutDto decide(long payoutId, PayoutStatus decision, @Nullable String reason, long adminId) {
         PayoutDecisionStrategy strategy = decisionStrategies.forDecision(decision); // rejects PENDING
 
-        PayoutEntity p = payouts.findById(payoutId).orElseThrow();
-        if (p.getStatus() != PayoutStatus.PENDING) {
+        if (!payouts.existsById(payoutId)) {
+            throw new NotFoundException("Payout not found");
+        }
+        // Claim first: only one decision can ever move this payout out of PENDING.
+        if (payouts.tryClaim(payoutId, decision) == 0) {
             throw new ConflictException("Already decided");
         }
 
-        UserEntity user = users.findById(p.getUserId()).orElseThrow();
+        PayoutEntity p = payouts.findById(payoutId).orElseThrow(() -> new NotFoundException("Payout not found"));
+        UserEntity user = users.findById(p.getUserId()).orElseThrow(() -> new NotFoundException(USER_NOT_FOUND));
         strategy.apply(user, p, reason);
         users.save(user);
 

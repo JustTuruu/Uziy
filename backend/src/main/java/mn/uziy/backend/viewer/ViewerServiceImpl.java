@@ -5,8 +5,10 @@ import java.util.List;
 import java.util.Map;
 import mn.uziy.backend.auth.Me;
 import mn.uziy.backend.auth.MeMapper;
+import mn.uziy.backend.common.NotFoundException;
 import mn.uziy.backend.domain.CampaignEntity;
 import mn.uziy.backend.domain.CampaignRepository;
+import mn.uziy.backend.domain.CampaignStatus;
 import mn.uziy.backend.domain.SurveyQuestionRepository;
 import mn.uziy.backend.domain.ViewHistoryEntity;
 import mn.uziy.backend.domain.ViewHistoryRepository;
@@ -45,12 +47,12 @@ public class ViewerServiceImpl implements ViewerService {
 
     @Override
     public Me me(long userId) {
-        return meMapper.toMe(users.findById(userId).orElseThrow());
+        return meMapper.toMe(users.findById(userId).orElseThrow(() -> new NotFoundException("User not found")));
     }
 
     @Override
     public List<FeedItemDto> feed(long userId) {
-        UserEntity user = users.findById(userId).orElseThrow();
+        UserEntity user = users.findById(userId).orElseThrow(() -> new NotFoundException("User not found"));
         if (user.getGender() == null || user.getAge() == null || user.getCity() == null) {
             return List.of();
         }
@@ -72,6 +74,10 @@ public class ViewerServiceImpl implements ViewerService {
 
     @Override
     public List<QuestionDto> questions(long campaignId) {
+        // Only a running campaign's survey is public to viewers; a pending or finished one is as good as absent.
+        campaigns.findById(campaignId)
+                .filter(c -> c.getStatus() == CampaignStatus.ACTIVE)
+                .orElseThrow(() -> new NotFoundException("Campaign not found"));
         return questions.findAllByCampaignIdOrderByPosition(campaignId).stream()
                 .map(questionMapper::toDto)
                 .toList();

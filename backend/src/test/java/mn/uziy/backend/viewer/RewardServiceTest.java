@@ -38,47 +38,109 @@ class RewardServiceTest {
     private final DomainEventPublisher events = mock(DomainEventPublisher.class);
 
     private final RewardServiceImpl service =
-            new RewardServiceImpl(users, campaigns, questions, history, responses, events);
+            new RewardServiceImpl(users, campaigns, questions, history, responses, events,
+                    new AnswerValidator());
 
     private final UserEntity viewer = viewer();
 
-    @Test
-    void submitCreditsRewardMarksViewAndReturnsNewBalance() {
+    private SurveyQuestionEntity question(long id, String type, String optionsJson, boolean required) {
+        SurveyQuestionEntity q = new SurveyQuestionEntity();
+        q.setId(id);
+        q.setCampaignId(1L);
+        q.setPosition((int) id);
+        q.setPrompt("P");
+        q.setQType(type);
+        q.setOptionsJson(optionsJson);
+        q.setRequired(required);
+        return q;
+    }
+
+    /** A running campaign for the standard viewer, with one required choice question (id 10). */
+    private void aPayableCampaign() {
         when(history.existsByUserIdAndCampaignId(42L, 1L)).thenReturn(false);
         when(campaigns.findById(1L)).thenReturn(Optional.of(sampleCampaign(1)));
+        when(users.findById(42L)).thenReturn(Optional.of(viewer));
+        when(questions.findAllByCampaignIdOrderByPosition(1L))
+                .thenReturn(List.of(question(10L, "SINGLE_CHOICE", "[\"Тийм\",\"Үгүй\"]", true)));
         when(campaigns.tryDecrementBudget(1L)).thenReturn(1);
-
         ViewHistoryEntity savedView = new ViewHistoryEntity();
         savedView.setId(999L);
         savedView.setUserId(42L);
         savedView.setCampaignId(1L);
         savedView.setRewardPaid(700.0);
         when(history.save(any())).thenReturn(savedView);
-
-        SurveyQuestionEntity q = new SurveyQuestionEntity();
-        q.setId(10L);
-        q.setCampaignId(1L);
-        q.setPosition(1);
-        q.setPrompt("P");
-        q.setQType("SINGLE_CHOICE");
-        q.setOptionsJson("[]");
-        q.setRequired(true);
-        when(questions.findAllByCampaignIdOrderByPosition(1L)).thenReturn(List.of(q));
         when(responses.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(users.findById(42L)).thenReturn(Optional.of(viewer));
-        ArgumentCaptor<UserEntity> saved = ArgumentCaptor.forClass(UserEntity.class);
-        when(users.save(saved.capture())).thenAnswer(inv -> inv.getArgument(0));
+        when(users.currentBalance(42L)).thenReturn(Optional.of(700.0));
+    }
 
-        RewardResult result = service.submitSurvey(42L, 1L, List.of(
-                new SubmitSurveyReq.Answer(10L, "\"Тийм\""),
-                new SubmitSurveyReq.Answer(999L, "\"ignored — not a real question\"")));
+    private static List<SubmitSurveyReq.Answer> yes() {
+        return List.of(new SubmitSurveyReq.Answer(10L, "\"Тийм\""));
+    }
+
+    @Test
+    void submitCreditsRewardAtomicallyMarksViewAndReturnsNewBalance() {
+        aPayableCampaign();
+
+        RewardResult result = service.submitSurvey(42L, 1L, yes());
 
         assertThat(result.rewardPaid()).isEqualTo(700.0);
         assertThat(result.newBalance()).isEqualTo(700.0);
-        assertThat(saved.getValue().getBalance()).isEqualTo(700.0);
-        // Only the real question's answer should have been persisted (1 call, not 2).
+        verify(users).addBalance(42L, 700.0);
+        verify(users, never()).save(any());
         verify(responses, times(1)).save(any());
         verify(events).publish(new RewardGranted(42L, 1L, 700.0));
+    }
+
+    @Test
+    void submitStoresTheAnswerExactlyAsValidated() {
+        aPayableCampaign();
+        ArgumentCaptor<mn.uziy.backend.domain.SurveyResponseEntity> saved =
+                ArgumentCaptor.forClass(mn.uziy.backend.domain.SurveyResponseEntity.class);
+        when(responses.save(saved.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.submitSurvey(42L, 1L, yes());
+
+        assertThat(saved.getValue().getQuestionId()).isEqualTo(10L);
+        assertThat(saved.getValue().getViewId()).isEqualTo(999L);
+        assertThat(saved.getValue().getAnswerJson()).isEqualTo("\"Тийм\"");
+    }
+
+    @Test
+    void submitRefusesAnAnswerToAQuestionOfAnotherCampaignAndPaysNothing() {
+        aPayableCampaign();
+
+        var ex = assertFailsWithHttp(() -> service.submitSurvey(42L, 1L,
+                List.of(new SubmitSurveyReq.Answer(10L, "\"Тийм\""), new SubmitSurveyReq.Answer(999L, "\"x\""))));
+
+        assertThat(ex.statusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        verify(users, never()).addBalance(anyLong(), org.mockito.ArgumentMatchers.anyDouble());
+        verify(campaigns, never()).tryDecrementBudget(anyLong());
+    }
+
+    @Test
+    void submitRefusesMissingRequiredAnswersBeforeSpendingBudget() {
+        aPayableCampaign();
+
+        var ex = assertFailsWithHttp(() -> service.submitSurvey(42L, 1L,
+                List.of(new SubmitSurveyReq.Answer(10L, ""))));
+
+        assertThat(ex.statusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        verify(campaigns, never()).tryDecrementBudget(anyLong());
+        verify(history, never()).save(any());
+    }
+
+    @Test
+    void submitHidesACampaignThatIsNotForThisViewer() {
+        aPayableCampaign();
+        var femaleOnly = sampleCampaign(1);
+        femaleOnly.setTargetGender(mn.uziy.backend.domain.TargetGender.FEMALE);
+        when(campaigns.findById(1L)).thenReturn(Optional.of(femaleOnly));
+
+        var ex = assertFailsWithHttp(() -> service.submitSurvey(42L, 1L, yes()));
+
+        assertThat(ex.statusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        verify(campaigns, never()).tryDecrementBudget(anyLong());
+        verify(users, never()).addBalance(anyLong(), org.mockito.ArgumentMatchers.anyDouble());
     }
 
     @Test
@@ -102,15 +164,14 @@ class RewardServiceTest {
 
     @Test
     void submitThrows409WhenTryDecrementBudgetReturns0() {
-        when(history.existsByUserIdAndCampaignId(42L, 1L)).thenReturn(false);
-        when(campaigns.findById(1L)).thenReturn(Optional.of(sampleCampaign(1)));
+        aPayableCampaign();
         when(campaigns.tryDecrementBudget(1L)).thenReturn(0);
 
-        var ex = assertFailsWithHttp(() ->
-                service.submitSurvey(42L, 1L, List.of(new SubmitSurveyReq.Answer(1L, "\"x\""))));
+        var ex = assertFailsWithHttp(() -> service.submitSurvey(42L, 1L, yes()));
+
         assertThat(ex.statusCode()).isEqualTo(HttpStatus.CONFLICT);
         // No view_history or balance mutation should have happened.
         verify(history, never()).save(any());
-        verify(users, never()).save(any());
+        verify(users, never()).addBalance(anyLong(), org.mockito.ArgumentMatchers.anyDouble());
     }
 }

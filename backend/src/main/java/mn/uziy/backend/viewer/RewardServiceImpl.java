@@ -20,10 +20,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
-@Service
+@Service("rewardServiceImpl")
 public class RewardServiceImpl implements RewardService {
 
-    private static final String EMPTY_JSON_STRING = "\"\"";
+    static final String NOT_AVAILABLE = "Campaign not found";
 
     private final UserRepository users;
     private final CampaignRepository campaigns;
@@ -32,10 +32,13 @@ public class RewardServiceImpl implements RewardService {
     private final SurveyResponseRepository responses;
 
     private final DomainEventPublisher events;
+    private final AnswerValidator answerValidator;
 
     public RewardServiceImpl(UserRepository users, CampaignRepository campaigns,
                              SurveyQuestionRepository questions, ViewHistoryRepository history,
-                             SurveyResponseRepository responses, DomainEventPublisher events) {
+                             SurveyResponseRepository responses, DomainEventPublisher events,
+                             AnswerValidator answerValidator) {
+        this.answerValidator = answerValidator;
         this.events = events;
         this.users = users;
         this.campaigns = campaigns;
@@ -54,6 +57,14 @@ public class RewardServiceImpl implements RewardService {
         CampaignEntity campaign = campaigns.findById(campaignId)
                 .orElseThrow(() -> new NotFoundException("Campaign not found"));
 
+        UserEntity viewer = users.findById(userId).orElseThrow(() -> new NotFoundException("User not found"));
+        if (!CampaignTargeting.matches(campaign, viewer)) {
+            // Same answer as for a campaign that does not exist: the audience rule is not for viewers to probe.
+            throw new NotFoundException(NOT_AVAILABLE);
+        }
+        List<SurveyQuestionEntity> campaignQuestions = questions.findAllByCampaignIdOrderByPosition(campaign.getId());
+        answerValidator.validate(campaignQuestions, answers);
+
         if (campaigns.tryDecrementBudget(campaign.getId()) == 0) {
             throw new ConflictException("Campaign no longer available");
         }
@@ -64,29 +75,30 @@ public class RewardServiceImpl implements RewardService {
         newView.setRewardPaid(campaign.getRewardPerUser());
         ViewHistoryEntity view = history.save(newView);
 
-        recordAnswers(view.getId(), campaign.getId(), answers);
+        recordAnswers(view.getId(), campaignQuestions, answers);
 
-        UserEntity user = users.findById(userId).orElseThrow();
-        user.setBalance(user.getBalance() + campaign.getRewardPerUser());
-        users.save(user);
+        // Atomic credit: never a read-modify-write of the balance.
+        users.addBalance(userId, campaign.getRewardPerUser());
+        double newBalance = users.currentBalance(userId).orElseThrow(() -> new NotFoundException("User not found"));
 
         events.publish(new RewardGranted(userId, campaign.getId(), campaign.getRewardPerUser()));
-        return new RewardResult(campaign.getRewardPerUser(), user.getBalance());
+        return new RewardResult(campaign.getRewardPerUser(), newBalance);
     }
 
-    /** Answers to questions that don't belong to this campaign are ignored. */
-    private void recordAnswers(long viewId, long campaignId, List<SubmitSurveyReq.Answer> answers) {
-        Set<Long> validQuestionIds = questions.findAllByCampaignIdOrderByPosition(campaignId).stream()
+    /** Stores the non-empty answers; the validator already vouched for them. */
+    private void recordAnswers(long viewId, List<SurveyQuestionEntity> campaignQuestions,
+                               List<SubmitSurveyReq.Answer> answers) {
+        Set<Long> validQuestionIds = campaignQuestions.stream()
                 .map(SurveyQuestionEntity::getId)
                 .collect(Collectors.toSet());
         for (SubmitSurveyReq.Answer a : answers) {
-            if (!validQuestionIds.contains(a.questionId())) {
+            if (!validQuestionIds.contains(a.questionId()) || a.answerJson() == null || a.answerJson().isBlank()) {
                 continue;
             }
             SurveyResponseEntity r = new SurveyResponseEntity();
             r.setViewId(viewId);
             r.setQuestionId(a.questionId());
-            r.setAnswerJson(a.answerJson().isBlank() ? EMPTY_JSON_STRING : a.answerJson());
+            r.setAnswerJson(a.answerJson());
             responses.save(r);
         }
     }

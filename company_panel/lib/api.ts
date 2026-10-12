@@ -284,3 +284,94 @@ export const platformSettingsApi = {
   get: () =>
     apiFetch<PlatformSettings>("/platform-settings", { anonymous: true }),
 };
+
+// --- Analytics (company) ----------------------------------------------------
+
+/** A labelled count: a gender, an age band, a city or an answer option. */
+export interface AnalyticsSlice {
+  label: string;
+  count: number;
+}
+
+export interface AnalyticsTotals {
+  campaignCount: number;
+  activeCount: number;
+  responses: number;
+  rewardsPaid: number;
+  spent: number;
+  costPerResponse: number | null;
+}
+
+export interface CampaignPerformance {
+  campaignId: number;
+  title: string;
+  status: CampaignStatus;
+  hasVideo: boolean;
+  targetViewers: number | null;
+  responses: number;
+  /** 0..100; null when the campaign has no viewer target. */
+  reachPercent: number | null;
+  spent: number;
+  rewardsPaid: number;
+  costPerResponse: number | null;
+  /** Responses the remaining budget still pays for. */
+  remainingResponses: number;
+  responsesLast7Days: number;
+  /** Days until the budget runs out at last week's pace; null when paused, finished or no recent responses. */
+  daysLeft: number | null;
+}
+
+export interface DailyResponses {
+  /** ISO date, e.g. "2026-10-07" (Ulaanbaatar calendar day). */
+  date: string;
+  responses: number;
+}
+
+/** Who completed the selected campaign(s). Null while there are too few responses to stay anonymous. */
+export interface AnalyticsAudience {
+  gender: AnalyticsSlice[];
+  ageBands: AnalyticsSlice[];
+  cities: AnalyticsSlice[];
+}
+
+export interface QuestionBreakdown {
+  questionId: number;
+  prompt: string;
+  type: "SINGLE_CHOICE" | "MULTI_CHOICE" | "TEXT";
+  answered: number;
+  /** Empty for free-text questions. */
+  options: AnalyticsSlice[];
+}
+
+/** One choice question answered by segment; every option's counts line up with `segments`. */
+export interface SegmentBreakdown {
+  questionId: number;
+  prompt: string;
+  /** Segment label ("MALE", "FEMALE", "18–24", …) and how many of it answered. Only segments big enough to stay anonymous. */
+  segments: AnalyticsSlice[];
+  options: { label: string; counts: number[] }[];
+}
+
+export interface AnalyticsReport {
+  days: number;
+  totals: AnalyticsTotals;
+  campaigns: CampaignPerformance[];
+  daily: DailyResponses[];
+  /** Responses per hour of the day, index 0..23, Ulaanbaatar time. */
+  hourly: number[];
+  audience: AnalyticsAudience | null;
+  /** Only filled when one campaign is selected. */
+  questions: QuestionBreakdown[];
+  /** Only filled when one campaign is selected, and only for big-enough segments. */
+  segments: SegmentBreakdown[];
+}
+
+export const analyticsApi = {
+  get: (opts: { days: number; campaignId?: number }) => {
+    const query = new URLSearchParams({ days: String(opts.days) });
+    if (opts.campaignId !== undefined) {
+      query.set("campaignId", String(opts.campaignId));
+    }
+    return apiFetch<AnalyticsReport>(`/company/analytics?${query}`);
+  },
+};

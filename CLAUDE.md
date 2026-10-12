@@ -481,6 +481,42 @@ The app opens on Home for everyone — no forced login. Splash always goes to `/
   `finishAuth` opens it afterwards (a tapped campaign is looked up in the viewer's own feed; if it
   is not there the viewer stays on Home with a note). Login has a 'Зочноор үзэх' button back to Home.
 
+### Company analytics (added 2026-10-07)
+
+`company_panel` `/analytics` (page + `lib/analytics.ts` + `components/daily-bars.tsx`, `distribution-bars.tsx`;
+no chart library, plain SVG/CSS, one hue, hover + keyboard tooltip, table view).
+- **Backend** (`analytics/`): `GET /company/analytics?days=7..90&campaignId=` (COMPANY only) →
+  `{days, totals, campaigns[] (responses, reach %, spent, rewards, cost/response), daily[] (zero-filled,
+  Ulaanbaatar calendar days), audience {gender, ageBands, cities} | null, questions[] (only with campaignId)}`.
+  `audience` is `null` below `MIN_AUDIENCE_SAMPLE` (5) responses so nobody can be singled out; free-text
+  answers are never returned. Native SQL lives in `ViewHistoryRepository` / `SurveyResponseRepository`;
+  `AnswerCounter` (Jackson) counts choice answers; `AgeBands` groups ages. A `date` column comes back as
+  `LocalDate` on Hibernate 7 (the integration test caught it).
+- **Insights** (`lib/analytics.ts` `buildInsights`, shown in `InsightsCard`): busiest hour, week-over-week
+  change, budgets that run out within 7 days at last week's pace, cheapest vs dearest answers, running
+  campaigns with no responses. **Hour-of-day chart** uses `hourly[24]` (Ulaanbaatar time). With a campaign
+  selected, `segments[]` answers "who chose what" (men/women/age bands as a heat-map `SegmentTable`); a
+  segment under `MIN_SEGMENT_SAMPLE` (5) answerers is never returned. Charts draw at their measured pixel
+  width (`useElementWidth`) so text never scales up on wide screens.
+- The campaign detail page still shows the old "agregate endpoint удахгүй" placeholder; it can now be fed
+  from `analyticsApi.get({days, campaignId})`.
+
+### Security audit & production readiness (added 2026-10-07)
+
+Full write-up and checklist: **`docs/PRODUCTION_CHECKLIST.md`**. Rules that now hold for every change:
+- **Money moves only through atomic SQL** (`UserRepository.tryDeductBalance` / `addBalance`,
+  `PayoutRepository.tryClaim`, `CampaignRepository.tryDecrementBudget`); never `setBalance` + `save`.
+  `UserEntity` is `@DynamicUpdate` so a stale entity cannot overwrite a balance.
+- A reward needs: targeting match (`CampaignTargeting`), valid answers (`AnswerValidator`), then the budget
+  claim; it is wrapped by `RetryingRewardService`.
+- Every endpoint is covered by `security/AccessControlMatrixIntegrationTest` (add new routes there!); object
+  access by `ObjectAccessIntegrationTest`; abuse/injection/races by `ApiAbuseIntegrationTest`; tokens, headers,
+  CORS, error hygiene by `TokenAndExposureIntegrationTest`. They share one Postgres container
+  (`AbstractApiIntegrationTest`) and use fresh phone numbers (`freshPhone()`) because the login lock is per phone.
+- `SPRING_PROFILES_ACTIVE=prod` + `ProductionReadinessCheck`: the app will not boot with dev secrets, seeded
+  accounts, simulated payments, logging OTP or localhost CORS. `application-prod.yml` has no secret defaults.
+- Known open risk: rewards cannot yet be tied to real watching (see the checklist).
+
 ### One-time codes (OTP) (added 2026-10-07)
 
 Used to **verify registration** and to **reset a forgotten password**; the code goes to the account's

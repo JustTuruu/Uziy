@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import mn.uziy.backend.domain.TargetGender;
 import org.jspecify.annotations.Nullable;
@@ -23,18 +24,28 @@ import org.jspecify.annotations.Nullable;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record CreateCampaignReq(
-        @NotBlank String title,
-        String videoUrl,
+        @NotBlank @Size(max = MAX_TITLE) String title,
+        @Size(max = MAX_VIDEO_URL) String videoUrl,
         Boolean hasVideo,
         Integer durationSeconds,
         TargetGender targetGender,
         Integer minAge,
         Integer maxAge,
-        String targetCity,
+        @Size(max = MAX_CITY) String targetCity,
         @Nullable Double totalBudget,
         @Nullable Integer targetViewers,
         @Nullable Double rewardPerUser,
-        @Valid List<NewQuestion> questions) {
+        @Size(max = MAX_QUESTIONS) @Valid List<NewQuestion> questions) {
+
+    // These mirror the column sizes (and sane survey sizes), so an over-long value is a clear 400 and not a
+    // database error.
+    public static final int MAX_TITLE = 200;
+    public static final int MAX_VIDEO_URL = 500;
+    public static final int MAX_CITY = 50;
+    public static final int MAX_QUESTIONS = 20;
+    public static final int MAX_PROMPT = 1_000;
+    public static final int MAX_OPTIONS = 20;
+    public static final int MAX_OPTION_LENGTH = 200;
 
     public CreateCampaignReq {
         videoUrl = videoUrl == null ? "" : videoUrl;
@@ -57,9 +68,9 @@ public record CreateCampaignReq(
      * @param type SINGLE_CHOICE | MULTI_CHOICE | TEXT
      */
     public record NewQuestion(
-            @NotNull String prompt,
-            @NotNull String type,
-            List<String> options,
+            @NotNull @Size(max = MAX_PROMPT) String prompt,
+            @NotNull @Size(max = 20) String type,
+            @Size(max = MAX_OPTIONS) List<@Size(max = MAX_OPTION_LENGTH) String> options,
             Boolean required) {
 
         public NewQuestion {

@@ -34,8 +34,8 @@ class PayoutServiceTest {
     private final Clock clock = Clock.fixed(Instant.parse("2026-10-06T00:00:00Z"), ZoneOffset.UTC);
     private final PayoutServiceImpl service = new PayoutServiceImpl(
             payouts, users,
-            new PayoutRuleChain(List.of(new SufficientBalanceRule())),
-            new PayoutDecisionStrategies(List.of(new ApprovePayoutStrategy(), new RejectPayoutStrategy())),
+            new PayoutRuleChain(List.of(new MinimumPayoutRule(), new SufficientBalanceRule())),
+            new PayoutDecisionStrategies(List.of(new ApprovePayoutStrategy(), new RejectPayoutStrategy(users))),
             new PayoutMapper(), events, clock);
 
     private final UserEntity viewer = newViewer();
@@ -86,23 +86,24 @@ class PayoutServiceTest {
     // ------- viewer.request ------------------------------------------------
 
     @Test
-    void requestReservesBalanceAndMarksFirstPayout() {
+    void requestReservesBalanceAtomicallyAndMarksFirstPayout() {
         when(users.findById(42L)).thenReturn(Optional.of(viewer));
+        when(users.tryDeductBalance(42L, 1000.0)).thenReturn(1);
         when(payouts.existsByUserIdAndStatus(42L, PayoutStatus.APPROVED)).thenReturn(false);
-        ArgumentCaptor<UserEntity> savedUser = stubUserSave();
         when(payouts.save(any())).thenAnswer(inv -> {
             PayoutEntity p = inv.getArgument(0);
             p.setId(1L);
             return p;
         });
 
-        PayoutDto dto = service.request(viewerPrincipal.userId(), reqBody(500.0));
+        PayoutDto dto = service.request(viewerPrincipal.userId(), reqBody(1000.0));
 
         assertThat(dto.id()).isEqualTo(1L);
         assertThat(dto.isFirstPayout()).isTrue();
         assertThat(dto.status()).isEqualTo(PayoutStatus.PENDING);
-        assertThat(savedUser.getValue().getBalance()).isEqualTo(1000.0); // 1500 - 500
-        verify(events).publish(new PayoutRequested(1L, 42L, 500.0));
+        verify(users).tryDeductBalance(42L, 1000.0);
+        verify(users, never()).save(any());
+        verify(events).publish(new PayoutRequested(1L, 42L, 1000.0));
     }
 
     @Test
@@ -111,21 +112,56 @@ class PayoutServiceTest {
         var ex = assertFailsWithHttp(() -> service.request(viewerPrincipal.userId(), reqBody(9999.0)));
         assertThat(ex.statusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         verify(payouts, never()).save(any());
+        verify(users, never()).tryDeductBalance(org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.anyDouble());
+    }
+
+    @Test
+    void requestLosingTheRaceForTheBalanceIsRefusedAndRecordsNothing() {
+        // The balance looked big enough when read, but another request spent it first.
+        when(users.findById(42L)).thenReturn(Optional.of(viewer));
+        when(users.tryDeductBalance(42L, 1000.0)).thenReturn(0);
+
+        var ex = assertFailsWithHttp(() -> service.request(viewerPrincipal.userId(), reqBody(1000.0)));
+
+        assertThat(ex.statusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        verify(payouts, never()).save(any());
+        verify(events, never()).publish(any());
+    }
+
+    @Test
+    void requestBelowTheMinimumOrWithFractionsIsRefused() {
+        when(users.findById(42L)).thenReturn(Optional.of(viewer));
+
+        assertThat(assertFailsWithHttp(() -> service.request(42L, reqBody(500.0))).statusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(assertFailsWithHttp(() -> service.request(42L, reqBody(1000.5))).statusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        verify(users, never()).tryDeductBalance(org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.anyDouble());
     }
 
     @Test
     void requestMarksIsFirstPayoutFalseWhenUserHasAPriorApprovedPayout() {
         when(users.findById(42L)).thenReturn(Optional.of(viewer));
+        when(users.tryDeductBalance(42L, 1000.0)).thenReturn(1);
         when(payouts.existsByUserIdAndStatus(42L, PayoutStatus.APPROVED)).thenReturn(true);
-        when(users.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(payouts.save(any())).thenAnswer(inv -> {
             PayoutEntity p = inv.getArgument(0);
             p.setId(2L);
             return p;
         });
 
-        PayoutDto dto = service.request(viewerPrincipal.userId(), reqBody(500.0));
+        PayoutDto dto = service.request(viewerPrincipal.userId(), reqBody(1000.0));
         assertThat(dto.isFirstPayout()).isFalse();
+    }
+
+    @Test
+    void requestForAMissingUserIs404() {
+        when(users.findById(42L)).thenReturn(Optional.empty());
+
+        assertThat(assertFailsWithHttp(() -> service.request(42L, reqBody(1000.0))).statusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     // ------- viewer.mine ---------------------------------------------------
@@ -181,10 +217,16 @@ class PayoutServiceTest {
 
     // ------- admin.decide --------------------------------------------------
 
+    private void claimable(long id, PayoutEntity p) {
+        when(payouts.existsById(id)).thenReturn(true);
+        when(payouts.tryClaim(org.mockito.ArgumentMatchers.eq(id), any())).thenReturn(1);
+        when(payouts.findById(id)).thenReturn(Optional.of(p));
+    }
+
     @Test
     void decideApprovedOnFirstPayoutFlipsIsVerifiedToTrue() {
         PayoutEntity p = payout(10L, 500.0, PayoutStatus.PENDING, true);
-        when(payouts.findById(10L)).thenReturn(Optional.of(p));
+        claimable(10L, p);
         viewer.setVerified(false);
         when(users.findById(42L)).thenReturn(Optional.of(viewer));
         ArgumentCaptor<UserEntity> savedUser = stubUserSave();
@@ -195,15 +237,15 @@ class PayoutServiceTest {
         assertThat(savedUser.getValue().isVerified()).isTrue();
         assertThat(savedPayout.getValue().getStatus()).isEqualTo(PayoutStatus.APPROVED);
         assertThat(savedPayout.getValue().getDecidedBy()).isEqualTo(1L);
-        assertThat(savedPayout.getValue().getDecidedAt())
-                .isEqualTo(OffsetDateTime.now(clock));
+        assertThat(savedPayout.getValue().getDecidedAt()).isEqualTo(OffsetDateTime.now(clock));
+        verify(payouts).tryClaim(10L, PayoutStatus.APPROVED);
         verify(events).publish(new PayoutDecided(10L, 42L, PayoutStatus.APPROVED, 1L));
     }
 
     @Test
     void decideApprovedOnRepeatPayoutKeepsIsVerifiedAsItWas() {
         PayoutEntity p = payout(11L, 500.0, PayoutStatus.PENDING, false);
-        when(payouts.findById(11L)).thenReturn(Optional.of(p));
+        claimable(11L, p);
         viewer.setVerified(false);
         viewer.setBalance(1000.0);
         when(users.findById(42L)).thenReturn(Optional.of(viewer));
@@ -212,23 +254,23 @@ class PayoutServiceTest {
 
         service.decide(11L, PayoutStatus.APPROVED, null, adminPrincipal.userId());
 
-        // Balance untouched; is_verified NOT flipped because isFirstPayout=false.
         assertThat(savedUser.getValue().getBalance()).isEqualTo(1000.0);
         assertThat(savedUser.getValue().isVerified()).isFalse();
+        verify(users, never()).addBalance(org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.anyDouble());
     }
 
     @Test
-    void decideRejectedRefundsReservedBalance() {
+    void decideRejectedRefundsTheReservedBalanceWithAnAtomicCredit() {
         PayoutEntity p = payout(12L, 500.0, PayoutStatus.PENDING, true);
-        when(payouts.findById(12L)).thenReturn(Optional.of(p));
-        viewer.setBalance(200.0); // 700 minus 500 reserved
+        claimable(12L, p);
         when(users.findById(42L)).thenReturn(Optional.of(viewer));
-        ArgumentCaptor<UserEntity> savedUser = stubUserSave();
+        stubUserSave();
         when(payouts.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         service.decide(12L, PayoutStatus.REJECTED, "wrong name", adminPrincipal.userId());
 
-        assertThat(savedUser.getValue().getBalance()).isEqualTo(700.0); // refunded
+        verify(users).addBalance(42L, 500.0);
         assertThat(p.getRejectReason()).isEqualTo("wrong name");
     }
 
@@ -240,11 +282,26 @@ class PayoutServiceTest {
     }
 
     @Test
-    void decideThrows409WhenThePayoutWasAlreadyDecided() {
-        when(payouts.findById(13L)).thenReturn(Optional.of(payout(13L, 500.0, PayoutStatus.APPROVED, false)));
+    void decideThrows409WhenSomeoneElseAlreadyDecidedThePayout() {
+        when(payouts.existsById(13L)).thenReturn(true);
+        when(payouts.tryClaim(13L, PayoutStatus.REJECTED)).thenReturn(0); // lost the claim
 
         var ex = assertFailsWithHttp(
                 () -> service.decide(13L, PayoutStatus.REJECTED, null, adminPrincipal.userId()));
+
         assertThat(ex.statusCode()).isEqualTo(HttpStatus.CONFLICT);
+        verify(users, never()).addBalance(org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.anyDouble());
+    }
+
+    @Test
+    void decideThrows404ForAPayoutThatDoesNotExist() {
+        when(payouts.existsById(14L)).thenReturn(false);
+
+        var ex = assertFailsWithHttp(
+                () -> service.decide(14L, PayoutStatus.APPROVED, null, adminPrincipal.userId()));
+
+        assertThat(ex.statusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        verify(payouts, never()).tryClaim(org.mockito.ArgumentMatchers.anyLong(), any());
     }
 }

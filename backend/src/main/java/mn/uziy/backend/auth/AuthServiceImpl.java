@@ -24,11 +24,13 @@ public class AuthServiceImpl implements AuthService {
     private final MeMapper meMapper;
     private final DomainEventPublisher events;
     private final OtpService otp;
+    private final LoginAttemptLimiter loginLimiter;
 
     public AuthServiceImpl(UserRepository users, PasswordEncoder encoder, JwtService jwt,
                            UserFactory userFactory, MeMapper meMapper, DomainEventPublisher events,
-                           OtpService otp) {
+                           OtpService otp, LoginAttemptLimiter loginLimiter) {
         this.otp = otp;
+        this.loginLimiter = loginLimiter;
         this.users = users;
         this.encoder = encoder;
         this.jwt = jwt;
@@ -39,11 +41,14 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse login(LoginReq req) {
-        UserEntity user = users.findByPhoneNumber(req.phoneNumber())
-                .orElseThrow(() -> new UnauthorizedException(INVALID_CREDENTIALS));
-        if (!encoder.matches(req.password(), user.getPasswordHash())) {
+        loginLimiter.requireNotLocked(req.phoneNumber());
+        UserEntity user = users.findByPhoneNumber(req.phoneNumber()).orElse(null);
+        if (user == null || !encoder.matches(req.password(), user.getPasswordHash())) {
+            // An unknown phone counts too, so the lock is the same for every number.
+            loginLimiter.recordFailure(req.phoneNumber());
             throw new UnauthorizedException(INVALID_CREDENTIALS);
         }
+        loginLimiter.recordSuccess(req.phoneNumber());
         return respond(user);
     }
 

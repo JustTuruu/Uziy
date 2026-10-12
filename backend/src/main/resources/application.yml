@@ -22,6 +22,8 @@ server:
   port: ${PORT:8080}
   error:
     include-message: always
+    # Explicit: spring-boot-devtools (dev machines) would otherwise turn traces ALWAYS on.
+    include-stacktrace: never
 
 management:
   endpoints:

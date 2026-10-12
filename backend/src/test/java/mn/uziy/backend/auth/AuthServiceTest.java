@@ -37,7 +37,8 @@ class AuthServiceTest {
     private final DomainEventPublisher events = mock(DomainEventPublisher.class);
     private final OtpService otp = mock(OtpService.class);
     private final AuthServiceImpl service = new AuthServiceImpl(users, encoder, jwt,
-            new UserFactory(), new MeMapper(), events, otp);
+            new UserFactory(), new MeMapper(), events, otp,
+            new LoginAttemptLimiter(java.time.Clock.systemUTC()));
 
     private UserEntity seedUser(Role role) {
         UserEntity u = new UserEntity();

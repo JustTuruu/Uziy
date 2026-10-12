@@ -33,7 +33,7 @@ class CorsConfigTest {
             new AppProperties.Push(false, ""));
 
     private final SecurityConfig config = new SecurityConfig(
-            new JwtAuthFilter(new JwtService(props)), props);
+            new JwtAuthFilter(new JwtService(props), org.mockito.Mockito.mock(mn.uziy.backend.domain.UserRepository.class)), props);
 
     private CorsConfiguration cfgFor(MockHttpServletRequest req) {
         return config.corsConfigurationSource().getCorsConfiguration(req);

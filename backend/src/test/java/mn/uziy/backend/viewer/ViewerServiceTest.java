@@ -3,6 +3,7 @@ package mn.uziy.backend.viewer;
 import static mn.uziy.backend.viewer.ViewerTestData.sampleCampaign;
 import static mn.uziy.backend.viewer.ViewerTestData.viewer;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -106,6 +107,7 @@ class ViewerServiceTest {
 
     @Test
     void questionsReturnsOrderedSurveyQuestionsWithParsedOptions() {
+        when(campaigns.findById(1L)).thenReturn(Optional.of(sampleCampaign(1)));
         when(questions.findAllByCampaignIdOrderByPosition(1L)).thenReturn(List.of(
                 question(10L, 1, "P1", "SINGLE_CHOICE", "[\"A\",\"B\",\"C\"]", true),
                 question(11L, 2, "P2", "TEXT", "[]", false)));
@@ -116,6 +118,24 @@ class ViewerServiceTest {
         assertThat(qs.get(0).options()).containsExactly("A", "B", "C");
         assertThat(qs.get(1).options()).isEmpty();
         assertThat(qs.get(1).type()).isEqualTo("TEXT");
+    }
+
+    @Test
+    void questionsOfACampaignThatIsNotRunningAreNotFound() {
+        var pending = sampleCampaign(1);
+        pending.setStatus(mn.uziy.backend.domain.CampaignStatus.PENDING);
+        when(campaigns.findById(1L)).thenReturn(Optional.of(pending));
+
+        assertThatThrownBy(() -> service.questions(1L))
+                .isInstanceOf(mn.uziy.backend.common.NotFoundException.class);
+    }
+
+    @Test
+    void questionsOfAMissingCampaignAreNotFound() {
+        when(campaigns.findById(404L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.questions(404L))
+                .isInstanceOf(mn.uziy.backend.common.NotFoundException.class);
     }
 
     // ------- history -------------------------------------------------------

@@ -29,7 +29,7 @@ public class UserAdminServiceImpl implements UserAdminService {
 
     @Override
     public UserDto verify(long userId) {
-        UserEntity u = users.findById(userId).orElseThrow();
+        UserEntity u = users.findById(userId).orElseThrow(() -> new NotFoundException("User not found"));
         u.setVerified(true);
         return mapper.toDto(users.save(u));
     }

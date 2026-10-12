@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
+import org.hibernate.annotations.DynamicUpdate;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import org.jspecify.annotations.Nullable;
@@ -19,6 +20,9 @@ import org.jspecify.annotations.Nullable;
  */
 @Entity
 @Table(name = "users")
+// Write only the columns that changed. The balance is moved by atomic SQL (UserRepository.addBalance /
+// tryDeductBalance); a plain entity save must never write back a stale copy of it over a concurrent change.
+@DynamicUpdate
 public class UserEntity {
 
     @Id
