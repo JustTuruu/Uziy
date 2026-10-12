@@ -10,13 +10,14 @@ enum AppButtonSize { normal, small }
 
 /// The app's CTA button.
 ///
-/// * primary — gold gradient, gold glow, near-black label.
+/// * primary — flat gold, near-black label (no gradient, no glow: the plain
+///   fill reads cleaner and more hand-made).
 /// * secondary — elevated surface with hairline border.
 /// * ghost — no background, gold label (text-link style).
 /// * danger — translucent red, light-red label (AA).
 ///
 /// Disabled (`onPressed == null`) looks clearly muted: surfaceElevated
-/// background, textSecondary label, no glow. The disabled <-> enabled change
+/// background, textSecondary label. The disabled <-> enabled change
 /// animates (nice for gates such as "watch the full video first").
 /// While [loading] the variant look is kept, a spinner replaces the label and
 /// taps are ignored.
@@ -56,8 +57,6 @@ class AppButton extends StatelessWidget {
   /// Overrides the screen-reader label (defaults to [label]).
   final String? semanticLabel;
 
-  static LinearGradient _solid(Color c) => LinearGradient(colors: [c, c]);
-
   @override
   Widget build(BuildContext context) {
     final disabled = onPressed == null;
@@ -65,36 +64,29 @@ class AppButton extends StatelessWidget {
     final height = small ? AppLayout.minTapTarget : 54.0;
     final radius = BorderRadius.circular(small ? 14 : AppRadii.md);
 
-    final Gradient gradient;
+    final Color fill;
     final Color fg;
     Border? border;
-    List<BoxShadow> shadows = const [];
 
     if (disabled) {
       final ghost = variant == AppButtonVariant.ghost;
-      gradient = _solid(ghost ? Colors.transparent : AppColors.surfaceElevated);
+      fill = ghost ? Colors.transparent : AppColors.surfaceElevated;
       fg = ghost ? AppColors.textTertiary : AppColors.textSecondary;
       border = ghost ? null : Border.all(color: AppColors.border);
     } else {
       switch (variant) {
         case AppButtonVariant.primary:
-          gradient = AppGradients.gold;
+          fill = AppColors.primary;
           fg = AppColors.onPrimary;
-          shadows = AppShadows.glow(
-            AppColors.primary,
-            strength: small ? 0.6 : 0.9,
-            blur: small ? 14 : 22,
-            offset: Offset(0, small ? 4 : 8),
-          );
         case AppButtonVariant.secondary:
-          gradient = _solid(AppColors.surfaceElevated);
+          fill = AppColors.surfaceElevated;
           fg = AppColors.textPrimary;
           border = Border.all(color: AppColors.borderStrong);
         case AppButtonVariant.ghost:
-          gradient = _solid(Colors.transparent);
+          fill = Colors.transparent;
           fg = AppColors.primary;
         case AppButtonVariant.danger:
-          gradient = _solid(AppColors.danger.withValues(alpha: 0.12));
+          fill = AppColors.danger.withValues(alpha: 0.12);
           fg = AppColors.dangerLight; // AA on the red tint
           border = Border.all(color: AppColors.danger.withValues(alpha: 0.35));
       }
@@ -140,10 +132,9 @@ class AppButton extends StatelessWidget {
       constraints: BoxConstraints(minWidth: height),
       padding: EdgeInsets.symmetric(horizontal: small ? 16 : 22),
       decoration: BoxDecoration(
-        gradient: gradient,
+        color: fill,
         borderRadius: radius,
         border: border,
-        boxShadow: shadows,
       ),
       child: Center(
         widthFactor: expand ? null : 1.0,

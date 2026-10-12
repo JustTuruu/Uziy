@@ -89,6 +89,12 @@ afterEach(() => {
   router.replace.mockReset();
 });
 
+/** Opens the custom campaign dropdown and clicks the option with this title. */
+async function pickCampaign(title: string) {
+  await userEvent.click(screen.getByRole("combobox", { name: "Судалгаа сонгох" }));
+  await userEvent.click(screen.getByRole("option", { name: title }));
+}
+
 describe("Company analytics page", () => {
   it("sends a visitor without a token to login", () => {
     vi.spyOn(auth, "getToken").mockReturnValue(null);
@@ -210,7 +216,7 @@ describe("Company analytics page", () => {
     render(<AnalyticsPage />);
     await screen.findByText("Нийт хариулт");
 
-    await userEvent.selectOptions(screen.getByLabelText("Судалгаа сонгох"), "1");
+    await pickCampaign("Шинэ 5G багц");
 
     expect(await screen.findByText("Таалагдсан уу?")).toBeInTheDocument();
     expect(get).toHaveBeenLastCalledWith({ days: 30, campaignId: 1 });
@@ -304,7 +310,7 @@ describe("Company analytics page", () => {
     render(<AnalyticsPage />);
     await screen.findByText("Нийт хариулт");
 
-    await userEvent.selectOptions(screen.getByLabelText("Судалгаа сонгох"), "1");
+    await pickCampaign("Шинэ 5G багц");
 
     expect(await screen.findByText("Хэн ямар хариулт өгсөн бэ")).toBeInTheDocument();
     expect(screen.getByRole("table", { name: "Таалагдсан уу?" })).toHaveTextContent("100%");

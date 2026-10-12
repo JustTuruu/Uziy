@@ -1,4 +1,20 @@
-enum QuestionType { singleChoice, multipleChoice, text }
+enum QuestionType {
+  singleChoice,
+  multipleChoice,
+  text,
+
+  /// 3-point Муу / Дунд / Сайн mood slider; answered with one of its labels.
+  rating;
+
+  /// The backend's wire names (`SINGLE_CHOICE`, `MULTI_CHOICE`, ...); an
+  /// unknown type falls back to single choice so the survey still opens.
+  static QuestionType fromWire(String wire) => switch (wire.toUpperCase()) {
+        'MULTI_CHOICE' || 'MULTIPLE_CHOICE' => multipleChoice,
+        'TEXT' => text,
+        'RATING' => rating,
+        _ => singleChoice,
+      };
+}
 
 class SurveyQuestion {
   final int id;
@@ -24,13 +40,7 @@ class SurveyQuestion {
       // scoped to one campaign), so tolerate its absence.
       campaignId: (json['campaign_id'] ?? json['campaignId']) as int? ?? 0,
       prompt: json['prompt'] as String,
-      type: QuestionType.values.firstWhere(
-        // Backend sends SINGLE_CHOICE / MULTIPLE_CHOICE / TEXT.
-        (t) =>
-            t.name.toUpperCase() ==
-            (json['type'] as String).replaceAll('_', '').toUpperCase(),
-        orElse: () => QuestionType.singleChoice,
-      ),
+      type: QuestionType.fromWire(json['type'] as String),
       options: (json['options'] as List?)?.cast<String>() ?? const [],
       required: json['required'] as bool? ?? true,
     );

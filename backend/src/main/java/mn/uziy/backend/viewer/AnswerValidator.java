@@ -31,6 +31,7 @@ public class AnswerValidator {
     private static final String TEXT = "TEXT";
     private static final String SINGLE_CHOICE = "SINGLE_CHOICE";
     private static final String MULTI_CHOICE = "MULTI_CHOICE";
+    private static final String RATING = "RATING";
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
@@ -87,7 +88,8 @@ public class AnswerValidator {
     private static void checkShape(SurveyQuestionEntity q, JsonNode node) {
         switch (q.getQType()) {
             case TEXT -> require(node.isString());
-            case SINGLE_CHOICE -> {
+            // A rating is one pick from its stored scale, like a single choice.
+            case SINGLE_CHOICE, RATING -> {
                 require(node.isString());
                 require(node.asString().isEmpty() || optionsOf(q).contains(node.asString()));
             }

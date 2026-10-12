@@ -49,7 +49,7 @@ public class CampaignFactory {
             e.setPosition(position++);
             e.setPrompt(q.prompt());
             e.setQType(q.type());
-            e.setOptionsJson(optionsJson(q.options()));
+            e.setOptionsJson(optionsJson(optionsOf(q)));
             e.setRequired(q.required());
             result.add(e);
         }
@@ -69,6 +69,11 @@ public class CampaignFactory {
         entity.setCreatedAt(paidAt);
         entity.setPaidAt(paidAt);
         return entity;
+    }
+
+    /** A rating question always offers the fixed scale, whatever the request listed. */
+    private static List<String> optionsOf(CreateCampaignReq.NewQuestion q) {
+        return RatingScale.TYPE.equals(q.type()) ? RatingScale.LABELS : q.options();
     }
 
     private static String optionsJson(List<String> options) {

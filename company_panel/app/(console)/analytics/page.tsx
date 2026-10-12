@@ -31,12 +31,7 @@ import {
   hourlyPoints,
   peakDay,
 } from "@/lib/analytics";
-import {
-  ApiError,
-  analyticsApi,
-  auth,
-  type AnalyticsReport,
-} from "@/lib/api";
+import { ApiError, analyticsApi, auth, type AnalyticsReport } from "@/lib/api";
 import { formatNumber, formatTugrik } from "@/lib/utils";
 
 const ALL_CAMPAIGNS = "";
@@ -52,7 +47,10 @@ export default function AnalyticsPage() {
   const [days, setDays] = useState<string>(DEFAULT_DAYS);
   const [campaignId, setCampaignId] = useState<string>(ALL_CAMPAIGNS);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
-  const [failure, setFailure] = useState<{ key: string; message: string } | null>(null);
+  const [failure, setFailure] = useState<{
+    key: string;
+    message: string;
+  } | null>(null);
   const [showTable, setShowTable] = useState(false);
 
   const key = `${days}|${campaignId}`;
@@ -66,7 +64,8 @@ export default function AnalyticsPage() {
     analyticsApi
       .get({
         days: Number(days),
-        campaignId: campaignId === ALL_CAMPAIGNS ? undefined : Number(campaignId),
+        campaignId:
+          campaignId === ALL_CAMPAIGNS ? undefined : Number(campaignId),
       })
       .then((report) => {
         if (!cancelled) setLoaded({ key, report });
@@ -95,26 +94,27 @@ export default function AnalyticsPage() {
   const error = failure?.key === key ? failure.message : null;
   const selected =
     report?.campaigns.find((c) => String(c.campaignId) === campaignId) ?? null;
+  const campaignOptions = [
+    { value: ALL_CAMPAIGNS, label: "Бүх судалгаа" },
+    ...(report?.campaigns ?? []).map((c) => ({
+      value: String(c.campaignId),
+      label: c.title,
+    })),
+  ];
 
   return (
     <>
       <PageHeader
-        title="Аналитик"
+        title="Тайлан"
         description="Судалгааны гүйцэтгэлийн харьцуулсан тайлан"
         actions={
           <div className="flex flex-wrap items-center gap-3">
             <Select
               aria-label="Судалгаа сонгох"
+              options={campaignOptions}
               value={campaignId}
-              onChange={(e) => setCampaignId(e.target.value)}
-            >
-              <option value={ALL_CAMPAIGNS}>Бүх судалгаа</option>
-              {report?.campaigns.map((c) => (
-                <option key={c.campaignId} value={c.campaignId}>
-                  {c.title}
-                </option>
-              ))}
-            </Select>
+              onValueChange={setCampaignId}
+            />
             <SegmentedControl
               label="Хугацаа"
               options={DAY_OPTIONS}
@@ -156,7 +156,11 @@ export default function AnalyticsPage() {
       )}
 
       {report && report.campaigns.length > 0 && (
-        <div className={loading ? "opacity-60 transition-opacity" : "transition-opacity"}>
+        <div
+          className={
+            loading ? "opacity-60 transition-opacity" : "transition-opacity"
+          }
+        >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="Нийт хариулт"
@@ -187,7 +191,10 @@ export default function AnalyticsPage() {
 
           <div className="mt-8">
             <InsightsCard
-              insights={buildInsights(report, selected ? selected.campaignId : null)}
+              insights={buildInsights(
+                report,
+                selected ? selected.campaignId : null,
+              )}
             />
           </div>
 
@@ -265,11 +272,19 @@ export default function AnalyticsPage() {
                       <tr className="border-b border-[var(--color-divider)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
                         <th className="px-5 py-3 font-semibold">Судалгаа</th>
                         <th className="px-5 py-3 font-semibold">Төлөв</th>
-                        <th className="px-5 py-3 text-right font-semibold">Хариулт</th>
+                        <th className="px-5 py-3 text-right font-semibold">
+                          Хариулт
+                        </th>
                         <th className="px-5 py-3 font-semibold">Хүрэлт</th>
-                        <th className="px-5 py-3 text-right font-semibold">Зарцуулсан</th>
-                        <th className="px-5 py-3 text-right font-semibold">Өртөг / хариулт</th>
-                        <th className="px-5 py-3 text-right font-semibold">Бюджет дуусах</th>
+                        <th className="px-5 py-3 text-right font-semibold">
+                          Зарцуулсан
+                        </th>
+                        <th className="px-5 py-3 text-right font-semibold">
+                          Өртөг / хариулт
+                        </th>
+                        <th className="px-5 py-3 text-right font-semibold">
+                          Бюджет дуусах
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -281,7 +296,9 @@ export default function AnalyticsPage() {
                           <td className="px-5 py-4">
                             <button
                               type="button"
-                              onClick={() => setCampaignId(String(c.campaignId))}
+                              onClick={() =>
+                                setCampaignId(String(c.campaignId))
+                              }
                               className="text-left font-semibold text-[var(--color-text-primary)] hover:text-[var(--color-primary)]"
                             >
                               {c.title}
@@ -314,11 +331,10 @@ export default function AnalyticsPage() {
                               : formatTugrik(c.costPerResponse)}
                           </td>
                           <td className="px-5 py-4 text-right text-xs text-[var(--color-text-secondary)]">
-                            {c.daysLeft === null
-                              ? "—"
-                              : `~${c.daysLeft} хоног`}
+                            {c.daysLeft === null ? "—" : `~${c.daysLeft} хоног`}
                             <div className="text-[var(--color-text-muted)]">
-                              {formatNumber(c.remainingResponses)} хариулт үлдсэн
+                              {formatNumber(c.remainingResponses)} хариулт
+                              үлдсэн
                             </div>
                           </td>
                         </tr>
@@ -349,8 +365,14 @@ export default function AnalyticsPage() {
                       slices={report.audience.gender}
                       formatLabel={genderLabel}
                     />
-                    <DistributionBars title="Нас" slices={report.audience.ageBands} />
-                    <DistributionBars title="Хот" slices={report.audience.cities} />
+                    <DistributionBars
+                      title="Нас"
+                      slices={report.audience.ageBands}
+                    />
+                    <DistributionBars
+                      title="Хот"
+                      slices={report.audience.cities}
+                    />
                   </div>
                 )}
               </CardBody>

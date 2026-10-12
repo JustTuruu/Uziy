@@ -5,7 +5,8 @@ export { IconButton } from "./icon-button";
 export { SegmentedControl, type SegmentOption } from "./segmented-control";
 export { Card, CardHeader, CardBody } from "./card";
 export { Badge, type BadgeTone } from "./badge";
-export { Input, NumericInput, Textarea, Select } from "./input";
+export { Input, NumericInput, Textarea } from "./input";
+export { Select, type SelectOption } from "./select";
 export { PageHeader } from "./page-header";
 export { StatCard } from "./stat-card";
 export {

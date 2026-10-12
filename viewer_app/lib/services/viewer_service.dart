@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/campaign.dart';
 import '../models/survey_question.dart';
@@ -105,7 +108,7 @@ class ViewerService {
             'questionId': e.key,
             // Backend column is JSONB. Send answers as JSON-encoded strings
             // (a string, a JSON array of strings, or a JSON object).
-            'answerJson': _encodeAnswer(e.value),
+            'answerJson': encodeAnswer(e.value),
           };
         }).toList(),
       };
@@ -180,15 +183,12 @@ class ViewerService {
     }
   }
 
-  String _encodeAnswer(dynamic v) {
-    if (v is String) return '"${v.replaceAll('"', r'\"')}"';
-    if (v is List) {
-      final parts =
-          v.map((x) => '"${x.toString().replaceAll('"', r'\"')}"').join(',');
-      return '[$parts]';
-    }
-    return v.toString();
-  }
+  /// An answer as the JSON text the backend stores: a string, or an array of
+  /// strings. A real encoder, so new lines, tabs, quotes and backslashes in a
+  /// free-text answer are escaped instead of making the JSON invalid.
+  @visibleForTesting
+  static String encodeAnswer(dynamic v) =>
+      jsonEncode(v is List ? v.map((x) => x.toString()).toList() : v);
 
   /// The shared Dio accepts every status below 500 (see ApiService), so a
   /// 401/403/404/409 comes back as a normal response. Call this right after

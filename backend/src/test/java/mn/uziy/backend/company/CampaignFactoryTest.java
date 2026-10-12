@@ -74,6 +74,17 @@ class CampaignFactoryTest {
     }
 
     @Test
+    void aRatingQuestionAlwaysOffersTheFixedScaleWhateverTheRequestListed() {
+        List<SurveyQuestionEntity> qs = factory.newQuestions(7L, List.of(
+                new CreateCampaignReq.NewQuestion("Үйлчилгээ?", RatingScale.TYPE, List.of("X", "Y"), true),
+                new CreateCampaignReq.NewQuestion("Бусад?", RatingScale.TYPE)));
+
+        assertThat(qs).extracting(SurveyQuestionEntity::getOptionsJson)
+                .containsOnly("[\"Муу\", \"Дунд\", \"Сайн\"]");
+        assertThat(qs.get(0).getQType()).isEqualTo("RATING");
+    }
+
+    @Test
     void newPaidPaymentCopiesTheCampaignBudgetAndMarksPaid() {
         OffsetDateTime at = OffsetDateTime.of(2026, 10, 1, 1, 2, 3, 0, ZoneOffset.UTC);
         CampaignPaymentEntity p = factory.newPaidPayment(sampleCampaign(42L), PaymentProvider.SIMULATED, "UZ-1", at);

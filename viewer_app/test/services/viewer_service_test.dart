@@ -166,4 +166,33 @@ void main() {
       expect(e.statusCode, 500);
     });
   });
+
+  group('encodeAnswer', () {
+    // The backend parses every answer as JSON; each result must round-trip.
+    dynamic roundTrip(dynamic answer) =>
+        jsonDecode(ViewerService.encodeAnswer(answer));
+
+    test('a plain answer is a JSON string', () {
+      expect(ViewerService.encodeAnswer('Тийм'), '"Тийм"');
+    });
+
+    test('a choice list is a JSON array of strings', () {
+      expect(roundTrip(['Дуудлага', 'Мессеж']), ['Дуудлага', 'Мессеж']);
+      expect(ViewerService.encodeAnswer(<String>[]), '[]');
+    });
+
+    test('options with commas survive', () {
+      expect(roundTrip('10,000₮-аас бага'), '10,000₮-аас бага');
+      expect(roundTrip(['Видео, хөгжим үзэх, сонсох']),
+          ['Видео, хөгжим үзэх, сонсох']);
+    });
+
+    test('free text with new lines, tabs, quotes and backslashes stays valid',
+        () {
+      // Regression: a new line used to produce invalid JSON, so the backend
+      // answered "Хариулт буруу байна".
+      const text = 'нэг\nхоёр\tгурав "ишлэл" a\\b';
+      expect(roundTrip(text), text);
+    });
+  });
 }

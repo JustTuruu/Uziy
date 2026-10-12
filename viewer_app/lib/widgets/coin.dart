@@ -128,7 +128,7 @@ class _CoinPainter extends CustomPainter {
 
 enum RewardChipSize { small, medium, large }
 
-/// Gold pill with a coin and the signed reward: `[coin] +700 ₮`.
+/// Flat gold pill with a coin and the signed reward: `[coin] +700 ₮`.
 class RewardChip extends StatelessWidget {
   const RewardChip({
     super.key,
@@ -166,9 +166,8 @@ class RewardChip extends StatelessWidget {
           right: height * 0.42,
         ),
         decoration: BoxDecoration(
-          gradient: AppGradients.gold,
+          color: AppColors.primary,
           borderRadius: AppRadii.brPill,
-          border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
           boxShadow: glow
               ? AppShadows.glow(
                   AppColors.primary,

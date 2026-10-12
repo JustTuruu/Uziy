@@ -170,6 +170,28 @@ describe("New campaign wizard — pricing and payment", () => {
     expect(await screen.findByText(formatTugrik(999_570))).toBeInTheDocument();
   });
 
+  it("sends a rating question with no typed options", async () => {
+    vi.spyOn(platformSettingsApi, "get").mockResolvedValue(settings);
+    const create = vi.spyOn(companyApi, "create").mockResolvedValue(serverCampaign());
+
+    await toBudgetStep();
+    await userEvent.click(next()); // → survey
+    await userEvent.type(screen.getByLabelText("Асуулт 1"), "Үйлчилгээ ямар байсан бэ?");
+    await userEvent.click(screen.getByRole("combobox", { name: "Хариултын төрөл" }));
+    await userEvent.click(screen.getByRole("option", { name: /Үнэлгээ/ }));
+
+    expect(screen.queryByPlaceholderText("Хариулт 1")).not.toBeInTheDocument();
+    expect(screen.getByText(/Муу · Дунд · Сайн гэсэн 3 төлөв/)).toBeInTheDocument();
+
+    await userEvent.click(next()); // → review, no '2 хариулт' error
+    await userEvent.click(screen.getByRole("button", { name: "Үүсгэх" }));
+
+    const body = create.mock.calls[0][0] as CreateCampaignBody;
+    expect(body.questions).toEqual([
+      { prompt: "Үйлчилгээ ямар байсан бэ?", type: "RATING", options: [], required: true },
+    ]);
+  });
+
   it("blocks 'Дараах' on the budget step while pricing has an error", async () => {
     vi.spyOn(platformSettingsApi, "get").mockResolvedValue(settings);
     await toBudgetStep();

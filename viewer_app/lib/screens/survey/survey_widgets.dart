@@ -38,32 +38,105 @@ String optionLetter(int index) {
   return parts.reversed.join();
 }
 
-/// Whether the viewer may move past [question] with [answer].
-///
-/// Optional questions can always be skipped. A required question needs a
-/// non-null answer that is not a blank string and not an empty list.
-bool canAdvance(SurveyQuestion question, dynamic answer) {
-  if (!question.required) return true;
+/// Whether [answer] is a real answer: non-null, not a blank string and not
+/// an empty list.
+bool hasAnswer(dynamic answer) {
   if (answer == null) return false;
   if (answer is String && answer.trim().isEmpty) return false;
   if (answer is List && answer.isEmpty) return false;
   return true;
 }
 
+/// Whether the viewer may move past [question] with [answer].
+///
+/// Optional questions can always be skipped; a required one needs a real
+/// answer ([hasAnswer]).
+bool canAdvance(SurveyQuestion question, dynamic answer) =>
+    !question.required || hasAnswer(answer);
+
 /// Header label, e.g. 'Асуулт 2/3' for [index] 1 of [total] 3.
 String questionProgressLabel(int index, int total) =>
     'Асуулт ${index + 1}/$total';
+
+const String kLastQuestionLabel = 'Сүүлийн асуулт';
+const String kOnlyQuestionLabel = 'Ганцхан асуулт';
+
+/// How many questions come after the one at [index]:
+/// 'Дахиад 2 асуулт үлдлээ', then 'Сүүлийн асуулт' on the last one
+/// ('Ганцхан асуулт' when the survey has only one).
+String questionsLeftLabel(int index, int total) {
+  if (total <= 1) return kOnlyQuestionLabel;
+  final left = total - index - 1;
+  return left <= 0 ? kLastQuestionLabel : 'Дахиад $left асуулт үлдлээ';
+}
 
 /// Short instruction shown under the prompt for each answer type.
 String answerHintFor(QuestionType type) => switch (type) {
       QuestionType.singleChoice => 'Нэг хариулт сонгоно уу',
       QuestionType.multipleChoice => 'Хэд хэдийг сонгож болно',
       QuestionType.text => 'Өөрийн үгээр бичнэ үү',
+      QuestionType.rating => 'Слайдераа гулсуулж үнэлнэ үү',
     };
 
 /// Counter under the free-text answer: '12 тэмдэгт'. Counts user-perceived
 /// characters (grapheme clusters), not UTF-16 code units.
 String characterCountLabel(String text) => '${text.characters.length} тэмдэгт';
+
+// ---------------------------------------------------------------------------
+// Progress
+// ---------------------------------------------------------------------------
+
+/// Where the viewer is in the survey: one thick segment per question and,
+/// under it, how many questions are left.
+///
+/// Finished questions are full, later ones empty. The current one is only
+/// part-filled ([startedFill]) until it has an answer, then it fills up, so
+/// answering visibly moves the bar before 'Дараах' is even tapped.
+class SurveyProgress extends StatelessWidget {
+  const SurveyProgress({
+    super.key,
+    required this.index,
+    required this.total,
+    required this.answered,
+  });
+
+  static const double barHeight = 6;
+  static const double barGap = AppSpacing.sm;
+
+  /// Share of the current segment shown while its question is unanswered.
+  static const double startedFill = 0.3;
+
+  /// 0-based index of the question on screen.
+  final int index;
+  final int total;
+
+  /// Whether the question on screen already has an answer.
+  final bool answered;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SegmentedProgress(
+          total: total,
+          current: index,
+          height: barHeight,
+          gap: barGap,
+          currentFill: answered ? 1 : startedFill,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          questionsLeftLabel(index, total),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTextStyles.caption,
+        ),
+      ],
+    );
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Question heading

@@ -142,8 +142,9 @@ void main() {
         _in<AnimatedContainer>(find.byType(AppButton)),
       );
       final deco = box.decoration! as BoxDecoration;
-      expect(deco.gradient, isNot(AppGradients.gold));
-      expect(deco.boxShadow, isEmpty);
+      expect(deco.color, AppColors.surfaceElevated);
+      expect(deco.gradient, isNull);
+      expect(deco.boxShadow, isNull);
 
       expect(
         tester.getSemantics(find.byType(Pressable)),
@@ -157,15 +158,16 @@ void main() {
       handle.dispose();
     });
 
-    testWidgets('enabled primary uses the gold gradient + glow',
+    testWidgets('enabled primary is flat gold: no gradient, no glow',
         (tester) async {
       await pumpKit(tester, AppButton(label: 'Үргэлжлүүлэх', onPressed: () {}));
       final box = tester.widget<AnimatedContainer>(
         _in<AnimatedContainer>(find.byType(AppButton)),
       );
       final deco = box.decoration! as BoxDecoration;
-      expect(deco.gradient, AppGradients.gold);
-      expect(deco.boxShadow, isNotEmpty);
+      expect(deco.color, AppColors.primary);
+      expect(deco.gradient, isNull);
+      expect(deco.boxShadow, isNull);
     });
 
     testWidgets('heights: 54 normal, 44 small; expand=false hugs content',
@@ -473,7 +475,7 @@ void main() {
       handle.dispose();
     });
 
-    testWidgets('colors completed / active / upcoming segments',
+    testWidgets('fills completed / active segments and leaves the rest empty',
         (tester) async {
       await pumpKit(
         tester,
@@ -495,7 +497,71 @@ void main() {
           .toList();
       expect(colors[0], AppColors.success);
       expect(colors[1], AppColors.primary);
-      expect(colors[2], isNot(AppColors.primary));
+
+      final fills = tester
+          .widgetList<AnimatedFractionallySizedBox>(
+            _in<AnimatedFractionallySizedBox>(find.byType(SegmentedProgress)),
+          )
+          .map((f) => f.widthFactor)
+          .toList();
+      expect(fills, [1, 1, 0]);
+    });
+
+    testWidgets('currentFill part-fills only the active segment',
+        (tester) async {
+      await pumpKit(
+        tester,
+        const SizedBox(
+          width: 320,
+          child: SegmentedProgress(
+            total: 4,
+            current: 1,
+            gap: 0,
+            currentFill: 0.25,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      // 4 segments of 80pt each: full, a quarter, empty, empty.
+      final widths = tester
+          .widgetList<AnimatedContainer>(
+            _in<AnimatedContainer>(find.byType(SegmentedProgress)),
+          )
+          .map((c) => tester.getSize(find.byWidget(c)).width)
+          .toList();
+      expect(widths, [80, 20, 0, 0]);
+    });
+
+    testWidgets('the active fill grows when currentFill goes up',
+        (tester) async {
+      Widget bar(double fill) => SizedBox(
+            width: 300,
+            child: SegmentedProgress(
+              total: 1,
+              current: 0,
+              currentFill: fill,
+            ),
+          );
+      double width() => tester
+          .getSize(_in<AnimatedContainer>(find.byType(SegmentedProgress)))
+          .width;
+
+      await pumpKit(tester, bar(0.3));
+      await tester.pumpAndSettle();
+      expect(width(), moreOrLessEquals(90));
+
+      await pumpKit(tester, bar(1));
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(width(), allOf(greaterThan(90), lessThan(300)));
+      await tester.pumpAndSettle();
+      expect(width(), moreOrLessEquals(300));
+    });
+
+    test('fillOf: done 1, active currentFill, upcoming 0', () {
+      const bar = SegmentedProgress(total: 3, current: 1, currentFill: 0.4);
+      expect(bar.fillOf(0), 1);
+      expect(bar.fillOf(1), 0.4);
+      expect(bar.fillOf(2), 0);
     });
 
     testWidgets('total 0 renders no segments', (tester) async {

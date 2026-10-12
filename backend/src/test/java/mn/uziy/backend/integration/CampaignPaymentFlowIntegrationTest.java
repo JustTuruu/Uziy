@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
@@ -122,6 +123,25 @@ class CampaignPaymentFlowIntegrationTest {
 
     private static JwtPrincipal principal(long userId, Role role) {
         return new JwtPrincipal(userId, role);
+    }
+
+    @Test
+    void aRatingQuestionIsStoredWithTheFixedScale() {
+        CreateCampaignReq req = new CreateCampaignReq(
+                "Үнэлгээний тест", "https://cdn.example/v.m3u8", true,
+                30, TargetGender.ALL, 18, 45, "Улаанбаатар",
+                1_000_000.0, 1_000, null,
+                List.of(new CreateCampaignReq.NewQuestion("Үйлчилгээ ямар байсан бэ?", "RATING")));
+
+        CampaignDto created = createAsMobiCom(req);
+
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT q_type, options_json::text AS options FROM survey_questions WHERE campaign_id = ?",
+                created.id());
+        assertThat(rows).singleElement().satisfies(row -> {
+            assertThat(row.get("q_type")).isEqualTo("RATING");
+            assertThat(row.get("options").toString()).contains("Муу", "Дунд", "Сайн");
+        });
     }
 
     @AfterEach

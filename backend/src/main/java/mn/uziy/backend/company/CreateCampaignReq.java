@@ -65,7 +65,7 @@ public record CreateCampaignReq(
     }
 
     /**
-     * @param type SINGLE_CHOICE | MULTI_CHOICE | TEXT
+     * @param type SINGLE_CHOICE | MULTI_CHOICE | TEXT | RATING (options are ignored: {@link RatingScale})
      */
     public record NewQuestion(
             @NotNull @Size(max = MAX_PROMPT) String prompt,

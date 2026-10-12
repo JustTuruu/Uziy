@@ -63,7 +63,8 @@ Future<void> _pump(
 }
 
 Future<void> _fillAndSubmit(WidgetTester tester) async {
-  final fields = find.byType(TextFormField);
+  // Phone (BigPhoneField's hidden input), then password.
+  final fields = find.byType(TextField);
   await tester.enterText(fields.at(0), '88112233');
   await tester.enterText(fields.at(1), 'password1');
   await tester.tap(find.widgetWithText(AppButton, 'Нэвтрэх'));

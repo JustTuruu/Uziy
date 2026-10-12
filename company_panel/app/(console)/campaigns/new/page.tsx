@@ -42,7 +42,9 @@ import {
   platformSettingsApi,
   type Campaign,
   type PlatformSettings,
+  type QuestionType,
 } from "@/lib/api";
+import { RATING_LABELS, takesOptions } from "@/lib/survey";
 import { pricingErrorMessage, pricingRequestFields } from "@/lib/pricing";
 import {
   cn,
@@ -81,10 +83,22 @@ const cities = [
   "Өлгий",
 ];
 
+const cityOptions = cities.map((c) => ({
+  value: c,
+  label: c === "ALL" ? "Бүх хот" : c,
+}));
+
+const QUESTION_TYPE_OPTIONS = [
+  { value: "SINGLE_CHOICE", label: "Ганц сонголт" },
+  { value: "MULTI_CHOICE", label: "Олон сонголт" },
+  { value: "TEXT", label: "Чөлөөт текст" },
+  { value: "RATING", label: "Үнэлгээ (Муу · Дунд · Сайн)" },
+];
+
 interface SurveyQ {
   id: number;
   prompt: string;
-  type: "SINGLE_CHOICE" | "MULTI_CHOICE" | "TEXT";
+  type: QuestionType;
   options: string[];
 }
 
@@ -299,7 +313,7 @@ export default function NewCampaignPage() {
         setSubmitError(`Асуулт ${i + 1}: асуултын текстийг бөглөнө үү`);
         return;
       }
-      if (q.type !== "TEXT") {
+      if (takesOptions(q.type)) {
         const filled = q.options.filter((o) => o.trim().length > 0);
         if (filled.length < 2) {
           setSubmitError(
@@ -333,7 +347,7 @@ export default function NewCampaignPage() {
         questions: questions.map((q) => ({
           prompt: q.prompt,
           type: q.type,
-          options: q.type === "TEXT" ? [] : q.options.filter(Boolean),
+          options: takesOptions(q.type) ? q.options.filter(Boolean) : [],
           required: true,
         })),
       });
@@ -519,15 +533,10 @@ export default function NewCampaignPage() {
 
               <Select
                 label="Хот"
+                options={cityOptions}
                 value={city}
-                onChange={(e) => setCity(e.target.value)}
-              >
-                {cities.map((c) => (
-                  <option key={c} value={c}>
-                    {c === "ALL" ? "Бүх хот" : c}
-                  </option>
-                ))}
-              </Select>
+                onValueChange={setCity}
+              />
             </CardBody>
           </Card>
         )}
@@ -627,26 +636,26 @@ export default function NewCampaignPage() {
                       />
                       <Select
                         label="Хариултын төрөл"
+                        options={QUESTION_TYPE_OPTIONS}
                         value={q.type}
-                        onChange={(e) =>
+                        onValueChange={(type) =>
                           setQuestions((qs) =>
                             qs.map((x) =>
                               x.id === q.id
-                                ? {
-                                    ...x,
-                                    type: e.target.value as SurveyQ["type"],
-                                  }
+                                ? { ...x, type: type as SurveyQ["type"] }
                                 : x,
                             ),
                           )
                         }
-                      >
-                        <option value="SINGLE_CHOICE">Ганц сонголт</option>
-                        <option value="MULTI_CHOICE">Олон сонголт</option>
-                        <option value="TEXT">Чөлөөт текст</option>
-                      </Select>
+                      />
 
-                      {q.type !== "TEXT" && (
+                      {q.type === "RATING" && (
+                        <p className="rounded-lg border border-[var(--color-divider)] bg-[var(--color-surface)] p-3 text-xs text-[var(--color-text-secondary)]">
+                          {`Үзэгч нүүр дүрстэй слайдераар ${RATING_LABELS.join(" · ")} гэсэн 3 төлөвөөс сонгоно. Хариултыг тусад нь бичих шаардлагагүй.`}
+                        </p>
+                      )}
+
+                      {takesOptions(q.type) && (
                         <div className="rounded-lg border border-[var(--color-divider)] bg-[var(--color-surface)] p-3">
                           <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
                             Хариултын сонголтууд

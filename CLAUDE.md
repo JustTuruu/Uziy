@@ -110,7 +110,7 @@ asked, say so and propose the compliant way instead of silently bending it.
 
 1. **One UI kit.** All shared look-and-feel lives in `packages/ui` (`@uziy/ui`):
    `Button`, `IconButton`, `SegmentedControl`, `Card*`, `Badge`, `Input`,
-   `NumericInput`, `Textarea`, `Select`, `PageHeader`, `StatCard`, `Sidebar`,
+   `NumericInput`, `Textarea`, `Select` (custom listbox — never a native `<select>`, its popup ignores the theme; API `options` + `onValueChange`), `PageHeader`, `StatCard`, `Sidebar`,
    `SidebarUser`, `Topbar`, `ContentShell`, `PageContainer`, `cn`, plus tokens
    in `src/theme.css`. If both panels need the same kind of button/control,
    build it THERE once (with a test) and import it — never hand-write a raw
@@ -183,7 +183,8 @@ UI is in Cyrillic Mongolian; currency is ₮ (tögrög).
 rewarded-video-platform/
 ├── CLAUDE.md                          ← you are here
 ├── docs/
-│   └── SPEC.md                        ← verbatim original product brief
+│   ├── SPEC.md                        ← verbatim original product brief
+│   └── FEATURE_REVIEW.md              ← what is (not) worth building next, and why (2026-10-12)
 └── viewer_app/                        ← Flutter viewer app (started this session)
     ├── pubspec.yaml
     └── lib/
@@ -496,6 +497,35 @@ Hero + 4 steps + benefits + FAQ (native `<details>`) + a 'Компаниудад
 - Run: `pnpm -C landing dev`. Checks: `tsc --noEmit`, `eslint`, `vitest run`, `build` all clean.
 - Real store URLs, app screenshots in the phone mock, and a privacy/terms page are still to do.
 
+### Rating question — mood slider (added 2026-10-12)
+
+A 4th question type `RATING`: the viewer drags a thumb across **Муу / Дунд / Сайн** and a face reacts.
+- **Contract**: `type: "RATING"`; the answer is one of the three label strings (stored/validated exactly like a
+  single choice). The company sends **no options** — `CampaignFactory` always stores `RatingScale.LABELS`
+  (`company/RatingScale.java`), so analytics (`AnswerCounter`/`SegmentCounter`) count it with no special case.
+  `AnswerValidator` treats `RATING` as a choice. DB: `V8__rating_question_type.sql` widens the `q_type` CHECK.
+- **Company panel**: builder offers 'Үнэлгээ (Муу · Дунд · Сайн)' (no options editor, explanatory note);
+  `lib/survey.ts` `takesOptions(type)` decides which types need typed answers; `QuestionType` is exported from `lib/api.ts`.
+- **Flutter** (`screens/survey/`): `mood_logic.dart` (pure: `moodShapeAt`, `moodTintAt`, `moodPanelAt`, `moodIndexFor`, word
+  carousel maths, `MoodColors` — coral → brand gold → mint) + `mood_slider.dart` (`MoodSlider`,
+  `MoodFacePainter`, `MoodThumbPainter`, `MoodWordCarousel`). Only the SHAPES change while dragging: eyes and
+  mouth never move (circles → flat pills → big circles; frown → flat → smile). The panel is the app's dark surface
+  (only a 10 % wash of the mood, `kMoodPanelWash`); the mood colour is used for the face, the word, the travelled
+  track and the thumb — never a big bright background. The big word is a carousel that slides sideways with the thumb. Release snaps with a bounce + haptic per stop; tap a
+  label/track jumps; semantics slider (increase/decrease); reduce-motion jumps. The thumb rests on Дунд and
+  nudges twice until touched — `onChanged` only fires from real input, so an untouched slider = unanswered.
+  A plain tap also emits a drag *cancel* — `_dragging` guards it (regression-tested).
+- **Flat, not gradient (owner, 2026-10-12)**: `AppButton` primary is a flat `AppColors.primary` fill (no gradient, no glow)
+  and `RewardChip` is flat gold — plain fills read as hand-made, gradients as generated. Other `AppGradients.gold`
+  uses (coin, wallet card, avatars) are still there; flatten them the same way if the owner asks.
+- **Never hand-roll JSON** (bit us twice, 2026-10-12): `QuestionMapper.parseOptions` split options on commas, so
+  'Тийм, сүүлийн сард' became two options and every submit answered 'Хариулт буруу байна'; the app's answer encoder
+  only escaped quotes, so a text answer with Enter/Tab was invalid JSON. Both now use a real JSON codec
+  (Jackson / `jsonEncode`, `ViewerService.encodeAnswer`). Remaining hand-rolled spot: `CampaignFactory.optionsJson`
+  escapes only quotes (a backslash in a company-typed option would break the insert) — switch it to Jackson next time.
+- **Fixed on the way**: the app's `QuestionType` parser did not know the backend's real `MULTI_CHOICE`, so
+  multiple-choice questions silently opened as single choice. `QuestionType.fromWire` now maps the wire names.
+
 ### Company analytics (added 2026-10-07)
 
 `company_panel` `/analytics` (page + `lib/analytics.ts` + `components/daily-bars.tsx`, `distribution-bars.tsx`;
@@ -558,13 +588,22 @@ phone number (accounts are phone-based).
   (`PathMetric.extractPath`). `hasError` or clearing the code reverses it; reduce-motion jumps to the end.
   Works on the register-verify and password-reset screens alike (the widget owns it).
 - Company registration (`/auth/register/company`) is unchanged and has no OTP.
-- **Phone entry design (2026-10-12)**: register and forgot-password use `PhoneNumberSection` /
-  `BigPhoneField` (`auth_widgets.dart`): heading 'Утасны дугаар', one helper line, then the number as
-  one big line `+976 8877 8899` (no box, only an underline: grey at rest, gold + thicker on focus, red on
-  error; the placeholder is deliberately faint; `MnPhoneInputFormatter` groups the 8 digits live and
-  keeps the caret sane). The controller text is grouped, so always read it with `phoneDigits(...)`;
-  `AuthValidators.phone` already ignores the grouping. Login uses `BigPhoneField` under a `FieldLabel`; the
-  old boxed `PhonePrefixField` is gone.
+- **Phone entry design (2026-10-12)**: login, register and forgot-password all use `BigPhoneField`
+  (`auth_widgets.dart`; register wraps it in `PhoneNumberSection`: heading 'Утасны дугаар' + one helper
+  line). It shows a fixed `+976` and then 8 `PhoneDigitSlot`s, **one short line under each digit** (not
+  one line under the whole number): grey, gold for the slot being typed into, red after a failed
+  validation; a wider gap after the 4th slot. Pattern: Adapter, same as `OtpInput` — an invisible numeric
+  `TextField` does the input and the slots draw its text; it is a `FormField`, so `Form.validate()` works
+  and the message shows through `InlineFieldError(flush: true)`. The controller holds the bare digits
+  (screens still read it with `phoneDigits(...)`). In tests type into `find.byType(TextField)`. The old
+  boxed `PhonePrefixField` and the `MnPhoneInputFormatter` are gone.
+- **Survey progress (2026-10-12)**: `SurveyProgress` (`survey_widgets.dart`) sits under the survey header:
+  one thick `SegmentedProgress` segment per question plus a caption from `questionsLeftLabel` ('Дахиад 2
+  асуулт үлдлээ' / 'Сүүлийн асуулт' / 'Ганцхан асуулт'). Done questions are full, the current one is
+  part-filled (`startedFill`) until `hasAnswer(...)` is true, then it fills. `SegmentedProgress` got the
+  `currentFill` (0..1) parameter for this; its default of 1 keeps the old look elsewhere.
+- `InlineFieldError` skips `AnimatedSize` under reduce-motion (a zero-duration `AnimatedSize` throws in
+  layout); the register form uses it for the gender / birth-date errors instead of a private copy.
 
 ### Push notifications (added 2026-10-06)
 

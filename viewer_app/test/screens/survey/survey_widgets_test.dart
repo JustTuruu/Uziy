@@ -126,6 +126,99 @@ void main() {
     });
   });
 
+  group('hasAnswer', () {
+    test('null, blank text and an empty list are not answers', () {
+      expect(hasAnswer(null), isFalse);
+      expect(hasAnswer(''), isFalse);
+      expect(hasAnswer('  \n\t '), isFalse);
+      expect(hasAnswer(<String>[]), isFalse);
+    });
+
+    test('a value, padded text and a non-empty list are answers', () {
+      expect(hasAnswer('Тийм'), isTrue);
+      expect(hasAnswer('  Тийм '), isTrue);
+      expect(hasAnswer(<String>['Тийм']), isTrue);
+      expect(hasAnswer(3), isTrue);
+    });
+  });
+
+  group('questionsLeftLabel', () {
+    test('counts the questions after the current one', () {
+      expect(questionsLeftLabel(0, 3), 'Дахиад 2 асуулт үлдлээ');
+      expect(questionsLeftLabel(1, 3), 'Дахиад 1 асуулт үлдлээ');
+      expect(questionsLeftLabel(0, 2), 'Дахиад 1 асуулт үлдлээ');
+    });
+
+    test('the last question says so', () {
+      expect(questionsLeftLabel(2, 3), kLastQuestionLabel);
+      expect(questionsLeftLabel(1, 2), kLastQuestionLabel);
+      // Out of range never shows a negative count.
+      expect(questionsLeftLabel(5, 3), kLastQuestionLabel);
+    });
+
+    test('a one-question survey has its own wording', () {
+      expect(questionsLeftLabel(0, 1), kOnlyQuestionLabel);
+    });
+  });
+
+  group('SurveyProgress', () {
+    SegmentedProgress bar(WidgetTester tester) =>
+        tester.widget<SegmentedProgress>(find.byType(SegmentedProgress));
+
+    testWidgets('one thick segment per question, the current one started',
+        (tester) async {
+      await _pump(
+        tester,
+        const SurveyProgress(index: 1, total: 3, answered: false),
+      );
+      expect(bar(tester).total, 3);
+      expect(bar(tester).current, 1);
+      expect(bar(tester).height, SurveyProgress.barHeight);
+      expect(bar(tester).currentFill, SurveyProgress.startedFill);
+      expect(find.text('Дахиад 1 асуулт үлдлээ'), findsOneWidget);
+    });
+
+    testWidgets('answering fills the current segment', (tester) async {
+      await _pump(
+        tester,
+        const SurveyProgress(index: 0, total: 3, answered: true),
+      );
+      expect(bar(tester).currentFill, 1);
+      expect(find.text('Дахиад 2 асуулт үлдлээ'), findsOneWidget);
+    });
+
+    testWidgets('the last question is labelled as the last', (tester) async {
+      await _pump(
+        tester,
+        const SurveyProgress(index: 2, total: 3, answered: false),
+      );
+      expect(find.text(kLastQuestionLabel), findsOneWidget);
+    });
+
+    testWidgets('announces the step to screen readers', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pump(
+        tester,
+        const SurveyProgress(index: 1, total: 3, answered: false),
+      );
+      expect(find.bySemanticsLabel('Явц: 2/3'), findsOneWidget);
+      semantics.dispose();
+    });
+
+    testWidgets('fits a small phone with 1.3x text', (tester) async {
+      _useSmallPhone(tester);
+      await _pump(
+        tester,
+        const Padding(
+          padding: EdgeInsets.all(20),
+          child: SurveyProgress(index: 0, total: 5, answered: false),
+        ),
+        textScale: 1.3,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   group('labels', () {
     test('questionProgressLabel is 1-based', () {
       expect(questionProgressLabel(0, 3), 'Асуулт 1/3');
@@ -140,6 +233,7 @@ void main() {
       );
       expect(answerHintFor(QuestionType.singleChoice), isNotEmpty);
       expect(answerHintFor(QuestionType.text), isNotEmpty);
+      expect(answerHintFor(QuestionType.rating), isNotEmpty);
     });
 
     test('characterCountLabel counts user-perceived characters', () {

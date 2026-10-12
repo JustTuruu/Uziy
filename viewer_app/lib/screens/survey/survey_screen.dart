@@ -8,6 +8,8 @@ import '../../routes/app_router.dart';
 import '../../services/auth_service.dart';
 import '../../services/viewer_service.dart';
 import '../../widgets/ui.dart';
+import 'mood_logic.dart';
+import 'mood_slider.dart';
 import 'survey_widgets.dart';
 
 class SurveyScreen extends StatefulWidget {
@@ -332,7 +334,11 @@ class _SurveyScreenState extends State<SurveyScreen> {
             AppLayout.screenPadding,
             0,
           ),
-          child: SegmentedProgress(total: questions.length, current: _index),
+          child: SurveyProgress(
+            index: _index,
+            total: questions.length,
+            answered: hasAnswer(_answers[_current.id]),
+          ),
         ),
         Expanded(child: ScrollEdgeFade(child: _buildQuestionSwitcher())),
         AnimatedSize(
@@ -469,6 +475,19 @@ class _SurveyScreenState extends State<SurveyScreen> {
                 ),
               ),
             ),
+        ];
+
+      case QuestionType.rating:
+        final labels = moodLabelsFor(q);
+        return [
+          FadeSlideIn(
+            offset: 12,
+            child: MoodSlider(
+              labels: labels,
+              selectedIndex: moodSelectedIndex(labels, _answers[q.id]),
+              onChanged: (i) => setState(() => _answers[q.id] = labels[i]),
+            ),
+          ),
         ];
 
       case QuestionType.text:

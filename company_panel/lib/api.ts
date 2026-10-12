@@ -198,9 +198,12 @@ export interface Campaign {
   createdAt: string;
 }
 
+/** RATING is the 3-point Муу / Дунд / Сайн mood slider; its options are fixed by the backend. */
+export type QuestionType = "SINGLE_CHOICE" | "MULTI_CHOICE" | "TEXT" | "RATING";
+
 interface NewCampaignQuestion {
   prompt: string;
-  type: "SINGLE_CHOICE" | "MULTI_CHOICE" | "TEXT";
+  type: QuestionType;
   options: string[];
   required: boolean;
 }
@@ -337,7 +340,7 @@ export interface AnalyticsAudience {
 export interface QuestionBreakdown {
   questionId: number;
   prompt: string;
-  type: "SINGLE_CHOICE" | "MULTI_CHOICE" | "TEXT";
+  type: QuestionType;
   answered: number;
   /** Empty for free-text questions. */
   options: AnalyticsSlice[];

@@ -345,7 +345,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                             ],
                           ),
-                          _AnimatedError(
+                          InlineFieldError(
                             show: showGenderError,
                             message: 'Хүйсээ сонгоно уу',
                           ),
@@ -356,7 +356,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             error: showBirthError,
                             onTap: _pickBirthDate,
                           ),
-                          _AnimatedError(
+                          InlineFieldError(
                             show: showBirthError,
                             message: 'Төрсөн өдрөө сонгоно уу',
                           ),
@@ -465,25 +465,6 @@ class _FormSection extends StatelessWidget {
         ),
         ...children,
       ],
-    );
-  }
-}
-
-/// Inline required-field message that grows / shrinks in.
-class _AnimatedError extends StatelessWidget {
-  const _AnimatedError({required this.show, required this.message});
-
-  final bool show;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedSize(
-      duration: AppMotion.duration(context, AppDurations.normal),
-      curve: AppMotion.standard,
-      alignment: Alignment.topCenter,
-      child:
-          show ? FieldError(message) : const SizedBox(width: double.infinity),
     );
   }
 }

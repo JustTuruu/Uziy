@@ -4,10 +4,14 @@ import java.util.ArrayList;
 import java.util.List;
 import mn.uziy.backend.domain.SurveyQuestionEntity;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 /** Pattern: Mapper — survey question entity to {@link QuestionDto}, parsing the JSONB options. */
 @Component
 public class QuestionMapper {
+
+    private static final JsonMapper JSON = JsonMapper.builder().build();
 
     public QuestionDto toDto(SurveyQuestionEntity q) {
         return new QuestionDto(
@@ -19,38 +23,21 @@ public class QuestionMapper {
                 q.isRequired());
     }
 
-    /** Cheap parser sufficient for a JSONB array of strings. */
+    /**
+     * The strings of a JSON array. A real JSON parse, not a split on commas: an option such as
+     * "10,000₮-аас бага" or "Тийм, сүүлийн сард" must stay one option, and an escaped quote must survive.
+     */
     static List<String> parseOptions(String json) {
         try {
-            String s = json.trim();
-            if (s.startsWith("[")) {
-                s = s.substring(1);
-            }
-            if (s.endsWith("]")) {
-                s = s.substring(0, s.length() - 1);
-            }
             List<String> options = new ArrayList<>();
-            for (String part : s.split(",")) {
-                String option = stripQuotes(part.trim());
-                if (!option.isBlank()) {
-                    options.add(option);
+            for (JsonNode item : JSON.readTree(json)) {
+                if (item.isString() && !item.asString().isBlank()) {
+                    options.add(item.asString());
                 }
             }
             return options;
         } catch (RuntimeException e) {
             return List.of();
         }
-    }
-
-    private static String stripQuotes(String s) {
-        int start = 0;
-        int end = s.length();
-        while (start < end && s.charAt(start) == '"') {
-            start++;
-        }
-        while (end > start && s.charAt(end - 1) == '"') {
-            end--;
-        }
-        return s.substring(start, end);
     }
 }

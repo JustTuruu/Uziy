@@ -32,7 +32,7 @@ const nav: NavItem[] = [
   },
   {
     href: "/analytics",
-    label: "Аналитик",
+    label: "Тайлан",
     icon: <BarChart3 size={16} />,
   },
   {

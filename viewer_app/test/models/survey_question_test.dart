@@ -37,5 +37,25 @@ void main() {
     expect(typeOf('SINGLE_CHOICE'), QuestionType.singleChoice);
     expect(typeOf('MULTIPLE_CHOICE'), QuestionType.multipleChoice);
     expect(typeOf('TEXT'), QuestionType.text);
+    expect(typeOf('RATING'), QuestionType.rating);
+  });
+
+  test('MULTI_CHOICE, the name the backend really sends, is a multiple choice',
+      () {
+    // Regression: it used to fall through to single choice.
+    final q = SurveyQuestion.fromJson({
+      'id': 1,
+      'prompt': 'p',
+      'type': 'MULTI_CHOICE',
+      'options': ['A', 'B'],
+    });
+    expect(q.type, QuestionType.multipleChoice);
+  });
+
+  test('an unknown type still opens as a single choice', () {
+    expect(
+      SurveyQuestion.fromJson({'id': 1, 'prompt': 'p', 'type': 'MATRIX'}).type,
+      QuestionType.singleChoice,
+    );
   });
 }

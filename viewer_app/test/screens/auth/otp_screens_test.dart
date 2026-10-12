@@ -206,7 +206,7 @@ void main() {
       final api = FakeApi.install((_) => const FakeReply(204));
       await _pump(tester, const ForgotPasswordScreen());
 
-      await tester.enterText(find.byType(TextFormField), '8811');
+      await tester.enterText(find.byType(TextField), '8811');
       await tester.tap(find.text(kForgotSendLabel));
       await tester.pump();
 
@@ -219,7 +219,7 @@ void main() {
       final api = FakeApi.install((_) => const FakeReply(204));
       await _pump(tester, const ForgotPasswordScreen());
 
-      await tester.enterText(find.byType(TextFormField), '88112233');
+      await tester.enterText(find.byType(TextField), '88112233');
       await tester.tap(find.text(kForgotSendLabel));
       await tester.pumpAndSettle();
 
@@ -238,7 +238,7 @@ void main() {
       );
       await _pump(tester, const ForgotPasswordScreen());
 
-      await tester.enterText(find.byType(TextFormField), '88112233');
+      await tester.enterText(find.byType(TextField), '88112233');
       await tester.tap(find.text(kForgotSendLabel));
       await tester.pumpAndSettle();
 

@@ -37,4 +37,27 @@ class QuestionMapperTest {
         assertThat(QuestionMapper.parseOptions("[]")).isEmpty();
         assertThat(QuestionMapper.parseOptions("")).isEmpty();
     }
+
+    @Test
+    void anOptionWithACommaStaysOneOption() {
+        assertThat(QuestionMapper.parseOptions("[\"10,000₮-аас бага\", \"Тийм, сүүлийн сард\", \"Үгүй\"]"))
+                .containsExactly("10,000₮-аас бага", "Тийм, сүүлийн сард", "Үгүй");
+    }
+
+    @Test
+    void escapedQuotesAndUnicodeEscapesAreDecoded() {
+        assertThat(QuestionMapper.parseOptions("[\"say \\\"hi\\\"\", \"\\u041c\\u0443\\u0443\"]"))
+                .containsExactly("say \"hi\"", "Муу");
+    }
+
+    @Test
+    void unreadableOrNonArrayJsonYieldsNoOptions() {
+        assertThat(QuestionMapper.parseOptions("not json")).isEmpty();
+        assertThat(QuestionMapper.parseOptions("{\"a\":1}")).isEmpty();
+    }
+
+    @Test
+    void blankAndNonStringItemsAreSkipped() {
+        assertThat(QuestionMapper.parseOptions("[\"A\", \"  \", 3, null, \"B\"]")).containsExactly("A", "B");
+    }
 }

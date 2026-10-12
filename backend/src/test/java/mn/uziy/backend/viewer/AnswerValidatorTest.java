@@ -57,6 +57,15 @@ class AnswerValidatorTest {
     }
 
     @Test
+    void aRatingTakesOneLabelOfItsScale() {
+        var rating = List.of(q(1, "RATING", "[\"Муу\",\"Дунд\",\"Сайн\"]", true));
+        accepts(rating, a(1, "\"Сайн\""));
+        refuses(AnswerValidator.BAD_ANSWER, rating, a(1, "\"Маш сайн\""));
+        refuses(AnswerValidator.BAD_ANSWER, rating, a(1, "[\"Сайн\"]"));
+        refuses(AnswerValidator.BAD_ANSWER, rating, a(1, "3"));
+    }
+
+    @Test
     void multiChoiceTakesAnArrayOfListedOptions() {
         var multi = List.of(q(1, "MULTI_CHOICE", "[\"A\",\"B\",\"C\"]", true));
         accepts(multi, a(1, "[\"A\",\"C\"]"));

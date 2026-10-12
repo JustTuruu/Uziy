@@ -56,87 +56,11 @@ void main() {
     });
   });
 
-  group('phone grouping helpers', () {
-    test('phoneDigits strips everything but digits', () {
-      expect(phoneDigits(null), '');
-      expect(phoneDigits('8877 8899'), '88778899');
-      expect(phoneDigits('+976 8877-8899'), '97688778899');
-    });
-
-    test('groupPhoneDigits puts one space after the first four digits', () {
-      expect(groupPhoneDigits(''), '');
-      expect(groupPhoneDigits('88'), '88');
-      expect(groupPhoneDigits('8877'), '8877');
-      expect(groupPhoneDigits('88775'), '8877 5');
-      expect(groupPhoneDigits('88778899'), '8877 8899');
-      // Cut to 8 digits; separators in the input are ignored.
-      expect(groupPhoneDigits('887788991'), '8877 8899');
-      expect(groupPhoneDigits('8877-8899'), '8877 8899');
-    });
-  });
-
-  group('MnPhoneInputFormatter', () {
-    const f = MnPhoneInputFormatter();
-    TextEditingValue edit(String text, [int? caret]) => TextEditingValue(
-          text: text,
-          selection: TextSelection.collapsed(offset: caret ?? text.length),
-        );
-
-    test('groups while typing and keeps the caret at the end', () {
-      expect(f.formatEditUpdate(edit('887'), edit('8877')), edit('8877', 4));
-      expect(
-        f.formatEditUpdate(edit('8877'), edit('88775')),
-        edit('8877 5', 6),
-      );
-      expect(
-        f.formatEditUpdate(edit('8877 889'), edit('8877 8899')),
-        edit('8877 8899', 9),
-      );
-    });
-
-    test('drops non-digits and anything past 8 digits', () {
-      expect(
-        f.formatEditUpdate(edit(''), edit('88a77-889912')),
-        edit('8877 8899', 9),
-      );
-      expect(
-        f.formatEditUpdate(edit('8877 8899'), edit('8877 88991')),
-        edit('8877 8899', 9),
-      );
-    });
-
-    test('keeps the caret after the same digit when editing mid-text', () {
-      // Insert '1' after the first digit: '8|877 8899' -> '81|877 8899'.
-      expect(
-        f.formatEditUpdate(edit('8877 8899', 1), edit('81877 8899', 2)),
-        edit('8187 7889', 2),
-      );
-      // Delete the space: caret after the 4th digit stays before the group
-      // separator.
-      expect(
-        f.formatEditUpdate(edit('8877 8899', 5), edit('88778899', 4)),
-        edit('8877 8899', 4),
-      );
-      // Delete the 5th digit: the caret stays after the separator.
-      expect(
-        f.formatEditUpdate(edit('8877 8899', 6), edit('8877 899', 5)),
-        edit('8877 899', 5),
-      );
-      // Typing right before the separator: the new digit joins group one.
-      expect(
-        f.formatEditUpdate(edit('8877 8899', 4), edit('88771 8899', 5)),
-        edit('8877 1889', 6),
-      );
-    });
-
-    test('an unset selection lands the caret at the end', () {
-      final out = f.formatEditUpdate(
-        TextEditingValue.empty,
-        const TextEditingValue(text: '88778899'),
-      );
-      expect(out.text, '8877 8899');
-      expect(out.selection.baseOffset, 9);
-    });
+  test('phoneDigits strips everything but digits', () {
+    expect(phoneDigits(null), '');
+    expect(phoneDigits('88778899'), '88778899');
+    expect(phoneDigits('8877 8899'), '88778899');
+    expect(phoneDigits('+976 8877-8899'), '97688778899');
   });
 
   group('birth date helpers', () {
@@ -181,32 +105,110 @@ void main() {
   });
 
   group('BigPhoneField', () {
-    testWidgets('shows the +976 prefix and the number-shaped hint when empty',
+    List<PhoneDigitSlot> slots(WidgetTester tester) =>
+        tester.widgetList<PhoneDigitSlot>(find.byType(PhoneDigitSlot)).toList();
+    List<String?> digits(WidgetTester tester) =>
+        slots(tester).map((s) => s.digit).toList();
+    List<int> activeSlots(WidgetTester tester) => [
+          for (final (i, s) in slots(tester).indexed)
+            if (s.active) i,
+        ];
+
+    testWidgets('shows +976 and one empty slot per digit', (tester) async {
+      final ctrl = TextEditingController();
+      addTearDown(ctrl.dispose);
+      await _pump(tester, BigPhoneField(controller: ctrl));
+
+      expect(find.text(BigPhoneField.countryCode), findsOneWidget);
+      expect(slots(tester), hasLength(AuthValidators.phoneLength));
+      expect(digits(tester), everyElement(isNull));
+      expect(activeSlots(tester), isEmpty);
+      expect(slots(tester).any((s) => s.error), isFalse);
+    });
+
+    testWidgets('the hidden input is numeric, caret-less and not selectable',
         (tester) async {
       final ctrl = TextEditingController();
       addTearDown(ctrl.dispose);
       await _pump(tester, BigPhoneField(controller: ctrl));
 
-      expect(find.text(BigPhoneField.prefix), findsOneWidget);
-      expect(find.text(BigPhoneField.hint), findsOneWidget);
       final field = tester.widget<TextField>(find.byType(TextField));
       expect(field.keyboardType, TextInputType.number);
-      expect(field.style?.fontSize, BigPhoneField.style.fontSize);
+      expect(field.showCursor, isFalse);
+      expect(field.enableInteractiveSelection, isFalse);
+      expect(field.autofillHints, BigPhoneField.defaultAutofillHints);
     });
 
-    testWidgets('groups the typed digits and keeps only 8 of them',
-        (tester) async {
+    testWidgets('typed digits fill the slots in order', (tester) async {
       final ctrl = TextEditingController();
       addTearDown(ctrl.dispose);
       await _pump(tester, BigPhoneField(controller: ctrl));
 
-      await tester.enterText(find.byType(TextFormField), '99a11-223344');
+      await tester.enterText(find.byType(TextField), '9911');
       await tester.pump();
-      expect(ctrl.text, '9911 2233');
-      expect(phoneDigits(ctrl.text), '99112233');
+      expect(ctrl.text, '9911');
+      expect(digits(tester), ['9', '9', '1', '1', null, null, null, null]);
     });
 
-    testWidgets('validates the digits, not the grouped text', (tester) async {
+    testWidgets('keeps only digits, and only 8 of them', (tester) async {
+      final ctrl = TextEditingController();
+      final changes = <String>[];
+      addTearDown(ctrl.dispose);
+      await _pump(
+        tester,
+        BigPhoneField(controller: ctrl, onChanged: changes.add),
+      );
+
+      await tester.enterText(find.byType(TextField), '99a11-223344');
+      await tester.pump();
+      expect(ctrl.text, '99112233');
+      expect(changes, ['99112233']);
+      expect(digits(tester), ['9', '9', '1', '1', '2', '2', '3', '3']);
+    });
+
+    testWidgets('the gap after the fourth slot is the wider group gap',
+        (tester) async {
+      final ctrl = TextEditingController();
+      addTearDown(ctrl.dispose);
+      // Wide enough that the row is not shrunk to fit.
+      await _pump(tester, BigPhoneField(controller: ctrl), width: 600);
+
+      final slot = find.byType(PhoneDigitSlot);
+      double gap(int i) =>
+          tester.getTopLeft(slot.at(i + 1)).dx -
+          tester.getTopRight(slot.at(i)).dx;
+      expect(gap(0), moreOrLessEquals(BigPhoneField.slotGap));
+      expect(gap(3), moreOrLessEquals(BigPhoneField.groupGap));
+      expect(gap(4), moreOrLessEquals(BigPhoneField.slotGap));
+    });
+
+    testWidgets('only the slot being typed into is active, and only on focus',
+        (tester) async {
+      final ctrl = TextEditingController();
+      addTearDown(ctrl.dispose);
+      await _pump(tester, BigPhoneField(controller: ctrl));
+      expect(activeSlots(tester), isEmpty);
+
+      await tester.tap(find.byType(BigPhoneField));
+      await tester.pump();
+      expect(activeSlots(tester), [0]);
+
+      await tester.enterText(find.byType(TextField), '991');
+      await tester.pump();
+      expect(activeSlots(tester), [3]);
+
+      // After the last digit the highlight stays on the last slot.
+      await tester.enterText(find.byType(TextField), '99112233');
+      await tester.pump();
+      expect(activeSlots(tester), [7]);
+
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pump();
+      expect(activeSlots(tester), isEmpty);
+    });
+
+    testWidgets('a failed validation shows the message and reddens the slots',
+        (tester) async {
       final ctrl = TextEditingController();
       addTearDown(ctrl.dispose);
       final formKey = GlobalKey<FormState>();
@@ -221,67 +223,158 @@ void main() {
           ),
         ),
       );
-      await tester.enterText(find.byType(TextFormField), '8811');
+      await tester.enterText(find.byType(TextField), '8811');
       expect(formKey.currentState!.validate(), isFalse);
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(find.text('8 оронтой утасны дугаар'), findsOneWidget);
+      expect(slots(tester).every((s) => s.error), isTrue);
 
-      await tester.enterText(find.byType(TextFormField), '99112233');
+      await tester.enterText(find.byType(TextField), '99112233');
+      expect(formKey.currentState!.validate(), isTrue);
+      await tester.pumpAndSettle();
+      expect(find.text('8 оронтой утасны дугаар'), findsNothing);
+      expect(slots(tester).any((s) => s.error), isFalse);
+    });
+
+    testWidgets('a number set on the controller reaches slots and validator',
+        (tester) async {
+      final ctrl = TextEditingController(text: '8811');
+      addTearDown(ctrl.dispose);
+      final formKey = GlobalKey<FormState>();
+      await _pump(
+        tester,
+        Form(
+          key: formKey,
+          child: BigPhoneField(
+            controller: ctrl,
+            validator: (v) => AuthValidators.phone(v, message: 'bad'),
+          ),
+        ),
+      );
+      expect(digits(tester).take(4), ['8', '8', '1', '1']);
+      expect(formKey.currentState!.validate(), isFalse);
+
+      ctrl.text = '88112233';
+      await tester.pumpAndSettle();
+      expect(digits(tester), ['8', '8', '1', '1', '2', '2', '3', '3']);
       expect(formKey.currentState!.validate(), isTrue);
     });
 
-    testWidgets('has no box, only a line under the digits', (tester) async {
-      final ctrl = TextEditingController();
+    testWidgets('shrinks to fit a narrow column instead of overflowing',
+        (tester) async {
+      final ctrl = TextEditingController(text: '88778899');
       addTearDown(ctrl.dispose);
-      await _pump(tester, BigPhoneField(controller: ctrl));
-      final d = tester.widget<TextField>(find.byType(TextField)).decoration!;
-
-      BorderSide side(InputBorder? b) =>
-          (b! as UnderlineInputBorder).borderSide;
-
-      expect(d.filled, isFalse);
-      // Grey and thin at rest.
-      expect(side(d.enabledBorder).color, BigPhoneField.restingLineColor);
-      expect(side(d.enabledBorder).width, BigPhoneField.lineWidth);
-      expect(side(d.border), side(d.enabledBorder));
-      // Gold and thicker when focused.
-      expect(side(d.focusedBorder).color, AppColors.primary);
-      expect(side(d.focusedBorder).width, BigPhoneField.focusedLineWidth);
-      // Red on an error, focused or not.
-      expect(side(d.errorBorder).color, AppColors.danger);
-      expect(side(d.focusedErrorBorder).color, AppColors.danger);
+      await _pump(
+        tester,
+        Align(
+          alignment: Alignment.centerLeft,
+          child: SizedBox(width: 200, child: BigPhoneField(controller: ctrl)),
+        ),
+        textScale: 1.3,
+      );
+      expect(tester.takeException(), isNull);
       expect(
-        side(d.focusedErrorBorder).width,
-        BigPhoneField.focusedLineWidth,
+        tester.getTopRight(find.byType(PhoneDigitSlot).last).dx,
+        lessThanOrEqualTo(
+          tester.getTopRight(find.byType(BigPhoneField)).dx + 0.5,
+        ),
+      );
+    });
+  });
+
+  group('PhoneDigitSlot', () {
+    test('line colour: error beats active beats resting', () {
+      expect(
+        PhoneDigitSlot.lineColor(active: false, error: false),
+        PhoneDigitSlot.restingLineColor,
+      );
+      expect(
+        PhoneDigitSlot.lineColor(active: true, error: false),
+        AppColors.primary,
+      );
+      expect(
+        PhoneDigitSlot.lineColor(active: true, error: true),
+        AppColors.danger,
+      );
+      expect(
+        PhoneDigitSlot.lineColor(active: false, error: true),
+        AppColors.danger,
       );
     });
 
-    testWidgets('the placeholder is fainter than the prefix and typed digits',
-        (tester) async {
-      final ctrl = TextEditingController();
-      addTearDown(ctrl.dispose);
-      await _pump(tester, BigPhoneField(controller: ctrl));
-      final d = tester.widget<TextField>(find.byType(TextField)).decoration!;
+    testWidgets('an empty slot is as tall as a filled one', (tester) async {
+      await _pump(
+        tester,
+        const Row(
+          children: [
+            PhoneDigitSlot(
+              key: ValueKey('empty'),
+              digit: null,
+              active: false,
+              error: false,
+            ),
+            PhoneDigitSlot(
+              key: ValueKey('filled'),
+              digit: '8',
+              active: true,
+              error: false,
+            ),
+          ],
+        ),
+      );
+      expect(find.text('8'), findsOneWidget);
+      expect(
+        tester.getSize(find.byKey(const ValueKey('empty'))),
+        tester.getSize(find.byKey(const ValueKey('filled'))),
+      );
+    });
+  });
 
-      expect(d.hintStyle?.color, BigPhoneField.hintColor);
-      expect(d.hintStyle!.color!.a, lessThan(AppColors.textTertiary.a));
-      expect(d.prefixStyle?.color, AppColors.textPrimary);
-      expect(d.hintStyle?.fontSize, BigPhoneField.style.fontSize);
+  group('InlineFieldError', () {
+    Widget host(bool show) => InlineFieldError(show: show, message: 'алдаа');
+
+    testWidgets('grows in when shown and takes no height when hidden',
+        (tester) async {
+      await _pump(tester, host(false));
+      expect(find.text('алдаа'), findsNothing);
+      expect(tester.getSize(find.byType(InlineFieldError)).height, 0);
+
+      await _pump(tester, host(true));
+      await tester.pumpAndSettle();
+      expect(find.text('алдаа'), findsOneWidget);
+      expect(
+        tester.getSize(find.byType(InlineFieldError)).height,
+        greaterThan(0),
+      );
     });
 
-    testWidgets('the line turns gold on focus', (tester) async {
-      final ctrl = TextEditingController();
-      addTearDown(ctrl.dispose);
-      await _pump(tester, BigPhoneField(controller: ctrl));
-
-      InputDecorator decorator() =>
-          tester.widget<InputDecorator>(find.byType(InputDecorator));
-      expect(decorator().isFocused, isFalse);
-
-      await tester.tap(find.byType(TextFormField));
-      await tester.pumpAndSettle();
-      expect(decorator().isFocused, isTrue);
+    testWidgets('reduce motion: appears at once and does not throw',
+        (tester) async {
+      await _pump(tester, host(false), reduceMotion: true);
+      await _pump(tester, host(true), reduceMotion: true);
+      await tester.pump();
       expect(tester.takeException(), isNull);
+      expect(find.byType(AnimatedSize), findsNothing);
+      expect(find.text('алдаа'), findsOneWidget);
+    });
+  });
+
+  group('FieldError', () {
+    testWidgets('flush drops the side inset of the boxed-field variant',
+        (tester) async {
+      await _pump(
+        tester,
+        const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            FieldError('boxed', key: ValueKey('boxed')),
+            FieldError('flush', key: ValueKey('flush'), flush: true),
+          ],
+        ),
+      );
+      final column = tester.getTopLeft(find.byType(Column)).dx;
+      expect(tester.getTopLeft(find.text('flush')).dx, column);
+      expect(tester.getTopLeft(find.text('boxed')).dx, greaterThan(column));
     });
   });
 
@@ -319,11 +412,11 @@ void main() {
           ),
         ),
       );
-      await tester.enterText(find.byType(TextFormField), '88112233');
+      await tester.enterText(find.byType(TextField), '88112233');
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pump();
-      expect(ctrl.text, '8811 2233');
-      expect(submitted, '8811 2233');
+      expect(ctrl.text, '88112233');
+      expect(submitted, '88112233');
       expect(formKey.currentState!.validate(), isTrue);
     });
   });
@@ -621,7 +714,7 @@ void main() {
   group('small screens + large text', () {
     testWidgets('auth pieces do not overflow at 320pt and 1.3x text',
         (tester) async {
-      final phone = TextEditingController(text: '8877 8899');
+      final phone = TextEditingController(text: '88778899');
       final pass = TextEditingController(text: 'secret1');
       addTearDown(phone.dispose);
       addTearDown(pass.dispose);
