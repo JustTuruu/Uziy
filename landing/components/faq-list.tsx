@@ -17,14 +17,19 @@ export function FaqList() {
         </div>
         <div className="border-t border-[var(--color-divider)]">
           {FAQS.map((faq) => (
-            <details key={faq.question} className="reveal group border-b border-[var(--color-divider)]">
+            <details
+              key={faq.question}
+              className="reveal group border-b border-[var(--color-divider)]"
+            >
               <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-6 text-lg font-medium transition-colors hover:text-[var(--color-primary)] [&::-webkit-details-marker]:hidden">
                 {faq.question}
                 <span className="grid size-8 shrink-0 place-items-center rounded-full border border-[var(--color-border-strong)] transition-all group-open:rotate-45 group-open:border-[var(--color-primary)] group-open:text-[var(--color-primary)]">
                   <Plus size={16} aria-hidden />
                 </span>
               </summary>
-              <p className="max-w-2xl pb-6 text-[var(--color-text-secondary)]">{faq.answer}</p>
+              <p className="max-w-2xl pb-6 text-[var(--color-text-secondary)]">
+                {faq.answer}
+              </p>
             </details>
           ))}
         </div>

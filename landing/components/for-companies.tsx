@@ -21,7 +21,9 @@ function ResultsMock() {
       <div className="mt-5 space-y-4">
         {RESULT_BARS.map((bar, index) => (
           <div key={bar.label}>
-            <p className="mb-1.5 text-xs text-[var(--color-text-secondary)]">{bar.label}</p>
+            <p className="mb-1.5 text-xs text-[var(--color-text-secondary)]">
+              {bar.label}
+            </p>
             <div className="h-2.5 rounded-full bg-[var(--color-surface-elevated)]">
               <div
                 style={{ width: bar.width }}
@@ -56,7 +58,9 @@ export function ForCompanies({ companyPanelUrl }: { companyPanelUrl: string }) {
             <h2 className="font-display text-3xl font-semibold leading-tight sm:text-5xl">
               {COMPANIES.title}
             </h2>
-            <p className="mt-5 max-w-xl text-[var(--color-text-secondary)]">{COMPANIES.text}</p>
+            <p className="mt-5 max-w-xl text-[var(--color-text-secondary)]">
+              {COMPANIES.text}
+            </p>
             <ul className="mt-7 space-y-3">
               {COMPANIES.points.map((point) => (
                 <li key={point} className="flex items-start gap-3 text-sm">
