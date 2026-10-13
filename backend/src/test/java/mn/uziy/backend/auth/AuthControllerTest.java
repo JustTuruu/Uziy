@@ -34,7 +34,7 @@ class AuthControllerTest {
     @Test
     void registerViewerAnswers201WithTheServiceResponse() {
         RegisterViewerReq req = new RegisterViewerReq("88112233", "password1", Gender.MALE,
-                LocalDate.of(2000, 1, 1), "Улаанбаатар", "123456");
+                LocalDate.of(2000, 1, 1), "Улаанбаатар", java.util.UUID.randomUUID());
         when(service.registerViewer(req)).thenReturn(response(Role.VIEWER));
 
         ResponseEntity<AuthResponse> out = controller.registerViewer(req);

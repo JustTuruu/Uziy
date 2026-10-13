@@ -6,6 +6,6 @@ class LoggingOtpSenderTest {
 
     @Test
     void sendingNeverThrows() {
-        new LoggingOtpSender().send("88112233", "123456", OtpPurpose.REGISTER);
+        new LoggingOtpSender().send("88112233", "123456", OtpPurpose.PASSWORD_RESET);
     }
 }

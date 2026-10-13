@@ -256,12 +256,40 @@ class ApiAbuseIntegrationTest extends AbstractApiIntegrationTest {
     }
 
     @Test
-    void aViewerCannotRegisterWithoutAValidOneTimeCode() throws Exception {
+    void aViewerCannotRegisterWithoutAVerifiedPhone() throws Exception {
         int s = status(post("/auth/register/viewer"), null,
                 "{\"phoneNumber\":\"" + freshPhone() + "\",\"password\":\"abcdef\",\"gender\":\"MALE\","
-                        + "\"birthDate\":\"2000-01-01\",\"city\":\"Улаанбаатар\",\"otpCode\":\"123456\"}");
+                        + "\"birthDate\":\"2000-01-01\",\"city\":\"Улаанбаатар\","
+                        + "\"verificationId\":\"" + java.util.UUID.randomUUID() + "\"}");
 
         assertThat(s).isEqualTo(400);
+    }
+
+    /**
+     * Regression (2026-10-13): the simulated provider used to verify every phone at the first poll, so the app
+     * registered before any SMS was sent. Polling alone must never verify; only the SMS does.
+     */
+    @Test
+    void aPhoneCannotBeRegisteredBeforeItsSmsArrives() throws Exception {
+        String phone = freshPhone();
+        String started = mvc.perform(post("/auth/phone-verifications").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"phoneNumber\":\"" + phone + "\"}")).andReturn().getResponse().getContentAsString();
+        String id = com.jayway.jsonpath.JsonPath.read(started, "$.verificationId");
+        String registration = "{\"phoneNumber\":\"" + phone + "\",\"password\":\"abcdef\",\"gender\":\"MALE\","
+                + "\"birthDate\":\"2000-01-01\",\"city\":\"Улаанбаатар\",\"verificationId\":\"" + id + "\"}";
+
+        for (int poll = 0; poll < 3; poll++) {
+            String state = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .get("/auth/phone-verifications/" + id)).andReturn().getResponse().getContentAsString();
+            assertThat(com.jayway.jsonpath.JsonPath.<String>read(state, "$.status")).isEqualTo("PENDING");
+        }
+        assertThat(status(post("/auth/register/viewer"), null, registration)).isEqualTo(400);
+
+        String sessionId = jdbc.queryForObject("SELECT provider_session_id FROM phone_verifications WHERE id = ?",
+                String.class, java.util.UUID.fromString(id));
+        assertThat(status(post("/auth/phone-verifications/simulated-sms/" + sessionId), null, null)).isEqualTo(204);
+
+        assertThat(status(post("/auth/register/viewer"), null, registration)).isEqualTo(201);
     }
 
     @Test

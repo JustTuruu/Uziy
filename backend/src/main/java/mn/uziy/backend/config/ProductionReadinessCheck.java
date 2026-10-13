@@ -14,7 +14,8 @@ import org.springframework.stereotype.Component;
  * Refuses to start in the {@code prod} profile while any development convenience is still switched on.
  * Each one is harmless on a laptop and a hole in production: a known JWT secret lets anyone mint an admin
  * token, the seeded accounts have known passwords, simulated payments hand out free campaigns, and a logging
- * one-time-code sender means no real user ever receives a code. Better a server that will not boot than one that
+ * one-time-code sender means no real user ever receives a code, and simulated phone verification lets anyone
+ * register any number. Better a server that will not boot than one that
  * boots open.
  */
 @Component
@@ -32,12 +33,16 @@ public class ProductionReadinessCheck implements ApplicationRunner {
     private final AppProperties props;
     private final UserRepository users;
     private final String otpSender;
+    private final String phoneVerificationProvider;
 
     public ProductionReadinessCheck(AppProperties props, UserRepository users,
-                                    @Value("${uziy.otp.sender:logging}") String otpSender) {
+                                    @Value("${uziy.otp.sender:logging}") String otpSender,
+                                    @Value("${uziy.phone-verification.provider:simulated}")
+                                    String phoneVerificationProvider) {
         this.props = props;
         this.users = users;
         this.otpSender = otpSender;
+        this.phoneVerificationProvider = phoneVerificationProvider;
     }
 
     @Override
@@ -62,6 +67,9 @@ public class ProductionReadinessCheck implements ApplicationRunner {
         }
         if ("logging".equals(otpSender)) {
             problems.add("OTP_SENDER=logging: one-time codes are only logged, nobody would receive one");
+        }
+        if ("simulated".equals(phoneVerificationProvider)) {
+            problems.add("PHONE_VERIFICATION_PROVIDER=simulated: every phone would count as verified without an SMS");
         }
         for (String origin : props.cors().allowedOrigins()) {
             if (origin.contains("localhost") || origin.contains("127.0.0.1")) {

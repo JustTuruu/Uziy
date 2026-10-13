@@ -98,6 +98,13 @@ class ApiExceptionHandlerTest {
     }
 
     @org.junit.jupiter.api.Test
+    void aDomainExceptionMarksItsMessageAsSafeToShow() throws Exception {
+        var request = mvc.perform(get("/boom/unavailable")).andReturn().getRequest();
+
+        assertThat(request.getAttribute(SafeErrorAttributes.OWN_MESSAGE)).isEqualTo(Boolean.TRUE);
+    }
+
+    @org.junit.jupiter.api.Test
     void aRefusedWriteIsA400ThatDoesNotEchoTheSql() throws Exception {
         var res = mvc.perform(get("/boom/integrity")).andReturn().getResponse();
 

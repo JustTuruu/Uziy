@@ -12,7 +12,14 @@ class SafeErrorAttributesTest {
     private final SafeErrorAttributes attributes = new SafeErrorAttributes();
 
     private java.util.Map<String, Object> forStatus(int status, String message) {
+        return forStatus(status, message, false);
+    }
+
+    private java.util.Map<String, Object> forStatus(int status, String message, boolean ownMessage) {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/x");
+        if (ownMessage) {
+            request.setAttribute(SafeErrorAttributes.OWN_MESSAGE, Boolean.TRUE);
+        }
         request.setAttribute("jakarta.servlet.error.status_code", status);
         request.setAttribute("jakarta.servlet.error.message", message);
         request.setAttribute("jakarta.servlet.error.exception",
@@ -41,5 +48,14 @@ class SafeErrorAttributesTest {
         assertThat(attrs).containsEntry("message", SafeErrorAttributes.SERVER_ERROR_MESSAGE);
         assertThat(attrs).doesNotContainKeys("trace", "exception");
         assertThat(attrs.toString()).doesNotContain("secret_table");
+    }
+
+    /** Regression (2026-10-13): the phone-check 503 reached the app as an English "Internal server error". */
+    @Test
+    void aDomain503KeepsItsMessageForTheUser() {
+        var attrs = forStatus(503, "Баталгаажуулалт эхлүүлж чадсангүй. Дахин оролдоно уу", true);
+
+        assertThat(attrs).containsEntry("message", "Баталгаажуулалт эхлүүлж чадсангүй. Дахин оролдоно уу");
+        assertThat(attrs).doesNotContainKeys("trace", "exception");
     }
 }

@@ -29,6 +29,9 @@ The API listens on http://localhost:8080.
 | `DB_USER`            | `uziy`                                                                                                                                                                                |
 | `DB_PASSWORD`        | `uziy_dev`                                                                                                                                                                            |
 | `JWT_SECRET`         | dev-only string; **override in prod, 256 bits minimum**                                                                                                                               |
+| `PHONE_VERIFICATION_PROVIDER` | `simulated` — nothing is texted; a check is verified only after `POST /auth/phone-verifications/simulated-sms/{sessionId}` (the log prints the curl). `verifymn` in prod (refuses `simulated` there). |
+| `VERIFY_MN_API_KEY` | empty; **required** when the provider is `verifymn` (startup fails without it). Never logged. |
+| `VERIFY_MN_BASE_URL` | `https://api.verify.mn` |
 | `PAYMENTS_SIMULATED` | `true` — the company's "Төлөх" button marks a campaign paid instantly (no money moves). Set `false` in prod until QPay is wired; `POST /company/campaigns/{id}/pay` then answers 503. |
 
 ## Endpoints
@@ -36,7 +39,9 @@ The API listens on http://localhost:8080.
 | Method + Path                           | Role    | Purpose                                                                                                                                            |
 | --------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `POST /auth/login`                      | anon    | Return JWT + `Me`                                                                                                                                  |
-| `POST /auth/register/viewer`            | anon    | Create viewer + return JWT                                                                                                                         |
+| `POST /auth/phone-verifications`        | anon    | `{phoneNumber}` → 201 `{verificationId, shortcode, smsText, smsUri, displayInstruction, status, expiresAt}`; 409 taken phone, 429 too soon |
+| `GET  /auth/phone-verifications/{id}`   | anon    | `{verificationId, status: PENDING\|VERIFIED\|EXPIRED, expiresAt}` — the app polls it every 3 s |
+| `POST /auth/register/viewer`            | anon    | Create viewer + return JWT; needs a VERIFIED `verificationId` (used once)                                                                                                                         |
 | `POST /auth/register/company`           | anon    | Create company + return JWT                                                                                                                        |
 | `GET  /viewer/me`                       | VIEWER  | Current user profile                                                                                                                               |
 | `GET  /viewer/feed`                     | VIEWER  | Home feed (spec §4B targeting SQL)                                                                                                                 |

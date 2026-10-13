@@ -562,12 +562,40 @@ Full write-up and checklist: **`docs/PRODUCTION_CHECKLIST.md`**. Rules that now 
   accounts, simulated payments, logging OTP or localhost CORS. `application-prod.yml` has no secret defaults.
 - Known open risk: rewards cannot yet be tied to real watching (see the checklist).
 
+### Phone verification for registration — verify.mn (added 2026-10-13)
+
+Registration proves the phone the other way round: the **viewer texts** a 6-digit code FROM their phone to
+verify.mn's short code **144773** (mobile-originated SMS; the user's operator charges them 150 ₮ per SMS).
+- **Backend** (`phoneverify/`): `POST /auth/phone-verifications {phoneNumber}` → 201
+  `{verificationId, phoneNumber, shortcode, smsText, smsUri, displayInstruction, status, expiresAt}` (409 taken
+  phone, 429 = 60 s cool-down / 5 per hour, 503 provider down); `GET /auth/phone-verifications/{id}` →
+  `{verificationId, status: PENDING|VERIFIED|EXPIRED, expiresAt}`. `POST /auth/register/viewer` now takes
+  `verificationId` (UUID) **instead of `otpCode`**; `VerifiedPhoneClaim.claim` spends it once (conditional
+  UPDATE `tryClaim`: same phone, VERIFIED, unused, verified < 30 min ago) inside `registerViewer`'s transaction.
+  Table `phone_verifications` (V9). `PhoneVerificationGateway` Strategy: `VerifyMnGateway`
+  (`PHONE_VERIFICATION_PROVIDER=verifymn`, `VERIFY_MN_API_KEY` required, key only sent on POST and never
+  logged; we **poll**, no callback endpoint) | `SimulatedPhoneVerificationGateway` (default `simulated`:
+  nothing texted; a check stays PENDING until a developer "delivers" the SMS with
+  `POST /auth/phone-verifications/simulated-sms/{sessionId}` — the backend log prints the exact curl; that route
+  exists only in simulated mode; `ProductionReadinessCheck` refuses simulated). Until 2026-10-13 the simulator
+  verified at the first poll, so the app registered before any SMS — regression test in `ApiAbuseIntegrationTest`.
+  Local secrets: `backend/.env` (git-ignored, see `.env.example`) is loaded by `./gradlew bootRun` only, never by tests. A pending row is refreshed
+  from the provider on every GET and once more on claim; a provider outage leaves it PENDING.
+- **Flutter**: register form → `AuthService.startPhoneVerification` → `PhoneVerifyScreen` (`/register/verify`,
+  `extra: PendingRegistration(draft, verification)`; logic in `phone_verify_logic.dart`). Shows the code + 144773
+  (`SmsCodeCard`), the provider's `displayInstruction` **verbatim** (names the SIM to send from), 'SMS илгээх'
+  opens `smsUri` via `url_launcher` (injectable `launchSms`), polls every 3 s (and on app resume), and on
+  VERIFIED stops polling, hides the button and registers itself. EXPIRED (or 10 s past `expiresAt`, or a 400 at
+  registration) → 'Шинэ код авах' opens a new check and says the old code is void.
+- **Callback** (verify.mn → us) is not implemented; add a `GET` route that only triggers a status check, and
+  whitelist 3.34.8.248 / 13.124.219.192, if push-speed confirmation is ever wanted.
+
 ### One-time codes (OTP) (added 2026-10-07)
 
-Used to **verify registration** and to **reset a forgotten password**; the code goes to the account's
-phone number (accounts are phone-based).
-- **Backend** (`otp/`): `POST /auth/otp/request {phoneNumber, purpose: REGISTER|PASSWORD_RESET}` → 204;
-  `POST /auth/register/viewer` now REQUIRES `otpCode`; `POST /auth/password/reset {phoneNumber, code,
+Used to **reset a forgotten password** (registration used them until 2026-10-13 — see verify.mn above; the
+`REGISTER` purpose is gone); the code goes to the account's phone number (accounts are phone-based).
+- **Backend** (`otp/`): `POST /auth/otp/request {phoneNumber, purpose: PASSWORD_RESET}` → 204;
+  `POST /auth/password/reset {phoneNumber, code,
   newPassword}` → 204 (viewers only). Table `otp_codes` (V7) keeps only a bcrypt hash. Rules in
   `OtpServiceImpl`: 6 digits, 5 min TTL, 60 s cool-down, 5 requests/hour, 5 wrong guesses kill the code
   (`noRollbackFor` so the count survives the failed call), only the newest code is valid. A password
@@ -575,9 +603,7 @@ phone number (accounts are phone-based).
 - **Sending** is `OtpSender` (Strategy). Only `LoggingOtpSender` exists (`uziy.otp.sender=logging`,
   env `OTP_SENDER`): **the code is written to the backend log and nothing is texted** — a real SMS
   gateway sender must be added before release.
-- **Flutter** (`screens/auth/`): register form → `requestOtp` → `OtpVerifyScreen` (`/register/verify`,
-  gets the `RegisterDraft` via `extra`; a full code submits itself and creates the account) ;
-  login's 'Нууц үг мартсан?' → `ForgotPasswordScreen` (`/forgot`) → `ResetPasswordScreen`
+- **Flutter** (`screens/auth/`): login's 'Нууц үг мартсан?' → `ForgotPasswordScreen` (`/forgot`) → `ResetPasswordScreen`
   (`/forgot/reset`). Shared pieces: `widgets/otp_input.dart` (`OtpInput`: 6 boxes over one hidden
   numeric field; no `LayoutBuilder`, it must work inside `SliverFillRemaining`), `otp_widgets.dart`
   (`ResendCooldown` mixin, `OtpHeader`, `ResendCodeButton`), `otp_logic.dart`. Test helper:
@@ -586,7 +612,7 @@ phone number (accounts are phone-based).
   (`_done` controller): the boxes slide together into the centre (`FractionalTranslation`, digits
   travel with them), `OtpDoneBadge` pops up, then `CheckPainter` strokes the check left to right
   (`PathMetric.extractPath`). `hasError` or clearing the code reverses it; reduce-motion jumps to the end.
-  Works on the register-verify and password-reset screens alike (the widget owns it).
+  Used on the password-reset screen (the widget owns it).
 - Company registration (`/auth/register/company`) is unchanged and has no OTP.
 - **Phone entry design (2026-10-12)**: login, register and forgot-password all use `BigPhoneField`
   (`auth_widgets.dart`; register wraps it in `PhoneNumberSection`: heading 'Утасны дугаар' + one helper
@@ -623,6 +649,12 @@ already completed).
   off, app unaffected (no `google-services.json` / `GoogleService-Info.plist` are committed).
 - Owner setup steps: `docs/PUSH_SETUP.md`. Placeholder app ids still
   `com.example.viewer_app` / `com.example.viewerApp`.
+- **iOS Debug signing (2026-10-13)**: the Debug configuration signs with `ios/Runner/RunnerDebug.entitlements`
+  (no `aps-environment`) and bundle id `mn.uziy.viewer.dev`, so `flutter run` works on a real iPhone with a free
+  Apple ID ("Personal team" cannot sign Push, and `com.example.viewerApp` belongs to another team). Release/Profile
+  keep `Runner.entitlements` (push) and the placeholder id — set the real id with the paid team. On a real phone pass
+  `--dart-define=API_BASE_URL=http://<Mac LAN IP>:8080` (localhost is the phone itself); `viewer_app/tool/run_device.sh` does that
+  (finds the Mac's Wi-Fi IP, checks the backend answers, then `flutter run`). Debug apps open only from `flutter run`/Xcode.
 
 ---
 

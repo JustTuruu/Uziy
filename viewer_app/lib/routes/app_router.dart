@@ -6,9 +6,9 @@ import '../models/campaign.dart';
 import '../models/register_draft.dart';
 import '../screens/auth/forgot_password_screen.dart';
 import '../screens/auth/login_screen.dart';
-import '../screens/auth/otp_verify_screen.dart';
-import '../screens/auth/reset_password_screen.dart';
+import '../screens/auth/phone_verify_screen.dart';
 import '../screens/auth/register_screen.dart';
+import '../screens/auth/reset_password_screen.dart';
 import '../screens/home/home_feed_screen.dart';
 import '../screens/home/video_player_screen.dart';
 import '../screens/profile/help_screen.dart';
@@ -147,11 +147,11 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (_, state) {
         // Without the form (a deep link, a restored app) there is nothing to
         // verify: start registration over.
-        final draft = state.extra;
+        final pending = state.extra;
         return _cupertino(
-          draft is RegisterDraft
-              ? OtpVerifyScreen(
-                  draft: draft,
+          pending is PendingRegistration
+              ? PhoneVerifyScreen(
+                  pending: pending,
                   next: state.uri.queryParameters[kNextParam],
                 )
               : RegisterScreen(next: state.uri.queryParameters[kNextParam]),

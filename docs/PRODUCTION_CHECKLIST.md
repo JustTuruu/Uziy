@@ -34,10 +34,12 @@ registration.
 
 1. **Create the environment** (`SPRING_PROFILES_ACTIVE=prod`): `JWT_SECRET` (random, ≥ 64 chars),
    `DB_URL`/`DB_USER`/`DB_PASSWORD`, `CORS_ALLOWED_ORIGINS` (the real panel URLs), `OTP_SENDER`,
+   `PHONE_VERIFICATION_PROVIDER=verifymn` + `VERIFY_MN_API_KEY` (verify.mn Developer Console),
    `PAYMENTS_SIMULATED=false`. The app will list anything still unsafe when it refuses to start.
 2. **Use a fresh production database** — never one that ran the dev seed — and create the first admin by
    hand (`UPDATE users SET role='ADMIN' …`), with a strong password. Delete the seed accounts if any exist.
-3. **A real SMS sender** (`OtpSender` implementation) — until then nobody can register in production.
+3. **A real SMS sender** (`OtpSender` implementation) for password-reset codes — until then nobody can
+   reset a password in production. (Registration no longer needs it: it uses verify.mn.)
 4. **A real payment gateway** (QPay) — until then paying a campaign answers 503.
 5. **TLS** at the proxy (HSTS header there); `server.forward-headers-strategy=framework` is already set in
    the prod profile so client IPs/HTTPS are read from the proxy.

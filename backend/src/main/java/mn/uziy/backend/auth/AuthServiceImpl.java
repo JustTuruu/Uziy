@@ -5,11 +5,11 @@ import mn.uziy.backend.common.UnauthorizedException;
 import mn.uziy.backend.common.event.DomainEventPublisher;
 import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
-import mn.uziy.backend.otp.OtpPurpose;
-import mn.uziy.backend.otp.OtpService;
+import mn.uziy.backend.phoneverify.VerifiedPhoneClaim;
 import mn.uziy.backend.security.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -23,13 +23,13 @@ public class AuthServiceImpl implements AuthService {
     private final UserFactory userFactory;
     private final MeMapper meMapper;
     private final DomainEventPublisher events;
-    private final OtpService otp;
+    private final VerifiedPhoneClaim verifiedPhones;
     private final LoginAttemptLimiter loginLimiter;
 
     public AuthServiceImpl(UserRepository users, PasswordEncoder encoder, JwtService jwt,
                            UserFactory userFactory, MeMapper meMapper, DomainEventPublisher events,
-                           OtpService otp, LoginAttemptLimiter loginLimiter) {
-        this.otp = otp;
+                           VerifiedPhoneClaim verifiedPhones, LoginAttemptLimiter loginLimiter) {
+        this.verifiedPhones = verifiedPhones;
         this.loginLimiter = loginLimiter;
         this.users = users;
         this.encoder = encoder;
@@ -52,10 +52,12 @@ public class AuthServiceImpl implements AuthService {
         return respond(user);
     }
 
+    /** One transaction: a refused save gives the phone check back instead of spending it. */
     @Override
+    @Transactional
     public AuthResponse registerViewer(RegisterViewerReq req) {
         requirePhoneFree(req.phoneNumber());
-        otp.verifyAndConsume(req.phoneNumber(), OtpPurpose.REGISTER, req.otpCode());
+        verifiedPhones.claim(req.verificationId(), req.phoneNumber());
         UserEntity user = userFactory.newViewer(req, encoder.encode(req.password()));
         return registered(users.save(user));
     }

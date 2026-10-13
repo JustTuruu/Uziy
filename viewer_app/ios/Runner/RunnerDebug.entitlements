@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!--
+  Debug builds only: no Push Notifications (aps-environment), because a free Apple ID ("Personal team")
+  cannot sign that capability and `flutter run` on a real iPhone then fails. Push stays off in debug (the
+  app treats that like a missing Firebase config). Release/Profile use Runner.entitlements with push.
+  To test push in debug with a paid team, point Debug's CODE_SIGN_ENTITLEMENTS back at Runner.entitlements.
+-->
+<dict/>
+</plist>

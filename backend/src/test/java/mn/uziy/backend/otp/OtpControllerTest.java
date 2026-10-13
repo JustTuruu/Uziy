@@ -15,10 +15,10 @@ class OtpControllerTest {
 
     @Test
     void requestAnswers204AndHandsPhoneAndPurposeToTheService() {
-        var out = controller.request(new OtpRequestReq("88112233", OtpPurpose.REGISTER));
+        var out = controller.request(new OtpRequestReq("88112233", OtpPurpose.PASSWORD_RESET));
 
         assertThat(out.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-        verify(requests).requestCode("88112233", OtpPurpose.REGISTER);
+        verify(requests).requestCode("88112233", OtpPurpose.PASSWORD_RESET);
     }
 
     @Test

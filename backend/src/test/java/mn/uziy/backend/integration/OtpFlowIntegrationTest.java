@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jayway.jsonpath.JsonPath;
 import java.util.ArrayList;
 import java.util.List;
 import mn.uziy.backend.otp.OtpPurpose;
@@ -26,9 +27,9 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * One-time codes over real HTTP, security and Postgres: a viewer cannot register without the code
- * sent to their phone, wrong guesses are counted even though they fail, and a password reset works
- * end to end. Each test uses its own phone number, so the per-phone cool-down never interferes.
+ * Password-reset codes over real HTTP, security and Postgres: a reset works end to end, a code works once, and
+ * an unknown phone is answered the same without anything being sent. Each test uses its own phone number, so
+ * the per-phone cool-down never interferes. (Registration is covered by PhoneVerificationFlowIntegrationTest.)
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -78,6 +79,7 @@ class OtpFlowIntegrationTest {
 
     @Autowired MockMvc mvc;
     @Autowired Sent sent;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     private ResultActions json(String path, String body) throws Exception {
         return mvc.perform(post(path).contentType(MediaType.APPLICATION_JSON).content(body));
@@ -87,10 +89,17 @@ class OtpFlowIntegrationTest {
         return json("/auth/otp/request", "{\"phoneNumber\":\"%s\",\"purpose\":\"%s\"}".formatted(phone, purpose));
     }
 
-    private ResultActions register(String phone, String password, String code) throws Exception {
+    /** Registers through the simulated phone verification, pretending the user's SMS arrived. */
+    private ResultActions register(String phone, String password) throws Exception {
+        String started = json("/auth/phone-verifications", "{\"phoneNumber\":\"%s\"}".formatted(phone))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String verificationId = JsonPath.read(started, "$.verificationId");
+        String sessionId = jdbc.queryForObject("SELECT provider_session_id FROM phone_verifications WHERE id = ?",
+                String.class, java.util.UUID.fromString(verificationId));
+        mvc.perform(post("/auth/phone-verifications/simulated-sms/" + sessionId)).andExpect(status().isNoContent());
         return json("/auth/register/viewer", """
                 {"phoneNumber":"%s","password":"%s","gender":"MALE","birthDate":"2000-01-01",
-                 "city":"Улаанбаатар","otpCode":"%s"}""".formatted(phone, password, code));
+                 "city":"Улаанбаатар","verificationId":"%s"}""".formatted(phone, password, verificationId));
     }
 
     private ResultActions login(String phone, String password) throws Exception {
@@ -98,70 +107,9 @@ class OtpFlowIntegrationTest {
     }
 
     @Test
-    void registeringNeedsTheCodeThatWasSentToThePhone() throws Exception {
-        String phone = "70000001";
-        requestCode(phone, OtpPurpose.REGISTER).andExpect(status().isNoContent());
-
-        register(phone, "password1", sent.codeFor(phone)).andExpect(status().isCreated());
-        login(phone, "password1").andExpect(status().isOk());
-    }
-
-    @Test
-    void registeringWithoutOrWithAWrongCodeIsRefused() throws Exception {
-        String phone = "70000002";
-        requestCode(phone, OtpPurpose.REGISTER).andExpect(status().isNoContent());
-        String right = sent.codeFor(phone);
-        String wrong = right.equals("000000") ? "000001" : "000000";
-
-        register(phone, "password1", wrong).andExpect(status().isBadRequest());
-        login(phone, "password1").andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void aCodeCannotRegisterAnotherPhone() throws Exception {
-        String phone = "70000003";
-        requestCode(phone, OtpPurpose.REGISTER).andExpect(status().isNoContent());
-
-        register("70000004", "password1", sent.codeFor(phone)).andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void wrongGuessesAreCountedSoTheRightCodeStopsWorkingAfterTheLimit() throws Exception {
-        String phone = "70000005";
-        requestCode(phone, OtpPurpose.REGISTER).andExpect(status().isNoContent());
-        String right = sent.codeFor(phone);
-        String wrong = right.equals("000000") ? "000001" : "000000";
-
-        for (int i = 0; i < 5; i++) {
-            register(phone, "password1", wrong).andExpect(status().isBadRequest());
-        }
-
-        // The attempts were saved although every call failed: even the real code is now dead.
-        register(phone, "password1", right).andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void askingForAnotherCodeStraightAwayIsRateLimited() throws Exception {
-        String phone = "70000006";
-        requestCode(phone, OtpPurpose.REGISTER).andExpect(status().isNoContent());
-
-        requestCode(phone, OtpPurpose.REGISTER).andExpect(status().isTooManyRequests());
-    }
-
-    @Test
-    void aRegisteredPhoneCannotBeRegisteredAgain() throws Exception {
-        String phone = "70000007";
-        requestCode(phone, OtpPurpose.REGISTER).andExpect(status().isNoContent());
-        register(phone, "password1", sent.codeFor(phone)).andExpect(status().isCreated());
-
-        requestCode(phone, OtpPurpose.REGISTER).andExpect(status().isConflict());
-    }
-
-    @Test
     void passwordResetWorksEndToEnd() throws Exception {
         String phone = "70000008";
-        requestCode(phone, OtpPurpose.REGISTER).andExpect(status().isNoContent());
-        register(phone, "old-password", sent.codeFor(phone)).andExpect(status().isCreated());
+        register(phone, "old-password").andExpect(status().isCreated());
 
         requestCode(phone, OtpPurpose.PASSWORD_RESET).andExpect(status().isNoContent());
         json("/auth/password/reset", """
@@ -184,8 +132,7 @@ class OtpFlowIntegrationTest {
     @Test
     void aResetCodeCannotBeUsedTwice() throws Exception {
         String phone = "70000010";
-        requestCode(phone, OtpPurpose.REGISTER).andExpect(status().isNoContent());
-        register(phone, "old-password", sent.codeFor(phone)).andExpect(status().isCreated());
+        register(phone, "old-password").andExpect(status().isCreated());
         requestCode(phone, OtpPurpose.PASSWORD_RESET).andExpect(status().isNoContent());
         String body = """
                 {"phoneNumber":"%s","code":"%s","newPassword":"new-password"}"""

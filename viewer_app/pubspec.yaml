@@ -36,6 +36,8 @@ dependencies:
   firebase_messaging: ^16.7.0
   flutter_local_notifications: ^22.3.1
   lucide_icons_flutter: ^3.1.22
+  # Opens the SMS app pre-filled for phone verification (verify.mn).
+  url_launcher: ^6.3.3
 dev_dependencies:
   flutter_test:
     sdk: flutter

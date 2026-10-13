@@ -11,13 +11,17 @@ import org.springframework.web.context.request.WebRequest;
 /**
  * Keeps server-side detail out of error responses. 4xx messages are the application's own words for the
  * client ("Insufficient balance", "Код буруу…") and stay; a 5xx can carry anything — a SQL fragment, a class
- * name, a path — so its message is replaced with a fixed sentence. The real cause is in the server log.
+ * name, a path — so its message is replaced with a fixed sentence, unless {@link ApiExceptionHandler} marked it
+ * as a domain message ({@link #OWN_MESSAGE}, e.g. a 503 "provider unavailable" written for the user). The real
+ * cause is in the server log.
  * Stack traces and exception names are removed from every error.
  */
 @Component
 public class SafeErrorAttributes extends DefaultErrorAttributes {
 
     static final String SERVER_ERROR_MESSAGE = "Internal server error";
+    /** Request attribute: the error message is the application's own wording for the client. */
+    static final String OWN_MESSAGE = SafeErrorAttributes.class.getName() + ".OWN_MESSAGE";
 
     @Override
     public Map<String, Object> getErrorAttributes(WebRequest request, ErrorAttributeOptions options) {
@@ -29,7 +33,8 @@ public class SafeErrorAttributes extends DefaultErrorAttributes {
         // Read the status from the request itself, not from the attribute map: which keys the default
         // attributes include depends on the options and the Boot version.
         Object status = request.getAttribute(RequestDispatcher.ERROR_STATUS_CODE, RequestAttributes.SCOPE_REQUEST);
-        if (status instanceof Integer code && code >= 500) {
+        boolean ownMessage = Boolean.TRUE.equals(request.getAttribute(OWN_MESSAGE, RequestAttributes.SCOPE_REQUEST));
+        if (status instanceof Integer code && code >= 500 && !ownMessage) {
             attributes.put("message", SERVER_ERROR_MESSAGE);
         }
         return attributes;

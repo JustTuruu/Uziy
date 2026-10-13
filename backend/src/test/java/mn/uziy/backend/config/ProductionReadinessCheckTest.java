@@ -18,9 +18,14 @@ class ProductionReadinessCheckTest {
     private final UserRepository users = mock(UserRepository.class);
 
     private ProductionReadinessCheck check(String secret, boolean simulated, String otp, List<String> origins) {
+        return check(secret, simulated, otp, "verifymn", origins);
+    }
+
+    private ProductionReadinessCheck check(String secret, boolean simulated, String otp, String phoneVerification,
+                                           List<String> origins) {
         var props = new AppProperties(new AppProperties.Jwt(secret, 24), new AppProperties.Cors(origins),
                 new AppProperties.Payments(simulated), new AppProperties.Push(false, ""));
-        return new ProductionReadinessCheck(props, users, otp);
+        return new ProductionReadinessCheck(props, users, otp, phoneVerification);
     }
 
     private ProductionReadinessCheck ready() {
@@ -59,6 +64,12 @@ class ProductionReadinessCheckTest {
     }
 
     @Test
+    void simulatedPhoneVerificationIsRefused() {
+        assertThat(check(REAL_SECRET, false, "sms", "simulated", List.of("https://x.mn")).problems())
+                .anyMatch(p -> p.contains("PHONE_VERIFICATION_PROVIDER"));
+    }
+
+    @Test
     void aLocalCorsOriginIsRefused() {
         assertThat(check(REAL_SECRET, false, "sms", List.of("http://localhost:3000")).problems())
                 .anyMatch(p -> p.contains("CORS"));
@@ -75,11 +86,12 @@ class ProductionReadinessCheckTest {
 
     @Test
     void startupFailsAndNamesEveryProblem() {
-        var bad = check("short", true, "logging", List.of("http://localhost:3000"));
+        var bad = check("short", true, "logging", "simulated", List.of("http://localhost:3000"));
 
         assertThatThrownBy(() -> bad.run(new DefaultApplicationArguments()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("JWT_SECRET").hasMessageContaining("PAYMENTS_SIMULATED")
-                .hasMessageContaining("OTP_SENDER").hasMessageContaining("CORS");
+                .hasMessageContaining("OTP_SENDER").hasMessageContaining("PHONE_VERIFICATION_PROVIDER")
+                .hasMessageContaining("CORS");
     }
 }

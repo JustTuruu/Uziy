@@ -5,8 +5,6 @@ library;
 /// Matches the backend cool-down (OtpServiceImpl.COOLDOWN).
 const int kOtpResendSeconds = 60;
 
-const String kOtpTitle = 'Баталгаажуулах код';
-const String kOtpConfirmLabel = 'Баталгаажуулах';
 const String kOtpResendLabel = 'Дахин илгээх';
 const String kOtpResent = 'Код дахин илгээлээ';
 const String kOtpIncomplete = '6 оронтой кодоо оруулна уу';

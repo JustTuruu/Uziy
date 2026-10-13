@@ -75,3 +75,15 @@ tasks.register<JavaExec>("makeAdmin") {
 	mainClass.set("mn.uziy.backend.tools.MakeAdminCli")
 	classpath = sourceSets["main"].runtimeClasspath
 }
+
+// bootRun reads KEY=VALUE lines from backend/.env (git-ignored) as environment variables, so local secrets
+// such as VERIFY_MN_API_KEY stay out of the repo. Tests do not load it: they must never call real providers.
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+	val envFile = file(".env")
+	if (envFile.exists()) {
+		envFile.readLines()
+			.map { it.trim() }
+			.filter { it.isNotEmpty() && !it.startsWith("#") && it.contains("=") }
+			.forEach { line -> environment(line.substringBefore("=").trim(), line.substringAfter("=").trim()) }
+	}
+}

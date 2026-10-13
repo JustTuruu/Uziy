@@ -137,7 +137,10 @@ class AccessControlMatrixIntegrationTest extends AbstractApiIntegrationTest {
                 ep(HttpMethod.GET, "/platform-settings", "-"),
                 ep(HttpMethod.GET, "/public/feed", "-"),
                 ep(HttpMethod.GET, "/actuator/health", "-"),
-                new Endpoint(HttpMethod.POST, "/auth/otp/request", "-", "{\"phoneNumber\":\"12345678\",\"purpose\":\"PASSWORD_RESET\"}"));
+                new Endpoint(HttpMethod.POST, "/auth/otp/request", "-", "{\"phoneNumber\":\"12345678\",\"purpose\":\"PASSWORD_RESET\"}"),
+                new Endpoint(HttpMethod.POST, "/auth/phone-verifications", "-", "{\"phoneNumber\":\"" + freshPhone() + "\"}"),
+                ep(HttpMethod.GET, "/auth/phone-verifications/" + java.util.UUID.randomUUID(), "-"),
+                ep(HttpMethod.POST, "/auth/phone-verifications/simulated-sms/unknown", "-"));
         return open.stream().map(e -> DynamicTest.dynamicTest(e.toString(), () ->
                 assertThat(turnedAway(statusOf(e, null))).as("%s", e).isFalse()));
     }

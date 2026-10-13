@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../models/phone_verification.dart';
 import '../models/user.dart';
 import 'api_service.dart';
 
@@ -16,8 +17,8 @@ class AuthException implements Exception {
 }
 
 /// Why a one-time code is asked for; [wire] is the backend's `OtpPurpose`.
+/// Registration does not use codes: it proves the phone by SMS (verify.mn).
 enum OtpPurpose {
-  register('REGISTER'),
   passwordReset('PASSWORD_RESET');
 
   const OtpPurpose(this.wire);
@@ -90,7 +91,8 @@ class AuthService {
     }
   }
 
-  /// POST /auth/register/viewer
+  /// POST /auth/register/viewer — [verificationId] is a confirmed check
+  /// from [startPhoneVerification].
   Future<AppUser> register({
     required String phone,
     required String password,
@@ -98,7 +100,7 @@ class AuthService {
     required DateTime birthDate,
     required String city,
     String? district,
-    required String otpCode,
+    required String verificationId,
   }) async {
     try {
       final res = await ApiService.instance.dio.post<Map<String, dynamic>>(
@@ -112,7 +114,7 @@ class AuthService {
               '${birthDate.day.toString().padLeft(2, '0')}',
           'city': city,
           if (district != null) 'district': district,
-          'otpCode': otpCode,
+          'verificationId': verificationId,
         },
       );
       _throwIfNotOk(res, fallback: 'Бүртгүүлэхэд алдаа гарлаа');
@@ -124,9 +126,39 @@ class AuthService {
     }
   }
 
-  /// POST /auth/otp/request — texts a 6-digit code to [phone].
-  /// REGISTER answers 409 for a taken phone; every purpose answers 429 when
+  /// POST /auth/phone-verifications — opens a check of [phone]: the viewer
+  /// must text the returned code from it. 409 for a taken phone, 429 when
   /// asked again too soon.
+  Future<PhoneVerification> startPhoneVerification(String phone) async {
+    const fallback = 'Баталгаажуулалт эхлүүлж чадсангүй';
+    try {
+      final res = await ApiService.instance.dio.post<dynamic>(
+        '/auth/phone-verifications',
+        data: {'phoneNumber': phone},
+      );
+      _throwIfNotOk(res, fallback: fallback);
+      return PhoneVerification.fromJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _mapDioError(e, fallback);
+    }
+  }
+
+  /// GET /auth/phone-verifications/{id} — polled until verified or expired.
+  Future<PhoneVerificationState> phoneVerificationState(String id) async {
+    const fallback = 'Төлөв шалгаж чадсангүй';
+    try {
+      final res = await ApiService.instance.dio.get<dynamic>(
+        '/auth/phone-verifications/$id',
+      );
+      _throwIfNotOk(res, fallback: fallback);
+      return PhoneVerificationState.fromJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _mapDioError(e, fallback);
+    }
+  }
+
+  /// POST /auth/otp/request — texts a 6-digit code to [phone]; answers 429
+  /// when asked again too soon.
   Future<void> requestOtp({
     required String phone,
     required OtpPurpose purpose,

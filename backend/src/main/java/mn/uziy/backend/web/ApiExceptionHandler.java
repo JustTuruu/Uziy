@@ -1,5 +1,6 @@
 package mn.uziy.backend.web;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import mn.uziy.backend.common.BadRequestException;
@@ -35,8 +36,11 @@ public class ApiExceptionHandler {
     static final String MALFORMED_BODY = "Malformed request body";
     static final String BUSY = "Busy, please try again";
 
+    /** A domain message is always our own words for the client, so it is shown even on a 503. */
     @ExceptionHandler(DomainException.class)
-    public void handle(DomainException e, HttpServletResponse response) throws IOException {
+    public void handle(DomainException e, HttpServletRequest request, HttpServletResponse response)
+            throws IOException {
+        request.setAttribute(SafeErrorAttributes.OWN_MESSAGE, Boolean.TRUE);
         response.sendError(statusOf(e).value(), e.getMessage());
     }
 

@@ -1,6 +1,5 @@
 package mn.uziy.backend.otp;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -8,7 +7,6 @@ import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.any;
 
 import java.util.Optional;
-import mn.uziy.backend.common.ConflictException;
 import mn.uziy.backend.domain.Role;
 import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
@@ -27,25 +25,6 @@ class OtpRequestServiceTest {
         u.setPhoneNumber(PHONE);
         u.setRole(role);
         return u;
-    }
-
-    @Test
-    void registerSendsACodeToAFreePhone() {
-        when(users.existsByPhoneNumber(PHONE)).thenReturn(false);
-
-        service.requestCode(PHONE, OtpPurpose.REGISTER);
-
-        verify(otp).issue(PHONE, OtpPurpose.REGISTER);
-    }
-
-    @Test
-    void registerRefusesAPhoneThatAlreadyHasAnAccount() {
-        when(users.existsByPhoneNumber(PHONE)).thenReturn(true);
-
-        assertThatThrownBy(() -> service.requestCode(PHONE, OtpPurpose.REGISTER))
-                .isInstanceOf(ConflictException.class)
-                .hasMessage(OtpRequestServiceImpl.PHONE_TAKEN);
-        verify(otp, never()).issue(any(), any());
     }
 
     @Test

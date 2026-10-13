@@ -8,6 +8,10 @@ uziy:
     simulated: false
   otp:
     sender: ${OTP_SENDER}
+  phone-verification:
+    provider: ${PHONE_VERIFICATION_PROVIDER}
+    verify-mn:
+      api-key: ${VERIFY_MN_API_KEY}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
 

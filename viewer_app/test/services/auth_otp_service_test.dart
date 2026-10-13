@@ -47,20 +47,6 @@ void main() {
       });
     });
 
-    test('a taken phone (409) carries the backend message', () async {
-      FakeApi.install((_) => const FakeReply(409, {'message': 'taken'}));
-
-      final e = await _catch(
-        () => AuthService.instance.requestOtp(
-          phone: '88112233',
-          purpose: OtpPurpose.register,
-        ),
-      );
-
-      expect(e.statusCode, 409);
-      expect(e.message, 'taken');
-    });
-
     test('asking too soon (429) carries the backend message', () async {
       FakeApi.install(
         (_) => const FakeReply(
@@ -70,7 +56,7 @@ void main() {
       final e = await _catch(
         () => AuthService.instance.requestOtp(
           phone: '88112233',
-          purpose: OtpPurpose.register,
+          purpose: OtpPurpose.passwordReset,
         ),
       );
 
@@ -115,7 +101,7 @@ void main() {
   });
 
   group('register', () {
-    test('sends the otp code with the profile', () async {
+    test('sends the confirmed phone check with the profile', () async {
       final api = FakeApi.install(
         (_) => const FakeReply(201, {
           'token': 'jwt',
@@ -135,12 +121,13 @@ void main() {
         gender: Gender.male,
         birthDate: DateTime(2000, 1, 2),
         city: 'Улаанбаатар',
-        otpCode: '123456',
+        verificationId: 'check-1',
       );
 
       final body = api.calls.single.body as Map;
       expect(api.calls.single.path, '/auth/register/viewer');
-      expect(body['otpCode'], '123456');
+      expect(body['verificationId'], 'check-1');
+      expect(body.containsKey('otpCode'), isFalse);
       expect(body['birthDate'], '2000-01-02');
       expect(body['gender'], 'MALE');
     });

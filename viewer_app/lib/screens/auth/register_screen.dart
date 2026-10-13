@@ -135,24 +135,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _loading = true);
     final phone = phoneDigits(_phoneCtrl.text);
     try {
-      // The account is created on the next screen, with the texted code.
-      await AuthService.instance.requestOtp(
-        phone: phone,
-        purpose: OtpPurpose.register,
-      );
+      // The account is created on the next screen, once the phone's SMS
+      // has arrived.
+      final verification =
+          await AuthService.instance.startPhoneVerification(phone);
       if (!mounted) return;
       setState(() => _loading = false);
       await context.push(
         authLocation(Routes.verify, next: widget.next),
-        extra: RegisterDraft(
-          phone: phone,
-          password: _passCtrl.text,
-          gender: _gender!,
-          birthDate: _birthDate!,
-          city: _cityCtrl.text,
-          district: _districtCtrl.text.trim().isEmpty
-              ? null
-              : _districtCtrl.text.trim(),
+        extra: PendingRegistration(
+          verification: verification,
+          draft: RegisterDraft(
+            phone: phone,
+            password: _passCtrl.text,
+            gender: _gender!,
+            birthDate: _birthDate!,
+            city: _cityCtrl.text,
+            district: _districtCtrl.text.trim().isEmpty
+                ? null
+                : _districtCtrl.text.trim(),
+          ),
         ),
       );
     } on AuthException catch (e) {

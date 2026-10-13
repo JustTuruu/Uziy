@@ -25,7 +25,7 @@ public class OtpCodeEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private OtpPurpose purpose = OtpPurpose.REGISTER;
+    private OtpPurpose purpose = OtpPurpose.PASSWORD_RESET;
 
     @Column(name = "code_hash", nullable = false)
     private String codeHash = "";

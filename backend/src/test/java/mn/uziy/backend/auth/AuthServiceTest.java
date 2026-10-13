@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
 import java.util.Optional;
+import java.util.UUID;
 import mn.uziy.backend.common.ConflictException;
 import mn.uziy.backend.common.UnauthorizedException;
 import mn.uziy.backend.common.event.DomainEventPublisher;
@@ -18,8 +19,7 @@ import mn.uziy.backend.domain.Gender;
 import mn.uziy.backend.domain.Role;
 import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
-import mn.uziy.backend.otp.OtpPurpose;
-import mn.uziy.backend.otp.OtpService;
+import mn.uziy.backend.phoneverify.VerifiedPhoneClaim;
 import mn.uziy.backend.security.JwtService;
 import mn.uziy.backend.web.ApiExceptionHandler;
 import org.junit.jupiter.api.Test;
@@ -35,9 +35,10 @@ class AuthServiceTest {
             new AppProperties.Jwt("a".repeat(64), 1), new AppProperties.Cors(java.util.List.of()), new AppProperties.Payments(false),
             new AppProperties.Push(false, "")));
     private final DomainEventPublisher events = mock(DomainEventPublisher.class);
-    private final OtpService otp = mock(OtpService.class);
+    private final VerifiedPhoneClaim verifiedPhones = mock(VerifiedPhoneClaim.class);
+    private static final UUID CHECK = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private final AuthServiceImpl service = new AuthServiceImpl(users, encoder, jwt,
-            new UserFactory(), new MeMapper(), events, otp,
+            new UserFactory(), new MeMapper(), events, verifiedPhones,
             new LoginAttemptLimiter(java.time.Clock.systemUTC()));
 
     private UserEntity seedUser(Role role) {
@@ -102,7 +103,7 @@ class AuthServiceTest {
         });
 
         AuthResponse res = service.registerViewer(new RegisterViewerReq(
-                "77000001", "password1", Gender.MALE, LocalDate.of(2000, 5, 5), "Улаанбаатар", "123456"));
+                "77000001", "password1", Gender.MALE, LocalDate.of(2000, 5, 5), "Улаанбаатар", CHECK));
 
         Me me = res.user();
         assertThat(me.id()).isEqualTo(100L);
@@ -113,17 +114,17 @@ class AuthServiceTest {
         assertThat(saved.getValue().getRole()).isEqualTo(Role.VIEWER);
         assertThat(saved.getValue().getPasswordHash()).isEqualTo("bcrypt-hash");
         verify(events).publish(new UserRegistered(100L, Role.VIEWER));
-        verify(otp).verifyAndConsume("77000001", OtpPurpose.REGISTER, "123456");
+        verify(verifiedPhones).claim(CHECK, "77000001");
     }
 
     @Test
-    void registerViewerWithAWrongCodeCreatesNoUser() {
+    void registerViewerWithAnUnverifiedPhoneCreatesNoUser() {
         when(users.existsByPhoneNumber("77000001")).thenReturn(false);
-        org.mockito.Mockito.doThrow(new mn.uziy.backend.common.BadRequestException(OtpService.INVALID_CODE))
-                .when(otp).verifyAndConsume("77000001", OtpPurpose.REGISTER, "000000");
+        org.mockito.Mockito.doThrow(new mn.uziy.backend.common.BadRequestException(VerifiedPhoneClaim.NOT_VERIFIED))
+                .when(verifiedPhones).claim(CHECK, "77000001");
 
         assertThat(statusOf(() -> service.registerViewer(new RegisterViewerReq(
-                "77000001", "password1", Gender.MALE, LocalDate.of(2000, 1, 1), "Улаанбаатар", "000000"))))
+                "77000001", "password1", Gender.MALE, LocalDate.of(2000, 1, 1), "Улаанбаатар", CHECK))))
                 .isEqualTo(HttpStatus.BAD_REQUEST);
         org.mockito.Mockito.verify(users, org.mockito.Mockito.never()).save(any(UserEntity.class));
         org.mockito.Mockito.verifyNoInteractions(events);
@@ -134,9 +135,9 @@ class AuthServiceTest {
         when(users.existsByPhoneNumber("77000001")).thenReturn(true);
         org.mockito.Mockito.verifyNoInteractions(events);
         assertThat(statusOf(() -> service.registerViewer(new RegisterViewerReq(
-                "77000001", "password1", Gender.MALE, LocalDate.of(2000, 1, 1), "Улаанбаатар", "123456"))))
+                "77000001", "password1", Gender.MALE, LocalDate.of(2000, 1, 1), "Улаанбаатар", CHECK))))
                 .isEqualTo(HttpStatus.CONFLICT);
-        org.mockito.Mockito.verifyNoInteractions(otp);
+        org.mockito.Mockito.verifyNoInteractions(verifiedPhones);
     }
 
     // ------- register company ----------------------------------------------

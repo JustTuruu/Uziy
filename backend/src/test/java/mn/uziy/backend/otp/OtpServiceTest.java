@@ -41,7 +41,7 @@ class OtpServiceTest {
     private OtpCodeEntity stored(Instant created) {
         OtpCodeEntity row = new OtpCodeEntity();
         row.setPhoneNumber(PHONE);
-        row.setPurpose(OtpPurpose.REGISTER);
+        row.setPurpose(OtpPurpose.PASSWORD_RESET);
         row.setCodeHash("hash");
         row.setCreatedAt(at(created));
         row.setExpiresAt(at(created.plus(OtpServiceImpl.TTL)));
@@ -49,7 +49,7 @@ class OtpServiceTest {
     }
 
     private void latestIs(OtpCodeEntity row) {
-        when(codes.findFirstByPhoneNumberAndPurposeOrderByCreatedAtDesc(PHONE, OtpPurpose.REGISTER))
+        when(codes.findFirstByPhoneNumberAndPurposeOrderByCreatedAtDesc(PHONE, OtpPurpose.PASSWORD_RESET))
                 .thenReturn(Optional.ofNullable(row));
     }
 
@@ -61,23 +61,23 @@ class OtpServiceTest {
         when(generator.next()).thenReturn("482913");
         when(encoder.encode("482913")).thenReturn("hash-of-code");
 
-        service.issue(PHONE, OtpPurpose.REGISTER);
+        service.issue(PHONE, OtpPurpose.PASSWORD_RESET);
 
         ArgumentCaptor<OtpCodeEntity> row = ArgumentCaptor.forClass(OtpCodeEntity.class);
         verify(codes).save(row.capture());
         assertThat(row.getValue().getCodeHash()).isEqualTo("hash-of-code");
         assertThat(row.getValue().getPhoneNumber()).isEqualTo(PHONE);
-        assertThat(row.getValue().getPurpose()).isEqualTo(OtpPurpose.REGISTER);
+        assertThat(row.getValue().getPurpose()).isEqualTo(OtpPurpose.PASSWORD_RESET);
         assertThat(row.getValue().getCreatedAt()).isEqualTo(at(T0));
         assertThat(row.getValue().getExpiresAt()).isEqualTo(at(T0.plus(OtpServiceImpl.TTL)));
-        verify(sender).send(PHONE, "482913", OtpPurpose.REGISTER);
+        verify(sender).send(PHONE, "482913", OtpPurpose.PASSWORD_RESET);
     }
 
     @Test
     void issueWithinTheCooldownIsRefusedAndSendsNothing() {
         latestIs(stored(T0.minusSeconds(OtpServiceImpl.COOLDOWN.getSeconds() - 1)));
 
-        assertThatThrownBy(() -> service.issue(PHONE, OtpPurpose.REGISTER))
+        assertThatThrownBy(() -> service.issue(PHONE, OtpPurpose.PASSWORD_RESET))
                 .isInstanceOf(TooManyRequestsException.class)
                 .hasMessage(OtpService.TOO_SOON);
         verify(sender, never()).send(any(), any(), any());
@@ -89,19 +89,19 @@ class OtpServiceTest {
         latestIs(stored(T0.minus(OtpServiceImpl.COOLDOWN)));
         when(generator.next()).thenReturn("111111");
 
-        service.issue(PHONE, OtpPurpose.REGISTER);
+        service.issue(PHONE, OtpPurpose.PASSWORD_RESET);
 
-        verify(sender).send(PHONE, "111111", OtpPurpose.REGISTER);
+        verify(sender).send(PHONE, "111111", OtpPurpose.PASSWORD_RESET);
     }
 
     @Test
     void issueBeyondTheHourlyLimitIsRefused() {
         latestIs(null);
         when(codes.countByPhoneNumberAndPurposeAndCreatedAtAfter(
-                eq(PHONE), eq(OtpPurpose.REGISTER), eq(at(T0.minus(OtpServiceImpl.HOURLY_WINDOW)))))
+                eq(PHONE), eq(OtpPurpose.PASSWORD_RESET), eq(at(T0.minus(OtpServiceImpl.HOURLY_WINDOW)))))
                 .thenReturn((long) OtpServiceImpl.MAX_PER_HOUR);
 
-        assertThatThrownBy(() -> service.issue(PHONE, OtpPurpose.REGISTER))
+        assertThatThrownBy(() -> service.issue(PHONE, OtpPurpose.PASSWORD_RESET))
                 .isInstanceOf(TooManyRequestsException.class)
                 .hasMessage(OtpService.TOO_MANY);
         verify(sender, never()).send(any(), any(), any());
@@ -113,7 +113,7 @@ class OtpServiceTest {
         when(generator.next()).thenReturn("123456");
         doThrow(new IllegalStateException("gateway down")).when(sender).send(any(), any(), any());
 
-        assertThatThrownBy(() -> service.issue(PHONE, OtpPurpose.REGISTER))
+        assertThatThrownBy(() -> service.issue(PHONE, OtpPurpose.PASSWORD_RESET))
                 .isInstanceOf(UnavailableException.class)
                 .hasMessage(OtpService.SEND_FAILED);
     }
@@ -126,7 +126,7 @@ class OtpServiceTest {
         latestIs(row);
         when(encoder.matches("123456", "hash")).thenReturn(true);
 
-        service.verifyAndConsume(PHONE, OtpPurpose.REGISTER, "123456");
+        service.verifyAndConsume(PHONE, OtpPurpose.PASSWORD_RESET, "123456");
 
         assertThat(row.isConsumed()).isTrue();
         verify(codes).save(row);
@@ -138,7 +138,7 @@ class OtpServiceTest {
         latestIs(row);
         when(encoder.matches("000000", "hash")).thenReturn(false);
 
-        assertThatThrownBy(() -> service.verifyAndConsume(PHONE, OtpPurpose.REGISTER, "000000"))
+        assertThatThrownBy(() -> service.verifyAndConsume(PHONE, OtpPurpose.PASSWORD_RESET, "000000"))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage(OtpService.INVALID_CODE);
         assertThat(row.getAttempts()).isEqualTo(1);
@@ -153,7 +153,7 @@ class OtpServiceTest {
         latestIs(row);
         when(encoder.matches("123456", "hash")).thenReturn(true);
 
-        assertThatThrownBy(() -> service.verifyAndConsume(PHONE, OtpPurpose.REGISTER, "123456"))
+        assertThatThrownBy(() -> service.verifyAndConsume(PHONE, OtpPurpose.PASSWORD_RESET, "123456"))
                 .isInstanceOf(BadRequestException.class);
         assertThat(row.isConsumed()).isFalse();
     }
@@ -163,7 +163,7 @@ class OtpServiceTest {
         latestIs(stored(T0.minus(OtpServiceImpl.TTL).minusSeconds(1)));
         when(encoder.matches("123456", "hash")).thenReturn(true);
 
-        assertThatThrownBy(() -> service.verifyAndConsume(PHONE, OtpPurpose.REGISTER, "123456"))
+        assertThatThrownBy(() -> service.verifyAndConsume(PHONE, OtpPurpose.PASSWORD_RESET, "123456"))
                 .isInstanceOf(BadRequestException.class);
     }
 
@@ -174,7 +174,7 @@ class OtpServiceTest {
         latestIs(row);
         when(encoder.matches("123456", "hash")).thenReturn(true);
 
-        assertThatThrownBy(() -> service.verifyAndConsume(PHONE, OtpPurpose.REGISTER, "123456"))
+        assertThatThrownBy(() -> service.verifyAndConsume(PHONE, OtpPurpose.PASSWORD_RESET, "123456"))
                 .isInstanceOf(BadRequestException.class);
     }
 
@@ -182,7 +182,7 @@ class OtpServiceTest {
     void withoutAnyIssuedCodeNothingIsAccepted() {
         latestIs(null);
 
-        assertThatThrownBy(() -> service.verifyAndConsume(PHONE, OtpPurpose.REGISTER, "123456"))
+        assertThatThrownBy(() -> service.verifyAndConsume(PHONE, OtpPurpose.PASSWORD_RESET, "123456"))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage(OtpService.INVALID_CODE);
         verify(encoder, never()).matches(any(), any());
