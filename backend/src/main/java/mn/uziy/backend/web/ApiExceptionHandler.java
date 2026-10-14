@@ -7,6 +7,7 @@ import mn.uziy.backend.common.BadRequestException;
 import mn.uziy.backend.common.ConflictException;
 import mn.uziy.backend.common.DomainException;
 import mn.uziy.backend.common.ForbiddenException;
+import mn.uziy.backend.common.Messages;
 import mn.uziy.backend.common.NotFoundException;
 import mn.uziy.backend.common.TooManyRequestsException;
 import mn.uziy.backend.common.UnauthorizedException;
@@ -17,31 +18,48 @@ import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /**
- * The single place where {@link DomainException}s become HTTP responses.
+ * The single place where exceptions become HTTP responses with words for the user.
  *
  * <p>Uses {@code sendError(status, message)} — exactly what Spring does for a
  * {@code ResponseStatusException} — so the JSON error body ({@code message} field, shown
- * because {@code server.error.include-message=always}) is unchanged for clients.
+ * because {@code server.error.include-message=always}) is unchanged for clients. Every message sent from here is
+ * marked as ours ({@link SafeErrorAttributes#OWN_MESSAGE}); anything else Spring answers with gets a generic
+ * Mongolian sentence from {@link SafeErrorAttributes}.
  */
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
-    static final String INVALID_DATA = "Invalid data";
-    static final String MALFORMED_BODY = "Malformed request body";
-    static final String BUSY = "Busy, please try again";
+    static final String INVALID_DATA = "Оруулсан мэдээлэл буруу байна. Шалгаад дахин оролдоно уу";
+    static final String MALFORMED_BODY = "Илгээсэн мэдээлэл буруу хэлбэртэй байна. Дахин оролдоно уу";
+    static final String BUSY = Messages.BUSY;
 
-    /** A domain message is always our own words for the client, so it is shown even on a 503. */
     @ExceptionHandler(DomainException.class)
     public void handle(DomainException e, HttpServletRequest request, HttpServletResponse response)
             throws IOException {
-        request.setAttribute(SafeErrorAttributes.OWN_MESSAGE, Boolean.TRUE);
-        response.sendError(statusOf(e).value(), e.getMessage());
+        send(request, response, statusOf(e), e.getMessage());
+    }
+
+    /**
+     * A request field broke its constraint: answer with that field's own message (see FieldMessages), never with
+     * Spring's "Validation failed for object…" summary or the rejected value — which could be a password.
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public void handleInvalidField(MethodArgumentNotValidException e, HttpServletRequest request,
+                                  HttpServletResponse response) throws IOException {
+        String message = e.getBindingResult().getFieldErrors().stream()
+                .map(FieldError::getDefaultMessage)
+                .filter(m -> m != null && !m.isBlank())
+                .findFirst()
+                .orElse(INVALID_DATA);
+        send(request, response, HttpStatus.BAD_REQUEST, message);
     }
 
     /**
@@ -50,23 +68,31 @@ public class ApiExceptionHandler {
      * the SQL.
      */
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public void handleIntegrity(DataIntegrityViolationException e, HttpServletResponse response)
-            throws IOException {
+    public void handleIntegrity(DataIntegrityViolationException e, HttpServletRequest request,
+                                HttpServletResponse response) throws IOException {
         LOG.warn("data integrity violation: {}", e.getMostSpecificCause().getMessage());
-        response.sendError(HttpStatus.BAD_REQUEST.value(), INVALID_DATA);
+        send(request, response, HttpStatus.BAD_REQUEST, INVALID_DATA);
     }
 
     /** A body that is not the JSON the endpoint expects: say so, without echoing the parser's internals. */
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public void handleUnreadable(HttpMessageNotReadableException e, HttpServletResponse response) throws IOException {
-        response.sendError(HttpStatus.BAD_REQUEST.value(), MALFORMED_BODY);
+    public void handleUnreadable(HttpMessageNotReadableException e, HttpServletRequest request,
+                                 HttpServletResponse response) throws IOException {
+        send(request, response, HttpStatus.BAD_REQUEST, MALFORMED_BODY);
     }
 
     /** Two transactions raced and the database aborted one (see RetryingRewardService): ask the client to retry. */
     @ExceptionHandler(ConcurrencyFailureException.class)
-    public void handleConcurrency(ConcurrencyFailureException e, HttpServletResponse response) throws IOException {
+    public void handleConcurrency(ConcurrencyFailureException e, HttpServletRequest request,
+                                  HttpServletResponse response) throws IOException {
         LOG.info("concurrency failure: {}", e.getMessage());
-        response.sendError(HttpStatus.CONFLICT.value(), BUSY);
+        send(request, response, HttpStatus.CONFLICT, BUSY);
+    }
+
+    private static void send(HttpServletRequest request, HttpServletResponse response, HttpStatus status,
+                             String message) throws IOException {
+        request.setAttribute(SafeErrorAttributes.OWN_MESSAGE, Boolean.TRUE);
+        response.sendError(status.value(), message);
     }
 
     public static HttpStatus statusOf(DomainException e) {

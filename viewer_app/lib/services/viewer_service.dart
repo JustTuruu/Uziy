@@ -7,6 +7,7 @@ import '../models/campaign.dart';
 import '../models/survey_question.dart';
 import '../models/user.dart';
 import '../models/view_history_item.dart';
+import 'api_error.dart';
 import 'api_service.dart';
 
 class ApiException implements Exception {
@@ -209,20 +210,11 @@ class ViewerService {
     Object? d,
     DioExceptionType? type,
     String fallback,
-  ) {
-    String message = fallback;
-    if (d is Map<String, dynamic> && d['message'] is String) {
-      message = d['message'] as String;
-    } else if (s == 401 || s == 403) {
-      message = 'Дахин нэвтэрнэ үү';
-    } else if (s == 409) {
-      message = 'Аль хэдийн үзсэн байна';
-    } else if (type == DioExceptionType.connectionTimeout ||
-        type == DioExceptionType.connectionError) {
-      message = 'Сервертэй холбогдож чадсангүй';
-    }
-    return ApiException(s, message);
-  }
+  ) =>
+      ApiException(
+        s,
+        apiErrorMessage(status: s, body: d, type: type, fallback: fallback),
+      );
 }
 
 class RewardResult {

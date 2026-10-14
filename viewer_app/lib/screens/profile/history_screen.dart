@@ -152,9 +152,9 @@ class _Stat extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: AppTextStyles.caption),
+          Text(label, style: context.textStyles.caption),
           const SizedBox(height: 2),
-          Text(value, style: AppTextStyles.title),
+          Text(value, style: context.textStyles.title),
         ],
       ),
     );
@@ -176,13 +176,13 @@ class HistoryRow extends StatelessWidget {
         item.companyName.isEmpty ? when : '${item.companyName} · $when';
     return InfoRow(
       icon: AppIcons.watched,
-      iconColor: AppColors.accent,
+      iconColor: context.colors.accent,
       label: item.title,
       subtitle: subtitle,
       trailing: Text(
         formatTugrik(item.rewardPaid, withSign: true),
-        style: AppTextStyles.body.copyWith(
-          color: AppColors.success,
+        style: context.textStyles.body.copyWith(
+          color: context.colors.success,
           fontWeight: FontWeight.w700,
         ),
       ),

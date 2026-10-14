@@ -31,7 +31,7 @@ class UziyLogo extends StatelessWidget {
         borderRadius: BorderRadius.circular(size * 0.25),
         boxShadow: glow
             ? AppShadows.glow(
-                AppColors.primary,
+                context.colors.primary,
                 strength: 1.0,
                 blur: size * 0.4,
                 offset: Offset(0, size * 0.06),

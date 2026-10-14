@@ -44,7 +44,7 @@ class PayoutDecisionStrategyTest {
     void registryRefusesPending() {
         assertThatThrownBy(() -> registry.forDecision(PayoutStatus.PENDING))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessage("Cannot set PENDING");
+                .hasMessage(PayoutDecisionStrategies.NOT_A_DECISION);
     }
 
     @Test

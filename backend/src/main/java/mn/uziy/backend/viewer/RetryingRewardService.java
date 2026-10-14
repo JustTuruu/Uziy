@@ -2,6 +2,7 @@ package mn.uziy.backend.viewer;
 
 import java.util.List;
 import mn.uziy.backend.common.ConflictException;
+import mn.uziy.backend.common.Messages;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Primary;
 import org.springframework.dao.ConcurrencyFailureException;
@@ -20,7 +21,7 @@ import org.springframework.stereotype.Service;
 public class RetryingRewardService implements RewardService {
 
     static final int MAX_ATTEMPTS = 4;
-    static final String BUSY = "Түр завгүй байна. Дахин оролдоно уу";
+    static final String BUSY = Messages.BUSY;
 
     private final RewardService delegate;
 

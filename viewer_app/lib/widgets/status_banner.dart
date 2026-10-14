@@ -30,20 +30,21 @@ class StatusBanner extends StatelessWidget {
   /// Overrides the tone's default icon.
   final IconData? icon;
 
-  static Color colorFor(BannerTone tone) => switch (tone) {
-        BannerTone.error => AppColors.danger,
-        BannerTone.info => AppColors.accent,
-        BannerTone.success => AppColors.success,
-        BannerTone.warning => AppColors.warning,
+  static Color colorFor(BannerTone tone, AppPalette palette) => switch (tone) {
+        BannerTone.error => palette.danger,
+        BannerTone.info => palette.accent,
+        BannerTone.success => palette.success,
+        BannerTone.warning => palette.warning,
       };
 
   /// Text tint for the title / action: a lighter shade of [colorFor] so it
   /// stays WCAG AA on the tinted panel.
-  static Color textColorFor(BannerTone tone) => switch (tone) {
-        BannerTone.error => AppColors.dangerLight,
-        BannerTone.info => AppColors.accentLight,
-        BannerTone.success => AppColors.successLight,
-        BannerTone.warning => AppColors.warning,
+  static Color textColorFor(BannerTone tone, AppPalette palette) =>
+      switch (tone) {
+        BannerTone.error => palette.dangerLight,
+        BannerTone.info => palette.accentLight,
+        BannerTone.success => palette.successLight,
+        BannerTone.warning => palette.warning,
       };
 
   static IconData iconFor(BannerTone tone) => switch (tone) {
@@ -55,8 +56,8 @@ class StatusBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = colorFor(tone);
-    final ink = textColorFor(tone);
+    final c = colorFor(tone, context.colors);
+    final ink = textColorFor(tone, context.colors);
     final hasAction = actionLabel != null && onAction != null;
 
     return Semantics(
@@ -93,7 +94,7 @@ class StatusBanner extends StatelessWidget {
                     if (title != null) ...[
                       Text(
                         title!,
-                        style: AppTextStyles.label.copyWith(
+                        style: context.textStyles.label.copyWith(
                           color: ink,
                           fontWeight: FontWeight.w700,
                         ),
@@ -102,8 +103,8 @@ class StatusBanner extends StatelessWidget {
                     ],
                     Text(
                       message,
-                      style: AppTextStyles.bodySmall
-                          .copyWith(color: AppColors.textPrimary),
+                      style: context.textStyles.bodySmall
+                          .copyWith(color: context.colors.textPrimary),
                     ),
                   ],
                 ),
@@ -125,7 +126,7 @@ class StatusBanner extends StatelessWidget {
                       widthFactor: 1,
                       child: Text(
                         actionLabel!,
-                        style: AppTextStyles.label.copyWith(
+                        style: context.textStyles.label.copyWith(
                           color: ink,
                           fontWeight: FontWeight.w700,
                         ),

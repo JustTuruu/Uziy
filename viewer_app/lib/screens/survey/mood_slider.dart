@@ -198,9 +198,11 @@ class _MoodSliderState extends State<MoodSlider> with TickerProviderStateMixin {
         AppSpacing.xl,
       ),
       decoration: BoxDecoration(
-        color: moodPanelAt(position),
+        color: moodPanelAt(position, surface: context.colors.surface),
         borderRadius: AppRadii.brXl,
-        border: Border.all(color: moodTintAt(position).withValues(alpha: 0.28)),
+        border: Border.all(
+            color: moodTintAt(position, dark: context.colors.isDark)
+                .withValues(alpha: 0.28)),
       ),
       child: Column(
         children: [
@@ -208,7 +210,9 @@ class _MoodSliderState extends State<MoodSlider> with TickerProviderStateMixin {
             widthFactor: 0.7,
             child: AspectRatio(
               aspectRatio: 1.45,
-              child: CustomPaint(painter: MoodFacePainter(position)),
+              child: CustomPaint(
+                  painter:
+                      MoodFacePainter(position, dark: context.colors.isDark)),
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
@@ -251,8 +255,8 @@ class _MoodSliderState extends State<MoodSlider> with TickerProviderStateMixin {
                   right: r,
                   child: Container(
                     height: MoodSlider.trackHeight,
-                    decoration: const BoxDecoration(
-                      color: AppColors.borderStrong,
+                    decoration: BoxDecoration(
+                      color: context.colors.borderStrong,
                       borderRadius: AppRadii.brPill,
                     ),
                   ),
@@ -264,7 +268,7 @@ class _MoodSliderState extends State<MoodSlider> with TickerProviderStateMixin {
                   child: Container(
                     height: MoodSlider.trackHeight,
                     decoration: BoxDecoration(
-                      color: moodTintAt(position),
+                      color: moodTintAt(position, dark: context.colors.isDark),
                       borderRadius: AppRadii.brPill,
                     ),
                   ),
@@ -277,8 +281,8 @@ class _MoodSliderState extends State<MoodSlider> with TickerProviderStateMixin {
                       height: 8,
                       decoration: BoxDecoration(
                         color: moodPositionOf(i) <= position
-                            ? moodTintAt(position)
-                            : AppColors.borderStrong,
+                            ? moodTintAt(position, dark: context.colors.isDark)
+                            : context.colors.borderStrong,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -287,7 +291,9 @@ class _MoodSliderState extends State<MoodSlider> with TickerProviderStateMixin {
                   left: travel * position,
                   child: SizedBox.square(
                     dimension: MoodSlider.thumbSize,
-                    child: CustomPaint(painter: MoodThumbPainter(position)),
+                    child: CustomPaint(
+                        painter: MoodThumbPainter(position,
+                            dark: context.colors.isDark)),
                   ),
                 ),
               ],
@@ -309,10 +315,10 @@ class _MoodSliderState extends State<MoodSlider> with TickerProviderStateMixin {
                 alignment: alignment,
                 child: AnimatedDefaultTextStyle(
                   duration: AppMotion.duration(context, AppDurations.fast),
-                  style: AppTextStyles.bodyStrong.copyWith(
+                  style: context.textStyles.bodyStrong.copyWith(
                     color: i == stop
-                        ? AppColors.textPrimary
-                        : AppColors.textTertiary,
+                        ? context.colors.textPrimary
+                        : context.colors.textTertiary,
                     fontWeight: i == stop ? FontWeight.w800 : FontWeight.w600,
                   ),
                   child: Text(widget.labels[i]),
@@ -367,11 +373,12 @@ class MoodWordCarousel extends StatelessWidget {
                       child: Text(
                         labels[i].toUpperCase(),
                         maxLines: 1,
-                        style: AppTextStyles.display.copyWith(
+                        style: context.textStyles.display.copyWith(
                           fontSize: fontSize,
                           fontWeight: FontWeight.w900,
                           letterSpacing: -2,
-                          color: moodTintAt(position),
+                          color:
+                              moodTintAt(position, dark: context.colors.isDark),
                         ),
                       ),
                     ),
@@ -415,7 +422,8 @@ void _paintMouth(
 
 /// The face: two eyes and a mouth at fixed spots, shaped by [position].
 class MoodFacePainter extends CustomPainter {
-  const MoodFacePainter(this.position);
+  const MoodFacePainter(this.position, {this.dark = false});
+  final bool dark;
 
   final double position;
 
@@ -429,9 +437,9 @@ class MoodFacePainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
     final shape = moodShapeAt(position);
-    final tint = moodTintAt(position);
+    final tint = moodTintAt(position, dark: dark);
     final eye = Paint()..color = tint;
-    for (final side in const [-1.0, 1.0]) {
+    for (final side in [-1.0, 1.0]) {
       final center = Offset(w / 2 + side * _eyeSpread * w, _eyeY * h);
       final rect = Rect.fromCenter(
         center: center,
@@ -457,13 +465,15 @@ class MoodFacePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(MoodFacePainter old) => old.position != position;
+  bool shouldRepaint(MoodFacePainter old) =>
+      old.position != position || old.dark != dark;
 }
 
 /// The draggable knob: a disc in the mood colour with a tiny dark mouth that
 /// follows the mood.
 class MoodThumbPainter extends CustomPainter {
-  const MoodThumbPainter(this.position);
+  const MoodThumbPainter(this.position, {this.dark = false});
+  final bool dark;
 
   final double position;
 
@@ -473,7 +483,7 @@ class MoodThumbPainter extends CustomPainter {
     canvas.drawCircle(
       c,
       size.width / 2,
-      Paint()..color = moodTintAt(position),
+      Paint()..color = moodTintAt(position, dark: dark),
     );
     final shape = moodShapeAt(position);
     _paintMouth(
@@ -482,10 +492,11 @@ class MoodThumbPainter extends CustomPainter {
       width: size.width * 0.34,
       sag: shape.mouthSag * size.width * 0.9,
       stroke: size.width * 0.07,
-      color: MoodColors.ink,
+      color: dark ? const Color(0xFF10291C) : MoodColors.ink,
     );
   }
 
   @override
-  bool shouldRepaint(MoodThumbPainter old) => old.position != position;
+  bool shouldRepaint(MoodThumbPainter old) =>
+      old.position != position || old.dark != dark;
 }

@@ -54,8 +54,8 @@ class _CoinPainter extends CustomPainter {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppColors.primaryLight,
-            AppColors.primaryDeep,
+            Color(0xFFFFEAB5),
+            Color(0xFFE0B558),
             AppColors.primaryInk,
           ],
           stops: [0.0, 0.6, 1.0],
@@ -72,9 +72,9 @@ class _CoinPainter extends CustomPainter {
           center: Alignment(-0.35, -0.45),
           radius: 1.05,
           colors: [
-            AppColors.primaryLight,
-            AppColors.primary,
-            AppColors.primaryDeep,
+            Color(0xFFFFEAB5),
+            Color(0xFFF2D48A),
+            Color(0xFFE0B558),
           ],
           stops: [0.0, 0.55, 1.0],
         ).createShader(Rect.fromCircle(center: c, radius: faceR)),
@@ -104,20 +104,20 @@ class _CoinPainter extends CustomPainter {
     );
 
     if (showGlyph) {
-      final tp = TextPainter(
-        text: TextSpan(
-          text: tugrikSymbol,
-          style: TextStyle(
-            fontSize: r * 0.95,
-            height: 1.0,
-            fontWeight: FontWeight.w900,
-            color: AppColors.primaryInk.withValues(alpha: 0.85),
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      tp.paint(canvas, c - Offset(tp.width / 2, tp.height / 2));
-      tp.dispose();
+      // Draw the currency mark as geometry so it is crisp at small sizes
+      // and independent of system font coverage for the tugrik glyph.
+      final mark = Paint()
+        ..color = AppColors.primaryInk
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = math.max(1, r * 0.095)
+        ..strokeCap = StrokeCap.round;
+      canvas.drawLine(c + Offset(-r * 0.27, -r * 0.32),
+          c + Offset(r * 0.27, -r * 0.32), mark);
+      canvas.drawLine(c + Offset(0, -r * 0.32), c + Offset(0, r * 0.35), mark);
+      canvas.drawLine(c + Offset(-r * 0.20, r * 0.04),
+          c + Offset(r * 0.20, -r * 0.12), mark);
+      canvas.drawLine(c + Offset(-r * 0.20, r * 0.23),
+          c + Offset(r * 0.20, r * 0.07), mark);
     }
   }
 
@@ -166,11 +166,11 @@ class RewardChip extends StatelessWidget {
           right: height * 0.42,
         ),
         decoration: BoxDecoration(
-          color: AppColors.primary,
+          color: const Color(0xFFF2D48A),
           borderRadius: AppRadii.brPill,
           boxShadow: glow
               ? AppShadows.glow(
-                  AppColors.primary,
+                  const Color(0xFFF2D48A),
                   strength: 0.9,
                   blur: height * 0.6,
                   offset: Offset(0, height * 0.15),
@@ -196,7 +196,7 @@ class RewardChip extends StatelessWidget {
                   height: 1.0,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.2,
-                  color: AppColors.onPrimary,
+                  color: AppColors.primaryInk,
                   fontFeatures: AppTextStyles.tabular,
                 ),
               ),

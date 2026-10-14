@@ -10,13 +10,14 @@ Future<void> _pump(
   double width = 390,
   double textScale = 1.0,
   bool reduceMotion = false,
+  ThemeData? theme,
 }) async {
   tester.view.devicePixelRatio = 3;
   tester.view.physicalSize = Size(width * 3, 844 * 3);
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     MaterialApp(
-      theme: AppTheme.dark(),
+      theme: theme ?? AppTheme.light(),
       builder: (context, app) => MediaQuery(
         data: MediaQuery.of(context).copyWith(
           textScaler: TextScaler.linear(textScale),
@@ -43,7 +44,7 @@ void main() {
       expect(AuthValidators.phone('8877889', message: msg), msg);
       expect(AuthValidators.phone('887788990', message: msg), msg);
       expect(AuthValidators.phone('88778899', message: msg), isNull);
-      // The typing group of BigPhoneField does not count as a character.
+      // Spaces a user types or pastes do not count as characters.
       expect(AuthValidators.phone('8877 8899', message: msg), isNull);
       expect(AuthValidators.phone('8877 889', message: msg), msg);
     });
@@ -104,139 +105,63 @@ void main() {
     });
   });
 
-  group('BigPhoneField', () {
-    List<PhoneDigitSlot> slots(WidgetTester tester) =>
-        tester.widgetList<PhoneDigitSlot>(find.byType(PhoneDigitSlot)).toList();
-    List<String?> digits(WidgetTester tester) =>
-        slots(tester).map((s) => s.digit).toList();
-    List<int> activeSlots(WidgetTester tester) => [
-          for (final (i, s) in slots(tester).indexed)
-            if (s.active) i,
-        ];
+  group('PhoneDigitsFormatter', () {
+    TextEditingValue format(String typed) =>
+        const PhoneDigitsFormatter().formatEditUpdate(
+            TextEditingValue.empty, TextEditingValue(text: typed));
 
-    testWidgets('shows +976 and one empty slot per digit', (tester) async {
-      final ctrl = TextEditingController();
-      addTearDown(ctrl.dispose);
-      await _pump(tester, BigPhoneField(controller: ctrl));
-
-      expect(find.text(BigPhoneField.countryCode), findsOneWidget);
-      expect(slots(tester), hasLength(AuthValidators.phoneLength));
-      expect(digits(tester), everyElement(isNull));
-      expect(activeSlots(tester), isEmpty);
-      expect(slots(tester).any((s) => s.error), isFalse);
+    test('keeps only digits, at most 8', () {
+      expect(format('8811 2233').text, '88112233');
+      expect(format('8811-2233-99').text, '88112233');
+      expect(format('abc').text, '');
     });
 
-    testWidgets('the hidden input is numeric, caret-less and not selectable',
-        (tester) async {
+    test('a pasted number with the country code keeps the 8 national digits',
+        () {
+      expect(format('+976 8811 2233').text, '88112233');
+      expect(format('97688112233').text, '88112233');
+    });
+
+    test('an ordinary edit is left alone, caret included', () {
+      const typed = TextEditingValue(
+        text: '8811',
+        selection: TextSelection.collapsed(offset: 2),
+      );
+      expect(
+        const PhoneDigitsFormatter()
+            .formatEditUpdate(TextEditingValue.empty, typed),
+        typed,
+      );
+    });
+  });
+
+  group('PhoneField', () {
+    testWidgets('a plain editable field with a +976 prefix', (tester) async {
       final ctrl = TextEditingController();
       addTearDown(ctrl.dispose);
-      await _pump(tester, BigPhoneField(controller: ctrl));
+      await _pump(tester, PhoneField(controller: ctrl));
 
+      expect(find.text(PhoneField.countryCode), findsOneWidget);
       final field = tester.widget<TextField>(find.byType(TextField));
       expect(field.keyboardType, TextInputType.number);
-      expect(field.showCursor, isFalse);
-      expect(field.enableInteractiveSelection, isFalse);
-      expect(field.autofillHints, BigPhoneField.defaultAutofillHints);
+      expect(field.autofillHints, PhoneField.defaultAutofillHints);
+      expect(field.enableInteractiveSelection, isTrue,
+          reason: 'the number can be selected, copied and pasted');
+      expect(field.showCursor, isNot(false));
     });
 
-    testWidgets('typed digits fill the slots in order', (tester) async {
-      final ctrl = TextEditingController();
-      addTearDown(ctrl.dispose);
-      await _pump(tester, BigPhoneField(controller: ctrl));
-
-      await tester.enterText(find.byType(TextField), '9911');
-      await tester.pump();
-      expect(ctrl.text, '9911');
-      expect(digits(tester), ['9', '9', '1', '1', null, null, null, null]);
-    });
-
-    testWidgets('keeps only digits, and only 8 of them', (tester) async {
-      final ctrl = TextEditingController();
-      final changes = <String>[];
-      addTearDown(ctrl.dispose);
-      await _pump(
-        tester,
-        BigPhoneField(controller: ctrl, onChanged: changes.add),
-      );
-
-      await tester.enterText(find.byType(TextField), '99a11-223344');
-      await tester.pump();
-      expect(ctrl.text, '99112233');
-      expect(changes, ['99112233']);
-      expect(digits(tester), ['9', '9', '1', '1', '2', '2', '3', '3']);
-    });
-
-    testWidgets('the gap after the fourth slot is the wider group gap',
+    testWidgets('typing goes straight into the controller as bare digits',
         (tester) async {
       final ctrl = TextEditingController();
       addTearDown(ctrl.dispose);
-      // Wide enough that the row is not shrunk to fit.
-      await _pump(tester, BigPhoneField(controller: ctrl), width: 600);
+      await _pump(tester, PhoneField(controller: ctrl));
 
-      final slot = find.byType(PhoneDigitSlot);
-      double gap(int i) =>
-          tester.getTopLeft(slot.at(i + 1)).dx -
-          tester.getTopRight(slot.at(i)).dx;
-      expect(gap(0), moreOrLessEquals(BigPhoneField.slotGap));
-      expect(gap(3), moreOrLessEquals(BigPhoneField.groupGap));
-      expect(gap(4), moreOrLessEquals(BigPhoneField.slotGap));
+      await tester.enterText(find.byType(TextField), '+976 8811 2233');
+      expect(ctrl.text, '88112233');
+      expect(find.text('88112233'), findsOneWidget);
     });
 
-    testWidgets('only the slot being typed into is active, and only on focus',
-        (tester) async {
-      final ctrl = TextEditingController();
-      addTearDown(ctrl.dispose);
-      await _pump(tester, BigPhoneField(controller: ctrl));
-      expect(activeSlots(tester), isEmpty);
-
-      await tester.tap(find.byType(BigPhoneField));
-      await tester.pump();
-      expect(activeSlots(tester), [0]);
-
-      await tester.enterText(find.byType(TextField), '991');
-      await tester.pump();
-      expect(activeSlots(tester), [3]);
-
-      // After the last digit the highlight stays on the last slot.
-      await tester.enterText(find.byType(TextField), '99112233');
-      await tester.pump();
-      expect(activeSlots(tester), [7]);
-
-      FocusManager.instance.primaryFocus?.unfocus();
-      await tester.pump();
-      expect(activeSlots(tester), isEmpty);
-    });
-
-    testWidgets('a failed validation shows the message and reddens the slots',
-        (tester) async {
-      final ctrl = TextEditingController();
-      addTearDown(ctrl.dispose);
-      final formKey = GlobalKey<FormState>();
-      await _pump(
-        tester,
-        Form(
-          key: formKey,
-          child: BigPhoneField(
-            controller: ctrl,
-            validator: (v) =>
-                AuthValidators.phone(v, message: '8 оронтой утасны дугаар'),
-          ),
-        ),
-      );
-      await tester.enterText(find.byType(TextField), '8811');
-      expect(formKey.currentState!.validate(), isFalse);
-      await tester.pumpAndSettle();
-      expect(find.text('8 оронтой утасны дугаар'), findsOneWidget);
-      expect(slots(tester).every((s) => s.error), isTrue);
-
-      await tester.enterText(find.byType(TextField), '99112233');
-      expect(formKey.currentState!.validate(), isTrue);
-      await tester.pumpAndSettle();
-      expect(find.text('8 оронтой утасны дугаар'), findsNothing);
-      expect(slots(tester).any((s) => s.error), isFalse);
-    });
-
-    testWidgets('a number set on the controller reaches slots and validator',
+    testWidgets('a failed validation shows the message under the field',
         (tester) async {
       final ctrl = TextEditingController(text: '8811');
       addTearDown(ctrl.dispose);
@@ -245,88 +170,66 @@ void main() {
         tester,
         Form(
           key: formKey,
-          child: BigPhoneField(
+          child: PhoneField(
             controller: ctrl,
-            validator: (v) => AuthValidators.phone(v, message: 'bad'),
+            validator: (v) => AuthValidators.phone(v, message: 'Буруу'),
           ),
         ),
       );
-      expect(digits(tester).take(4), ['8', '8', '1', '1']);
+
       expect(formKey.currentState!.validate(), isFalse);
-
-      ctrl.text = '88112233';
-      await tester.pumpAndSettle();
-      expect(digits(tester), ['8', '8', '1', '1', '2', '2', '3', '3']);
-      expect(formKey.currentState!.validate(), isTrue);
+      await tester.pump();
+      expect(find.text('Буруу'), findsOneWidget);
     });
 
-    testWidgets('shrinks to fit a narrow column instead of overflowing',
+    /// The user's request (2026-10-14): the phone field must look like the
+    /// password field — same height, font and border.
+    testWidgets('matches the password field: height, font and border',
         (tester) async {
-      final ctrl = TextEditingController(text: '88778899');
-      addTearDown(ctrl.dispose);
+      final phone = TextEditingController(text: '88112233');
+      final pass = TextEditingController(text: 'secret');
+      addTearDown(phone.dispose);
+      addTearDown(pass.dispose);
       await _pump(
         tester,
-        Align(
-          alignment: Alignment.centerLeft,
-          child: SizedBox(width: 200, child: BigPhoneField(controller: ctrl)),
-        ),
-        textScale: 1.3,
-      );
-      expect(tester.takeException(), isNull);
-      expect(
-        tester.getTopRight(find.byType(PhoneDigitSlot).last).dx,
-        lessThanOrEqualTo(
-          tester.getTopRight(find.byType(BigPhoneField)).dx + 0.5,
-        ),
-      );
-    });
-  });
-
-  group('PhoneDigitSlot', () {
-    test('line colour: error beats active beats resting', () {
-      expect(
-        PhoneDigitSlot.lineColor(active: false, error: false),
-        PhoneDigitSlot.restingLineColor,
-      );
-      expect(
-        PhoneDigitSlot.lineColor(active: true, error: false),
-        AppColors.primary,
-      );
-      expect(
-        PhoneDigitSlot.lineColor(active: true, error: true),
-        AppColors.danger,
-      );
-      expect(
-        PhoneDigitSlot.lineColor(active: false, error: true),
-        AppColors.danger,
-      );
-    });
-
-    testWidgets('an empty slot is as tall as a filled one', (tester) async {
-      await _pump(
-        tester,
-        const Row(
+        Column(
           children: [
-            PhoneDigitSlot(
-              key: ValueKey('empty'),
-              digit: null,
-              active: false,
-              error: false,
-            ),
-            PhoneDigitSlot(
-              key: ValueKey('filled'),
-              digit: '8',
-              active: true,
-              error: false,
-            ),
+            PhoneField(controller: phone),
+            PasswordField(controller: pass),
           ],
         ),
       );
-      expect(find.text('8'), findsOneWidget);
-      expect(
-        tester.getSize(find.byKey(const ValueKey('empty'))),
-        tester.getSize(find.byKey(const ValueKey('filled'))),
-      );
+
+      final phoneBox = find.byType(TextFormField).first;
+      final passBox = find.byType(TextFormField).last;
+      expect(tester.getSize(phoneBox).height, tester.getSize(passBox).height);
+
+      final fields = tester.widgetList<TextField>(find.byType(TextField));
+      final phoneStyle = fields.first.style!;
+      final passStyle = fields.last.style!;
+      expect(phoneStyle.fontSize, passStyle.fontSize);
+      expect(phoneStyle.fontWeight, passStyle.fontWeight);
+      expect(phoneStyle.height, passStyle.height);
+
+      final borders = tester
+          .widgetList<InputDecorator>(find.byType(InputDecorator))
+          .map((d) => d.decoration.border ?? d.decoration.enabledBorder)
+          .toList();
+      expect(borders.first, borders.last);
+    });
+
+    /// Regression (2026-10-13): '+976' kept the light text colour, so it was
+    /// almost invisible on the dark background.
+    testWidgets('+976 and the number follow the dark theme', (tester) async {
+      final ctrl = TextEditingController(text: '88112233');
+      addTearDown(ctrl.dispose);
+      await _pump(tester, PhoneField(controller: ctrl), theme: AppTheme.dark());
+
+      const dark = AppPalette(true);
+      final prefix = tester.widget<Text>(find.text(PhoneField.countryCode));
+      expect(prefix.style!.color, dark.textSecondary);
+      final field = tester.widget<TextField>(find.byType(TextField));
+      expect(field.style!.color, dark.textPrimary);
     });
   });
 
@@ -360,26 +263,21 @@ void main() {
   });
 
   group('FieldError', () {
-    testWidgets('flush drops the side inset of the boxed-field variant',
-        (tester) async {
+    testWidgets('lines up with the text inside a field', (tester) async {
       await _pump(
         tester,
         const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            FieldError('boxed', key: ValueKey('boxed')),
-            FieldError('flush', key: ValueKey('flush'), flush: true),
-          ],
+          children: [FieldError('алдаа')],
         ),
       );
       final column = tester.getTopLeft(find.byType(Column)).dx;
-      expect(tester.getTopLeft(find.text('flush')).dx, column);
-      expect(tester.getTopLeft(find.text('boxed')).dx, greaterThan(column));
+      expect(tester.getTopLeft(find.text('алдаа')).dx, greaterThan(column));
     });
   });
 
   group('PhoneNumberSection', () {
-    testWidgets('shows the heading, the helper line and the big field',
+    testWidgets('shows the heading, the helper line and the phone field',
         (tester) async {
       final semantics = tester.ensureSemantics();
       final ctrl = TextEditingController();
@@ -388,7 +286,7 @@ void main() {
 
       expect(find.text(PhoneNumberSection.title), findsOneWidget);
       expect(find.text(PhoneNumberSection.helper), findsOneWidget);
-      expect(find.byType(BigPhoneField), findsOneWidget);
+      expect(find.byType(PhoneField), findsOneWidget);
       expect(
         tester.getSemantics(find.text(PhoneNumberSection.title)),
         isSemantics(isHeader: true),

@@ -1,107 +1,55 @@
-import { Check, Lock } from "lucide-react";
-import { BENEFITS, type Benefit } from "@/lib/content";
-import { cn } from "@uziy/ui";
-import { Section } from "./section";
-
-const CHIPS = [
-  { label: "Нас 18–24", on: true },
-  { label: "Эмэгтэй", on: true },
-  { label: "Улаанбаатар", on: true },
-  { label: "Нас 45+", on: false },
-  { label: "Дархан", on: false },
-];
-
-const BARS = [72, 44, 28];
-
-/** Little illustrations, one per benefit; decorative, so hidden from assistive tech. */
-const VISUALS: Record<Benefit["icon"], () => React.ReactNode> = {
-  target: () => (
-    <div className="flex flex-wrap gap-2">
-      {CHIPS.map((chip) => (
-        <span
-          key={chip.label}
-          className={cn(
-            "rounded-full border px-3 py-1.5 text-xs",
-            chip.on
-              ? "border-[var(--color-primary)] bg-[rgb(245_197_24/0.12)] text-[var(--color-primary)]"
-              : "border-[var(--color-divider)] text-[var(--color-text-muted)]",
-          )}
-        >
-          {chip.label}
-        </span>
-      ))}
-    </div>
-  ),
-  message: () => (
-    <div className="flex h-24 items-end gap-3">
-      {BARS.map((height, index) => (
-        <div
-          key={height}
-          style={{ height: `${height}%` }}
-          className={cn(
-            "w-10 rounded-t-lg",
-            index === 0
-              ? "bg-[image:var(--gradient-gold)]"
-              : "bg-[var(--color-surface-hover)]",
-          )}
-        />
-      ))}
-    </div>
-  ),
-  timer: () => (
-    <p className="font-display text-5xl font-semibold italic text-[var(--color-primary)]">
-      0:30<span className="px-2 text-[var(--color-border-strong)]">–</span>2:00
-    </p>
-  ),
-  shield: () => (
-    <div className="flex items-center gap-3">
-      <span className="grid size-12 place-items-center rounded-2xl border border-[var(--color-primary)] bg-[var(--color-surface-elevated)] text-[var(--color-primary)] shadow-[0_0_28px_rgb(245_197_24/0.25)]">
-        <Check size={22} strokeWidth={3} />
-      </span>
-      <span className="grid size-12 place-items-center rounded-2xl border border-[var(--color-divider)] text-[var(--color-text-muted)]">
-        <Lock size={20} />
-      </span>
-    </div>
-  ),
+import {
+  Target,
+  MessageCircle,
+  Clock3,
+  ShieldCheck,
+  ArrowUpRight,
+} from "lucide-react";
+import { BENEFITS } from "@/lib/content";
+const icons = {
+  target: Target,
+  message: MessageCircle,
+  timer: Clock3,
+  shield: ShieldCheck,
 };
-
-/** Wide tiles sit on the diagonal so the grid reads as a bento, not a table. */
-const TILE_SPAN: Record<Benefit["icon"], string> = {
-  target: "lg:col-span-2",
-  message: "",
-  timer: "",
-  shield: "lg:col-span-2",
-};
-
 export function Benefits() {
   return (
-    <Section
-      id="benefits"
-      eyebrow="Давуу тал"
-      title="Яагаад Uziy вэ?"
-      className="bg-[var(--color-surface)]"
-    >
-      <ul className="grid gap-5 lg:grid-cols-3">
-        {BENEFITS.map((benefit) => (
-          <li
-            key={benefit.title}
-            className={cn(
-              "reveal group relative flex flex-col justify-between gap-10 overflow-hidden rounded-3xl border border-[var(--color-divider)] bg-[var(--color-background)] p-7 transition-colors hover:border-[var(--color-border-strong)] sm:p-9",
-              TILE_SPAN[benefit.icon],
-            )}
-          >
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -right-24 -top-24 size-64 rounded-full bg-[radial-gradient(closest-side,rgb(245_197_24/0.10),transparent)] opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-            />
-            <div aria-hidden>{VISUALS[benefit.icon]()}</div>
-            <div>
-              <h3 className="font-display text-2xl font-semibold">{benefit.title}</h3>
-              <p className="mt-2 max-w-md text-[var(--color-text-secondary)]">{benefit.text}</p>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </Section>
+    <section id="benefits" className="benefits-section">
+      <div className="container benefits-layout">
+        <div className="benefits-intro">
+          <p className="eyebrow">ЯАГААД UZIY ГЭЖ?</p>
+          <h2>
+            Танд хамаатай.
+            <br />
+            Танаас эхтэй.
+          </h2>
+          <p>
+            Таны өдөр тутмын сонголт брэндүүдэд илүү сайн шийдвэр гаргахад
+            тусална.
+          </p>
+          <div className="opinion-art" aria-hidden>
+            <span>“</span>
+            <p>Миний бодлоор...</p>
+            <ArrowUpRight size={42} />
+          </div>
+        </div>
+        <div className="benefit-list">
+          {BENEFITS.map((b) => {
+            const Icon = icons[b.icon];
+            return (
+              <article key={b.title}>
+                <span className="benefit-icon">
+                  <Icon size={22} />
+                </span>
+                <div>
+                  <h3>{b.title}</h3>
+                  <p>{b.text}</p>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </div>
+    </section>
   );
 }

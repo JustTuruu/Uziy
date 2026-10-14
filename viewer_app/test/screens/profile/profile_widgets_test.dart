@@ -36,7 +36,7 @@ Future<void> _pump(
 }) {
   return tester.pumpWidget(
     MaterialApp(
-      theme: AppTheme.dark(),
+      theme: AppTheme.light(),
       builder: (context, app) => MediaQuery(
         data: MediaQuery.of(context).copyWith(
           disableAnimations: reduceMotion,
@@ -567,7 +567,7 @@ void main() {
     ) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.dark(),
+          theme: AppTheme.light(),
           home: Scaffold(
             body: Builder(
               builder: (context) => Center(
@@ -609,7 +609,7 @@ void main() {
     testWidgets('a second snackbar replaces the first', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.dark(),
+          theme: AppTheme.light(),
           home: Scaffold(
             body: Builder(
               builder: (context) => Column(
@@ -647,7 +647,7 @@ void main() {
       final results = <bool>[];
       await tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.dark(),
+          theme: AppTheme.light(),
           builder: (context, app) => MediaQuery(
             data: MediaQuery.of(context)
                 .copyWith(textScaler: TextScaler.linear(textScale)),

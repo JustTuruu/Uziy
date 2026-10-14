@@ -85,16 +85,17 @@ class FaqTile extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text(item.question, style: AppTextStyles.bodyStrong),
+                    child: Text(item.question,
+                        style: context.textStyles.bodyStrong),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   AnimatedRotation(
                     turns: expanded ? 0.5 : 0,
                     duration: AppDurations.fast,
-                    child: const Icon(
+                    child: Icon(
                       AppIcons.expand,
                       size: 16,
-                      color: AppColors.textTertiary,
+                      color: context.colors.textTertiary,
                     ),
                   ),
                 ],
@@ -108,8 +109,8 @@ class FaqTile extends StatelessWidget {
                         padding: const EdgeInsets.only(top: AppSpacing.sm),
                         child: Text(
                           item.answer,
-                          style: AppTextStyles.body.copyWith(
-                            color: AppColors.textSecondary,
+                          style: context.textStyles.body.copyWith(
+                            color: context.colors.textSecondary,
                           ),
                         ),
                       )

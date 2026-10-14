@@ -13,6 +13,8 @@ public class PayoutDecisionStrategies {
 
     private final Map<PayoutStatus, PayoutDecisionStrategy> byDecision = new EnumMap<>(PayoutStatus.class);
 
+    static final String NOT_A_DECISION = "Хүсэлтийг зөвхөн зөвшөөрөх эсвэл татгалзах боломжтой";
+
     public PayoutDecisionStrategies(List<PayoutDecisionStrategy> strategies) {
         for (PayoutDecisionStrategy s : strategies) {
             byDecision.put(s.decision(), s);
@@ -23,7 +25,7 @@ public class PayoutDecisionStrategies {
     public PayoutDecisionStrategy forDecision(PayoutStatus decision) {
         PayoutDecisionStrategy strategy = byDecision.get(decision);
         if (strategy == null) {
-            throw new BadRequestException("Cannot set PENDING");
+            throw new BadRequestException(NOT_A_DECISION);
         }
         return strategy;
     }

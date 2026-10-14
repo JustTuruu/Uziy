@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import mn.uziy.backend.common.BadRequestException;
 import mn.uziy.backend.common.ConflictException;
+import mn.uziy.backend.common.Messages;
 import mn.uziy.backend.common.NotFoundException;
 import mn.uziy.backend.common.event.DomainEventPublisher;
 import mn.uziy.backend.domain.PayoutEntity;
@@ -21,8 +22,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PayoutServiceImpl implements PayoutService {
 
-    static final String USER_NOT_FOUND = "User not found";
-    static final String INSUFFICIENT_BALANCE = "Insufficient balance";
+    static final String USER_NOT_FOUND = Messages.USER_NOT_FOUND;
+    static final String INSUFFICIENT_BALANCE = Messages.INSUFFICIENT_BALANCE;
+    static final String PAYOUT_NOT_FOUND = "Мөнгө татах хүсэлт олдсонгүй";
+    static final String ALREADY_DECIDED = "Энэ хүсэлтийг аль хэдийн шийдвэрлэсэн байна";
 
     private final PayoutRepository payouts;
     private final UserRepository users;
@@ -104,14 +107,14 @@ public class PayoutServiceImpl implements PayoutService {
         PayoutDecisionStrategy strategy = decisionStrategies.forDecision(decision); // rejects PENDING
 
         if (!payouts.existsById(payoutId)) {
-            throw new NotFoundException("Payout not found");
+            throw new NotFoundException(PAYOUT_NOT_FOUND);
         }
         // Claim first: only one decision can ever move this payout out of PENDING.
         if (payouts.tryClaim(payoutId, decision) == 0) {
-            throw new ConflictException("Already decided");
+            throw new ConflictException(ALREADY_DECIDED);
         }
 
-        PayoutEntity p = payouts.findById(payoutId).orElseThrow(() -> new NotFoundException("Payout not found"));
+        PayoutEntity p = payouts.findById(payoutId).orElseThrow(() -> new NotFoundException(PAYOUT_NOT_FOUND));
         UserEntity user = users.findById(p.getUserId()).orElseThrow(() -> new NotFoundException(USER_NOT_FOUND));
         strategy.apply(user, p, reason);
         users.save(user);

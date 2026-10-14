@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, apiFetch, auth, authApi } from "./api";
+import {
+  ApiError,
+  apiFetch,
+  auth,
+  authApi,
+  GENERIC_ERROR_MESSAGE,
+  NETWORK_ERROR_MESSAGE,
+} from "./api";
 
 describe("auth (localStorage helpers)", () => {
   beforeEach(() => window.localStorage.clear());
@@ -98,6 +105,23 @@ describe("apiFetch", () => {
       status: 409,
       message: "Already rewarded",
     });
+  });
+
+  it("a body without a message gets the Mongolian generic sentence, not the status text", async () => {
+    mockFetch(403, { status: 403, error: "Forbidden" });
+    const err = (await apiFetch("/x").catch((e) => e)) as ApiError;
+    expect(err.status).toBe(403);
+    expect(err.message).toBe(GENERIC_ERROR_MESSAGE);
+  });
+
+  it("an unreachable server is a Mongolian ApiError with status 0, not the browser's 'Failed to fetch'", async () => {
+    globalThis.fetch = vi.fn(async () => {
+      throw new TypeError("Failed to fetch");
+    }) as typeof fetch;
+    const err = (await apiFetch("/x").catch((e) => e)) as ApiError;
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err.status).toBe(0);
+    expect(err.message).toBe(NETWORK_ERROR_MESSAGE);
   });
 
   it("throws ApiError on 5xx even when body is empty", async () => {

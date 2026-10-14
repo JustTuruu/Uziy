@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:viewer_app/services/api_error.dart';
 import 'package:viewer_app/routes/app_router.dart' show Routes;
 import 'package:viewer_app/screens/auth/auth_widgets.dart';
 import 'package:viewer_app/screens/auth/login_screen.dart';
@@ -50,7 +51,7 @@ Future<void> _pump(
   addTearDown(router.dispose);
   await tester.pumpWidget(
     MaterialApp.router(
-      theme: AppTheme.dark(),
+      theme: AppTheme.light(),
       routerConfig: router,
       // The falling coins loop forever; frozen coins let pumpAndSettle end.
       builder: (context, app) => MediaQuery(
@@ -63,7 +64,7 @@ Future<void> _pump(
 }
 
 Future<void> _fillAndSubmit(WidgetTester tester) async {
-  // Phone (BigPhoneField's hidden input), then password.
+  // Native phone entry, then password.
   final fields = find.byType(TextField);
   await tester.enterText(fields.at(0), '88112233');
   await tester.enterText(fields.at(1), 'password1');
@@ -91,7 +92,7 @@ void main() {
 
     expect(find.text('Тавтай морил'), findsOneWidget);
     expect(find.text('Нэвтрэх'), findsNWidgets(2)); // title + button
-    expect(find.byType(BigPhoneField), findsOneWidget);
+    expect(find.byType(PhoneField), findsOneWidget);
     expect(find.byType(PasswordField), findsOneWidget);
     expect(
       find.ancestor(
@@ -152,7 +153,7 @@ void main() {
     await _fillAndSubmit(tester);
 
     expect(find.byType(StatusBanner), findsOneWidget);
-    expect(find.text('Утас эсвэл нууц үг буруу байна'), findsOneWidget);
+    expect(find.text(kWrongCredentials), findsOneWidget);
     expect(find.text('home-page'), findsNothing);
   });
 

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'app_theme.dart';
 
-/// Design tokens for the "Gold Noir" design system.
+/// Design tokens for the "Meadow" design system.
 ///
 /// Screens should reach for these instead of magic numbers / raw hex values.
 /// Colors live on [AppColors] (app_theme.dart); everything else lives here.
@@ -94,13 +94,13 @@ abstract final class AppShadows {
     double a(double base) => (base * strength).clamp(0.0, 1.0);
     return [
       BoxShadow(
-        color: color.withValues(alpha: a(0.34)),
+        color: color.withValues(alpha: a(0.09)),
         blurRadius: blur,
         spreadRadius: spread,
         offset: offset,
       ),
       BoxShadow(
-        color: color.withValues(alpha: a(0.14)),
+        color: color.withValues(alpha: a(0.035)),
         blurRadius: blur * 2.4,
         spreadRadius: spread,
         offset: offset * 0.5,
@@ -113,18 +113,23 @@ abstract final class AppShadows {
 
   /// Deep drop shadow for floating surfaces (nav bar, sheets, cards on art).
   static const List<BoxShadow> floating = [
-    BoxShadow(color: Color(0x73000000), blurRadius: 32, offset: Offset(0, 16)),
+    BoxShadow(color: Color(0x18142D20), blurRadius: 32, offset: Offset(0, 16)),
   ];
 
   /// Subtle lift for cards.
   static const List<BoxShadow> soft = [
-    BoxShadow(color: Color(0x40000000), blurRadius: 16, offset: Offset(0, 6)),
+    BoxShadow(color: Color(0x0A142D20), blurRadius: 16, offset: Offset(0, 6)),
   ];
 }
 
-/// Gradients. Gold is the signature — use [gold] for primary CTAs, reward
-/// chips, the wallet balance card.
+/// Brand gradients. The legacy [gold] name now maps to forest green.
+/// Reward gold is independent so currency remains visually distinct.
 abstract final class AppGradients {
+  static const reward = LinearGradient(
+    colors: [Color(0xFFF9E6AC), Color(0xFFECC974)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
   static const LinearGradient gold = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
@@ -136,7 +141,7 @@ abstract final class AppGradients {
   static const LinearGradient goldSoft = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0x33FFCE00), Color(0x0FFFCE00)],
+    colors: [Color(0xFFE6EFE3), Color(0xFFF0F5EA)],
   );
 
   /// Top highlight laid over cards — gives surfaces a lit top edge.

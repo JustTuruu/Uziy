@@ -35,7 +35,7 @@ class AmbientBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      painter: _AmbientPainter(variant),
+      painter: _AmbientPainter(variant, context.colors),
       isComplex: true,
       child: RepaintBoundary(child: child),
     );
@@ -55,31 +55,32 @@ class _Glow {
 }
 
 class _AmbientPainter extends CustomPainter {
-  _AmbientPainter(this.variant);
+  _AmbientPainter(this.variant, this.colors);
+  final AppPalette colors;
 
   final AmbientVariant variant;
 
   List<_Glow> get _glows => switch (variant) {
-        AmbientVariant.standard => const [
-            _Glow(Offset(0.92, -0.04), 0.95, AppColors.primary, 0.11),
-            _Glow(Offset(-0.12, 0.72), 0.85, AppColors.accent, 0.09),
-            _Glow(Offset(1.05, 1.02), 0.75, AppColors.violet, 0.07),
+        AmbientVariant.standard => [
+            _Glow(const Offset(0.92, -0.04), 0.95, colors.primary, 0.025),
+            _Glow(const Offset(-0.12, 0.72), 0.85, colors.accent, 0.015),
+            _Glow(const Offset(1.05, 1.02), 0.75, colors.violet, 0.01),
           ],
-        AmbientVariant.gold => const [
-            _Glow(Offset(0.5, 0.18), 1.05, AppColors.primary, 0.17),
-            _Glow(Offset(0.95, -0.05), 0.7, AppColors.primaryDeep, 0.10),
-            _Glow(Offset(-0.1, 0.95), 0.8, AppColors.violet, 0.07),
+        AmbientVariant.gold => [
+            _Glow(const Offset(0.5, 0.18), 1.05, colors.primary, 0.045),
+            _Glow(const Offset(0.95, -0.01), 0.7, colors.primaryDeep, 0.02),
+            _Glow(const Offset(-0.1, 0.95), 0.8, colors.violet, 0.01),
           ],
-        AmbientVariant.subtle => const [
-            _Glow(Offset(0.92, -0.04), 0.9, AppColors.primary, 0.06),
-            _Glow(Offset(-0.12, 0.8), 0.8, AppColors.accent, 0.05),
+        AmbientVariant.subtle => [
+            _Glow(const Offset(0.92, -0.04), 0.9, colors.primary, 0.015),
+            _Glow(const Offset(-0.12, 0.8), 0.8, colors.accent, 0.01),
           ],
       };
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    canvas.drawRect(rect, Paint()..color = AppColors.background);
+    canvas.drawRect(rect, Paint()..color = colors.background);
     if (size.isEmpty) return;
     for (final g in _glows) {
       final center =
@@ -104,7 +105,8 @@ class _AmbientPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_AmbientPainter oldDelegate) =>
-      oldDelegate.variant != variant;
+      oldDelegate.variant != variant ||
+      oldDelegate.colors.isDark != colors.isDark;
 
   // Purely decorative — never claim hits.
   @override

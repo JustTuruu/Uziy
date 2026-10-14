@@ -56,6 +56,10 @@ class ApiExceptionHandlerTest {
 
         @org.springframework.web.bind.annotation.PostMapping("/boom/body")
         void i(@org.springframework.web.bind.annotation.RequestBody java.util.Map<String, String> body) { }
+
+        @org.springframework.web.bind.annotation.PostMapping("/boom/login")
+        void j(@jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody
+               mn.uziy.backend.auth.LoginReq body) { }
     }
 
     private final MockMvc mvc = MockMvcBuilders.standaloneSetup(new Boom())
@@ -102,6 +106,18 @@ class ApiExceptionHandlerTest {
         var request = mvc.perform(get("/boom/unavailable")).andReturn().getRequest();
 
         assertThat(request.getAttribute(SafeErrorAttributes.OWN_MESSAGE)).isEqualTo(Boolean.TRUE);
+    }
+
+    /** Regression (2026-10-13): "Validation failed for object='loginReq'. Error count: 1" reached the app. */
+    @org.junit.jupiter.api.Test
+    void anInvalidFieldAnswersWithThatFieldsOwnMessage() throws Exception {
+        var res = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/boom/login")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("{\"phoneNumber\":\"123\",\"password\":\"secret-pass\"}")).andReturn();
+
+        assertThat(res.getResponse().getStatus()).isEqualTo(400);
+        assertThat(res.getResponse().getErrorMessage()).isEqualTo(mn.uziy.backend.common.FieldMessages.PHONE);
+        assertThat(res.getRequest().getAttribute(SafeErrorAttributes.OWN_MESSAGE)).isEqualTo(Boolean.TRUE);
     }
 
     @org.junit.jupiter.api.Test

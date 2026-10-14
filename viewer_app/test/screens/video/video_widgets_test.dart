@@ -14,7 +14,7 @@ Future<void> _pump(
 }) {
   return tester.pumpWidget(
     MaterialApp(
-      theme: AppTheme.dark(),
+      theme: AppTheme.light(),
       builder: (context, app) => MediaQuery(
         data: MediaQuery.of(context).copyWith(disableAnimations: reduceMotion),
         child: app!,
@@ -224,7 +224,7 @@ void main() {
         (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.dark(),
+          theme: AppTheme.light(),
           home: MediaQuery(
             data: const MediaQueryData(
               size: Size(320, 568),
@@ -254,7 +254,7 @@ void main() {
     testWidgets('does not throw in an unbounded-width parent', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.dark(),
+          theme: AppTheme.light(),
           home: Scaffold(
             body: Row(
               children: [_button(unlocked: false, onPressed: () {})],

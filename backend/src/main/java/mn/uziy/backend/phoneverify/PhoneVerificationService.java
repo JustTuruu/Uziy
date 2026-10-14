@@ -1,11 +1,12 @@
 package mn.uziy.backend.phoneverify;
 
 import java.util.UUID;
+import mn.uziy.backend.common.Messages;
 
 /** What the app needs to prove a phone before registering: open a check, then poll it. */
 public interface PhoneVerificationService {
 
-    String PHONE_TAKEN = "Энэ утас аль хэдийн бүртгэлтэй байна";
+    String PHONE_TAKEN = Messages.PHONE_TAKEN;
     String NOT_FOUND = "Баталгаажуулалт олдсонгүй";
     String START_FAILED = "Баталгаажуулалт эхлүүлж чадсангүй. Дахин оролдоно уу";
 

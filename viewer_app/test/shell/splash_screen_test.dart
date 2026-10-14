@@ -28,7 +28,7 @@ Future<void> _pumpSplash(WidgetTester tester, {bool reduceMotion = false}) {
   addTearDown(router.dispose);
   return tester.pumpWidget(
     MaterialApp.router(
-      theme: AppTheme.dark(),
+      theme: AppTheme.light(),
       routerConfig: router,
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(context).copyWith(disableAnimations: reduceMotion),

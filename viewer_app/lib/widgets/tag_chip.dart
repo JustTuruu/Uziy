@@ -34,9 +34,9 @@ class TagChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final (Color bg, Color fg, Color border) = switch (tone) {
       TagTone.neutral => (
-          Colors.white.withValues(alpha: 0.08),
-          AppColors.textPrimary,
-          AppColors.border,
+          context.colors.surfaceElevated,
+          context.colors.textPrimary,
+          context.colors.border,
         ),
       TagTone.glass => (
           Colors.black.withValues(alpha: 0.5),
@@ -44,24 +44,24 @@ class TagChip extends StatelessWidget {
           Colors.white.withValues(alpha: 0.14),
         ),
       TagTone.gold => (
-          AppColors.primary.withValues(alpha: 0.14),
-          AppColors.primary,
-          AppColors.primary.withValues(alpha: 0.30),
+          context.colors.primary.withValues(alpha: 0.14),
+          context.colors.primary,
+          context.colors.primary.withValues(alpha: 0.30),
         ),
       TagTone.success => (
-          AppColors.success.withValues(alpha: 0.14),
-          AppColors.success,
-          AppColors.success.withValues(alpha: 0.30),
+          context.colors.success.withValues(alpha: 0.14),
+          context.colors.success,
+          context.colors.success.withValues(alpha: 0.30),
         ),
       TagTone.info => (
-          AppColors.accent.withValues(alpha: 0.16),
-          AppColors.accentLight,
-          AppColors.accent.withValues(alpha: 0.32),
+          context.colors.accent.withValues(alpha: 0.16),
+          context.colors.accentLight,
+          context.colors.accent.withValues(alpha: 0.32),
         ),
       TagTone.danger => (
-          AppColors.danger.withValues(alpha: 0.14),
-          AppColors.dangerLight,
-          AppColors.danger.withValues(alpha: 0.30),
+          context.colors.danger.withValues(alpha: 0.14),
+          context.colors.dangerLight,
+          context.colors.danger.withValues(alpha: 0.30),
         ),
     };
 
@@ -84,7 +84,7 @@ class TagChip extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.caption.copyWith(
+              style: context.textStyles.caption.copyWith(
                 color: fg,
                 fontWeight: FontWeight.w700,
                 height: 1.1,

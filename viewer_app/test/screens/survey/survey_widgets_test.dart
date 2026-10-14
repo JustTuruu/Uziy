@@ -14,7 +14,7 @@ Future<void> _pump(
 }) {
   return tester.pumpWidget(
     MaterialApp(
-      theme: AppTheme.dark(),
+      theme: AppTheme.light(),
       builder: (context, app) => MediaQuery(
         data: MediaQuery.of(context).copyWith(
           disableAnimations: reduceMotion,
@@ -754,7 +754,7 @@ void main() {
     testWidgets('works inside a modal bottom sheet', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.dark(),
+          theme: AppTheme.light(),
           home: Builder(
             builder: (context) => Scaffold(
               body: Center(

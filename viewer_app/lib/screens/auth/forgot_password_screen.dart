@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../routes/app_router.dart' show Routes;
+import '../../services/api_error.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/ui.dart';
 import 'auth_widgets.dart';
@@ -60,7 +61,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'Алдаа гарлаа. Дахин оролдоно уу.';
+        _error = kUnexpectedError;
       });
     }
   }
@@ -103,7 +104,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     subtitle: kForgotSubtitle,
                   ),
                   const SizedBox(height: AppSpacing.xxxl),
-                  BigPhoneField(
+                  PhoneField(
                     controller: _phone,
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => _submit(),

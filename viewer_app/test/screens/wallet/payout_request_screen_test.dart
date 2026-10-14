@@ -17,7 +17,7 @@ Future<void> pumpPayout(
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     MaterialApp(
-      theme: AppTheme.dark(),
+      theme: AppTheme.light(),
       builder: (context, app) => MediaQuery(
         data: MediaQuery.of(context).copyWith(
           textScaler: TextScaler.linear(textScale),

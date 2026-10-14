@@ -1,14 +1,14 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../routes/app_router.dart';
 import '../../routes/auth_gate.dart';
-import '../../services/api_service.dart';
+import '../../services/api_error.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/ui.dart';
 import '../splash_screen.dart';
 import 'auth_widgets.dart';
+import 'login_fields.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, this.next});
@@ -59,12 +59,11 @@ class _LoginScreenState extends State<LoginScreen> {
         _loading = false;
       });
     } catch (e, stack) {
-      // Never swallow — show the actual runtime error so we can diagnose
-      // without hunting through the flutter run console.
+      // The details go to the console for us; the user gets a plain sentence.
       debugPrint('[login] unexpected error: $e\n$stack');
       if (!mounted) return;
       setState(() {
-        _error = 'Алдаа: $e';
+        _error = kUnexpectedError;
         _loading = false;
       });
     }
@@ -77,79 +76,79 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return AmbientBackground(
       variant: AmbientVariant.gold,
-      child: FallingCoins(
-        child: Scaffold(
-          backgroundColor: Colors.transparent,
-          body: SafeArea(
-            child: CustomScrollView(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              slivers: [
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        maxWidth: AppLayout.maxContentWidth,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: CustomScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            slivers: [
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: AppLayout.maxContentWidth,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppLayout.screenPadding,
+                        AppSpacing.xxl,
+                        AppLayout.screenPadding,
+                        AppSpacing.md,
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                          AppLayout.screenPadding,
-                          AppSpacing.xxl,
-                          AppLayout.screenPadding,
-                          AppSpacing.md,
-                        ),
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              const Spacer(),
-                              // Not wrapped in FadeSlideIn: it may arrive via
-                              // a Hero flight from the splash screen.
-                              Center(
-                                child: UziyLogo(
-                                  size: hero.logoSize,
-                                  heroTag: SplashScreen.logoHeroTag,
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Spacer(),
+                            // Not wrapped in FadeSlideIn: it may arrive via
+                            // a Hero flight from the splash screen.
+                            Center(
+                              child: UziyLogo(
+                                size: hero.logoSize,
+                                heroTag: SplashScreen.logoHeroTag,
+                              ),
+                            ),
+                            SizedBox(height: hero.gap),
+                            FadeSlideIn(
+                              index: 0,
+                              child: Text(
+                                'Тавтай морил',
+                                textAlign: TextAlign.center,
+                                style: context.textStyles.overline.copyWith(
+                                  color: context.colors.primary,
                                 ),
                               ),
-                              SizedBox(height: hero.gap),
-                              FadeSlideIn(
-                                index: 0,
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            FadeSlideIn(
+                              index: 1,
+                              child: Semantics(
+                                header: true,
                                 child: Text(
-                                  'Тавтай морил',
+                                  'Нэвтрэх',
                                   textAlign: TextAlign.center,
-                                  style: AppTextStyles.overline.copyWith(
-                                    color: AppColors.primary,
-                                  ),
+                                  style: context.textStyles.display,
                                 ),
                               ),
-                              const SizedBox(height: AppSpacing.sm),
-                              FadeSlideIn(
-                                index: 1,
-                                child: Semantics(
-                                  header: true,
-                                  child: const Text(
-                                    'Нэвтрэх',
-                                    textAlign: TextAlign.center,
-                                    style: AppTextStyles.display,
-                                  ),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            FadeSlideIn(
+                              index: 2,
+                              child: Text(
+                                'Утасны дугаар болон нууц үгээ оруулна уу',
+                                textAlign: TextAlign.center,
+                                style: context.textStyles.body.copyWith(
+                                  color: context.colors.textSecondary,
                                 ),
                               ),
-                              const SizedBox(height: AppSpacing.sm),
-                              FadeSlideIn(
-                                index: 2,
-                                child: Text(
-                                  'Утасны дугаар болон нууц үгээ оруулна уу',
-                                  textAlign: TextAlign.center,
-                                  style: AppTextStyles.body.copyWith(
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(height: hero.gap),
-                              FadeSlideIn(
-                                index: 3,
+                            ),
+                            SizedBox(height: hero.gap),
+                            FadeSlideIn(
+                              index: 3,
+                              child: LoginFieldsTheme(
                                 child: AppCard(
                                   padding: const EdgeInsets.all(AppSpacing.lg),
                                   child: Column(
@@ -157,8 +156,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                         CrossAxisAlignment.stretch,
                                     children: [
                                       const FieldLabel('Утасны дугаар'),
-                                      BigPhoneField(
+                                      PhoneField(
                                         controller: _phoneCtrl,
+                                        hintText: 'Утасны дугаараа оруулна уу',
                                         textInputAction: TextInputAction.next,
                                         onFieldSubmitted: (_) =>
                                             _passFocus.requestFocus(),
@@ -172,7 +172,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       PasswordField(
                                         controller: _passCtrl,
                                         focusNode: _passFocus,
-                                        hintText: 'Нууц үг',
+                                        hintText: 'Нууц үгээ оруулна уу',
                                         textInputAction: TextInputAction.done,
                                         onFieldSubmitted: (_) => _submit(),
                                         validator: AuthValidators.password,
@@ -181,7 +181,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                         alignment: Alignment.centerRight,
                                         child: TextButton(
                                           style: TextButton.styleFrom(
-                                            foregroundColor: AppColors.primary,
+                                            foregroundColor:
+                                                context.colors.primary,
                                           ),
                                           onPressed: () =>
                                               context.push(Routes.forgot),
@@ -215,61 +216,48 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: AppSpacing.lg),
-                              Center(
-                                child: TextButton.icon(
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: AppColors.textSecondary,
-                                    minimumSize: const Size(
-                                      0,
-                                      AppLayout.minTapTarget,
-                                    ),
-                                  ),
-                                  onPressed: () => context.go(Routes.home),
-                                  iconAlignment: IconAlignment.end,
-                                  icon: const Icon(AppIcons.next, size: 16),
-                                  label: const Text('Зочноор үзэх'),
-                                ),
-                              ),
-                              if (!hero.compact) ...[
-                                const SizedBox(height: AppSpacing.xl),
-                                const FadeSlideIn(
-                                  index: 4,
-                                  child: HowItWorksStrip(),
-                                ),
-                              ],
-                              const Spacer(flex: 2),
-                              const SizedBox(height: AppSpacing.xxl),
-                              AuthFooterLink(
-                                prompt: 'Шинээр бүртгүүлэх үү?',
-                                action: 'Бүртгүүлэх',
-                                onTap: () => context.push(
-                                  authLocation(Routes.register,
-                                      next: widget.next),
-                                ),
-                              ),
-                              if (kDebugMode) ...[
-                                const SizedBox(height: AppSpacing.sm),
-                                Center(
-                                  child: Text(
-                                    'dev · API: ${ApiService.instance.dio.options.baseUrl}',
-                                    textAlign: TextAlign.center,
-                                    style: AppTextStyles.caption.copyWith(
-                                      color: AppColors.textTertiary,
-                                      fontSize: 10,
-                                    ),
+                            ),
+                            const SizedBox(height: AppSpacing.lg),
+                            Center(
+                              child: TextButton.icon(
+                                style: TextButton.styleFrom(
+                                  foregroundColor: context.colors.textSecondary,
+                                  minimumSize: const Size(
+                                    0,
+                                    AppLayout.minTapTarget,
                                   ),
                                 ),
-                              ],
+                                onPressed: () => context.go(Routes.home),
+                                iconAlignment: IconAlignment.end,
+                                icon: const Icon(AppIcons.next, size: 16),
+                                label: const Text('Зочноор үзэх'),
+                              ),
+                            ),
+                            if (!hero.compact) ...[
+                              const SizedBox(height: AppSpacing.xl),
+                              const FadeSlideIn(
+                                index: 4,
+                                child: HowItWorksStrip(),
+                              ),
                             ],
-                          ),
+                            const Spacer(flex: 2),
+                            const SizedBox(height: AppSpacing.xxl),
+                            AuthFooterLink(
+                              prompt: 'Шинээр бүртгүүлэх үү?',
+                              action: 'Бүртгүүлэх',
+                              onTap: () => context.push(
+                                authLocation(Routes.register,
+                                    next: widget.next),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

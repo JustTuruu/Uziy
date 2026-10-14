@@ -1,29 +1,39 @@
+import { UserRound, Play, MessageCircle, Sparkles } from "lucide-react";
 import { STEPS } from "@/lib/content";
-import { Section } from "./section";
-
-/** Editorial numbered rows: big serif numerals, hairlines, a gold wash on hover. */
+const icons = [UserRound, Play, MessageCircle, Sparkles];
 export function HowItWorks() {
   return (
-    <Section
-      id="how"
-      eyebrow="Үйл явц"
-      title="Хэрхэн ажилладаг вэ?"
-      lead="Бүртгүүлээд, танд хамаатай танилцуулгыг үзэж, санал бодлоо хэлэхэд хэдхэн минут л хангалттай."
-    >
-      <ol className="border-t border-[var(--color-divider)]">
-        {STEPS.map((step, index) => (
-          <li
-            key={step.title}
-            className="reveal group grid items-baseline gap-x-8 gap-y-2 border-b border-[var(--color-divider)] px-2 py-8 transition-colors hover:bg-[linear-gradient(90deg,rgb(245_197_24/0.07),transparent_70%)] sm:grid-cols-[7rem_1fr_1.4fr] sm:px-6"
-          >
-            <span className="font-display text-5xl font-medium italic text-[var(--color-border-strong)] transition-colors group-hover:text-[var(--color-primary)] sm:text-6xl">
-              {String(index + 1).padStart(2, "0")}
-            </span>
-            <h3 className="font-display text-2xl font-semibold sm:text-3xl">{step.title}</h3>
-            <p className="max-w-md text-[var(--color-text-secondary)]">{step.text}</p>
-          </li>
-        ))}
+    <section id="how" className="section container">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">ЭХЛЭХЭД АМАРХАН</p>
+          <h2>
+            Хэдхэн минут.
+            <br />
+            <span className="muted-heading">Бодит санал.</span>
+          </h2>
+        </div>
+        <p>
+          Танд тохирсон танилцуулгаас эхлээд
+          <br />
+          таны бодлыг сонсох хүртэл.
+        </p>
+      </div>
+      <ol className="steps">
+        {STEPS.map((s, i) => {
+          const Icon = icons[i];
+          return (
+            <li key={s.title}>
+              <div className="step-top">
+                <Icon size={23} />
+                <span>0{i + 1}</span>
+              </div>
+              <h3>{s.title}</h3>
+              <p>{s.text}</p>
+            </li>
+          );
+        })}
       </ol>
-    </Section>
+    </section>
   );
 }

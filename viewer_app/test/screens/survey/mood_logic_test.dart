@@ -61,15 +61,22 @@ void main() {
   });
 
   group('moodPanelAt', () {
+    test('on the dark surface the panel stays dark (follows the theme)', () {
+      final dark = const AppPalette(true).surface;
+      for (final t in [0.0, 0.5, 1.0]) {
+        expect(moodPanelAt(t, surface: dark).computeLuminance(), lessThan(0.1));
+      }
+    });
+
     test(
-        'stays a dark surface: only a faint wash of the mood on the app surface',
+        'stays a light surface: only a faint wash of the mood on the app surface',
         () {
       for (final t in [0.0, 0.5, 1.0]) {
-        final panel = moodPanelAt(t);
-        expect(panel.computeLuminance(), lessThan(0.12));
+        final panel = moodPanelAt(t, surface: AppColors.surface);
+        expect(panel.computeLuminance(), greaterThan(0.7));
       }
       expect(
-        moodPanelAt(0.5),
+        moodPanelAt(0.5, surface: AppColors.surface),
         Color.alphaBlend(
           MoodColors.mid.withValues(alpha: kMoodPanelWash),
           AppColors.surface,
@@ -78,13 +85,15 @@ void main() {
     });
 
     test('still follows the mood', () {
-      expect(moodPanelAt(0), isNot(moodPanelAt(1)));
-      expect(moodPanelAt(0.5), isNot(AppColors.surface));
+      expect(moodPanelAt(0, surface: AppColors.surface),
+          isNot(moodPanelAt(1, surface: AppColors.surface)));
+      expect(moodPanelAt(0.5, surface: AppColors.surface),
+          isNot(AppColors.surface));
     });
   });
 
   test('the middle mood is the brand gold', () {
-    expect(MoodColors.mid, AppColors.primary);
+    expect(MoodColors.mid, AppColors.warning);
   });
 
   group('stops', () {

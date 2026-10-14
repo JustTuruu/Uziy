@@ -5,7 +5,7 @@ import 'pressable.dart';
 
 /// Layered surface card: surface fill, hairline border, lit top edge.
 ///
-/// Pass [gradient] to replace the flat fill (e.g. `AppGradients.gold` for the
+/// Pass [gradient] to replace the flat fill (e.g. `context.gradients.gold` for the
 /// wallet card). When [onTap] is set the card gets the press-scale
 /// interaction (see [Pressable]).
 class AppCard extends StatelessWidget {
@@ -18,7 +18,7 @@ class AppCard extends StatelessWidget {
     this.color,
     this.borderColor,
     this.radius = AppRadii.lg,
-    this.highlight = true,
+    this.highlight = false,
     this.shadows,
     this.semanticLabel,
     this.haptic = false,
@@ -31,10 +31,10 @@ class AppCard extends StatelessWidget {
   /// Replaces [color] when set.
   final Gradient? gradient;
 
-  /// Flat fill (defaults to [AppColors.surface]).
+  /// Flat fill (defaults to [context.colors.surface]).
   final Color? color;
 
-  /// Hairline border color (defaults to [AppColors.border]).
+  /// Hairline border color (defaults to [context.colors.border]).
   /// Pass `Colors.transparent` for no visible border.
   final Color? borderColor;
   final double radius;
@@ -56,7 +56,7 @@ class AppCard extends StatelessWidget {
     // padding) never hides it.
     Widget card = DecoratedBox(
       decoration: BoxDecoration(
-        color: gradient == null ? (color ?? AppColors.surface) : null,
+        color: gradient == null ? (color ?? context.colors.surface) : null,
         gradient: gradient,
         borderRadius: br,
         boxShadow: shadows,
@@ -65,7 +65,7 @@ class AppCard extends StatelessWidget {
         position: DecorationPosition.foreground,
         decoration: BoxDecoration(
           borderRadius: br,
-          border: Border.all(color: borderColor ?? AppColors.border),
+          border: Border.all(color: borderColor ?? context.colors.border),
         ),
         child: ClipRRect(
           borderRadius: br,

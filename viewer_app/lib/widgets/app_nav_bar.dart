@@ -42,8 +42,8 @@ class AppNavItem {
 ///
 /// Static and fixed: every destination gets an equal slice of the pill, with
 /// its icon on top and its label underneath. The selected destination is
-/// shown in [AppColors.primary] (filled icon); the others in
-/// [AppColors.textSecondary]. Nothing slides or animates.
+/// shown in [context.colors.primary] (filled icon); the others in
+/// [context.colors.textSecondary]. Nothing slides or animates.
 ///
 /// - Frosted surface (backdrop blur + surface at 80%) with a hairline border
 ///   and a deep floating shadow.
@@ -160,24 +160,24 @@ class _GlassPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: const BoxDecoration(
-        borderRadius: AppRadii.brPill,
+        borderRadius: AppRadii.brXl,
         boxShadow: AppShadows.floating,
       ),
       child: ClipRRect(
-        borderRadius: AppRadii.brPill,
+        borderRadius: AppRadii.brXl,
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: AppColors.surface.withValues(alpha: 0.8),
+              color: context.colors.surface.withValues(alpha: 0.96),
             ),
             child: DecoratedBox(
               decoration: const BoxDecoration(gradient: AppGradients.sheen),
               child: DecoratedBox(
                 position: DecorationPosition.foreground,
                 decoration: BoxDecoration(
-                  borderRadius: AppRadii.brPill,
-                  border: Border.all(color: AppColors.border),
+                  borderRadius: AppRadii.brXl,
+                  border: Border.all(color: context.colors.border),
                 ),
                 child: child,
               ),
@@ -201,8 +201,8 @@ class _BottomFade extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            AppColors.background.withValues(alpha: 0),
-            AppColors.background.withValues(alpha: 0.6),
+            context.colors.background.withValues(alpha: 0),
+            context.colors.background.withValues(alpha: 0.6),
           ],
         ),
       ),
@@ -224,7 +224,8 @@ class _NavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.primary : AppColors.textSecondary;
+    final color =
+        selected ? context.colors.primary : context.colors.textSecondary;
     return Semantics(
       container: true,
       button: true,
@@ -239,12 +240,24 @@ class _NavButton extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            item.glyphBuilder?.call(color, selected) ??
-                Icon(
-                  selected ? item.selectedIcon : item.icon,
-                  size: 24,
-                  color: color,
-                ),
+            Container(
+              width: 52,
+              height: 30,
+              decoration: BoxDecoration(
+                color: selected
+                    ? context.colors.primary.withValues(alpha: 0.10)
+                    : Colors.transparent,
+                borderRadius: AppRadii.brPill,
+              ),
+              child: Center(
+                child: item.glyphBuilder?.call(color, selected) ??
+                    Icon(
+                      selected ? item.selectedIcon : item.icon,
+                      size: 23,
+                      color: color,
+                    ),
+              ),
+            ),
             const SizedBox(height: 4),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -253,7 +266,7 @@ class _NavButton extends StatelessWidget {
                 maxLines: 1,
                 softWrap: false,
                 overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.label.copyWith(
+                style: context.textStyles.label.copyWith(
                   fontSize: 11,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   color: color,

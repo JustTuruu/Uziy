@@ -5,16 +5,17 @@ import java.util.List;
 import java.util.Map;
 import mn.uziy.backend.auth.Me;
 import mn.uziy.backend.auth.MeMapper;
+import mn.uziy.backend.common.Messages;
 import mn.uziy.backend.common.NotFoundException;
 import mn.uziy.backend.domain.CampaignEntity;
 import mn.uziy.backend.domain.CampaignRepository;
 import mn.uziy.backend.domain.CampaignStatus;
 import mn.uziy.backend.domain.SurveyQuestionRepository;
-import mn.uziy.backend.domain.ViewHistoryEntity;
-import mn.uziy.backend.domain.ViewHistoryRepository;
 import mn.uziy.backend.domain.TargetGender;
 import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
+import mn.uziy.backend.domain.ViewHistoryEntity;
+import mn.uziy.backend.domain.ViewHistoryRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
@@ -47,12 +48,12 @@ public class ViewerServiceImpl implements ViewerService {
 
     @Override
     public Me me(long userId) {
-        return meMapper.toMe(users.findById(userId).orElseThrow(() -> new NotFoundException("User not found")));
+        return meMapper.toMe(users.findById(userId).orElseThrow(() -> new NotFoundException(Messages.USER_NOT_FOUND)));
     }
 
     @Override
     public List<FeedItemDto> feed(long userId) {
-        UserEntity user = users.findById(userId).orElseThrow(() -> new NotFoundException("User not found"));
+        UserEntity user = users.findById(userId).orElseThrow(() -> new NotFoundException(Messages.USER_NOT_FOUND));
         if (user.getGender() == null || user.getAge() == null || user.getCity() == null) {
             return List.of();
         }
@@ -77,7 +78,7 @@ public class ViewerServiceImpl implements ViewerService {
         // Only a running campaign's survey is public to viewers; a pending or finished one is as good as absent.
         campaigns.findById(campaignId)
                 .filter(c -> c.getStatus() == CampaignStatus.ACTIVE)
-                .orElseThrow(() -> new NotFoundException("Campaign not found"));
+                .orElseThrow(() -> new NotFoundException(Messages.OFFER_NOT_FOUND));
         return questions.findAllByCampaignIdOrderByPosition(campaignId).stream()
                 .map(questionMapper::toDto)
                 .toList();

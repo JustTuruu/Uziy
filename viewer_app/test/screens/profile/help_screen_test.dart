@@ -6,7 +6,7 @@ import 'package:viewer_app/widgets/ui.dart';
 
 Future<void> _pumpHelp(WidgetTester tester) async {
   await tester.pumpWidget(
-    MaterialApp(theme: AppTheme.dark(), home: const HelpScreen()),
+    MaterialApp(theme: AppTheme.light(), home: const HelpScreen()),
   );
   await tester.pumpAndSettle();
 }

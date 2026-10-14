@@ -5,24 +5,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:viewer_app/theme/app_theme.dart';
 
 void main() {
-  final theme = AppTheme.dark();
+  final theme = AppTheme.light();
 
-  test('keeps the original AppColors values screens depend on', () {
-    expect(AppColors.background, const Color(0xFF0B0B0F));
-    expect(AppColors.surface, const Color(0xFF16161C));
-    expect(AppColors.surfaceElevated, const Color(0xFF1F1F27));
-    expect(AppColors.primary, const Color(0xFFFFCE00));
-    expect(AppColors.accent, const Color(0xFF3B82F6));
-    expect(AppColors.success, const Color(0xFF22C55E));
-    expect(AppColors.danger, const Color(0xFFEF4444));
-    expect(AppColors.textPrimary, const Color(0xFFF5F5F7));
-    expect(AppColors.textSecondary, const Color(0xFF9CA3AF));
-    expect(AppColors.divider, const Color(0xFF2A2A33));
+  test('uses warm paper surfaces and forest green actions', () {
+    expect(AppColors.background, const Color(0xFFF5F7F3));
+    expect(AppColors.surface, Colors.white);
+    expect(AppColors.primary, const Color(0xFF145C45));
+    expect(AppColors.onPrimary, Colors.white);
   });
 
-  test('dark, Material 3, near-black scaffold', () {
+  test('light Material 3 with paper scaffold', () {
     expect(theme.useMaterial3, isTrue);
-    expect(theme.brightness, Brightness.dark);
+    expect(theme.brightness, Brightness.light);
     expect(theme.scaffoldBackgroundColor, AppColors.background);
     expect(theme.colorScheme.primary, AppColors.primary);
     expect(theme.colorScheme.onPrimary, AppColors.onPrimary);
@@ -40,7 +34,7 @@ void main() {
     // comes from the platform typography, not from AppTheme.
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     try {
-      final ios = AppTheme.dark();
+      final ios = AppTheme.light();
       expect(ios.textTheme.bodyMedium!.fontFamily, isNot('Roboto'));
       expect(ios.textTheme.displayMedium!.fontFamily, isNot('Roboto'));
     } finally {
@@ -189,7 +183,7 @@ void main() {
         expect(color, isNot(c.secondary));
       }
       expect(c.secondaryContainer, c.primaryContainer); // deep gold
-      expect(c.onSecondaryContainer, AppColors.primaryLight);
+      expect(c.onSecondaryContainer, AppColors.primary);
       expect(c.surfaceTint, Colors.transparent);
     });
 
@@ -307,7 +301,7 @@ void main() {
       addTearDown(tester.view.reset);
       await tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.dark(),
+          theme: AppTheme.light(),
           builder: (context, app) => MediaQuery(
             data: MediaQuery.of(context).copyWith(
               textScaler: TextScaler.linear(textScale),
@@ -413,7 +407,7 @@ void main() {
   test('AppShadows.glow scales and clamps opacity', () {
     final g = AppShadows.glow(AppColors.primary);
     expect(g, hasLength(2));
-    expect(g.first.color.a, closeTo(0.34, 0.01));
+    expect(g.first.color.a, closeTo(0.09, 0.01));
     final none = AppShadows.glow(AppColors.primary, strength: 0);
     expect(none.every((s) => s.color.a == 0), isTrue);
     final huge = AppShadows.glow(AppColors.primary, strength: 100);

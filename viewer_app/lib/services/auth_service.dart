@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../models/phone_verification.dart';
 import '../models/user.dart';
+import 'api_error.dart';
 import 'api_service.dart';
 
 /// One-shot error thrown by AuthService when the backend returns 4xx.
@@ -30,6 +31,10 @@ class AuthService {
   static final AuthService instance = AuthService._();
 
   static const _tokenKey = 'auth_token';
+
+  /// On login a 401 means the phone or password is wrong, not "sign in
+  /// again" (used only if the backend sent no message).
+  static const _loginByStatus = {401: kWrongCredentials};
   final _storage = const FlutterSecureStorage();
 
   /// True while a JWT is loaded into the HTTP client (after login,
@@ -82,12 +87,13 @@ class AuthService {
         '/auth/login',
         data: {'phoneNumber': phone, 'password': password},
       );
-      _throwIfNotOk(res, fallback: 'Нэвтрэхэд алдаа гарлаа');
+      _throwIfNotOk(res,
+          fallback: 'Нэвтрэхэд алдаа гарлаа', byStatus: _loginByStatus);
       final body = res.data!;
       await _saveToken(body['token'] as String);
       return AppUser.fromJson(body['user'] as Map<String, dynamic>);
     } on DioException catch (e) {
-      throw _mapDioError(e, 'Нэвтрэхэд алдаа гарлаа');
+      throw _mapDioError(e, 'Нэвтрэхэд алдаа гарлаа', byStatus: _loginByStatus);
     }
   }
 
@@ -197,42 +203,39 @@ class AuthService {
   /// Dio's validateStatus is set to `< 500`, so 4xx responses come back
   /// through the normal `res` path instead of throwing. Convert them
   /// into an AuthException so the UI layer only has one code path.
-  void _throwIfNotOk(Response<dynamic> res, {required String fallback}) {
+  void _throwIfNotOk(
+    Response<dynamic> res, {
+    required String fallback,
+    Map<int, String> byStatus = const {},
+  }) {
     final code = res.statusCode ?? 0;
     if (code >= 200 && code < 300) return;
-    final data = res.data;
-    String message = fallback;
-    if (data is Map<String, dynamic> && data['message'] is String) {
-      message = data['message'] as String;
-    } else if (code == 401) {
-      message = 'Утас эсвэл нууц үг буруу байна';
-    } else if (code == 409) {
-      message = 'Энэ утас аль хэдийн бүртгэлтэй байна';
-    }
-    throw AuthException(code, message);
+    throw AuthException(
+      code,
+      apiErrorMessage(
+        status: code,
+        body: res.data,
+        fallback: fallback,
+        byStatus: byStatus,
+      ),
+    );
   }
 
-  AuthException _mapDioError(DioException e, String fallback) {
+  AuthException _mapDioError(
+    DioException e,
+    String fallback, {
+    Map<int, String> byStatus = const {},
+  }) {
     final status = e.response?.statusCode ?? 0;
-    final data = e.response?.data;
-    String message = fallback;
-    if (data is Map<String, dynamic> && data['message'] is String) {
-      message = data['message'] as String;
-    } else if (status == 401) {
-      message = 'Утас эсвэл нууц үг буруу байна';
-    } else if (status == 409) {
-      message = 'Энэ утас аль хэдийн бүртгэлтэй байна';
-    } else if (e.type == DioExceptionType.connectionTimeout ||
-        e.type == DioExceptionType.connectionError) {
-      message =
-          'Сервертэй холбогдож чадсангүй. Backend ажиллаж байгаа эсэхийг шалгана уу '
-          '(http://localhost:8080).';
-    } else if (e.type == DioExceptionType.receiveTimeout ||
-        e.type == DioExceptionType.sendTimeout) {
-      message = 'Хүсэлт удлаа. Дахин оролдоно уу.';
-    } else if (e.error != null) {
-      message = 'Алдаа: ${e.error}';
-    }
-    return AuthException(status, message);
+    return AuthException(
+      status,
+      apiErrorMessage(
+        status: status,
+        body: e.response?.data,
+        type: e.type,
+        fallback: fallback,
+        byStatus: byStatus,
+      ),
+    );
   }
 }

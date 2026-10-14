@@ -150,7 +150,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
-        backgroundColor: AppColors.backgroundDeep,
+        backgroundColor: context.colors.backgroundDeep,
         body: Stack(
           fit: StackFit.expand,
           children: [
@@ -208,7 +208,7 @@ class _Backdrop extends StatelessWidget {
             colors: [
               palette[0].withValues(alpha: 0.35),
               palette[2].withValues(alpha: 0.12),
-              AppColors.backgroundDeep.withValues(alpha: 0),
+              context.colors.backgroundDeep.withValues(alpha: 0),
             ],
             stops: const [0, 0.45, 1],
           ),
@@ -260,7 +260,7 @@ class _TopBar extends StatelessWidget {
                             campaign.companyName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.titleSmall.copyWith(
+                            style: context.textStyles.titleSmall.copyWith(
                               color: Colors.white,
                             ),
                           ),
@@ -269,7 +269,7 @@ class _TopBar extends StatelessWidget {
                               'Ивээн тэтгэгч',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.caption.copyWith(
+                              style: context.textStyles.caption.copyWith(
                                 color: Colors.white.withValues(alpha: 0.7),
                               ),
                             ),
@@ -504,7 +504,7 @@ class _BottomPanel extends StatelessWidget {
             campaign.title,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.title,
+            style: context.textStyles.title,
           ),
         ),
         SizedBox(height: compact ? AppSpacing.lg : AppSpacing.xl),
@@ -533,9 +533,9 @@ class _BottomPanel extends StatelessWidget {
         maxHeight: side ? double.infinity : screen.height * 0.6,
       ),
       decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.94),
+        color: context.colors.surface.withValues(alpha: 0.94),
         borderRadius: radius,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colors.border),
         boxShadow: AppShadows.floating,
       ),
       foregroundDecoration: BoxDecoration(

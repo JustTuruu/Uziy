@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/tokens.dart';
+import '../theme/app_theme.dart';
 import '../utils/format.dart';
 
 /// Money text that counts from its previous value to [value]
@@ -24,7 +24,7 @@ class AnimatedMoney extends StatefulWidget {
 
   final num value;
 
-  /// Defaults to [AppTextStyles.money]. Tabular figures are always applied.
+  /// Defaults to [context.textStyles.money]. Tabular figures are always applied.
   final TextStyle? style;
 
   /// Text placed before the amount (e.g. `'Үлдэгдэл '`).
@@ -49,7 +49,7 @@ class _AnimatedMoneyState extends State<AnimatedMoney> {
 
   @override
   Widget build(BuildContext context) {
-    final style = (widget.style ?? AppTextStyles.money)
+    final style = (widget.style ?? context.textStyles.money)
         .copyWith(fontFeatures: AppTextStyles.tabular);
     final target = widget.value.toDouble();
     final finalLabel = _format(target);

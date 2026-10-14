@@ -1,6 +1,7 @@
 package mn.uziy.backend.admin;
 
 import java.util.List;
+import mn.uziy.backend.common.Messages;
 import mn.uziy.backend.common.NotFoundException;
 import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
@@ -24,12 +25,12 @@ public class UserAdminServiceImpl implements UserAdminService {
 
     @Override
     public UserDto get(long userId) {
-        return mapper.toDto(users.findById(userId).orElseThrow(() -> new NotFoundException("User not found")));
+        return mapper.toDto(users.findById(userId).orElseThrow(() -> new NotFoundException(Messages.USER_NOT_FOUND)));
     }
 
     @Override
     public UserDto verify(long userId) {
-        UserEntity u = users.findById(userId).orElseThrow(() -> new NotFoundException("User not found"));
+        UserEntity u = users.findById(userId).orElseThrow(() -> new NotFoundException(Messages.USER_NOT_FOUND));
         u.setVerified(true);
         return mapper.toDto(users.save(u));
     }

@@ -97,7 +97,7 @@ Future<void> _pump(
   );
   addTearDown(router.dispose);
   await tester.pumpWidget(
-    MaterialApp.router(theme: AppTheme.dark(), routerConfig: router),
+    MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
   );
   router.push('/screen');
   await _settle(tester);

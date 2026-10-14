@@ -159,7 +159,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
       // screens / large text.
       isScrollControlled: true,
       useSafeArea: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: context.colors.surface,
       shape: const RoundedRectangleBorder(borderRadius: AppRadii.sheetTop),
       // Let the confetti burst fly out over the scrim.
       clipBehavior: Clip.none,
@@ -220,7 +220,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
                         company.toUpperCase(),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.overline,
+                        style: context.textStyles.overline,
                       ),
                       const SizedBox(height: 3),
                     ],
@@ -228,7 +228,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
                       label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.titleSmall.copyWith(
+                      style: context.textStyles.titleSmall.copyWith(
                         fontFeatures: AppTextStyles.tabular,
                       ),
                     ),
@@ -277,7 +277,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
             child: SingleChildScrollView(
               child: EmptyState(
                 icon: Icons.cloud_off_rounded,
-                iconColor: AppColors.danger,
+                iconColor: context.colors.danger,
                 title: 'Уучлаарай, алдаа гарлаа',
                 message: _loadError,
                 action: AppButton(

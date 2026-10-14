@@ -72,13 +72,16 @@ void main() {
       expect((await _catch(() => svc.questions(1))).statusCode, 403);
     });
 
-    test('submit 409 -> already watched', () async {
-      _reply(409, const {'status': 409});
+    test('submit 409 carries the backend message', () async {
+      _reply(409, const {
+        'status': 409,
+        'message': 'Та энэ урамшууллыг аль хэдийн авсан байна',
+      });
       final e = await _catch(
         () => svc.submitSurvey(campaignId: 1, answers: const {}),
       );
       expect(e.statusCode, 409);
-      expect(e.message, 'Аль хэдийн үзсэн байна');
+      expect(e.message, 'Та энэ урамшууллыг аль хэдийн авсан байна');
     });
 
     test('payout 400 surfaces the backend message', () async {

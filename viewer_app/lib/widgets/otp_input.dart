@@ -266,18 +266,18 @@ class OtpBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ring = error
-        ? AppColors.danger
+        ? context.colors.danger
         : active
-            ? AppColors.primary
+            ? context.colors.primary
             : null;
     return AnimatedContainer(
       duration: AppMotion.duration(context, AppDurations.fast),
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: AppColors.surfaceElevated,
+        color: context.colors.surfaceElevated,
         borderRadius: AppRadii.brMd,
         border: Border.all(
-          color: ring ?? AppColors.border,
+          color: ring ?? context.colors.border,
           width: ring == null ? 1 : 1.6,
         ),
         boxShadow: ring == null
@@ -287,7 +287,7 @@ class OtpBox extends StatelessWidget {
       ),
       child: Text(
         digit ?? '',
-        style: AppTextStyles.display.copyWith(
+        style: context.textStyles.display.copyWith(
           fontSize: 26,
           fontFeatures: AppTextStyles.tabular,
         ),
@@ -326,14 +326,15 @@ class OtpDoneBadge extends StatelessWidget {
             width: size,
             height: size,
             decoration: BoxDecoration(
-              color: AppColors.surfaceElevated,
+              color: context.colors.surfaceElevated,
               borderRadius: AppRadii.brLg,
-              border: Border.all(color: AppColors.primary, width: 1.6),
-              boxShadow: AppShadows.glow(AppColors.primary,
+              border: Border.all(color: context.colors.primary, width: 1.6),
+              boxShadow: AppShadows.glow(context.colors.primary,
                   strength: 0.6, blur: 22, offset: Offset.zero),
             ),
             child: CustomPaint(
-              painter: CheckPainter(progress: draw, color: AppColors.primary),
+              painter:
+                  CheckPainter(progress: draw, color: context.colors.primary),
             ),
           ),
         ),

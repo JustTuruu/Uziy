@@ -6,6 +6,7 @@ import '../../models/register_draft.dart';
 import '../../models/user.dart';
 import '../../routes/app_router.dart' show Routes;
 import '../../routes/auth_gate.dart';
+import '../../services/api_error.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/incentive_banner.dart';
 import '../../widgets/ui.dart';
@@ -46,7 +47,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   /// The large page title has scrolled away: show it in the app bar.
   bool _compactTitle = false;
 
-  static const _cities = [
+  static final _cities = [
     'Улаанбаатар',
     'Дархан',
     'Эрдэнэт',
@@ -166,7 +167,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Алдаа гарлаа, дахин оролдоно уу')),
+        const SnackBar(content: Text(kUnexpectedError)),
       );
     }
   }
@@ -207,11 +208,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           backgroundColor: _compactTitle
-              ? AppColors.background.withValues(alpha: 0.94)
+              ? context.colors.background.withValues(alpha: 0.94)
               : Colors.transparent,
           shape: Border(
             bottom: BorderSide(
-              color: _compactTitle ? AppColors.border : Colors.transparent,
+              color: _compactTitle ? context.colors.border : Colors.transparent,
             ),
           ),
           automaticallyImplyLeading: false,
@@ -264,17 +265,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         children: [
                           Semantics(
                             header: true,
-                            child: const Text(
+                            child: Text(
                               'Бүртгүүлэх',
-                              style: AppTextStyles.display,
+                              style: context.textStyles.display,
                             ),
                           ),
                           const SizedBox(height: AppSpacing.sm),
                           Text(
                             'Мэдээллээ оруулаад урамшуулалт видео үзэж '
                             'эхлээрэй.',
-                            style: AppTextStyles.body.copyWith(
-                              color: AppColors.textSecondary,
+                            style: context.textStyles.body.copyWith(
+                              color: context.colors.textSecondary,
                             ),
                           ),
                         ],
@@ -385,11 +386,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             // text.
                             isExpanded: true,
                             icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                            iconEnabledColor: AppColors.textSecondary,
-                            dropdownColor: AppColors.surfaceElevated,
+                            iconEnabledColor: context.colors.textSecondary,
+                            dropdownColor: context.colors.surfaceElevated,
                             borderRadius: AppRadii.brMd,
                             menuMaxHeight: 360,
-                            style: AppTextStyles.body,
+                            style: context.textStyles.body,
                             items: _cities
                                 .map(
                                   (c) => DropdownMenuItem(
@@ -413,7 +414,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           TextFormField(
                             controller: _districtCtrl,
                             textInputAction: TextInputAction.done,
-                            style: AppTextStyles.body,
+                            style: context.textStyles.body,
                             decoration: const InputDecoration(
                               prefixIcon: Icon(Icons.pin_drop_outlined),
                               hintText: 'Дүүрэг / Сум (заавал биш)',
@@ -488,8 +489,8 @@ class _SubmitBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.background.withValues(alpha: 0.94),
-        border: const Border(top: BorderSide(color: AppColors.border)),
+        color: context.colors.background.withValues(alpha: 0.94),
+        border: Border(top: BorderSide(color: context.colors.border)),
       ),
       child: SafeArea(
         top: false,
@@ -523,10 +524,10 @@ class _SubmitBar extends StatelessWidget {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.info_outline_rounded,
                                   size: 14,
-                                  color: AppColors.textTertiary,
+                                  color: context.colors.textTertiary,
                                 ),
                                 const SizedBox(width: 6),
                                 Flexible(
@@ -534,8 +535,8 @@ class _SubmitBar extends StatelessWidget {
                                     'Үргэлжлүүлэхийн тулд нөхцөлийг '
                                     'зөвшөөрнө үү',
                                     textAlign: TextAlign.center,
-                                    style: AppTextStyles.caption.copyWith(
-                                      color: AppColors.textTertiary,
+                                    style: context.textStyles.caption.copyWith(
+                                      color: context.colors.textTertiary,
                                     ),
                                   ),
                                 ),
@@ -675,7 +676,7 @@ class _LegalSheet extends StatelessWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.handle,
+                color: context.colors.handle,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -687,14 +688,14 @@ class _LegalSheet extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      gradient: AppGradients.goldSoft,
+                      gradient: context.gradients.goldSoft,
                       borderRadius: AppRadii.brSm,
                       border: Border.all(
-                        color: AppColors.primary.withValues(alpha: 0.28),
+                        color: context.colors.primary.withValues(alpha: 0.28),
                       ),
                     ),
                     alignment: Alignment.center,
-                    child: Icon(icon, size: 20, color: AppColors.primary),
+                    child: Icon(icon, size: 20, color: context.colors.primary),
                   ),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
@@ -702,7 +703,7 @@ class _LegalSheet extends StatelessWidget {
                       header: true,
                       child: Text(
                         title,
-                        style: AppTextStyles.title.copyWith(
+                        style: context.textStyles.title.copyWith(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
                         ),
@@ -737,11 +738,11 @@ class _LegalSheet extends StatelessWidget {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(p.heading, style: AppTextStyles.titleSmall),
+                      Text(p.heading, style: context.textStyles.titleSmall),
                       const SizedBox(height: 6),
                       Text(
                         p.body,
-                        style: AppTextStyles.bodySmall.copyWith(
+                        style: context.textStyles.bodySmall.copyWith(
                           fontSize: 13.5,
                           height: 1.6,
                         ),

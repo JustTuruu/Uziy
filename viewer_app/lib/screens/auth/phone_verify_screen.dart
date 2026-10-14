@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../models/phone_verification.dart';
 import '../../models/register_draft.dart';
 import '../../routes/auth_gate.dart';
+import '../../services/api_error.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/ui.dart';
 import 'auth_widgets.dart';
@@ -139,7 +140,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen>
       if (!mounted) return;
       setState(() {
         _phase = PhoneVerifyPhase.failed;
-        _error = 'Алдаа гарлаа. Дахин оролдоно уу.';
+        _error = kUnexpectedError;
       });
     }
   }
@@ -247,14 +248,14 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen>
           Text(
             kSmsCostNote,
             textAlign: TextAlign.center,
-            style:
-                AppTextStyles.bodySmall.copyWith(color: AppColors.textTertiary),
+            style: context.textStyles.bodySmall
+                .copyWith(color: context.colors.textTertiary),
           ),
           const SizedBox(height: AppSpacing.xl),
           const ProgressNote(label: kWaitingForSms),
         ];
       case PhoneVerifyPhase.registering:
-        return const [ProgressNote(label: kCreatingAccount)];
+        return [const ProgressNote(label: kCreatingAccount)];
       case PhoneVerifyPhase.expired:
         return [
           StatusBanner(
@@ -322,14 +323,15 @@ class _Field extends StatelessWidget {
       children: [
         Text(
           label,
-          style:
-              AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+          style: context.textStyles.bodySmall
+              .copyWith(color: context.colors.textSecondary),
         ),
         const SizedBox(height: AppSpacing.xs),
         SelectableText(
           value,
-          style: AppTextStyles.display.copyWith(
-            color: emphasis ? AppColors.primary : AppColors.textPrimary,
+          style: context.textStyles.display.copyWith(
+            color:
+                emphasis ? context.colors.primary : context.colors.textPrimary,
             letterSpacing: 2,
           ),
         ),
@@ -360,8 +362,8 @@ class ProgressNote extends StatelessWidget {
           Flexible(
             child: Text(
               label,
-              style:
-                  AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+              style: context.textStyles.body
+                  .copyWith(color: context.colors.textSecondary),
             ),
           ),
         ],

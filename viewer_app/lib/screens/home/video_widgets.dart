@@ -276,21 +276,24 @@ class PlayPauseMedallion extends StatelessWidget {
           AppShadows.soft,
         ),
       _MedallionState.paused => (
-          AppGradients.gold,
+          context.gradients.gold,
           Colors.white.withValues(alpha: 0.3),
-          AppShadows.glow(AppColors.primary, blur: 28),
+          AppShadows.glow(context.colors.primary, blur: 28),
         ),
       _MedallionState.completed => (
           _solid(glass),
-          AppColors.primary,
-          AppShadows.glow(AppColors.primary, strength: 0.6, blur: 28),
+          Colors.white,
+          AppShadows.glow(context.colors.primary, strength: 0.6, blur: 28),
         ),
     };
 
     final (IconData icon, Color iconColor) = switch (state) {
       _MedallionState.playing => (Icons.pause_rounded, Colors.white),
-      _MedallionState.paused => (Icons.play_arrow_rounded, AppColors.onPrimary),
-      _MedallionState.completed => (Icons.check_rounded, AppColors.primary),
+      _MedallionState.paused => (
+          Icons.play_arrow_rounded,
+          context.colors.onPrimary
+        ),
+      _MedallionState.completed => (Icons.check_rounded, Colors.white),
     };
 
     final disc = AnimatedScale(
@@ -383,9 +386,7 @@ class PlayPauseMedallion extends StatelessWidget {
                           icon: state == _MedallionState.completed
                               ? Icons.check_circle_rounded
                               : Icons.pause_rounded,
-                          tone: state == _MedallionState.completed
-                              ? TagTone.gold
-                              : TagTone.glass,
+                          tone: TagTone.glass,
                         ),
                 ),
               ),
@@ -427,7 +428,7 @@ class WatchTimeline extends StatelessWidget {
     final p = progress.isFinite ? progress.clamp(0.0, 1.0) : 0.0;
     final elapsed = formatPlaybackTime(elapsedSeconds);
     final total = formatPlaybackTime(totalSeconds);
-    final timeStyle = AppTextStyles.caption.copyWith(
+    final timeStyle = context.textStyles.caption.copyWith(
       fontWeight: FontWeight.w600,
       fontFeatures: AppTextStyles.tabular,
     );
@@ -449,7 +450,8 @@ class WatchTimeline extends StatelessWidget {
                 const Duration(milliseconds: 260),
               ),
               builder: (context, value, _) => CustomPaint(
-                painter: _TimelinePainter(progress: value),
+                painter:
+                    _TimelinePainter(progress: value, colors: context.colors),
               ),
             ),
           ),
@@ -458,7 +460,7 @@ class WatchTimeline extends StatelessWidget {
             children: [
               Text(
                 elapsed,
-                style: timeStyle.copyWith(color: AppColors.textPrimary),
+                style: timeStyle.copyWith(color: context.colors.textPrimary),
               ),
               const Spacer(),
               Text(total, style: timeStyle),
@@ -471,7 +473,8 @@ class WatchTimeline extends StatelessWidget {
 }
 
 class _TimelinePainter extends CustomPainter {
-  _TimelinePainter({required this.progress});
+  _TimelinePainter({required this.progress, required this.colors});
+  final AppPalette colors;
 
   final double progress;
 
@@ -492,7 +495,7 @@ class _TimelinePainter extends CustomPainter {
         cy + _track / 2,
         radius,
       ),
-      Paint()..color = Colors.white.withValues(alpha: 0.12),
+      Paint()..color = colors.divider,
     );
 
     final w = size.width * progress;
@@ -507,17 +510,17 @@ class _TimelinePainter extends CustomPainter {
       canvas.drawRRect(
         fill,
         Paint()
-          ..color = AppColors.primary.withValues(alpha: 0.55)
+          ..color = colors.primary.withValues(alpha: 0.55)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
       );
       canvas.drawRRect(
         fill,
         Paint()
-          ..shader = const LinearGradient(
+          ..shader = LinearGradient(
             colors: [
-              AppColors.primaryDeep,
-              AppColors.primary,
-              AppColors.primaryLight,
+              colors.primaryDeep,
+              colors.primary,
+              colors.primaryLight,
             ],
           ).createShader(Rect.fromLTWH(0, 0, w, size.height)),
       );
@@ -532,15 +535,16 @@ class _TimelinePainter extends CustomPainter {
       knob,
       _knob + 3,
       Paint()
-        ..color = AppColors.primary.withValues(alpha: 0.35)
+        ..color = colors.primary.withValues(alpha: 0.35)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
     );
-    canvas.drawCircle(knob, _knob, Paint()..color = AppColors.primaryLight);
+    canvas.drawCircle(knob, _knob, Paint()..color = colors.primaryLight);
   }
 
   @override
   bool shouldRepaint(_TimelinePainter oldDelegate) =>
-      oldDelegate.progress != progress;
+      oldDelegate.progress != progress ||
+      oldDelegate.colors.isDark != colors.isDark;
 }
 
 // --- Reward hint ---------------------------------------------------------------
@@ -599,8 +603,8 @@ class RewardHintRow extends StatelessWidget {
                     TextSpan(text: lead(completed)),
                     TextSpan(
                       text: formatTugrik(amount, withSign: true),
-                      style: const TextStyle(
-                        color: AppColors.primary,
+                      style: TextStyle(
+                        color: context.colors.primary,
                         fontWeight: FontWeight.w700,
                         fontFeatures: AppTextStyles.tabular,
                       ),
@@ -610,7 +614,7 @@ class RewardHintRow extends StatelessWidget {
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.bodySmall,
+                style: context.textStyles.bodySmall,
               ),
             ),
           ],
@@ -685,9 +689,12 @@ class _WatchProgressButtonState extends State<WatchProgressButton>
   );
   bool _pulseChecked = false;
 
-  static const LinearGradient _lockedGradient = LinearGradient(
-    colors: [AppColors.surfaceElevated, AppColors.surfaceElevated],
-  );
+  LinearGradient get _lockedGradient => LinearGradient(
+        colors: [
+          context.colors.surfaceElevated,
+          context.colors.surfaceElevated
+        ],
+      );
 
   @override
   void didChangeDependencies() {
@@ -741,22 +748,23 @@ class _WatchProgressButtonState extends State<WatchProgressButton>
     final remaining = WatchProgressButton.remainingLabel(
       widget.remainingSeconds,
     );
-    final buttonStyle = AppTextStyles.button.copyWith(
-      color: AppColors.onPrimary,
+    final buttonStyle = context.textStyles.button.copyWith(
+      color: context.colors.onPrimary,
     );
-    final titleStyle = AppTextStyles.label.copyWith(
-      color: AppColors.textPrimary,
+    final titleStyle = context.textStyles.label.copyWith(
+      color: context.colors.textPrimary,
     );
-    final countdownStyle = AppTextStyles.label.copyWith(
-      color: AppColors.primary,
+    final countdownStyle = context.textStyles.label.copyWith(
+      color: context.colors.primary,
       fontFeatures: AppTextStyles.tabular,
     );
-    const arrow = Icon(
+    final arrow = Icon(
       Icons.arrow_forward_rounded,
       size: 20,
-      color: AppColors.onPrimary,
+      color: context.colors.onPrimary,
     );
-    const lock = Icon(Icons.lock_rounded, size: 18, color: AppColors.primary);
+    final lock =
+        Icon(Icons.lock_rounded, size: 18, color: context.colors.primary);
 
     if (unlocked) {
       if (wrap) {
@@ -847,7 +855,7 @@ class _WatchProgressButtonState extends State<WatchProgressButton>
     final progress = unlocked
         ? 1.0
         : (widget.progress.isFinite ? widget.progress.clamp(0.0, 1.0) : 0.0);
-    final fontSize = AppTextStyles.button.fontSize!;
+    final fontSize = context.textStyles.button.fontSize!;
     final textScale =
         (MediaQuery.maybeTextScalerOf(context) ?? TextScaler.noScaling)
                 .scale(fontSize) /
@@ -879,9 +887,9 @@ class _WatchProgressButtonState extends State<WatchProgressButton>
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            AppColors.primary.withValues(alpha: 0.06),
-                            AppColors.primary.withValues(alpha: 0.24),
-                            AppColors.primary.withValues(
+                            context.colors.primary.withValues(alpha: 0.06),
+                            context.colors.primary.withValues(alpha: 0.24),
+                            context.colors.primary.withValues(
                               alpha: chargeEdgeAlpha(fillWidth),
                             ),
                           ],
@@ -967,13 +975,13 @@ class _WatchProgressButtonState extends State<WatchProgressButton>
               decoration: BoxDecoration(
                 gradient: LinearGradient.lerp(
                   _lockedGradient,
-                  AppGradients.gold,
+                  context.gradients.gold,
                   t,
                 ),
                 borderRadius: AppRadii.brMd,
                 border: Border.all(
                   color: Color.lerp(
-                    AppColors.borderStrong,
+                    context.colors.borderStrong,
                     Colors.white.withValues(alpha: 0.24),
                     t,
                   )!,
@@ -981,7 +989,7 @@ class _WatchProgressButtonState extends State<WatchProgressButton>
                 boxShadow: t == 0
                     ? null
                     : AppShadows.glow(
-                        AppColors.primary,
+                        context.colors.primary,
                         strength: t * (0.85 + 0.5 * wave),
                         blur: 22 + 12 * wave,
                       ),

@@ -82,8 +82,8 @@ class _WalletScreenState extends State<WalletScreen> {
         bottom: false,
         child: RefreshIndicator(
           onRefresh: _load,
-          color: AppColors.primary,
-          backgroundColor: AppColors.surfaceElevated,
+          color: context.colors.primary,
+          backgroundColor: context.colors.surfaceElevated,
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
@@ -121,16 +121,36 @@ class _WalletScreenState extends State<WalletScreen> {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xxxl),
-                    const FadeSlideIn(
+                    FadeSlideIn(
                       index: 4,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          SectionHeader(title: 'Гүйлгээний түүх'),
-                          EmptyState(
-                            icon: Icons.receipt_long_rounded,
-                            title: 'Одоогоор гүйлгээ алга',
-                            message: 'Гүйлгээний түүх удахгүй энд харагдана.',
+                          const SectionHeader(title: 'Урамшууллын түүх'),
+                          const SizedBox(height: AppSpacing.md),
+                          AppCard(
+                            onTap: () => context.push(Routes.history),
+                            semanticLabel: 'Урамшууллын түүх харах',
+                            child: Row(
+                              children: [
+                                Icon(Icons.receipt_long_outlined,
+                                    color: context.colors.primary),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                    child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Цуглуулсан урамшуулал',
+                                        style: context.textStyles.bodyStrong),
+                                    const SizedBox(height: 4),
+                                    Text('Үзсэн контент, авсан дүнгээ харах',
+                                        style: context.textStyles.caption),
+                                  ],
+                                )),
+                                Icon(Icons.chevron_right_rounded,
+                                    color: context.colors.textSecondary),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -151,12 +171,12 @@ class _WalletScreenState extends State<WalletScreen> {
       children: [
         Semantics(
           header: true,
-          child: const Text('Хэтэвч', style: AppTextStyles.display),
+          child: Text('Хэтэвч', style: context.textStyles.display),
         ),
         const SizedBox(height: AppSpacing.xs),
-        const Text(
+        Text(
           'Урамшууллаа цуглуулж, дансандаа татаарай',
-          style: AppTextStyles.bodySmall,
+          style: context.textStyles.bodySmall,
         ),
       ],
     );

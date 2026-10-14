@@ -34,7 +34,7 @@ Future<void> _pump(
 }) {
   return tester.pumpWidget(
     MaterialApp(
-      theme: AppTheme.dark(),
+      theme: AppTheme.light(),
       builder: (context, app) => MediaQuery(
         data: MediaQuery.of(context).copyWith(
           disableAnimations: reduceMotion,

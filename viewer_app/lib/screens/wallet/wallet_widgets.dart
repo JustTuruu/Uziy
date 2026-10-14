@@ -34,15 +34,15 @@ class WalletBalanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final meter = progress;
-    const ink = AppColors.onPrimary;
+    final ink = context.colors.onPrimary;
 
     return AppCard(
-      gradient: AppGradients.gold,
+      gradient: context.gradients.gold,
       radius: AppRadii.xl,
       padding: EdgeInsets.zero,
       borderColor: Colors.white.withValues(alpha: 0.30),
       shadows: AppShadows.glow(
-        AppColors.primary,
+        context.colors.primary,
         strength: 0.75,
         blur: 30,
         offset: const Offset(0, 14),
@@ -72,7 +72,7 @@ class WalletBalanceCard extends StatelessWidget {
                               balanceLabel,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.label.copyWith(
+                              style: context.textStyles.label.copyWith(
                                 color: ink.withValues(alpha: 0.72),
                               ),
                             ),
@@ -87,7 +87,7 @@ class WalletBalanceCard extends StatelessWidget {
                         alignment: Alignment.centerLeft,
                         child: AnimatedMoney(
                           value: balance,
-                          style: AppTextStyles.moneyLarge.copyWith(
+                          style: context.textStyles.moneyLarge.copyWith(
                             color: ink,
                             fontSize: 42,
                           ),
@@ -125,7 +125,7 @@ class WalletVerifiedBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const ink = AppColors.onPrimary;
+    final ink = context.colors.onPrimary;
     final label = verified ? verifiedLabel : unverifiedLabel;
     return Semantics(
       label: 'Бүртгэл: $label',
@@ -147,7 +147,7 @@ class WalletVerifiedBadge extends StatelessWidget {
             Icon(
               verified ? Icons.verified_rounded : Icons.shield_outlined,
               size: 15,
-              color: verified ? AppColors.primary : ink,
+              color: verified ? context.colors.primary : ink,
             ),
             const SizedBox(width: 5),
             Flexible(
@@ -155,8 +155,8 @@ class WalletVerifiedBadge extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.caption.copyWith(
-                  color: verified ? AppColors.primaryLight : ink,
+                style: context.textStyles.caption.copyWith(
+                  color: verified ? context.colors.primary : ink,
                   fontWeight: FontWeight.w700,
                   height: 1.15,
                 ),
@@ -182,7 +182,7 @@ class PayoutProgressMeter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const ink = AppColors.onPrimary;
+    final ink = context.colors.onPrimary;
     final percent = (progress.fraction * 100).floor();
     final label = labelFor(progress);
 
@@ -200,7 +200,7 @@ class PayoutProgressMeter extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: AppTextStyles.label.copyWith(
+                  style: context.textStyles.label.copyWith(
                     color: ink,
                     fontWeight: FontWeight.w700,
                   ),
@@ -209,7 +209,7 @@ class PayoutProgressMeter extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Text(
                 '$percent%',
-                style: AppTextStyles.label.copyWith(
+                style: context.textStyles.label.copyWith(
                   color: ink.withValues(alpha: 0.68),
                   fontWeight: FontWeight.w700,
                   fontFeatures: AppTextStyles.tabular,
@@ -232,7 +232,7 @@ class _MeterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const ink = AppColors.onPrimary;
+    final ink = context.colors.onPrimary;
     return Container(
       height: 8,
       decoration: BoxDecoration(
@@ -247,7 +247,7 @@ class _MeterBar extends StatelessWidget {
         builder: (context, v, _) => FractionallySizedBox(
           widthFactor: v,
           heightFactor: 1,
-          child: const DecoratedBox(
+          child: DecoratedBox(
             decoration: BoxDecoration(
               color: ink,
               borderRadius: AppRadii.brPill,
@@ -345,9 +345,9 @@ class WalletCardSkeleton extends StatelessWidget {
             height: 188,
             padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: context.colors.surface,
               borderRadius: AppRadii.brXl,
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: context.colors.border),
             ),
             child: const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -394,10 +394,10 @@ class WalletNote extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.only(top: 1),
-            child: Icon(icon, size: 16, color: AppColors.textSecondary),
+            child: Icon(icon, size: 16, color: context.colors.textSecondary),
           ),
           const SizedBox(width: AppSpacing.sm),
-          Expanded(child: Text(text, style: AppTextStyles.caption)),
+          Expanded(child: Text(text, style: context.textStyles.caption)),
         ],
       ),
     );
@@ -410,7 +410,7 @@ class WalletNote extends StatelessWidget {
 class HowItWorksCard extends StatelessWidget {
   const HowItWorksCard({super.key});
 
-  static const List<(String, String)> steps = [
+  static List<(String, String)> steps = [
     ('Үзэх', 'Видеог эцэс хүртэл'),
     ('Хариулах', 'Богино судалгаа'),
     ('Авах', 'Хэтэвчинд шууд'),
@@ -419,15 +419,15 @@ class HowItWorksCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final icons = <Widget>[
-      const Icon(
+      Icon(
         Icons.play_arrow_rounded,
         size: 24,
-        color: AppColors.primary,
+        color: context.colors.primary,
       ),
-      const Icon(
+      Icon(
         Icons.checklist_rounded,
         size: 22,
-        color: AppColors.primary,
+        color: context.colors.primary,
       ),
       const CoinIcon(size: 24),
     ];
@@ -436,13 +436,13 @@ class HowItWorksCard extends StatelessWidget {
     for (var i = 0; i < steps.length; i++) {
       if (i > 0) {
         children.add(
-          const ExcludeSemantics(
+          ExcludeSemantics(
             child: Padding(
-              padding: EdgeInsets.only(top: 13),
+              padding: const EdgeInsets.only(top: 13),
               child: Icon(
                 Icons.chevron_right_rounded,
                 size: 18,
-                color: AppColors.textTertiary,
+                color: context.colors.textTertiary,
               ),
             ),
           ),
@@ -499,16 +499,16 @@ class _Step extends StatelessWidget {
             height: 44,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: highlight ? AppGradients.goldSoft : null,
-              color: highlight ? null : AppColors.surfaceElevated,
+              gradient: highlight ? context.gradients.goldSoft : null,
+              color: highlight ? null : context.colors.surfaceElevated,
               border: Border.all(
                 color: highlight
-                    ? AppColors.primary.withValues(alpha: 0.45)
-                    : AppColors.borderStrong,
+                    ? context.colors.primary.withValues(alpha: 0.45)
+                    : context.colors.borderStrong,
               ),
               boxShadow: highlight
                   ? AppShadows.glow(
-                      AppColors.primary,
+                      context.colors.primary,
                       strength: 0.35,
                       blur: 16,
                       offset: Offset.zero,
@@ -524,7 +524,8 @@ class _Step extends StatelessWidget {
             child: Text(
               title,
               maxLines: 1,
-              style: AppTextStyles.label.copyWith(fontWeight: FontWeight.w700),
+              style: context.textStyles.label
+                  .copyWith(fontWeight: FontWeight.w700),
             ),
           ),
           const SizedBox(height: 2),
@@ -533,7 +534,7 @@ class _Step extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: AppTextStyles.caption,
+            style: context.textStyles.caption,
           ),
         ],
       ),
@@ -624,13 +625,13 @@ class _AmountChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
           decoration: BoxDecoration(
             color: selected
-                ? AppColors.primary.withValues(alpha: 0.14)
-                : AppColors.surfaceElevated,
+                ? context.colors.primary.withValues(alpha: 0.14)
+                : context.colors.surfaceElevated,
             borderRadius: AppRadii.brSm,
             border: Border.all(
               color: selected
-                  ? AppColors.primary.withValues(alpha: 0.70)
-                  : AppColors.borderStrong,
+                  ? context.colors.primary.withValues(alpha: 0.70)
+                  : context.colors.borderStrong,
               width: selected ? 1.5 : 1,
             ),
           ),
@@ -640,8 +641,10 @@ class _AmountChip extends StatelessWidget {
             child: Text(
               formatTugrik(amount),
               maxLines: 1,
-              style: AppTextStyles.label.copyWith(
-                color: selected ? AppColors.primary : AppColors.textPrimary,
+              style: context.textStyles.label.copyWith(
+                color: selected
+                    ? context.colors.primary
+                    : context.colors.textPrimary,
                 fontWeight: FontWeight.w700,
                 fontFeatures: AppTextStyles.tabular,
               ),
@@ -749,13 +752,13 @@ class BankTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           decoration: BoxDecoration(
             color: selected
-                ? AppColors.primary.withValues(alpha: 0.10)
-                : AppColors.surface,
+                ? context.colors.primary.withValues(alpha: 0.10)
+                : context.colors.surface,
             borderRadius: AppRadii.brMd,
             border: Border.all(
               color: selected
-                  ? AppColors.primary.withValues(alpha: 0.75)
-                  : AppColors.border,
+                  ? context.colors.primary.withValues(alpha: 0.75)
+                  : context.colors.border,
               width: selected ? 1.5 : 1,
             ),
           ),
@@ -786,7 +789,7 @@ class BankTile extends StatelessWidget {
                         child: Text(
                           monogramOf(name, fallback: 'B'),
                           textScaler: TextScaler.noScaling,
-                          style: AppTextStyles.label.copyWith(
+                          style: context.textStyles.label.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.w800,
                             height: 1,
@@ -805,17 +808,17 @@ class BankTile extends StatelessWidget {
                             height: 16,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: AppColors.primary,
+                              color: context.colors.primary,
                               border: Border.all(
-                                color: AppColors.surface,
+                                color: context.colors.surface,
                                 width: 1.5,
                               ),
                             ),
                             alignment: Alignment.center,
-                            child: const Icon(
+                            child: Icon(
                               Icons.check_rounded,
                               size: 11,
-                              color: AppColors.onPrimary,
+                              color: context.colors.onPrimary,
                             ),
                           ),
                         ),
@@ -830,10 +833,10 @@ class BankTile extends StatelessWidget {
                   name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.label.copyWith(
+                  style: context.textStyles.label.copyWith(
                     color: selected
-                        ? AppColors.textPrimary
-                        : AppColors.textPrimary.withValues(alpha: 0.88),
+                        ? context.colors.textPrimary
+                        : context.colors.textPrimary.withValues(alpha: 0.88),
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                   ),
                 ),
@@ -886,17 +889,18 @@ class PayoutSuccessSheet extends StatelessWidget {
           Semantics(
             header: true,
             liveRegion: true,
-            child: const Text(
+            child: Text(
               title,
               textAlign: TextAlign.center,
-              style: AppTextStyles.headline,
+              style: context.textStyles.headline,
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+            style: context.textStyles.body
+                .copyWith(color: context.colors.textSecondary),
           ),
           const SizedBox(height: AppSpacing.xxl),
           GroupedCard(
@@ -946,9 +950,9 @@ class _SuccessMedallion extends StatelessWidget {
           height: 84,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: AppGradients.success,
+            gradient: context.gradients.success,
             boxShadow: AppShadows.glow(
-              AppColors.success,
+              context.colors.success,
               strength: 0.8,
               blur: 28,
               offset: const Offset(0, 10),
@@ -956,10 +960,10 @@ class _SuccessMedallion extends StatelessWidget {
             border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
           ),
           alignment: Alignment.center,
-          child: const Icon(
+          child: Icon(
             Icons.check_rounded,
             size: 44,
-            color: AppColors.onPrimary,
+            color: context.colors.onPrimary,
           ),
         ),
       ),
@@ -968,13 +972,14 @@ class _SuccessMedallion extends StatelessWidget {
 }
 
 /// Error SnackBar with an icon, using the themed floating style.
-SnackBar walletErrorSnackBar(String message) => SnackBar(
+SnackBar walletErrorSnackBar(String message, {required AppPalette palette}) =>
+    SnackBar(
       content: Row(
         children: [
-          const Icon(
+          Icon(
             Icons.error_outline_rounded,
             size: 20,
-            color: AppColors.dangerLight,
+            color: palette.dangerLight,
           ),
           const SizedBox(width: AppSpacing.md - 2),
           Expanded(child: Text(message)),

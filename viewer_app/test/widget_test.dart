@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:viewer_app/app.dart';
+import 'package:viewer_app/widgets/dismiss_keyboard_on_tap.dart';
 
 void main() {
   testWidgets('App boots — splash renders the logo without crashing', (
@@ -15,6 +16,9 @@ void main() {
     // screen after we removed the title / tagline / spinner. Confirms the
     // widget tree renders end-to-end without exceptions.
     expect(find.byType(Image), findsWidgets);
+
+    // Every screen closes the keyboard on a tap outside a field.
+    expect(find.byType(DismissKeyboardOnTap), findsOneWidget);
 
     // Drain the 1.2s splash timer so pumpWidget teardown doesn't complain
     // about a pending Timer, then let the router settle.

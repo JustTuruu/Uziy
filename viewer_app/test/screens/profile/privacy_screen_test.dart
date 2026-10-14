@@ -10,7 +10,7 @@ void main() {
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      MaterialApp(theme: AppTheme.dark(), home: const PrivacyScreen()),
+      MaterialApp(theme: AppTheme.light(), home: const PrivacyScreen()),
     );
     await tester.pumpAndSettle();
 

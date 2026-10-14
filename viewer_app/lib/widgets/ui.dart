@@ -22,6 +22,7 @@ export 'brand_logo.dart';
 export 'campaign_art.dart';
 export 'coin.dart';
 export 'confetti.dart';
+export 'dismiss_keyboard_on_tap.dart';
 export 'empty_state.dart';
 export 'fade_slide_in.dart';
 export 'falling_coins.dart';

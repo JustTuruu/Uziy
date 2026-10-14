@@ -56,8 +56,8 @@ class ProfilePageShell extends StatelessWidget {
               ? list
               : RefreshIndicator(
                   onRefresh: refresh,
-                  color: AppColors.primary,
-                  backgroundColor: AppColors.surfaceElevated,
+                  color: context.colors.primary,
+                  backgroundColor: context.colors.surfaceElevated,
                   child: list,
                 ),
         ),

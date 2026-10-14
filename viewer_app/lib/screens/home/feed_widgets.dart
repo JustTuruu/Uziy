@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 
 import '../../models/campaign.dart';
 import '../../widgets/ui.dart';
+import '../../widgets/appearance_settings.dart';
 import 'feed_logic.dart';
 
 // ---------------------------------------------------------------------------
@@ -58,21 +59,44 @@ class FeedHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
+        Row(
+          children: [
+            const UziyLogo(size: 36, glow: false),
+            const SizedBox(width: 10),
+            Text('uziy',
+                style: context.textStyles.headline.copyWith(letterSpacing: -1)),
+            IconButton(
+              tooltip: 'Харагдах горим',
+              onPressed: () => showAppearanceSettings(context),
+              icon: Icon(Icons.contrast_rounded,
+                  color: context.colors.textSecondary),
+            ),
+            const Expanded(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: TagChip(
+                    label: 'Үз. Хариул. Урамшуулал ав.', tone: TagTone.gold),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xxl),
         LayoutBuilder(
           builder: (context, box) => Row(
             children: [
               Expanded(
                 child: Row(
                   children: [
-                    Icon(iconFor(part), size: 16, color: AppColors.primary),
+                    Icon(iconFor(part),
+                        size: 16, color: context.colors.primary),
                     const SizedBox(width: 6),
                     Flexible(
                       child: Text(
                         greetingFor(part),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.label
-                            .copyWith(color: AppColors.textSecondary),
+                        style: context.textStyles.label
+                            .copyWith(color: context.colors.textSecondary),
                       ),
                     ),
                   ],
@@ -92,13 +116,13 @@ class FeedHeader extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.lg),
         Semantics(
           header: true,
-          child: const Text(title, style: AppTextStyles.display),
+          child: Text(title, style: context.textStyles.display),
         ),
         const SizedBox(height: 6),
-        const Text(subtitle, style: AppTextStyles.bodySmall),
+        Text(subtitle, style: context.textStyles.bodySmall),
       ],
     );
   }
@@ -124,14 +148,16 @@ class GuestSignInPill extends StatelessWidget {
         constraints: const BoxConstraints(minHeight: AppLayout.minTapTarget),
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
         decoration: BoxDecoration(
-          color: AppColors.surfaceElevated,
+          color: context.colors.surfaceElevated,
           borderRadius: AppRadii.brPill,
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.28)),
+          border:
+              Border.all(color: context.colors.primary.withValues(alpha: 0.28)),
         ),
         alignment: Alignment.center,
         child: Text(
           label,
-          style: AppTextStyles.label.copyWith(color: AppColors.primary),
+          style:
+              context.textStyles.label.copyWith(color: context.colors.primary),
         ),
       ),
     );
@@ -160,11 +186,12 @@ class BalancePill extends StatelessWidget {
         constraints: const BoxConstraints(minHeight: AppLayout.minTapTarget),
         padding: const EdgeInsets.fromLTRB(6, 6, 8, 6),
         decoration: BoxDecoration(
-          color: AppColors.surfaceElevated,
+          color: context.colors.surfaceElevated,
           borderRadius: AppRadii.brPill,
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.28)),
+          border:
+              Border.all(color: context.colors.primary.withValues(alpha: 0.28)),
           boxShadow: AppShadows.glow(
-            AppColors.primary,
+            context.colors.primary,
             strength: 0.25,
             blur: 18,
             offset: const Offset(0, 4),
@@ -179,16 +206,16 @@ class BalancePill extends StatelessWidget {
                       key: const ValueKey('balance-placeholder'),
                       width: 52,
                       height: 14,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         // One step above the pill's surfaceElevated fill.
-                        color: AppColors.surfaceHighlight,
+                        color: context.colors.surfaceHighlight,
                         borderRadius: AppRadii.brXs,
                       ),
                     )
                   : AnimatedMoney(
                       key: const ValueKey('balance-value'),
                       value: b,
-                      style: AppTextStyles.money.copyWith(fontSize: 15),
+                      style: context.textStyles.money.copyWith(fontSize: 15),
                     ),
             );
             return Row(
@@ -209,10 +236,10 @@ class BalancePill extends StatelessWidget {
                 else
                   amount,
                 const SizedBox(width: 2),
-                const Icon(
+                Icon(
                   Icons.chevron_right_rounded,
                   size: 20,
-                  color: AppColors.textSecondary,
+                  color: context.colors.textSecondary,
                 ),
               ],
             );
@@ -234,7 +261,7 @@ class EarningsHeroCard extends StatelessWidget {
 
   final FeedSummary summary;
 
-  static const String label = 'Өнөөдөр олох боломж';
+  static const String label = 'Боломжит урамшуулал';
 
   /// Width the decorative coin stack takes, including its gap.
   static const double _coinsReserve = 78 + AppSpacing.md;
@@ -254,83 +281,46 @@ class EarningsHeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final caption = summaryCaption(summary);
-    const ink = AppColors.onPrimary;
 
     return MergeSemantics(
       child: AppCard(
         padding: EdgeInsets.zero,
-        gradient: AppGradients.gold,
-        borderColor: Colors.white.withValues(alpha: 0.30),
-        shadows: AppShadows.glow(
-          AppColors.primary,
-          strength: 0.55,
-          blur: 30,
-          offset: const Offset(0, 12),
-        ),
+        gradient: context.gradients.goldSoft,
+        radius: AppRadii.xl,
+        borderColor: context.colors.border,
         child: LayoutBuilder(
           builder: (context, constraints) {
             final showCoins = showsCoins(
               constraints.maxWidth,
               MediaQuery.textScalerOf(context).scale(16) / 16,
             );
-            return Stack(
-              children: [
-                const Positioned(
-                  right: -56,
-                  top: -64,
-                  child: _Ring(size: 190),
-                ),
-                const Positioned(
-                  right: -14,
-                  bottom: -46,
-                  child: _Ring(size: 120),
-                ),
-                Padding(
-                  padding: _padding,
-                  child: Row(
+            return Padding(
+              padding: _padding,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              label,
-                              style: AppTextStyles.label.copyWith(
-                                color: ink.withValues(alpha: 0.72),
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
+                            Text(label,
+                                style: context.textStyles.label
+                                    .copyWith(color: context.colors.primary)),
+                            const SizedBox(height: 12),
                             FittedBox(
                               fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerLeft,
                               child: AnimatedMoney(
                                 value: summary.totalReward,
-                                style: AppTextStyles.moneyLarge
-                                    .copyWith(color: ink),
+                                style: context.textStyles.moneyLarge
+                                    .copyWith(color: context.colors.primary),
                               ),
                             ),
                             if (caption.isNotEmpty) ...[
-                              const SizedBox(height: AppSpacing.md),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: ink.withValues(alpha: 0.10),
-                                  borderRadius: AppRadii.brPill,
-                                ),
-                                child: Text(
-                                  caption,
-                                  style: AppTextStyles.caption.copyWith(
-                                    color: ink.withValues(alpha: 0.85),
-                                    fontWeight: FontWeight.w700,
-                                    fontFeatures: AppTextStyles.tabular,
-                                  ),
-                                ),
-                              ),
+                              const SizedBox(height: 10),
+                              Text(caption,
+                                  style: context.textStyles.bodySmall),
                             ],
                           ],
                         ),
@@ -341,32 +331,10 @@ class EarningsHeroCard extends StatelessWidget {
                       ],
                     ],
                   ),
-                ),
-                const Positioned.fill(child: _SheenSweep()),
-              ],
+                ],
+              ),
             );
           },
-        ),
-      ),
-    );
-  }
-}
-
-class _Ring extends StatelessWidget {
-  const _Ring({required this.size});
-
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.28),
-          width: 1.2,
         ),
       ),
     );
@@ -391,53 +359,6 @@ class _CoinStack extends StatelessWidget {
       ),
     );
   }
-}
-
-/// One-shot diagonal light sweep across the gold card on mount.
-/// Reduce-motion: nothing is painted.
-class _SheenSweep extends StatelessWidget {
-  const _SheenSweep();
-
-  static const Duration duration = Duration(milliseconds: 1600);
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(begin: 0, end: 1),
-        duration: AppMotion.duration(context, duration),
-        curve: const Interval(0.35, 1, curve: Curves.easeInOutCubic),
-        builder: (context, t, _) {
-          if (t <= 0 || t >= 1) return const SizedBox.shrink();
-          return DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: const Alignment(-1, -0.6),
-                end: const Alignment(1, 0.6),
-                colors: [
-                  Colors.white.withValues(alpha: 0),
-                  Colors.white.withValues(alpha: 0.38),
-                  Colors.white.withValues(alpha: 0),
-                ],
-                stops: const [0.42, 0.5, 0.58],
-                transform: _SweepTransform(t),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _SweepTransform extends GradientTransform {
-  const _SweepTransform(this.t);
-
-  final double t;
-
-  @override
-  Matrix4? transform(Rect bounds, {TextDirection? textDirection}) =>
-      Matrix4.translationValues(bounds.width * 1.2 * (t * 2 - 1), 0, 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -469,9 +390,9 @@ class FeedFilterBar extends StatelessWidget {
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadii.brPill,
-        border: Border.all(color: AppColors.border),
+        color: context.colors.surface,
+        borderRadius: AppRadii.brMd,
+        border: Border.all(color: context.colors.border),
       ),
       child: Stack(
         fit: StackFit.expand,
@@ -487,10 +408,10 @@ class FeedFilterBar extends StatelessWidget {
                 heightFactor: 1,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    gradient: AppGradients.gold,
-                    borderRadius: AppRadii.brPill,
+                    gradient: context.gradients.gold,
+                    borderRadius: AppRadii.brSm,
                     boxShadow: AppShadows.glow(
-                      AppColors.primary,
+                      context.colors.primary,
                       strength: 0.45,
                       blur: 12,
                       offset: const Offset(0, 3),
@@ -556,10 +477,10 @@ class _FilterSegment extends StatelessWidget {
                 // Merge onto the inherited style: AnimatedDefaultTextStyle
                 // replaces it outright, which would drop the theme's font.
                 style: DefaultTextStyle.of(context).style.merge(
-                      AppTextStyles.label.copyWith(
+                      context.textStyles.label.copyWith(
                         color: selected
-                            ? AppColors.onPrimary
-                            : AppColors.textSecondary,
+                            ? context.colors.onPrimary
+                            : context.colors.textSecondary,
                         fontWeight:
                             selected ? FontWeight.w800 : FontWeight.w600,
                       ),
@@ -633,16 +554,11 @@ class CampaignCard extends StatelessWidget {
                                       company,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: AppTextStyles.bodySmall.copyWith(
+                                      style:
+                                          context.textStyles.bodySmall.copyWith(
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: AppSpacing.xs),
-                                  const Icon(
-                                    Icons.verified_rounded,
-                                    size: 15,
-                                    color: AppColors.accent,
                                   ),
                                 ],
                               ),
@@ -695,7 +611,7 @@ class CardTitle extends StatelessWidget {
           parts.headline,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: headlineStyle,
+          style: headlineStyle.copyWith(color: context.colors.textPrimary),
         ),
         if (tagline != null) ...[
           const SizedBox(height: AppSpacing.xs),
@@ -703,7 +619,7 @@ class CardTitle extends StatelessWidget {
             tagline,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: taglineStyle,
+            style: taglineStyle.copyWith(color: context.colors.textSecondary),
           ),
         ],
       ],
@@ -762,7 +678,7 @@ class _CardArt extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                RewardChip(amount: c.rewardPerUser, glow: true),
+                RewardChip(amount: c.rewardPerUser),
               ],
             ),
           ),
@@ -879,9 +795,10 @@ class _CardCta extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 32),
       padding: const EdgeInsets.fromLTRB(12, 6, 8, 6),
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.12),
+        color: context.colors.primary.withValues(alpha: 0.12),
         borderRadius: AppRadii.brPill,
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.26)),
+        border:
+            Border.all(color: context.colors.primary.withValues(alpha: 0.26)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -889,17 +806,17 @@ class _CardCta extends StatelessWidget {
           Text(
             label,
             maxLines: 1,
-            style: AppTextStyles.label.copyWith(
-              color: AppColors.primary,
+            style: context.textStyles.label.copyWith(
+              color: context.colors.primary,
               fontWeight: FontWeight.w700,
               height: 1.1,
             ),
           ),
           const SizedBox(width: AppSpacing.xs),
-          const Icon(
+          Icon(
             Icons.arrow_forward_rounded,
             size: 16,
-            color: AppColors.primary,
+            color: context.colors.primary,
           ),
         ],
       ),
@@ -920,20 +837,20 @@ class CampaignCardSkeleton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.colors.surface,
         borderRadius: AppRadii.brLg,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colors.border),
       ),
       clipBehavior: Clip.antiAlias,
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
           AspectRatio(
             aspectRatio: 16 / 9,
-            child: ColoredBox(color: AppColors.surfaceElevated),
+            child: ColoredBox(color: context.colors.surfaceElevated),
           ),
-          Padding(
+          const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

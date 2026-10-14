@@ -18,20 +18,21 @@ const List<String> kMoodLabels = ['Муу', 'Дунд', 'Сайн'];
 const double kMoodStartPosition = 0.5;
 
 /// The mood hues: coral → the brand's own gold → mint. They colour only the
-/// face, the word and the slider; the panel stays the app's dark surface, so
+/// face, the word and the slider; the panel stays the app's own surface, so
 /// the question belongs to the rest of the app. Kept apart from the brand
 /// palette because a red-to-green scale carries meaning.
 abstract final class MoodColors {
-  static const Color bad = Color(0xFFFF7A6B);
-  static const Color mid = AppColors.primary;
-  static const Color good = Color(0xFF5EDBA6);
+  static const Color bad = Color(0xFFB83E31);
+  static const Color mid = AppColors.warning;
+  static const Color good = Color(0xFF176445);
 
   /// Drawn on a mood-coloured surface (the thumb's mouth).
   static const Color ink = AppColors.background;
 }
 
-/// Share of the mood colour mixed into the dark panel: enough that the panel
-/// follows the mood, little enough that it still reads as a dark surface.
+/// Share of the mood colour mixed into the panel: enough that the panel
+/// follows the mood, little enough that it still reads as the app's surface
+/// (light or dark).
 const double kMoodPanelWash = 0.10;
 
 /// How the face looks at one position. Sizes are fractions of the face width.
@@ -96,11 +97,11 @@ MoodShape moodShapeAt(double t) =>
     _acrossMoods(t, _bad, _mid, _good, MoodShape.lerp);
 
 /// Panel colour at [t], blended so it drifts while the thumb is dragged.
-Color moodTintAt(double t) => _acrossMoods(
+Color moodTintAt(double t, {bool dark = false}) => _acrossMoods(
       t,
-      MoodColors.bad,
-      MoodColors.mid,
-      MoodColors.good,
+      dark ? const Color(0xFFFFB2A5) : MoodColors.bad,
+      dark ? const Color(0xFFF0CE88) : MoodColors.mid,
+      dark ? const Color(0xFF9ADBB5) : MoodColors.good,
       (a, b, p) => Color.lerp(a, b, p)!,
     );
 
@@ -135,8 +136,10 @@ int? moodSelectedIndex(List<String> labels, dynamic answer) {
   return i < 0 ? null : i;
 }
 
-/// The panel fill at [t]: the app's surface with a faint wash of the mood.
-Color moodPanelAt(double t) => Color.alphaBlend(
-      moodTintAt(t).withValues(alpha: kMoodPanelWash),
-      AppColors.surface,
+/// The panel fill at [t]: [surface] (the current theme's) with a faint wash
+/// of the mood.
+Color moodPanelAt(double t, {required Color surface}) => Color.alphaBlend(
+      moodTintAt(t, dark: surface.computeLuminance() < 0.1)
+          .withValues(alpha: kMoodPanelWash),
+      surface,
     );

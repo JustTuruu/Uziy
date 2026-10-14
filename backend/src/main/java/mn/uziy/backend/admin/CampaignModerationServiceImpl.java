@@ -6,10 +6,11 @@ import java.util.Comparator;
 import java.util.List;
 import mn.uziy.backend.common.BadRequestException;
 import mn.uziy.backend.common.ConflictException;
+import mn.uziy.backend.common.Messages;
 import mn.uziy.backend.common.NotFoundException;
 import mn.uziy.backend.common.event.DomainEventPublisher;
-import mn.uziy.backend.company.CampaignStatusChanged;
 import mn.uziy.backend.company.CampaignDto;
+import mn.uziy.backend.company.CampaignStatusChanged;
 import mn.uziy.backend.domain.CampaignActor;
 import mn.uziy.backend.domain.CampaignEntity;
 import mn.uziy.backend.domain.CampaignRepository;
@@ -25,9 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class CampaignModerationServiceImpl implements CampaignModerationService {
 
     public static final String UNPAID_MESSAGE = "Төлбөр нь төлөгдөөгүй аяныг хянах боломжгүй";
-    private static final String NOT_FOUND_MESSAGE = "Campaign not found";
-    private static final String INVALID_DECISION_MESSAGE = "Only ACTIVE or REJECTED allowed for moderation";
-    private static final String ALREADY_MODERATED_MESSAGE = "Already moderated";
+    private static final String NOT_FOUND_MESSAGE = Messages.CAMPAIGN_NOT_FOUND;
+    private static final String INVALID_DECISION_MESSAGE = "Аяныг зөвхөн зөвшөөрөх эсвэл татгалзах боломжтой";
+    private static final String ALREADY_MODERATED_MESSAGE = "Энэ аяныг аль хэдийн хянаж шийдвэрлэсэн байна";
 
     private final CampaignRepository campaigns;
     private final UserRepository users;

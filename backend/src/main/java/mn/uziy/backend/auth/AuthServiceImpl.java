@@ -1,6 +1,7 @@
 package mn.uziy.backend.auth;
 
 import mn.uziy.backend.common.ConflictException;
+import mn.uziy.backend.common.Messages;
 import mn.uziy.backend.common.UnauthorizedException;
 import mn.uziy.backend.common.event.DomainEventPublisher;
 import mn.uziy.backend.domain.UserEntity;
@@ -14,8 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AuthServiceImpl implements AuthService {
 
-    public static final String INVALID_CREDENTIALS = "Invalid credentials";
-    public static final String PHONE_TAKEN = "Phone already registered";
+    public static final String INVALID_CREDENTIALS = "Утасны дугаар эсвэл нууц үг буруу байна";
+    public static final String PHONE_TAKEN = Messages.PHONE_TAKEN;
 
     private final UserRepository users;
     private final PasswordEncoder encoder;

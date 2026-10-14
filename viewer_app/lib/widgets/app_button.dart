@@ -70,30 +70,32 @@ class AppButton extends StatelessWidget {
 
     if (disabled) {
       final ghost = variant == AppButtonVariant.ghost;
-      fill = ghost ? Colors.transparent : AppColors.surfaceElevated;
-      fg = ghost ? AppColors.textTertiary : AppColors.textSecondary;
-      border = ghost ? null : Border.all(color: AppColors.border);
+      fill = ghost ? Colors.transparent : context.colors.surfaceElevated;
+      fg = ghost ? context.colors.textTertiary : context.colors.textSecondary;
+      border = ghost ? null : Border.all(color: context.colors.border);
     } else {
       switch (variant) {
         case AppButtonVariant.primary:
-          fill = AppColors.primary;
-          fg = AppColors.onPrimary;
+          fill = context.colors.primary;
+          fg = context.colors.onPrimary;
         case AppButtonVariant.secondary:
-          fill = AppColors.surfaceElevated;
-          fg = AppColors.textPrimary;
-          border = Border.all(color: AppColors.borderStrong);
+          fill = context.colors.surfaceElevated;
+          fg = context.colors.textPrimary;
+          border = Border.all(color: context.colors.borderStrong);
         case AppButtonVariant.ghost:
           fill = Colors.transparent;
-          fg = AppColors.primary;
+          fg = context.colors.primary;
         case AppButtonVariant.danger:
-          fill = AppColors.danger.withValues(alpha: 0.12);
-          fg = AppColors.dangerLight; // AA on the red tint
-          border = Border.all(color: AppColors.danger.withValues(alpha: 0.35));
+          fill = context.colors.danger.withValues(alpha: 0.12);
+          fg = context.colors.dangerLight; // AA on the red tint
+          border =
+              Border.all(color: context.colors.danger.withValues(alpha: 0.35));
       }
     }
 
-    final textStyle = (small ? AppTextStyles.label : AppTextStyles.button)
-        .copyWith(color: fg, fontWeight: FontWeight.w700);
+    final textStyle =
+        (small ? context.textStyles.label : context.textStyles.button)
+            .copyWith(color: fg, fontWeight: FontWeight.w700);
 
     final Widget content = loading
         ? SizedBox(
@@ -204,8 +206,8 @@ class AppIconButton extends StatelessWidget {
     final Border? border;
     switch (variant) {
       case AppIconButtonVariant.surface:
-        bg = AppColors.surfaceElevated;
-        border = Border.all(color: AppColors.border);
+        bg = context.colors.surfaceElevated;
+        border = Border.all(color: context.colors.border);
       case AppIconButtonVariant.glass:
         bg = Colors.black.withValues(alpha: 0.45);
         border = Border.all(color: Colors.white.withValues(alpha: 0.12));
@@ -214,11 +216,11 @@ class AppIconButton extends StatelessWidget {
         border = null;
     }
     final fg = disabled
-        ? AppColors.textTertiary
+        ? context.colors.textTertiary
         : (color ??
             (variant == AppIconButtonVariant.glass
                 ? Colors.white
-                : AppColors.textPrimary));
+                : context.colors.textPrimary));
     final target =
         size < AppLayout.minTapTarget ? AppLayout.minTapTarget : size;
 

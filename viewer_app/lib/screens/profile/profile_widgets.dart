@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../models/user.dart';
 import '../../widgets/ui.dart';
+import '../../widgets/appearance_settings.dart';
 import 'profile_logic.dart';
 
 // Presentational pieces of the profile tab. Nothing here imports the router:
@@ -15,7 +16,7 @@ void showProfileSnackBar(
   BuildContext context,
   String message, {
   IconData icon = Icons.schedule_rounded,
-  Color color = AppColors.primary,
+  Color? color,
 }) {
   final messenger = ScaffoldMessenger.maybeOf(context);
   if (messenger == null) return;
@@ -26,7 +27,7 @@ void showProfileSnackBar(
         duration: const Duration(seconds: 2),
         content: Row(
           children: [
-            Icon(icon, size: 18, color: color),
+            Icon(icon, size: 18, color: color ?? context.colors.primary),
             const SizedBox(width: AppSpacing.md),
             Expanded(child: Text(message)),
           ],
@@ -40,7 +41,7 @@ void showLogoutFailedSnackBar(BuildContext context) => showProfileSnackBar(
       context,
       kLogoutFailed,
       icon: Icons.error_outline_rounded,
-      color: AppColors.dangerLight,
+      color: context.colors.dangerLight,
     );
 
 /// Opens the logout confirmation sheet. Resolves to true only when the user
@@ -82,40 +83,40 @@ class LogoutConfirmSheet extends StatelessWidget {
                 height: 64,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.danger.withValues(alpha: 0.12),
+                  color: context.colors.danger.withValues(alpha: 0.12),
                   border: Border.all(
-                    color: AppColors.danger.withValues(alpha: 0.30),
+                    color: context.colors.danger.withValues(alpha: 0.30),
                   ),
                   boxShadow: AppShadows.glow(
-                    AppColors.danger,
+                    context.colors.danger,
                     strength: 0.35,
                     blur: 24,
                     offset: const Offset(0, 6),
                   ),
                 ),
                 alignment: Alignment.center,
-                child: const Icon(
+                child: Icon(
                   AppIcons.logout,
                   size: 30,
-                  color: AppColors.dangerLight,
+                  color: context.colors.dangerLight,
                 ),
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
             Semantics(
               header: true,
-              child: const Text(
+              child: Text(
                 'Гарах уу?',
                 textAlign: TextAlign.center,
-                style: AppTextStyles.headline,
+                style: context.textStyles.headline,
               ),
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
               'Та дахин нэвтрэхдээ утасны дугаар, нууц үгээ оруулна.',
               textAlign: TextAlign.center,
-              style: AppTextStyles.body.copyWith(
-                color: AppColors.textSecondary,
+              style: context.textStyles.body.copyWith(
+                color: context.colors.textSecondary,
               ),
             ),
             const SizedBox(height: AppSpacing.xxl),
@@ -155,10 +156,10 @@ class ProfileTitle extends StatelessWidget {
       children: [
         Semantics(
           header: true,
-          child: const Text(title, style: AppTextStyles.display),
+          child: Text(title, style: context.textStyles.display),
         ),
         const SizedBox(height: AppSpacing.xs),
-        const Text(subtitle, style: AppTextStyles.bodySmall),
+        Text(subtitle, style: context.textStyles.bodySmall),
       ],
     );
   }
@@ -190,9 +191,9 @@ class ProfileAvatar extends StatelessWidget {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: AppGradients.gold,
+                  gradient: context.gradients.gold,
                   boxShadow: AppShadows.glow(
-                    AppColors.primary,
+                    context.colors.primary,
                     strength: 0.45,
                     blur: size * 0.34,
                     offset: Offset(0, size * 0.04),
@@ -201,33 +202,33 @@ class ProfileAvatar extends StatelessWidget {
                 child: Padding(
                   padding: EdgeInsets.all(ring),
                   child: DecoratedBox(
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.background,
+                      color: context.colors.background,
                     ),
                     child: Padding(
                       padding: EdgeInsets.all(gap),
                       child: DecoratedBox(
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: RadialGradient(
-                            center: Alignment(-0.35, -0.55),
+                            center: const Alignment(-0.35, -0.55),
                             radius: 1.1,
                             colors: [
-                              AppColors.surfaceHighlight,
-                              AppColors.surface,
+                              context.colors.surfaceHighlight,
+                              context.colors.surface,
                             ],
                           ),
                         ),
                         child: Center(
                           child: ShaderMask(
                             blendMode: BlendMode.srcIn,
-                            shaderCallback: AppGradients.gold.createShader,
+                            shaderCallback: context.gradients.gold.createShader,
                             child: Icon(
                               AppIcons.user,
                               key: const ValueKey('profile-avatar-icon'),
                               size: size * 0.5,
-                              color: AppColors.primary,
+                              color: context.colors.primary,
                             ),
                           ),
                         ),
@@ -247,9 +248,9 @@ class ProfileAvatar extends StatelessWidget {
                   height: size * 0.28,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: AppGradients.success,
+                    gradient: context.gradients.success,
                     border: Border.all(
-                      color: AppColors.background,
+                      color: context.colors.background,
                       width: size * 0.03,
                     ),
                   ),
@@ -257,7 +258,7 @@ class ProfileAvatar extends StatelessWidget {
                   child: Icon(
                     AppIcons.check,
                     size: size * 0.16,
-                    color: AppColors.onPrimary,
+                    color: context.colors.onPrimary,
                   ),
                 ),
               ),
@@ -306,8 +307,8 @@ class ProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final verified = user.isVerified;
-    final hintStyle = AppTextStyles.caption.copyWith(
-      color: AppColors.textTertiary,
+    final hintStyle = context.textStyles.caption.copyWith(
+      color: context.colors.textTertiary,
     );
     return AppCard(
       padding: padding,
@@ -317,29 +318,50 @@ class ProfileHeader extends StatelessWidget {
         radius: 1.1,
         colors: [
           Color.alphaBlend(
-            AppColors.primary.withValues(alpha: 0.14),
-            AppColors.surface,
+            context.colors.primary.withValues(alpha: 0.14),
+            context.colors.surface,
           ),
-          AppColors.surface,
+          context.colors.surface,
         ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ProfileAvatar(verified: verified),
-          const SizedBox(height: AppSpacing.lg),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              phoneLabel(user.phoneNumber),
-              maxLines: 1,
-              style: AppTextStyles.headline.copyWith(
-                fontFeatures: AppTextStyles.tabular,
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          VerificationBadge(verified: verified),
+          LayoutBuilder(builder: (context, box) {
+            final compact = box.maxWidth < 280 ||
+                MediaQuery.textScalerOf(context).scale(16) > 22;
+            final identity = Column(
+              crossAxisAlignment: compact
+                  ? CrossAxisAlignment.center
+                  : CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Таны бүртгэл', style: context.textStyles.caption),
+                const SizedBox(height: 6),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(phoneLabel(user.phoneNumber),
+                      maxLines: 1,
+                      style: context.textStyles.title
+                          .copyWith(fontFeatures: AppTextStyles.tabular)),
+                ),
+                const SizedBox(height: 10),
+                VerificationBadge(verified: verified),
+              ],
+            );
+            if (compact) {
+              return Column(children: [
+                ProfileAvatar(verified: verified, size: 72),
+                const SizedBox(height: 16),
+                identity,
+              ]);
+            }
+            return Row(children: [
+              ProfileAvatar(verified: verified, size: 72),
+              const SizedBox(width: 18),
+              Expanded(child: identity),
+            ]);
+          }),
           if (!verified) ...[
             const SizedBox(height: AppSpacing.md),
             // Icon as an inline span, so it stays with the first line when
@@ -385,8 +407,8 @@ class ProfileBalanceTile extends StatelessWidget {
     final card = AppCard(
       padding: const EdgeInsets.all(AppSpacing.lg),
       radius: AppRadii.lg,
-      gradient: AppGradients.goldSoft,
-      borderColor: AppColors.primary.withValues(alpha: 0.26),
+      gradient: context.gradients.goldSoft,
+      borderColor: context.colors.primary.withValues(alpha: 0.26),
       child: Row(
         children: [
           const CoinIcon(size: 44),
@@ -396,11 +418,11 @@ class ProfileBalanceTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   'Үлдэгдэл',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.caption,
+                  style: context.textStyles.caption,
                 ),
                 const SizedBox(height: AppSpacing.xxs),
                 // One value in the tile, so scaling a huge balance down to
@@ -410,7 +432,7 @@ class ProfileBalanceTile extends StatelessWidget {
                   alignment: AlignmentDirectional.centerStart,
                   child: AnimatedMoney(
                     value: balance,
-                    style: AppTextStyles.headline,
+                    style: context.textStyles.headline,
                     // The home and wallet tabs already play the count-up;
                     // here it only animates when a refresh changes it.
                     animateOnMount: false,
@@ -421,9 +443,9 @@ class ProfileBalanceTile extends StatelessWidget {
           ),
           if (onTap != null) ...[
             const SizedBox(width: AppSpacing.sm),
-            const Icon(
+            Icon(
               AppIcons.chevron,
-              color: AppColors.textSecondary,
+              color: context.colors.textSecondary,
             ),
           ],
         ],
@@ -486,14 +508,14 @@ class ProfileStatCard extends StatelessWidget {
               value,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: valueStyle,
+              style: valueStyle.copyWith(color: context.colors.textPrimary),
             ),
             const SizedBox(height: AppSpacing.xxs),
             Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.caption,
+              style: context.textStyles.caption,
             ),
           ],
         ),
@@ -551,9 +573,9 @@ class ProfileStatsRow extends StatelessWidget {
               child: ProfileStatCard(
                 label: 'Нас',
                 value: ageLabel(user.age),
-                leading: const _StatIcon(
+                leading: _StatIcon(
                   icon: AppIcons.age,
-                  color: AppColors.violet,
+                  color: context.colors.violet,
                 ),
               ),
             ),
@@ -562,9 +584,9 @@ class ProfileStatsRow extends StatelessWidget {
               child: ProfileStatCard(
                 label: 'Хот',
                 value: displayOrDash(user.city),
-                leading: const _StatIcon(
+                leading: _StatIcon(
                   icon: AppIcons.district,
-                  color: AppColors.accent,
+                  color: context.colors.accent,
                 ),
               ),
             ),
@@ -648,11 +670,12 @@ class ProfileDetailRow extends StatelessWidget {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.06),
+                    color: context.colors.surfaceElevated,
                     borderRadius: BorderRadius.circular(_iconTileRadius),
                   ),
                   alignment: Alignment.center,
-                  child: Icon(icon, size: 20, color: AppColors.textSecondary),
+                  child:
+                      Icon(icon, size: 20, color: context.colors.textSecondary),
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
@@ -662,7 +685,7 @@ class ProfileDetailRow extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.bodyStrong,
+                  style: context.textStyles.bodyStrong,
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
@@ -672,8 +695,8 @@ class ProfileDetailRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.end,
-                  style: AppTextStyles.body.copyWith(
-                    color: AppColors.textSecondary,
+                  style: context.textStyles.body.copyWith(
+                    color: context.colors.textSecondary,
                   ),
                 ),
               ),
@@ -920,22 +943,23 @@ class ProfileBody extends StatelessWidget {
               ),
               GroupedCard(
                 children: [
+                  const AppearanceSettings(),
                   InfoRow(
                     icon: AppIcons.history,
-                    iconColor: AppColors.accent,
+                    iconColor: context.colors.accent,
                     label: 'Үзсэн видеонуудын түүх',
                     onTap: _menuTap(onHistoryTap),
                   ),
                   InfoRow(
                     icon: AppIcons.help,
-                    iconColor: AppColors.violet,
+                    iconColor: context.colors.violet,
                     label: 'Тусламж',
                     subtitle: 'Түгээмэл асуулт, хариулт',
                     onTap: _menuTap(onHelpTap),
                   ),
                   InfoRow(
                     icon: AppIcons.privacy,
-                    iconColor: AppColors.success,
+                    iconColor: context.colors.success,
                     label: 'Нууцлалын бодлого',
                     onTap: _menuTap(onPrivacyTap),
                   ),
@@ -956,12 +980,12 @@ class ProfileBody extends StatelessWidget {
                 danger: true,
                 onTap: loggingOut ? null : onLogout,
                 trailing: loggingOut
-                    ? const SizedBox.square(
+                    ? SizedBox.square(
                         dimension: 18,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.2,
-                          valueColor:
-                              AlwaysStoppedAnimation(AppColors.dangerLight),
+                          valueColor: AlwaysStoppedAnimation(
+                              context.colors.dangerLight),
                         ),
                       )
                     : const SizedBox.shrink(),

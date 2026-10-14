@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import mn.uziy.backend.common.ConflictException;
+import mn.uziy.backend.common.Messages;
 import mn.uziy.backend.common.NotFoundException;
 import mn.uziy.backend.common.event.DomainEventPublisher;
 import mn.uziy.backend.domain.CampaignEntity;
@@ -23,7 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service("rewardServiceImpl")
 public class RewardServiceImpl implements RewardService {
 
-    static final String NOT_AVAILABLE = "Campaign not found";
+    static final String NOT_AVAILABLE = Messages.OFFER_NOT_FOUND;
+    static final String ALREADY_REWARDED = "Та энэ урамшууллыг аль хэдийн авсан байна";
+    static final String BUDGET_SPENT = "Уучлаарай, энэ урамшууллын төсөв дууссан байна";
 
     private final UserRepository users;
     private final CampaignRepository campaigns;
@@ -51,13 +54,13 @@ public class RewardServiceImpl implements RewardService {
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public RewardResult submitSurvey(long userId, long campaignId, List<SubmitSurveyReq.Answer> answers) {
         if (history.existsByUserIdAndCampaignId(userId, campaignId)) {
-            throw new ConflictException("Already rewarded for this campaign");
+            throw new ConflictException(ALREADY_REWARDED);
         }
 
         CampaignEntity campaign = campaigns.findById(campaignId)
-                .orElseThrow(() -> new NotFoundException("Campaign not found"));
+                .orElseThrow(() -> new NotFoundException(NOT_AVAILABLE));
 
-        UserEntity viewer = users.findById(userId).orElseThrow(() -> new NotFoundException("User not found"));
+        UserEntity viewer = users.findById(userId).orElseThrow(() -> new NotFoundException(Messages.USER_NOT_FOUND));
         if (!CampaignTargeting.matches(campaign, viewer)) {
             // Same answer as for a campaign that does not exist: the audience rule is not for viewers to probe.
             throw new NotFoundException(NOT_AVAILABLE);
@@ -66,7 +69,7 @@ public class RewardServiceImpl implements RewardService {
         answerValidator.validate(campaignQuestions, answers);
 
         if (campaigns.tryDecrementBudget(campaign.getId()) == 0) {
-            throw new ConflictException("Campaign no longer available");
+            throw new ConflictException(BUDGET_SPENT);
         }
 
         ViewHistoryEntity newView = new ViewHistoryEntity();
@@ -79,7 +82,7 @@ public class RewardServiceImpl implements RewardService {
 
         // Atomic credit: never a read-modify-write of the balance.
         users.addBalance(userId, campaign.getRewardPerUser());
-        double newBalance = users.currentBalance(userId).orElseThrow(() -> new NotFoundException("User not found"));
+        double newBalance = users.currentBalance(userId).orElseThrow(() -> new NotFoundException(Messages.USER_NOT_FOUND));
 
         events.publish(new RewardGranted(userId, campaign.getId(), campaign.getRewardPerUser()));
         return new RewardResult(campaign.getRewardPerUser(), newBalance);

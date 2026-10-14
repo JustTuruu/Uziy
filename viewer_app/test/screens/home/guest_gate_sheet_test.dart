@@ -6,7 +6,7 @@ import 'package:viewer_app/widgets/ui.dart';
 Future<void> _open(WidgetTester tester, List<GuestChoice?> results) async {
   await tester.pumpWidget(
     MaterialApp(
-      theme: AppTheme.dark(),
+      theme: AppTheme.light(),
       home: Scaffold(
         body: Builder(
           builder: (context) => TextButton(

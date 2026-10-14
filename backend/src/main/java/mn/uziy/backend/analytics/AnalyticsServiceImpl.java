@@ -18,11 +18,12 @@ import mn.uziy.backend.analytics.AnalyticsDtos.SegmentBreakdown;
 import mn.uziy.backend.analytics.AnalyticsDtos.Slice;
 import mn.uziy.backend.analytics.AnalyticsDtos.Totals;
 import mn.uziy.backend.common.BadRequestException;
+import mn.uziy.backend.common.Messages;
 import mn.uziy.backend.common.NotFoundException;
 import mn.uziy.backend.domain.CampaignEntity;
+import mn.uziy.backend.domain.CampaignRecentViews;
 import mn.uziy.backend.domain.CampaignRepository;
 import mn.uziy.backend.domain.CampaignStatus;
-import mn.uziy.backend.domain.CampaignRecentViews;
 import mn.uziy.backend.domain.CampaignViewStats;
 import mn.uziy.backend.domain.SurveyQuestionEntity;
 import mn.uziy.backend.domain.SurveyQuestionRepository;
@@ -35,8 +36,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AnalyticsServiceImpl implements AnalyticsService {
 
-    public static final String DAYS_OUT_OF_RANGE = "days must be between " + MIN_DAYS + " and " + MAX_DAYS;
-    public static final String CAMPAIGN_NOT_FOUND = "Campaign not found";
+    public static final String DAYS_OUT_OF_RANGE = "Хугацааг " + MIN_DAYS + "–" + MAX_DAYS + " хоногийн хооронд сонгоно уу";
+    public static final String CAMPAIGN_NOT_FOUND = Messages.CAMPAIGN_NOT_FOUND;
 
     /** The market's calendar: a view at 23:30 Ulaanbaatar time belongs to that day, not the UTC one. */
     static final int HOURS_PER_DAY = 24;

@@ -23,7 +23,7 @@ class PayoutRuleChainTest {
         user.setBalance(499.0);
         assertThatThrownBy(() -> new SufficientBalanceRule().check(user, req))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessage("Insufficient balance");
+                .hasMessage(mn.uziy.backend.common.Messages.INSUFFICIENT_BALANCE);
     }
 
     @Test

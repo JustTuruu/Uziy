@@ -40,7 +40,7 @@ Future<GoRouter> _pump(WidgetTester tester, Widget screen) async {
   );
   addTearDown(router.dispose);
   await tester.pumpWidget(
-    MaterialApp.router(theme: AppTheme.dark(), routerConfig: router),
+    MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
   );
   router.push('/screen');
   await tester.pumpAndSettle();

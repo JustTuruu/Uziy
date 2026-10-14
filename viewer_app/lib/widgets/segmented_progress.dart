@@ -44,7 +44,7 @@ class SegmentedProgress extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (total <= 0) return SizedBox(height: height);
-    final done = completedColor ?? AppColors.primary;
+    final done = completedColor ?? context.colors.primary;
     final duration = AppMotion.duration(context, AppDurations.medium);
     final step = (current + 1).clamp(0, total);
 
@@ -61,7 +61,8 @@ class SegmentedProgress extends StatelessWidget {
               Expanded(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: trackOpacity),
+                    color: context.colors.textPrimary
+                        .withValues(alpha: trackOpacity),
                     borderRadius: AppRadii.brPill,
                   ),
                   child: AnimatedFractionallySizedBox(
@@ -73,16 +74,16 @@ class SegmentedProgress extends StatelessWidget {
                       duration: duration,
                       curve: AppMotion.standard,
                       decoration: BoxDecoration(
-                        color: i < current ? done : AppColors.primary,
+                        color: i < current ? done : context.colors.primary,
                         borderRadius: AppRadii.brPill,
                         boxShadow: i == current && currentFill > 0
                             ? AppShadows.glow(
-                                AppColors.primary,
+                                context.colors.primary,
                                 strength: 0.8,
                                 blur: 8,
                                 offset: Offset.zero,
                               )
-                            : const [],
+                            : [],
                       ),
                     ),
                   ),

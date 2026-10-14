@@ -135,8 +135,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             return RefreshIndicator(
               key: _refreshKey,
               onRefresh: _load,
-              color: AppColors.primary,
-              backgroundColor: AppColors.surfaceElevated,
+              color: context.colors.primary,
+              backgroundColor: context.colors.surfaceElevated,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: EdgeInsets.fromLTRB(

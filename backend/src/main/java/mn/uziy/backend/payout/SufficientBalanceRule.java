@@ -1,6 +1,7 @@
 package mn.uziy.backend.payout;
 
 import mn.uziy.backend.common.BadRequestException;
+import mn.uziy.backend.common.Messages;
 import mn.uziy.backend.domain.UserEntity;
 import org.springframework.stereotype.Component;
 
@@ -11,7 +12,7 @@ public class SufficientBalanceRule implements PayoutRule {
     @Override
     public void check(UserEntity user, CreatePayoutReq req) {
         if (user.getBalance() < req.amount()) {
-            throw new BadRequestException("Insufficient balance");
+            throw new BadRequestException(Messages.INSUFFICIENT_BALANCE);
         }
     }
 }

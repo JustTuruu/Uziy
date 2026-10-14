@@ -1,12 +1,14 @@
 package mn.uziy.backend.payout;
 
+import static mn.uziy.backend.common.FieldMessages.*;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 
 public record CreatePayoutReq(
-        @Positive double amount,
-        @NotBlank String bank,
-        @NotBlank String accountNumber,
-        @NotBlank String accountName,
-        @NotBlank String nationalId) {
+        @Positive(message = PAYOUT_AMOUNT) double amount,
+        @NotBlank(message = BANK_REQUIRED) String bank,
+        @NotBlank(message = ACCOUNT_NUMBER_REQUIRED) String accountNumber,
+        @NotBlank(message = ACCOUNT_NAME_REQUIRED) String accountName,
+        @NotBlank(message = NATIONAL_ID_REQUIRED) String nationalId) {
 }

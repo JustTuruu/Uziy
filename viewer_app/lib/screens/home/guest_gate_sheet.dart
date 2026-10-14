@@ -54,16 +54,16 @@ class GuestGateSheet extends StatelessWidget {
                 height: 64,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primary.withValues(alpha: 0.12),
+                  color: context.colors.primary.withValues(alpha: 0.12),
                   border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.28),
+                    color: context.colors.primary.withValues(alpha: 0.28),
                   ),
                 ),
                 alignment: Alignment.center,
-                child: const Icon(
+                child: Icon(
                   AppIcons.watched,
                   size: 30,
-                  color: AppColors.primary,
+                  color: context.colors.primary,
                 ),
               ),
             ),
@@ -71,17 +71,18 @@ class GuestGateSheet extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
           Semantics(
             header: true,
-            child: const Text(
+            child: Text(
               kGuestGateTitle,
               textAlign: TextAlign.center,
-              style: AppTextStyles.headline,
+              style: context.textStyles.headline,
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
             kGuestGateMessage,
             textAlign: TextAlign.center,
-            style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+            style: context.textStyles.body
+                .copyWith(color: context.colors.textSecondary),
           ),
           const SizedBox(height: AppSpacing.xxl),
           AppButton(

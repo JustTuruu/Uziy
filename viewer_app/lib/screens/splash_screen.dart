@@ -36,9 +36,9 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     // Logo only: no title, tagline or spinner on the splash.
-    return const Scaffold(
-      backgroundColor: AppColors.background,
-      body: AmbientBackground(
+    return Scaffold(
+      backgroundColor: context.colors.background,
+      body: const AmbientBackground(
         variant: AmbientVariant.gold,
         child: SizedBox.expand(
           child: Center(child: _SplashMark()),
@@ -145,7 +145,11 @@ class _SplashMarkState extends State<_SplashMark>
           Positioned.fill(
             child: ExcludeSemantics(
               child: CustomPaint(
-                painter: _HaloPainter(fade: _logoFade, breath: _glow),
+                painter: _HaloPainter(
+                  fade: _logoFade,
+                  breath: _glow,
+                  colors: context.colors,
+                ),
               ),
             ),
           ),
@@ -165,7 +169,7 @@ class _SplashMarkState extends State<_SplashMark>
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(logo * 0.25),
                         border: Border.all(
-                          color: AppColors.primaryLight,
+                          color: context.colors.primaryLight,
                           width: 1.5,
                         ),
                       ),
@@ -191,14 +195,15 @@ class _SplashMarkState extends State<_SplashMark>
   }
 }
 
-/// Soft gold radial halo behind the logo. Repaints on its animations
-/// without rebuilding any widgets.
+/// Soft brand-coloured radial halo behind the logo, in the current theme's
+/// palette. Repaints on its animations without rebuilding any widgets.
 class _HaloPainter extends CustomPainter {
-  _HaloPainter({required this.fade, required this.breath})
+  _HaloPainter({required this.fade, required this.breath, required this.colors})
       : super(repaint: Listenable.merge([fade, breath]));
 
   final Animation<double> fade;
   final Animation<double> breath;
+  final AppPalette colors;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -216,9 +221,9 @@ class _HaloPainter extends CustomPainter {
       Paint()
         ..shader = RadialGradient(
           colors: [
-            AppColors.primary.withValues(alpha: alpha),
-            AppColors.primaryDeep.withValues(alpha: alpha * 0.4),
-            AppColors.primaryDeep.withValues(alpha: 0),
+            colors.primary.withValues(alpha: alpha),
+            colors.primaryDeep.withValues(alpha: alpha * 0.4),
+            colors.primaryDeep.withValues(alpha: 0),
           ],
           stops: const [0, 0.45, 1],
         ).createShader(rect),
@@ -227,5 +232,7 @@ class _HaloPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_HaloPainter oldDelegate) =>
-      oldDelegate.fade != fade || oldDelegate.breath != breath;
+      oldDelegate.fade != fade ||
+      oldDelegate.breath != breath ||
+      oldDelegate.colors.isDark != colors.isDark;
 }

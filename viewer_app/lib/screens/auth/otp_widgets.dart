@@ -55,24 +55,25 @@ class OtpHeader extends StatelessWidget {
             height: 56,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.primary.withValues(alpha: 0.12),
+              color: context.colors.primary.withValues(alpha: 0.12),
               border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.28),
+                color: context.colors.primary.withValues(alpha: 0.28),
               ),
             ),
             alignment: Alignment.center,
-            child: Icon(icon, size: 26, color: AppColors.primary),
+            child: Icon(icon, size: 26, color: context.colors.primary),
           ),
         ),
         const SizedBox(height: AppSpacing.xl),
         Semantics(
           header: true,
-          child: Text(title, style: AppTextStyles.display),
+          child: Text(title, style: context.textStyles.display),
         ),
         const SizedBox(height: AppSpacing.sm),
         Text(
           subtitle,
-          style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+          style: context.textStyles.body
+              .copyWith(color: context.colors.textSecondary),
         ),
       ],
     );
@@ -95,7 +96,8 @@ class OtpErrorText extends StatelessWidget {
         text,
         key: const ValueKey('otp-error'),
         textAlign: TextAlign.center,
-        style: AppTextStyles.bodySmall.copyWith(color: AppColors.dangerLight),
+        style: context.textStyles.bodySmall
+            .copyWith(color: context.colors.dangerLight),
       ),
     );
   }
@@ -123,8 +125,8 @@ class ResendCodeButton extends StatelessWidget {
       child: TextButton(
         onPressed: enabled ? onPressed : null,
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.primary,
-          disabledForegroundColor: AppColors.textTertiary,
+          foregroundColor: context.colors.primary,
+          disabledForegroundColor: context.colors.textTertiary,
           minimumSize: const Size(0, AppLayout.minTapTarget),
         ),
         child: Text(resendLabel(secondsLeft)),

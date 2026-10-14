@@ -16,7 +16,7 @@ import '../../widgets/ui.dart';
 /// printed tests and questionnaires: А, Б, В, Г, Д... Letters that never
 /// start an enumeration (Ё, Й, Щ, Ъ, Ы, Ь) are skipped. Cyrillic rather than
 /// Latin A/B/C so every visible string stays Mongolian.
-const List<String> optionAlphabet = [
+final List<String> optionAlphabet = [
   'А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ж', 'З', 'И', 'К', //
   'Л', 'М', 'Н', 'О', 'Ө', 'П', 'Р', 'С', 'Т', 'У', //
   'Ү', 'Ф', 'Х', 'Ц', 'Ч', 'Ш', 'Э', 'Ю', 'Я', //
@@ -131,7 +131,7 @@ class SurveyProgress extends StatelessWidget {
           questionsLeftLabel(index, total),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: AppTextStyles.caption,
+          style: context.textStyles.caption,
         ),
       ],
     );
@@ -169,7 +169,8 @@ class QuestionHeading extends StatelessWidget {
           children: [
             Text(
               'Асуулт $number'.toUpperCase(),
-              style: AppTextStyles.overline.copyWith(color: AppColors.primary),
+              style: context.textStyles.overline
+                  .copyWith(color: context.colors.primary),
             ),
             if (!question.required) const TagChip(label: optionalLabel),
           ],
@@ -177,10 +178,10 @@ class QuestionHeading extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
         Semantics(
           header: true,
-          child: Text(question.prompt, style: AppTextStyles.headline),
+          child: Text(question.prompt, style: context.textStyles.headline),
         ),
         const SizedBox(height: AppSpacing.sm),
-        Text(answerHintFor(question.type), style: AppTextStyles.bodySmall),
+        Text(answerHintFor(question.type), style: context.textStyles.bodySmall),
       ],
     );
   }
@@ -247,26 +248,26 @@ class OptionTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: selected
                 ? Color.alphaBlend(
-                    AppColors.primary.withValues(alpha: 0.10),
-                    AppColors.surface,
+                    context.colors.primary.withValues(alpha: 0.10),
+                    context.colors.surface,
                   )
-                : AppColors.surface,
+                : context.colors.surface,
             borderRadius: AppRadii.brMd,
             boxShadow: selected
                 ? AppShadows.glow(
-                    AppColors.primary,
+                    context.colors.primary,
                     strength: 0.35,
                     blur: 18,
                     offset: const Offset(0, 6),
                   )
-                : const [],
+                : [],
           ),
           // Border in the foreground so its width change (1 -> 1.5) never
           // shifts the content.
           foregroundDecoration: BoxDecoration(
             borderRadius: AppRadii.brMd,
             border: Border.all(
-              color: selected ? AppColors.primary : AppColors.border,
+              color: selected ? context.colors.primary : context.colors.border,
               width: selected ? 1.5 : 1,
             ),
           ),
@@ -289,8 +290,8 @@ class OptionTile extends StatelessWidget {
                   // Merged onto the inherited style: AnimatedDefaultTextStyle
                   // replaces it, which would drop the theme's font family.
                   style: DefaultTextStyle.of(context).style.merge(
-                        AppTextStyles.bodyStrong.copyWith(
-                          color: AppColors.textPrimary,
+                        context.textStyles.bodyStrong.copyWith(
+                          color: context.colors.textPrimary,
                           fontWeight:
                               selected ? FontWeight.w700 : FontWeight.w500,
                         ),
@@ -312,15 +313,15 @@ class OptionTile extends StatelessWidget {
                     child: Container(
                       width: 24,
                       height: 24,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: AppGradients.gold,
+                        gradient: context.gradients.gold,
                       ),
                       alignment: Alignment.center,
-                      child: const Icon(
+                      child: Icon(
                         Icons.check_rounded,
                         size: 16,
-                        color: AppColors.onPrimary,
+                        color: context.colors.onPrimary,
                       ),
                     ),
                   ),
@@ -345,11 +346,14 @@ class _LetterBadge extends StatelessWidget {
   final bool selected;
   final Duration duration;
 
-  static const LinearGradient _idle = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [AppColors.surfaceHighlight, AppColors.surfaceElevated],
-  );
+  LinearGradient _idle(BuildContext context) => LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          context.colors.surfaceHighlight,
+          context.colors.surfaceElevated
+        ],
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -360,23 +364,25 @@ class _LetterBadge extends StatelessWidget {
       height: 34,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: selected ? AppGradients.gold : _idle,
+        gradient: selected ? context.gradients.gold : _idle(context),
         boxShadow: selected
             ? AppShadows.glow(
-                AppColors.primary,
+                context.colors.primary,
                 strength: 0.5,
                 blur: 10,
                 offset: const Offset(0, 3),
               )
-            : const [],
+            : [],
       ),
       alignment: Alignment.center,
       child: AnimatedDefaultTextStyle(
         duration: duration,
         style: DefaultTextStyle.of(context).style.merge(
-              AppTextStyles.label.copyWith(
+              context.textStyles.label.copyWith(
                 fontWeight: FontWeight.w800,
-                color: selected ? AppColors.onPrimary : AppColors.textSecondary,
+                color: selected
+                    ? context.colors.onPrimary
+                    : context.colors.textSecondary,
               ),
             ),
         child: Text(
@@ -409,10 +415,12 @@ class _CheckboxBadge extends StatelessWidget {
           width: 26,
           height: 26,
           decoration: BoxDecoration(
-            color: selected ? AppColors.primary : Colors.transparent,
+            color: selected ? context.colors.primary : Colors.transparent,
             borderRadius: AppRadii.brXs,
             border: Border.all(
-              color: selected ? AppColors.primary : AppColors.borderStrong,
+              color: selected
+                  ? context.colors.primary
+                  : context.colors.borderStrong,
               width: 1.5,
             ),
           ),
@@ -421,10 +429,10 @@ class _CheckboxBadge extends StatelessWidget {
             scale: selected ? 1 : 0,
             duration: duration,
             curve: AppMotion.emphasized,
-            child: const Icon(
+            child: Icon(
               Icons.check_rounded,
               size: 18,
-              color: AppColors.onPrimary,
+              color: context.colors.onPrimary,
             ),
           ),
         ),
@@ -462,7 +470,7 @@ class SurveyTextField extends StatelessWidget {
           maxLines: 8,
           keyboardType: TextInputType.multiline,
           textCapitalization: TextCapitalization.sentences,
-          style: AppTextStyles.body,
+          style: context.textStyles.body,
           decoration: InputDecoration(
             hintText: hintText,
             contentPadding: const EdgeInsets.all(18),
@@ -475,8 +483,8 @@ class SurveyTextField extends StatelessWidget {
             valueListenable: controller,
             builder: (context, value, _) => Text(
               characterCountLabel(value.text),
-              style: AppTextStyles.caption.copyWith(
-                color: AppColors.textTertiary,
+              style: context.textStyles.caption.copyWith(
+                color: context.colors.textTertiary,
                 fontFeatures: AppTextStyles.tabular,
               ),
             ),
@@ -514,17 +522,17 @@ class StepBackButton extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: AppColors.surfaceElevated,
+          color: context.colors.surfaceElevated,
           borderRadius: AppRadii.brMd,
-          border: Border.all(color: AppColors.borderStrong),
+          border: Border.all(color: context.colors.borderStrong),
         ),
         alignment: Alignment.center,
         child: Icon(
           Icons.arrow_back_rounded,
           size: 22,
           color: onPressed == null
-              ? AppColors.textTertiary
-              : AppColors.textPrimary,
+              ? context.colors.textTertiary
+              : context.colors.textPrimary,
         ),
       ),
     );
@@ -594,7 +602,7 @@ class AdaptiveCtaButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = DefaultTextStyle.of(context).style.merge(
-          AppTextStyles.button.copyWith(fontWeight: FontWeight.w700),
+          context.textStyles.button.copyWith(fontWeight: FontWeight.w700),
         );
     final scaler = MediaQuery.textScalerOf(context);
     return LayoutBuilder(
@@ -672,7 +680,7 @@ class ScrollEdgeFade extends StatelessWidget {
   /// Gradient stops for a box of [height]: opaque between the two fades.
   /// Degenerate heights (fades taller than the box) collapse gracefully.
   static List<double> stopsFor(double height, double top, double bottom) {
-    if (height <= 0) return const [0, 0, 1, 1];
+    if (height <= 0) return [0, 0, 1, 1];
     final a = (top / height).clamp(0.0, 0.5);
     final b = (1 - bottom / height).clamp(0.5, 1.0);
     return [0, a, b, 1];
@@ -741,8 +749,8 @@ class RewardCelebration extends StatelessWidget {
                   center: const Alignment(0, -1.1),
                   radius: 1.1,
                   colors: [
-                    AppColors.primary.withValues(alpha: 0.2),
-                    AppColors.primary.withValues(alpha: 0),
+                    context.colors.primary.withValues(alpha: 0.2),
+                    context.colors.primary.withValues(alpha: 0),
                   ],
                 ),
               ),
@@ -768,44 +776,44 @@ class RewardCelebration extends StatelessWidget {
             children: [
               const _RewardMedallion(),
               const SizedBox(height: AppSpacing.xxl),
-              const Text(
+              Text(
                 title,
                 textAlign: TextAlign.center,
-                style: AppTextStyles.title,
+                style: context.textStyles.title,
               ),
               const SizedBox(height: AppSpacing.sm),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 child: ShaderMask(
                   blendMode: BlendMode.srcIn,
-                  shaderCallback: AppGradients.gold.createShader,
+                  shaderCallback: context.gradients.gold.createShader,
                   child: AnimatedMoney(
                     value: reward,
                     withSign: true,
                     textAlign: TextAlign.center,
                     // White so the gold gradient mask shows at full strength.
-                    style: AppTextStyles.moneyLarge.copyWith(
+                    style: context.textStyles.moneyLarge.copyWith(
                       fontSize: 46,
-                      color: Colors.white,
+                      color: context.colors.textPrimary,
                     ),
                   ),
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-              const Row(
+              Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     Icons.account_balance_wallet_rounded,
                     size: 16,
-                    color: AppColors.successLight,
+                    color: context.colors.successLight,
                   ),
-                  SizedBox(width: 6),
+                  const SizedBox(width: 6),
                   Flexible(
                     child: Text(
                       subtitle,
                       textAlign: TextAlign.center,
-                      style: AppTextStyles.bodySmall,
+                      style: context.textStyles.bodySmall,
                     ),
                   ),
                 ],
@@ -868,14 +876,14 @@ class _RewardMedallion extends StatelessWidget {
                         shape: BoxShape.circle,
                         gradient: RadialGradient(
                           colors: [
-                            AppColors.primary.withValues(alpha: 0.30),
-                            AppColors.primary.withValues(alpha: 0.10),
-                            AppColors.primary.withValues(alpha: 0),
+                            context.colors.primary.withValues(alpha: 0.30),
+                            context.colors.primary.withValues(alpha: 0.10),
+                            context.colors.primary.withValues(alpha: 0),
                           ],
                           stops: const [0, 0.6, 1],
                         ),
                         border: Border.all(
-                          color: AppColors.primary.withValues(alpha: 0.18),
+                          color: context.colors.primary.withValues(alpha: 0.18),
                         ),
                       ),
                     ),
@@ -890,7 +898,7 @@ class _RewardMedallion extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         boxShadow: AppShadows.glow(
-                          AppColors.primary,
+                          context.colors.primary,
                           strength: 1.1,
                           blur: 34,
                           offset: const Offset(0, 10),
@@ -911,20 +919,21 @@ class _RewardMedallion extends StatelessWidget {
                       height: 36,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: AppGradients.success,
-                        border: Border.all(color: AppColors.surface, width: 3),
+                        gradient: context.gradients.success,
+                        border:
+                            Border.all(color: context.colors.surface, width: 3),
                         boxShadow: AppShadows.glow(
-                          AppColors.success,
+                          context.colors.success,
                           strength: 0.7,
                           blur: 12,
                           offset: const Offset(0, 4),
                         ),
                       ),
                       alignment: Alignment.center,
-                      child: const Icon(
+                      child: Icon(
                         Icons.check_rounded,
                         size: 20,
-                        color: AppColors.onPrimary,
+                        color: context.colors.onPrimary,
                       ),
                     ),
                   ),

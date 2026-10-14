@@ -29,7 +29,7 @@ class Skeleton extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: AppColors.surfaceElevated,
+        color: context.colors.surfaceElevated,
         borderRadius: BorderRadius.circular(radius),
       ),
     );
@@ -91,9 +91,9 @@ class _SkeletonShimmerState extends State<SkeletonShimmer>
                 begin: const Alignment(-1, -0.3),
                 end: const Alignment(1, 0.3),
                 colors: [
-                  Colors.white.withValues(alpha: 0),
-                  Colors.white.withValues(alpha: 0.07),
-                  Colors.white.withValues(alpha: 0),
+                  context.colors.shimmer.withValues(alpha: 0),
+                  context.colors.shimmer,
+                  context.colors.shimmer.withValues(alpha: 0),
                 ],
                 stops: const [0.35, 0.5, 0.65],
                 transform: _SlideTransform(_controller.value),

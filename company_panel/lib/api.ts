@@ -31,6 +31,14 @@ export interface AuthResponse {
   user: Me;
 }
 
+/**
+ * The backend words every error in Mongolian (`message`); these are only for when it could not be reached or
+ * sent nothing to read — never the browser's English ("Failed to fetch") or the HTTP status text.
+ */
+export const NETWORK_ERROR_MESSAGE =
+  "Сервертэй холбогдож чадсангүй. Интернэт холболтоо шалгаад дахин оролдоно уу";
+export const GENERIC_ERROR_MESSAGE = "Алдаа гарлаа. Дахин оролдоно уу";
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -121,25 +129,35 @@ export async function apiFetch<T>(path: string, opts: RequestOptions = {}): Prom
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const res = await fetch(url, {
-    method: opts.method ?? "GET",
-    headers,
-    body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
-    credentials: "omit",
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: opts.method ?? "GET",
+      headers,
+      body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+      credentials: "omit",
+    });
+  } catch {
+    throw new ApiError(NETWORK_ERROR_MESSAGE, 0, null);
+  }
 
   const text = await res.text();
   const parsed = text ? safeJson(text) : null;
 
   if (!res.ok) {
-    const message =
-      (parsed && typeof parsed === "object" && "message" in parsed
-        ? (parsed as { message?: string }).message
-        : null) ?? res.statusText;
-    throw new ApiError(message ?? `${res.status}`, res.status, parsed);
+    throw new ApiError(messageOf(parsed), res.status, parsed);
   }
 
   return parsed as T;
+}
+
+/** The backend's own `message`, or the generic sentence when there is none. */
+function messageOf(body: unknown): string {
+  if (body && typeof body === "object" && "message" in body) {
+    const message = (body as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  return GENERIC_ERROR_MESSAGE;
 }
 
 function safeJson(text: string): unknown {

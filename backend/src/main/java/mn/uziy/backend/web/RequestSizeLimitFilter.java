@@ -27,7 +27,8 @@ public class RequestSizeLimitFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
         if (request.getContentLengthLong() > MAX_BODY_BYTES) {
-            response.sendError(HttpStatus.CONTENT_TOO_LARGE.value(), "Request too large");
+            // No message: SafeErrorAttributes words every 413 for the user.
+            response.sendError(HttpStatus.CONTENT_TOO_LARGE.value());
             return;
         }
         chain.doFilter(request, response);

@@ -15,8 +15,8 @@ import org.springframework.stereotype.Component;
 public class MinimumPayoutRule implements PayoutRule {
 
     public static final double MINIMUM_PAYOUT = 1000;
-    static final String TOO_SMALL = "Minimum payout is 1000";
-    static final String NOT_WHOLE = "Amount must be a whole number";
+    static final String TOO_SMALL = "Хамгийн багадаа 1,000₮ татах боломжтой";
+    static final String NOT_WHOLE = "Дүнг бүхэл төгрөгөөр оруулна уу";
 
     @Override
     public void check(UserEntity user, CreatePayoutReq req) {

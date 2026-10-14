@@ -34,19 +34,18 @@ class InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = danger ? AppColors.danger : AppColors.textPrimary;
-    final iconFg =
-        iconColor ?? (danger ? AppColors.danger : AppColors.textSecondary);
+    final fg = danger ? context.colors.danger : context.colors.textPrimary;
+    final iconFg = iconColor ??
+        (danger ? context.colors.danger : context.colors.textSecondary);
     final tileBg = danger
-        ? AppColors.danger.withValues(alpha: 0.12)
-        : (iconColor?.withValues(alpha: 0.14) ??
-            Colors.white.withValues(alpha: 0.06));
+        ? context.colors.danger.withValues(alpha: 0.12)
+        : (iconColor?.withValues(alpha: 0.14) ?? context.colors.iconTile);
     final trail = trailing ??
         (onTap != null
-            ? const Icon(
+            ? Icon(
                 AppIcons.chevron,
                 size: 16,
-                color: AppColors.textTertiary,
+                color: context.colors.textTertiary,
               )
             : null);
 
@@ -75,10 +74,10 @@ class InfoRow extends StatelessWidget {
                 children: [
                   Text(
                     label,
-                    style: AppTextStyles.bodyStrong.copyWith(color: fg),
+                    style: context.textStyles.bodyStrong.copyWith(color: fg),
                   ),
                   if (subtitle != null)
-                    Text(subtitle!, style: AppTextStyles.caption),
+                    Text(subtitle!, style: context.textStyles.caption),
                 ],
               ),
             ),
@@ -91,8 +90,8 @@ class InfoRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.end,
-                  style: AppTextStyles.body
-                      .copyWith(color: AppColors.textSecondary),
+                  style: context.textStyles.body
+                      .copyWith(color: context.colors.textSecondary),
                 ),
               ),
             ],
@@ -150,7 +149,7 @@ class GroupedCard extends StatelessWidget {
                 height: 1,
                 thickness: 1,
                 indent: dividerIndent,
-                color: AppColors.divider,
+                color: context.colors.divider,
               ),
             children[i],
           ],

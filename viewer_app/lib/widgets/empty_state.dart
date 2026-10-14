@@ -11,17 +11,18 @@ class EmptyState extends StatelessWidget {
     required this.title,
     this.message,
     this.action,
-    this.iconColor = AppColors.primary,
+    this.iconColor,
   });
 
   final IconData icon;
   final String title;
   final String? message;
   final Widget? action;
-  final Color iconColor;
+  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
+    final iconColor = this.iconColor ?? context.colors.primary;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
       child: Column(
@@ -33,7 +34,7 @@ class EmptyState extends StatelessWidget {
               height: 88,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: AppGradients.surface,
+                gradient: context.gradients.surface,
                 border: Border.all(color: iconColor.withValues(alpha: 0.28)),
                 boxShadow: AppShadows.glow(
                   iconColor,
@@ -59,15 +60,15 @@ class EmptyState extends StatelessWidget {
           Text(
             title,
             textAlign: TextAlign.center,
-            style: AppTextStyles.title,
+            style: context.textStyles.title,
           ),
           if (message != null) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(
               message!,
               textAlign: TextAlign.center,
-              style: AppTextStyles.body.copyWith(
-                color: AppColors.textSecondary,
+              style: context.textStyles.body.copyWith(
+                color: context.colors.textSecondary,
               ),
             ),
           ],

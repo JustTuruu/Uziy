@@ -66,7 +66,7 @@ class _PayoutRequestScreenState extends State<PayoutRequestScreen> {
   void _showError(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(walletErrorSnackBar(message));
+      ..showSnackBar(walletErrorSnackBar(message, palette: context.colors));
   }
 
   Future<void> _submit() async {
@@ -131,66 +131,62 @@ class _PayoutRequestScreenState extends State<PayoutRequestScreen> {
           backgroundColor: Colors.transparent,
         ),
         body: SafeArea(
-          child: GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onTap: () => FocusScope.of(context).unfocus(),
-            child: SingleChildScrollView(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: EdgeInsets.fromLTRB(
-                gutter,
-                AppSpacing.sm,
-                gutter,
-                AppSpacing.xxl,
-              ),
-              child: Form(
-                key: _formKey,
-                autovalidateMode: _autovalidate,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const FadeSlideIn(
-                      child: StatusBanner(
-                        tone: BannerTone.info,
-                        icon: Icons.verified_user_outlined,
-                        title: 'Эхний таталт',
-                        message: 'Эхний удаа мөнгө татахад дансны нэр таны '
-                            'бүртгэлтэй мэдээлэлтэй заавал таарсан байх '
-                            'шаардлагатай. Ингэснээр таны бүртгэл '
-                            'баталгаажна.',
-                      ),
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: EdgeInsets.fromLTRB(
+              gutter,
+              AppSpacing.sm,
+              gutter,
+              AppSpacing.xxl,
+            ),
+            child: Form(
+              key: _formKey,
+              autovalidateMode: _autovalidate,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const FadeSlideIn(
+                    child: StatusBanner(
+                      tone: BannerTone.info,
+                      icon: Icons.verified_user_outlined,
+                      title: 'Эхний таталт',
+                      message: 'Эхний удаа мөнгө татахад дансны нэр таны '
+                          'бүртгэлтэй мэдээлэлтэй заавал таарсан байх '
+                          'шаардлагатай. Ингэснээр таны бүртгэл '
+                          'баталгаажна.',
                     ),
-                    const SizedBox(height: AppSpacing.xxl),
-                    FadeSlideIn(index: 1, child: _amountCard()),
-                    const SizedBox(height: AppSpacing.xxxl),
-                    FadeSlideIn(
-                      index: 2,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const SectionHeader(title: 'Банк сонгох'),
-                          const SizedBox(height: AppSpacing.md),
-                          BankPicker(
-                            selected: _bank,
-                            onSelected: (b) => setState(() => _bank = b),
-                          ),
-                        ],
-                      ),
+                  ),
+                  const SizedBox(height: AppSpacing.xxl),
+                  FadeSlideIn(index: 1, child: _amountCard()),
+                  const SizedBox(height: AppSpacing.xxxl),
+                  FadeSlideIn(
+                    index: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SectionHeader(title: 'Банк сонгох'),
+                        const SizedBox(height: AppSpacing.md),
+                        BankPicker(
+                          selected: _bank,
+                          onSelected: (b) => setState(() => _bank = b),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: AppSpacing.xxxl),
-                    FadeSlideIn(index: 3, child: _accountCard()),
-                    const SizedBox(height: AppSpacing.xxxl),
-                    FadeSlideIn(
-                      index: 4,
-                      child: AppButton(
-                        label: 'Хүсэлт илгээх',
-                        icon: Icons.send_rounded,
-                        loading: _loading,
-                        haptic: true,
-                        onPressed: _submit,
-                      ),
+                  ),
+                  const SizedBox(height: AppSpacing.xxxl),
+                  FadeSlideIn(index: 3, child: _accountCard()),
+                  const SizedBox(height: AppSpacing.xxxl),
+                  FadeSlideIn(
+                    index: 4,
+                    child: AppButton(
+                      label: 'Хүсэлт илгээх',
+                      icon: Icons.send_rounded,
+                      loading: _loading,
+                      haptic: true,
+                      onPressed: _submit,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -206,17 +202,17 @@ class _PayoutRequestScreenState extends State<PayoutRequestScreen> {
       curve: AppMotion.standard,
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.colors.surface,
         borderRadius: AppRadii.brLg,
         border: Border.all(
           color: _amountFocused
-              ? AppColors.primary.withValues(alpha: 0.70)
-              : AppColors.border,
+              ? context.colors.primary.withValues(alpha: 0.70)
+              : context.colors.border,
           width: _amountFocused ? 1.5 : 1,
         ),
         boxShadow: _amountFocused
             ? AppShadows.glow(
-                AppColors.primary,
+                context.colors.primary,
                 strength: 0.25,
                 blur: 24,
                 offset: Offset.zero,
@@ -226,17 +222,17 @@ class _PayoutRequestScreenState extends State<PayoutRequestScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Татах дүн', style: AppTextStyles.overline),
+          Text('Татах дүн', style: context.textStyles.overline),
           const SizedBox(height: AppSpacing.sm),
           TextFormField(
             controller: _amountCtrl,
             focusNode: _amountFocus,
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            style: AppTextStyles.display.copyWith(
+            style: context.textStyles.display.copyWith(
               fontFeatures: AppTextStyles.tabular,
             ),
-            cursorColor: AppColors.primary,
+            cursorColor: context.colors.primary,
             decoration: InputDecoration(
               filled: false,
               isDense: true,
@@ -248,8 +244,8 @@ class _PayoutRequestScreenState extends State<PayoutRequestScreen> {
               focusedErrorBorder: InputBorder.none,
               disabledBorder: InputBorder.none,
               hintText: '0',
-              hintStyle: AppTextStyles.display.copyWith(
-                color: AppColors.textTertiary,
+              hintStyle: context.textStyles.display.copyWith(
+                color: context.colors.textTertiary,
               ),
               helperText: 'Хамгийн багадаа 1,000 ₮ татах боломжтой',
               prefixIcon: const Padding(
@@ -261,8 +257,8 @@ class _PayoutRequestScreenState extends State<PayoutRequestScreen> {
                 padding: const EdgeInsets.only(left: AppSpacing.sm),
                 child: Text(
                   tugrikSymbol,
-                  style: AppTextStyles.displaySmall.copyWith(
-                    color: AppColors.primary,
+                  style: context.textStyles.displaySmall.copyWith(
+                    color: context.colors.primary,
                   ),
                 ),
               ),
@@ -294,7 +290,7 @@ class _PayoutRequestScreenState extends State<PayoutRequestScreen> {
           labelText: label,
           hintText: hint,
           prefixIcon: Icon(icon),
-          fillColor: AppColors.background,
+          fillColor: context.colors.background,
         );
 
     return Column(
@@ -315,7 +311,7 @@ class _PayoutRequestScreenState extends State<PayoutRequestScreen> {
                 keyboardType: TextInputType.number,
                 textInputAction: TextInputAction.next,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                style: AppTextStyles.bodyStrong.copyWith(
+                style: context.textStyles.bodyStrong.copyWith(
                   fontFeatures: AppTextStyles.tabular,
                 ),
                 decoration: field(
@@ -329,7 +325,7 @@ class _PayoutRequestScreenState extends State<PayoutRequestScreen> {
                 controller: _accountNameCtrl,
                 textCapitalization: TextCapitalization.characters,
                 textInputAction: TextInputAction.next,
-                style: AppTextStyles.bodyStrong,
+                style: context.textStyles.bodyStrong,
                 decoration: field(
                   label: 'Дансны эзэмшигчийн нэр',
                   icon: Icons.person_outline_rounded,
@@ -344,7 +340,7 @@ class _PayoutRequestScreenState extends State<PayoutRequestScreen> {
                 inputFormatters: [
                   LengthLimitingTextInputFormatter(10),
                 ],
-                style: AppTextStyles.bodyStrong,
+                style: context.textStyles.bodyStrong,
                 decoration: field(
                   label: 'Регистрийн дугаар',
                   hint: 'АА99999999',

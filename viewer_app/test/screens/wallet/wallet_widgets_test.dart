@@ -15,7 +15,7 @@ Future<void> pumpWallet(
 }) {
   return tester.pumpWidget(
     MaterialApp(
-      theme: AppTheme.dark(),
+      theme: AppTheme.light(),
       builder: (context, app) => MediaQuery(
         data: MediaQuery.of(context).copyWith(
           disableAnimations: reduceMotion,
@@ -351,10 +351,19 @@ void main() {
   });
 
   test('walletErrorSnackBar carries the message', () {
-    final bar = walletErrorSnackBar('Алдаа');
+    final bar = walletErrorSnackBar('Алдаа', palette: const AppPalette(false));
     expect(bar.content, isA<Row>());
     final row = bar.content as Row;
     final text = (row.children.last as Expanded).child as Text;
     expect(text.data, 'Алдаа');
+  });
+
+  /// Regression (2026-10-13): the payout screen built it without a palette,
+  /// so the error icon kept the light red in dark mode.
+  test('walletErrorSnackBar takes its colours from the given palette', () {
+    const dark = AppPalette(true);
+    final bar = walletErrorSnackBar('Алдаа', palette: dark);
+    final icon = (bar.content as Row).children.first as Icon;
+    expect(icon.color, dark.dangerLight);
   });
 }

@@ -22,9 +22,9 @@ class IncentiveBanner extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: AppRadii.brLg,
-        color: AppColors.surface,
+        color: context.colors.surface,
         boxShadow: AppShadows.glow(
-          AppColors.primary,
+          context.colors.primary,
           strength: 0.3,
           blur: 28,
           offset: const Offset(0, 10),
@@ -35,7 +35,7 @@ class IncentiveBanner extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: AppRadii.brLg,
           border: Border.all(
-            color: AppColors.primary.withValues(alpha: 0.32),
+            color: context.colors.primary.withValues(alpha: 0.32),
           ),
         ),
         child: ClipRRect(
@@ -50,8 +50,8 @@ class IncentiveBanner extends StatelessWidget {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        AppColors.primary.withValues(alpha: 0.20),
-                        AppColors.primaryDeep.withValues(alpha: 0.06),
+                        context.colors.primary.withValues(alpha: 0.20),
+                        context.colors.primaryDeep.withValues(alpha: 0.06),
                       ],
                     ),
                   ),
@@ -80,7 +80,7 @@ class IncentiveBanner extends StatelessWidget {
                     Expanded(
                       child: Text(
                         _message,
-                        style: AppTextStyles.body.copyWith(
+                        style: context.textStyles.body.copyWith(
                           fontSize: 14,
                           height: 1.5,
                         ),
@@ -114,7 +114,7 @@ class _GrowthCoin extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 boxShadow: AppShadows.glow(
-                  AppColors.primary,
+                  context.colors.primary,
                   strength: 0.6,
                   blur: 14,
                   offset: const Offset(0, 4),
@@ -130,14 +130,14 @@ class _GrowthCoin extends StatelessWidget {
                 height: 20,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: AppGradients.success,
-                  border: Border.all(color: AppColors.surface, width: 2),
+                  gradient: context.gradients.success,
+                  border: Border.all(color: context.colors.surface, width: 2),
                 ),
                 alignment: Alignment.center,
-                child: const Icon(
+                child: Icon(
                   Icons.trending_up_rounded,
                   size: 12,
-                  color: AppColors.onPrimary,
+                  color: context.colors.onPrimary,
                 ),
               ),
             ),

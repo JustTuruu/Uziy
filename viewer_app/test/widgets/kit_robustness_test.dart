@@ -15,7 +15,7 @@ Future<void> pumpKit(
 }) {
   return tester.pumpWidget(
     MaterialApp(
-      theme: AppTheme.dark(),
+      theme: AppTheme.light(),
       builder: (context, app) => MediaQuery(
         data: MediaQuery.of(context).copyWith(
           disableAnimations: reduceMotion,
@@ -613,7 +613,8 @@ void main() {
           ),
         );
         final panel = Color.alphaBlend(
-          StatusBanner.colorFor(tone).withValues(alpha: 0.10),
+          StatusBanner.colorFor(tone, const AppPalette(false))
+              .withValues(alpha: 0.10),
           AppColors.background,
         );
         for (final label in ['Гарчиг', 'Дахин', 'Мессеж']) {

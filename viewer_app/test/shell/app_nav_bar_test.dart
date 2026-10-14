@@ -22,10 +22,10 @@ const _items = [
   ),
 ];
 
-/// Built once: AppTheme.dark() returns a fresh ThemeData (with fresh
+/// Built once: AppTheme.light() returns a fresh ThemeData (with fresh
 /// WidgetState closures) on every call, and re-pumping with a non-equal theme
 /// would start an AnimatedTheme transition that masks our own animations.
-final _theme = AppTheme.dark();
+final _theme = AppTheme.light();
 
 /// Pumps the bar the way the main shell uses it:
 /// `Scaffold(extendBody: true, bottomNavigationBar: AppNavBar(...))`.

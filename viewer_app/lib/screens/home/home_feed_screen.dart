@@ -142,8 +142,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     final showFilter = summary != null && shouldShowFilter(summary);
     final filter =
         summary == null ? FeedFilter.all : effectiveFilter(_filter, summary);
-    final visible =
-        feed == null ? const <Campaign>[] : filterFeed(feed, filter);
+    final visible = feed == null ? <Campaign>[] : filterFeed(feed, filter);
     final bottomPad = AppLayout.scrollBottomPadding(context);
 
     return AmbientBackground(
@@ -161,8 +160,8 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
 
             return RefreshIndicator(
               onRefresh: _load,
-              color: AppColors.primary,
-              backgroundColor: AppColors.surfaceElevated,
+              color: context.colors.primary,
+              backgroundColor: context.colors.surfaceElevated,
               child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
@@ -210,10 +209,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                       hasScrollBody: false,
                       child: Padding(
                         padding: EdgeInsets.only(bottom: bottomPad),
-                        child: const Center(
+                        child: Center(
                           child: EmptyState(
                             icon: Icons.cloud_off_rounded,
-                            iconColor: AppColors.accent,
+                            iconColor: context.colors.accent,
                             title: 'Одоогоор ачаалж чадсангүй',
                             message: 'Түр хүлээгээд дахин оролдоно уу.',
                           ),
@@ -253,6 +252,20 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                       sliver: SliverToBoxAdapter(
                         child: FadeSlideIn(
                           child: EarningsHeroCard(summary: summary!),
+                        ),
+                      ),
+                    ),
+                    SliverPadding(
+                      padding: pad(top: AppSpacing.xxl),
+                      sliver: SliverToBoxAdapter(
+                        child: Row(
+                          children: [
+                            Expanded(
+                                child: Text('Танд зориулсан',
+                                    style: context.textStyles.title)),
+                            Text('${visible.length} боломж',
+                                style: context.textStyles.caption),
+                          ],
                         ),
                       ),
                     ),

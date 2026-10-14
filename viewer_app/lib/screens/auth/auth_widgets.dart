@@ -150,18 +150,45 @@ class AuthScrollShell extends StatelessWidget {
 // Fields
 // ---------------------------------------------------------------------------
 
-/// Phone number entry: a fixed `+976`, then one short line per digit that
-/// the typed digits sit on — `+976 9 9 1 1  _ _ _ _`. The line of the digit
-/// being typed is gold; all of them turn red after a failed validation.
-///
-/// Pattern: Adapter (same as `OtpInput`) — one invisible numeric [TextField]
-/// does the real work (keyboard, autofill, backspace) and the slots only
-/// draw its text. It is a [FormField], so a `Form` validates it like any
-/// text field. The controller holds the bare digits.
-class BigPhoneField extends StatefulWidget {
-  const BigPhoneField({
+/// Keeps a phone number to its [AuthValidators.phoneLength] national digits.
+/// Spaces and dashes go; a pasted `+976 8811 2233` (or `976…`) loses the
+/// country code instead of being cut short to `97688112`.
+class PhoneDigitsFormatter extends TextInputFormatter {
+  const PhoneDigitsFormatter();
+
+  static const String _countryDigits = '976';
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    var digits = phoneDigits(newValue.text);
+    if (digits.length > AuthValidators.phoneLength &&
+        digits.startsWith(_countryDigits)) {
+      digits = digits.substring(_countryDigits.length);
+    }
+    if (digits.length > AuthValidators.phoneLength) {
+      digits = digits.substring(0, AuthValidators.phoneLength);
+    }
+    if (digits == newValue.text) return newValue;
+    return TextEditingValue(
+      text: digits,
+      selection: TextSelection.collapsed(offset: digits.length),
+    );
+  }
+}
+
+/// Phone number entry — an ordinary editable field (caret, selection, paste,
+/// autofill) built exactly like [PasswordField]: the same body font, the same
+/// input theme (height, border, padding) and the same leading slot, which
+/// holds a quiet `+976` where the password field has its lock. The
+/// controller holds the bare digits.
+class PhoneField extends StatelessWidget {
+  const PhoneField({
     super.key,
     required this.controller,
+    this.hintText = defaultHint,
     this.validator,
     this.focusNode,
     this.textInputAction,
@@ -172,6 +199,7 @@ class BigPhoneField extends StatefulWidget {
   });
 
   static const String countryCode = '+976';
+  static const String defaultHint = '8 оронтой дугаар';
 
   /// The phone number is the account login, so it is offered to password
   /// managers as the username (iOS reads only the first hint), plus the
@@ -182,26 +210,8 @@ class BigPhoneField extends StatefulWidget {
     AutofillHints.telephoneNumberNational,
   ];
 
-  /// Big, heavy, tabular: a number read at a glance, digits never jitter.
-  static const TextStyle style = TextStyle(
-    fontSize: 30,
-    fontWeight: FontWeight.w800,
-    letterSpacing: -0.4,
-    height: 1.2,
-    color: AppColors.textPrimary,
-    fontFeatures: AppTextStyles.tabular,
-  );
-
-  /// Digits per visual group: `8877 8899`.
-  static const int groupSize = 4;
-
-  static const double prefixGap = AppSpacing.md;
-  static const double slotGap = 6;
-  static const double groupGap = AppSpacing.lg;
-  static const EdgeInsets padding =
-      EdgeInsets.symmetric(vertical: AppSpacing.sm);
-
   final TextEditingController controller;
+  final String hintText;
   final FormFieldValidator<String>? validator;
   final FocusNode? focusNode;
   final TextInputAction? textInputAction;
@@ -211,228 +221,44 @@ class BigPhoneField extends StatefulWidget {
   final Iterable<String>? autofillHints;
 
   @override
-  State<BigPhoneField> createState() => _BigPhoneFieldState();
-}
-
-class _BigPhoneFieldState extends State<BigPhoneField> {
-  final _fieldKey = GlobalKey<FormFieldState<String>>();
-  FocusNode? _ownFocus;
-
-  FocusNode get _focus => widget.focusNode ?? (_ownFocus ??= FocusNode());
-
-  @override
-  void initState() {
-    super.initState();
-    widget.controller.addListener(_onText);
-    _focus.addListener(_onFocus);
-  }
-
-  @override
-  void didUpdateWidget(BigPhoneField old) {
-    super.didUpdateWidget(old);
-    if (old.controller != widget.controller) {
-      old.controller.removeListener(_onText);
-      widget.controller.addListener(_onText);
-    }
-    if (old.focusNode != widget.focusNode) {
-      (old.focusNode ?? _ownFocus)?.removeListener(_onFocus);
-      _focus.addListener(_onFocus);
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.controller.removeListener(_onText);
-    _focus.removeListener(_onFocus);
-    _ownFocus?.dispose();
-    super.dispose();
-  }
-
-  void _onFocus() => setState(() {});
-
-  /// Typing, autofill and a programmatic `controller.text = …` all end up
-  /// here, so the form value (what the validator sees) never lags behind.
-  void _onText() {
-    final field = _fieldKey.currentState;
-    final text = widget.controller.text;
-    if (field != null && field.value != text) field.didChange(text);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return FormField<String>(
-      key: _fieldKey,
-      initialValue: widget.controller.text,
-      validator: widget.validator,
-      builder: (field) {
-        final digits = phoneDigits(widget.controller.text);
-        // The slot being typed into; after the last digit it stays on the
-        // last.
-        final active = _focus.hasFocus
-            ? digits.length.clamp(0, AuthValidators.phoneLength - 1)
-            : -1;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Stack(
-              alignment: AlignmentDirectional.centerStart,
-              children: [
-                ExcludeSemantics(
-                  child: Padding(
-                    padding: BigPhoneField.padding,
-                    // A narrow screen or large text shrinks the row instead
-                    // of overflowing. (No LayoutBuilder: auth pages sit in
-                    // SliverFillRemaining, which asks for intrinsic sizes.)
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: AlignmentDirectional.centerStart,
-                      child: _slots(digits, active, field.hasError),
-                    ),
-                  ),
-                ),
-                // Invisible but hit-testable: a tap anywhere on the number
-                // lands here and opens the keyboard.
-                Positioned.fill(
-                  child: Opacity(
-                    opacity: 0,
-                    child: TextField(
-                      controller: widget.controller,
-                      focusNode: _focus,
-                      autofocus: widget.autofocus,
-                      // Digits only (iOS number pad). TextInputType.phone
-                      // would also offer + * # and letters on the keypad.
-                      keyboardType: TextInputType.number,
-                      textInputAction: widget.textInputAction,
-                      onSubmitted: widget.onFieldSubmitted,
-                      onChanged: widget.onChanged,
-                      autofillHints: widget.autofillHints,
-                      // The caret always sits after the last digit, which is
-                      // what the highlighted slot shows.
-                      enableInteractiveSelection: false,
-                      showCursor: false,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(
-                          AuthValidators.phoneLength,
-                        ),
-                      ],
-                      decoration: const InputDecoration(
-                        border: InputBorder.none,
-                        counterText: '',
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            InlineFieldError(
-              show: field.hasError,
-              message: field.errorText ?? '',
-              flush: true,
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _slots(String digits, int active, bool error) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(BigPhoneField.countryCode, style: BigPhoneField.style),
-        const SizedBox(width: BigPhoneField.prefixGap),
-        for (var i = 0; i < AuthValidators.phoneLength; i++) ...[
-          if (i > 0)
-            SizedBox(
-              width: i % BigPhoneField.groupSize == 0
-                  ? BigPhoneField.groupGap
-                  : BigPhoneField.slotGap,
-            ),
-          PhoneDigitSlot(
-            digit: i < digits.length ? digits[i] : null,
-            active: i == active,
-            error: error,
+    return TextFormField(
+      controller: controller,
+      focusNode: focusNode,
+      autofocus: autofocus,
+      // Digits only (iOS number pad). TextInputType.phone would also offer
+      // + * # on the keypad.
+      keyboardType: TextInputType.number,
+      textInputAction: textInputAction,
+      onFieldSubmitted: onFieldSubmitted,
+      onChanged: onChanged,
+      autofillHints: autofillHints,
+      inputFormatters: const [PhoneDigitsFormatter()],
+      style: context.textStyles.body,
+      decoration: InputDecoration(
+        prefixIcon: Padding(
+          padding: const EdgeInsetsDirectional.only(
+            start: AppSpacing.md,
+            end: AppSpacing.sm,
           ),
-        ],
-      ],
-    );
-  }
-}
-
-/// One digit position of a [BigPhoneField]: the digit, once typed, standing
-/// on a short line. The line is grey, gold when it is the one being typed
-/// into ([active]) and red on a validation [error].
-class PhoneDigitSlot extends StatelessWidget {
-  const PhoneDigitSlot({
-    super.key,
-    required this.digit,
-    required this.active,
-    required this.error,
-  });
-
-  final String? digit;
-  final bool active;
-  final bool error;
-
-  /// Room for one tabular digit of [BigPhoneField.style].
-  static const double width = 22;
-
-  /// One text line of [BigPhoneField.style] (30pt x 1.2).
-  static const double digitHeight = 36;
-  static const double lineGap = AppSpacing.xs;
-  static const double lineThickness = 3;
-  static const double restingLineOpacity = 0.6;
-
-  static Color get restingLineColor =>
-      AppColors.textTertiary.withValues(alpha: restingLineOpacity);
-
-  /// Line colour for the slot's state; an error wins over the active gold.
-  static Color lineColor({required bool active, required bool error}) => error
-      ? AppColors.danger
-      : active
-          ? AppColors.primary
-          : restingLineColor;
-
-  @override
-  Widget build(BuildContext context) {
-    // The slot grows with the OS text size, like the digit inside it.
-    final scaler = MediaQuery.textScalerOf(context);
-    return SizedBox(
-      width: scaler.scale(width),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            height: scaler.scale(digitHeight),
-            child: Center(
-              child: Text(
-                digit ?? '',
-                maxLines: 1,
-                style: BigPhoneField.style,
-              ),
+          child: Center(
+            widthFactor: 1,
+            child: Text(
+              countryCode,
+              style: context.textStyles.body
+                  .copyWith(color: context.colors.textSecondary),
             ),
           ),
-          const SizedBox(height: lineGap),
-          AnimatedContainer(
-            duration: AppMotion.duration(context, AppDurations.fast),
-            height: lineThickness,
-            decoration: BoxDecoration(
-              color: lineColor(active: active, error: error),
-              borderRadius: BorderRadius.circular(lineThickness / 2),
-            ),
-          ),
-        ],
+        ),
+        hintText: hintText,
       ),
+      validator: validator,
     );
   }
 }
 
 /// The phone step as one block: a heading, one line saying what the number
-/// is for, then the [BigPhoneField].
+/// is for, then the [PhoneField].
 class PhoneNumberSection extends StatelessWidget {
   const PhoneNumberSection({
     super.key,
@@ -464,15 +290,16 @@ class PhoneNumberSection extends StatelessWidget {
       children: [
         Semantics(
           header: true,
-          child: const Text(title, style: AppTextStyles.headline),
+          child: Text(title, style: context.textStyles.headline),
         ),
         const SizedBox(height: AppSpacing.sm),
         Text(
           helper,
-          style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+          style: context.textStyles.body
+              .copyWith(color: context.colors.textSecondary),
         ),
         const SizedBox(height: AppSpacing.lg),
-        BigPhoneField(
+        PhoneField(
           controller: controller,
           validator: validator,
           focusNode: focusNode,
@@ -539,7 +366,7 @@ class _PasswordFieldState extends State<PasswordField> {
       onFieldSubmitted: widget.onFieldSubmitted,
       onChanged: widget.onChanged,
       autofillHints: widget.autofillHints,
-      style: AppTextStyles.body,
+      style: context.textStyles.body,
       decoration: InputDecoration(
         prefixIcon: const Icon(Icons.lock_outline_rounded),
         hintText: widget.hintText,
@@ -553,7 +380,7 @@ class _PasswordFieldState extends State<PasswordField> {
             semanticLabel:
                 _obscure ? PasswordField.showLabel : PasswordField.hideLabel,
             variant: AppIconButtonVariant.plain,
-            color: AppColors.textSecondary,
+            color: context.colors.textSecondary,
             haptic: true,
             onPressed: () => setState(() => _obscure = !_obscure),
           ),
@@ -595,14 +422,15 @@ class FieldLabel extends StatelessWidget {
           if (optional)
             TextSpan(
               text: ' ($optionalNote)',
-              style: AppTextStyles.label.copyWith(
-                color: AppColors.textTertiary,
+              style: context.textStyles.label.copyWith(
+                color: context.colors.textTertiary,
                 fontWeight: FontWeight.w500,
               ),
             ),
         ],
       ),
-      style: AppTextStyles.label.copyWith(color: AppColors.textSecondary),
+      style: context.textStyles.label
+          .copyWith(color: context.colors.textSecondary),
     );
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -616,13 +444,9 @@ class FieldLabel extends StatelessWidget {
 /// style, same 4pt gap below the control and the same start inset as the
 /// text inside a field, so custom and text-field errors look identical.
 class FieldError extends StatelessWidget {
-  const FieldError(this.message, {super.key, this.flush = false});
+  const FieldError(this.message, {super.key});
 
   final String message;
-
-  /// No side inset: for a control with no box, whose content starts at the
-  /// edge ([BigPhoneField]).
-  final bool flush;
 
   /// Material 3 InputDecorator gap between the field and its error text,
   /// and between the content padding and the error text's start.
@@ -644,8 +468,8 @@ class FieldError extends StatelessWidget {
       liveRegion: true,
       child: Padding(
         padding: EdgeInsetsDirectional.only(
-          start: flush ? 0 : contentStart + _m3SubtextGap,
-          end: flush ? 0 : contentStart,
+          start: contentStart + _m3SubtextGap,
+          end: contentStart,
           top: _m3SubtextGap,
         ),
         child: Text(
@@ -666,18 +490,14 @@ class InlineFieldError extends StatelessWidget {
     super.key,
     required this.show,
     required this.message,
-    this.flush = false,
   });
 
   final bool show;
   final String message;
 
-  /// See [FieldError.flush].
-  final bool flush;
-
   @override
   Widget build(BuildContext context) {
-    final child = show ? FieldError(message, flush: flush) : const FillWidth();
+    final child = show ? FieldError(message) : const FillWidth();
     // Reduce-motion: no AnimatedSize at all. With a zero duration it
     // re-dirties itself in the middle of its own layout and throws.
     if (AppMotion.reduced(context)) return child;
@@ -765,10 +585,10 @@ class GenderOptionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final d = AppMotion.duration(context, AppDurations.normal);
     final Color borderColor = selected
-        ? AppColors.primary
+        ? context.colors.primary
         : error
-            ? AppColors.danger.withValues(alpha: 0.75)
-            : AppColors.borderStrong;
+            ? context.colors.danger.withValues(alpha: 0.75)
+            : context.colors.borderStrong;
 
     // One semantics node carrying button + selected + label + tap, so the
     // selected state is announced with the option (not on an ancestor).
@@ -795,20 +615,20 @@ class GenderOptionCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: selected
                 ? Color.alphaBlend(
-                    AppColors.primary.withValues(alpha: 0.10),
-                    AppColors.surface,
+                    context.colors.primary.withValues(alpha: 0.10),
+                    context.colors.surface,
                   )
-                : AppColors.surface,
+                : context.colors.surface,
             borderRadius: AppRadii.brLg,
             border: Border.all(color: borderColor, width: selected ? 1.5 : 1),
             boxShadow: selected
                 ? AppShadows.glow(
-                    AppColors.primary,
+                    context.colors.primary,
                     strength: selectedGlowStrength,
                     blur: 16,
                     offset: const Offset(0, 4),
                   )
-                : const [],
+                : [],
           ),
           child: Stack(
             clipBehavior: Clip.none,
@@ -825,17 +645,17 @@ class GenderOptionCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         gradient: selected
-                            ? AppGradients.gold
-                            : const LinearGradient(
+                            ? context.gradients.gold
+                            : LinearGradient(
                                 colors: [
-                                  AppColors.surfaceElevated,
-                                  AppColors.surfaceElevated,
+                                  context.colors.surfaceElevated,
+                                  context.colors.surfaceElevated,
                                 ],
                               ),
                         border: Border.all(
                           color: selected
                               ? Colors.white.withValues(alpha: 0.28)
-                              : AppColors.border,
+                              : context.colors.border,
                         ),
                       ),
                       alignment: Alignment.center,
@@ -843,17 +663,17 @@ class GenderOptionCard extends StatelessWidget {
                         icon,
                         size: 24,
                         color: selected
-                            ? AppColors.onPrimary
-                            : AppColors.textSecondary,
+                            ? context.colors.onPrimary
+                            : context.colors.textSecondary,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     AnimatedDefaultTextStyle(
                       duration: d,
-                      style: AppTextStyles.titleSmall.copyWith(
+                      style: context.textStyles.titleSmall.copyWith(
                         color: selected
-                            ? AppColors.textPrimary
-                            : AppColors.textSecondary,
+                            ? context.colors.textPrimary
+                            : context.colors.textSecondary,
                       ),
                       child: Text(
                         label,
@@ -876,15 +696,15 @@ class GenderOptionCard extends StatelessWidget {
                   child: Container(
                     width: 22,
                     height: 22,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: AppGradients.gold,
+                      gradient: context.gradients.gold,
                     ),
                     alignment: Alignment.center,
-                    child: const Icon(
+                    child: Icon(
                       Icons.check_rounded,
                       size: 15,
-                      color: AppColors.onPrimary,
+                      color: context.colors.onPrimary,
                     ),
                   ),
                 ),
@@ -922,10 +742,10 @@ class BirthDateTile extends StatelessWidget {
     final v = value;
     final text = v == null ? placeholder : formatBirthDate(v);
     final Color iconColor = error
-        ? AppColors.danger
+        ? context.colors.danger
         : v != null
-            ? AppColors.primary
-            : AppColors.textSecondary;
+            ? context.colors.primary
+            : context.colors.textSecondary;
 
     // Geometry mirrors a themed TextFormField with a prefixIcon: 54pt tall,
     // a 48pt icon slot, then the text after a 4pt gap, so the tile lines up
@@ -945,12 +765,12 @@ class BirthDateTile extends StatelessWidget {
           bottom: AppSpacing.md,
         ),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: context.colors.surface,
           borderRadius: AppRadii.brMd,
           border: Border.all(
             color: error
-                ? AppColors.danger.withValues(alpha: 0.75)
-                : AppColors.borderStrong,
+                ? context.colors.danger.withValues(alpha: 0.75)
+                : context.colors.borderStrong,
           ),
         ),
         child: Row(
@@ -966,8 +786,9 @@ class BirthDateTile extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: v == null
-                    ? AppTextStyles.body.copyWith(color: AppColors.textTertiary)
-                    : AppTextStyles.bodyStrong
+                    ? context.textStyles.body
+                        .copyWith(color: context.colors.textTertiary)
+                    : context.textStyles.bodyStrong
                         .copyWith(fontFeatures: AppTextStyles.tabular),
               ),
             ),
@@ -980,10 +801,10 @@ class BirthDateTile extends StatelessWidget {
                 ),
               )
             else
-              const Icon(
+              Icon(
                 Icons.calendar_month_rounded,
                 size: 20,
-                color: AppColors.textTertiary,
+                color: context.colors.textTertiary,
               ),
           ],
         ),
@@ -1041,11 +862,11 @@ class _TermsAgreementTileState extends State<TermsAgreementTile> {
   Widget build(BuildContext context) {
     final checked = widget.value;
     final d = AppMotion.duration(context, AppDurations.fast);
-    const linkStyle = TextStyle(
-      color: AppColors.primary,
+    final linkStyle = TextStyle(
+      color: context.colors.primary,
       fontWeight: FontWeight.w700,
       decoration: TextDecoration.underline,
-      decorationColor: AppColors.primary,
+      decorationColor: context.colors.primary,
     );
 
     return Pressable(
@@ -1059,15 +880,15 @@ class _TermsAgreementTileState extends State<TermsAgreementTile> {
         decoration: BoxDecoration(
           color: checked
               ? Color.alphaBlend(
-                  AppColors.primary.withValues(alpha: 0.06),
-                  AppColors.surface,
+                  context.colors.primary.withValues(alpha: 0.06),
+                  context.colors.surface,
                 )
-              : AppColors.surface,
+              : context.colors.surface,
           borderRadius: AppRadii.brMd,
           border: Border.all(
             color: checked
-                ? AppColors.primary.withValues(alpha: 0.45)
-                : AppColors.border,
+                ? context.colors.primary.withValues(alpha: 0.45)
+                : context.colors.border,
           ),
         ),
         child: Row(
@@ -1084,22 +905,23 @@ class _TermsAgreementTileState extends State<TermsAgreementTile> {
                 height: 24,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(7),
-                  gradient: checked ? AppGradients.gold : null,
+                  gradient: checked ? context.gradients.gold : null,
                   // No glow: the gold fill is enough, and glow is reserved
                   // for the CTA and reward elements.
                   border: checked
                       ? null
-                      : Border.all(color: AppColors.textSecondary, width: 1.5),
+                      : Border.all(
+                          color: context.colors.textSecondary, width: 1.5),
                 ),
                 alignment: Alignment.center,
                 child: AnimatedScale(
                   scale: checked ? 1 : 0,
                   duration: d,
                   curve: AppMotion.standard,
-                  child: const Icon(
+                  child: Icon(
                     Icons.check_rounded,
                     size: 17,
-                    color: AppColors.onPrimary,
+                    color: context.colors.onPrimary,
                   ),
                 ),
               ),
@@ -1108,7 +930,7 @@ class _TermsAgreementTileState extends State<TermsAgreementTile> {
             Expanded(
               child: Text.rich(
                 TextSpan(
-                  style: AppTextStyles.bodySmall.copyWith(height: 1.5),
+                  style: context.textStyles.bodySmall.copyWith(height: 1.5),
                   children: [
                     const TextSpan(text: 'Би '),
                     TextSpan(
@@ -1169,14 +991,14 @@ class AuthFooterLink extends StatelessWidget {
               heightFactor: 1,
               child: Text.rich(
                 TextSpan(
-                  style: AppTextStyles.body
-                      .copyWith(color: AppColors.textSecondary),
+                  style: context.textStyles.body
+                      .copyWith(color: context.colors.textSecondary),
                   children: [
                     TextSpan(text: '$prompt '),
                     TextSpan(
                       text: action,
-                      style: const TextStyle(
-                        color: AppColors.primary,
+                      style: TextStyle(
+                        color: context.colors.primary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -1201,7 +1023,7 @@ class AuthFooterLink extends StatelessWidget {
 class HowItWorksStrip extends StatelessWidget {
   const HowItWorksStrip({super.key});
 
-  static const List<({IconData icon, String label})> steps = [
+  static List<({IconData icon, String label})> steps = [
     (icon: AppIcons.watched, label: 'Видео үз'),
     (icon: AppIcons.answer, label: 'Асуултад хариул'),
     (icon: AppIcons.reward, label: 'Урамшуулал ав'),
@@ -1221,20 +1043,21 @@ class HowItWorksStrip extends StatelessWidget {
                   height: 44,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.primary.withValues(alpha: 0.10),
+                    color: context.colors.primary.withValues(alpha: 0.10),
                     border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.22),
+                      color: context.colors.primary.withValues(alpha: 0.22),
                     ),
                   ),
                   alignment: Alignment.center,
-                  child: Icon(step.icon, size: 20, color: AppColors.primary),
+                  child:
+                      Icon(step.icon, size: 20, color: context.colors.primary),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
                   step.label,
                   textAlign: TextAlign.center,
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.textSecondary,
+                  style: context.textStyles.caption.copyWith(
+                    color: context.colors.textSecondary,
                   ),
                 ),
               ],

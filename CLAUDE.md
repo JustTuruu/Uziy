@@ -562,6 +562,23 @@ Full write-up and checklist: **`docs/PRODUCTION_CHECKLIST.md`**. Rules that now 
   accounts, simulated payments, logging OTP or localhost CORS. `application-prod.yml` has no secret defaults.
 - Known open risk: rewards cannot yet be tied to real watching (see the checklist).
 
+### Error messages users read (added 2026-10-13)
+
+Every error a client can show is Cyrillic Mongolian and says what to do; nothing technical or echoed.
+- **Backend**: `web/SafeErrorAttributes` is the one renderer. A message `ApiExceptionHandler` sent (domain
+  exceptions, field validation — marked with the `OWN_MESSAGE` request attribute) is kept, at any status; anything
+  Spring answers by itself ("Forbidden", UUID conversion, unknown route, 413, 5xx) gets a Mongolian sentence per
+  status (`messageFor`). The `errors` list (it echoes rejected values, e.g. passwords), traces and exception names
+  are always removed. Field validation answers with the first failing field's own message: put a
+  `message = FieldMessages.X` on every constraint of a user-facing request (`common/FieldMessages`); constraints
+  without one fall back to `resources/ValidationMessages.properties` (Mongolian). Wording shared by several services
+  is in `common/Messages`. Never throw a `DomainException` with English or `null` text.
+- **Flutter**: `services/api_error.dart` `apiErrorMessage(...)` is the one mapper (backend `message` → network /
+  timeout → per-call `byStatus` → 401/403, 429, 5xx → fallback); `kUnexpectedError` for non-API failures. Never show
+  `$e`, `e.error` or a URL to the user.
+- **Panels**: `lib/api.ts` `apiFetch` throws `ApiError` with the backend message, `GENERIC_ERROR_MESSAGE` when there is
+  none, and `NETWORK_ERROR_MESSAGE` (status 0) when the server cannot be reached.
+
 ### Phone verification for registration — verify.mn (added 2026-10-13)
 
 Registration proves the phone the other way round: the **viewer texts** a 6-digit code FROM their phone to
@@ -614,15 +631,13 @@ Used to **reset a forgotten password** (registration used them until 2026-10-13 
   (`PathMetric.extractPath`). `hasError` or clearing the code reverses it; reduce-motion jumps to the end.
   Used on the password-reset screen (the widget owns it).
 - Company registration (`/auth/register/company`) is unchanged and has no OTP.
-- **Phone entry design (2026-10-12)**: login, register and forgot-password all use `BigPhoneField`
-  (`auth_widgets.dart`; register wraps it in `PhoneNumberSection`: heading 'Утасны дугаар' + one helper
-  line). It shows a fixed `+976` and then 8 `PhoneDigitSlot`s, **one short line under each digit** (not
-  one line under the whole number): grey, gold for the slot being typed into, red after a failed
-  validation; a wider gap after the 4th slot. Pattern: Adapter, same as `OtpInput` — an invisible numeric
-  `TextField` does the input and the slots draw its text; it is a `FormField`, so `Form.validate()` works
-  and the message shows through `InlineFieldError(flush: true)`. The controller holds the bare digits
-  (screens still read it with `phoneDigits(...)`). In tests type into `find.byType(TextField)`. The old
-  boxed `PhonePrefixField` and the `MnPhoneInputFormatter` are gone.
+- **Phone entry (2026-10-14, replaced the 2026-10-12 slotted `BigPhoneField`)**: login, register and
+  forgot-password all use `PhoneField` (`auth_widgets.dart`; register wraps it in `PhoneNumberSection`: heading
+  'Утасны дугаар' + one helper line). It is an ordinary `TextFormField` built exactly like `PasswordField` (same
+  `body` font, the theme's input decoration, a quiet `+976` in the leading slot where the password field has its
+  lock), so the two fields have the same height, font and border — a widget test checks it. Selection, paste and
+  autofill work; `PhoneDigitsFormatter` keeps the 8 national digits and drops a pasted `+976`/`976`. The controller
+  holds bare digits (screens still read it with `phoneDigits(...)`). In tests type into `find.byType(TextField)`.
 - **Survey progress (2026-10-12)**: `SurveyProgress` (`survey_widgets.dart`) sits under the survey header:
   one thick `SegmentedProgress` segment per question plus a caption from `questionsLeftLabel` ('Дахиад 2
   асуулт үлдлээ' / 'Сүүлийн асуулт' / 'Ганцхан асуулт'). Done questions are full, the current one is
@@ -679,12 +694,12 @@ removed on 2026-10-06 as unused — re-add `video_player` + `chewie` when the re
 
 ### `lib/theme/app_theme.dart`
 
-- `AppColors`: `background #0B0B0F`, `surface #16161C`, `surfaceElevated
-#1F1F27`, `primary #FFCE00` (Mongolian gold), `accent #3B82F6` (blue),
-  `success #22C55E`, `danger #EF4444`, `textPrimary #F5F5F7`, `textSecondary
-#9CA3AF`, `divider #2A2A33`.
-- `AppTheme.dark()`: Material 3, dark scheme, rounded 12–14 radii,
-  primary-yellow-on-black buttons.
+- **Uziy Meadow** palette (2026-10-13; replaced "Gold Noir"): `AppColors` = the LIGHT palette (paper
+  `#F5F7F3`, white surfaces, forest-green primary `#145C45`, white text on primary). `theme_palette.dart`
+  `AppPalette(isDark)` gives the matching dark colours; `AppTheme.light()` / `AppTheme.dark()` are one
+  `_build(isDark)`. Light, dark or follow-the-device is chosen in Profile → 'Харагдах горим'
+  (`widgets/appearance_settings.dart`) and kept by `theme/theme_controller.dart` (secure storage key
+  `appearance_mode`, survives logout; `main.dart` restores it, `app.dart` drives `themeMode`).
 
 ### `lib/routes/app_router.dart`
 
@@ -785,10 +800,17 @@ the next session can uncomment once the backend exists.
 
 ## 4. Design decisions worth knowing
 
-- **Dark theme by default.** All screens assume dark; there is no light-mode
-  toggle. Reward-app aesthetic borrows from TikTok / Snap.
-- **Gold `#FFCE00` primary** is a nod to Mongolian gold accents. All CTAs use
-  it against black text.
+- **Light + dark themes (2026-10-13).** In widgets read colours and text styles from the context —
+  `context.colors.x`, `context.textStyles.x`, `context.gradients.x` — never `AppColors.x` /
+  `AppTextStyles.x` directly (those are the light values; `AppTextStyles.tabular` and fixed artwork such as
+  the coin, confetti, mood hues and overlays on video/campaign art are the exceptions). Helpers that colour
+  something take a REQUIRED `AppPalette` (`walletErrorSnackBar`, `StatusBanner.colorFor`,
+  …) so a light default cannot sneak into dark mode. White/black overlays are only for
+  surfaces that are dark in both modes (video, campaign art, the green wallet card). Dark-palette text keeps
+  WCAG AA — `test/theme/dark_theme_test.dart` checks it.
+- **Keyboard closes on a tap outside a field (2026-10-14)**: `widgets/dismiss_keyboard_on_tap.dart` wraps the
+  whole app once (`app.dart` builder). Do not add per-screen `GestureDetector(onTap: unfocus)` copies; scroll views
+  may keep `keyboardDismissBehavior: onDrag` as well.
 - **Copy is Mongolian Cyrillic throughout.** If you add new strings, match the
   tone (short, informal, second-person plural "Та"). Don't switch to Latin.
 - **No i18n system yet** — strings are inline. If localization comes up, hoist

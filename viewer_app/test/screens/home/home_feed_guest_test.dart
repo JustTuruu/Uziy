@@ -85,7 +85,7 @@ void main() {
 
   Future<void> pumpHome(WidgetTester tester) async {
     await tester.pumpWidget(
-      MaterialApp.router(theme: AppTheme.dark(), routerConfig: router),
+      MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
     );
     await tester.pumpAndSettle();
   }
@@ -105,6 +105,8 @@ void main() {
       (tester) async {
     await pumpHome(tester);
 
+    await tester.ensureVisible(find.byType(CampaignCard));
+    await tester.pumpAndSettle();
     await tester.tap(find.byType(CampaignCard));
     await tester.pumpAndSettle();
     expect(find.text(kGuestGateTitle), findsOneWidget);
@@ -119,6 +121,8 @@ void main() {
       (tester) async {
     await pumpHome(tester);
 
+    await tester.ensureVisible(find.byType(CampaignCard));
+    await tester.pumpAndSettle();
     await tester.tap(find.byType(CampaignCard));
     await tester.pumpAndSettle();
     await tester.tap(_inSheet(kGuestLoginLabel));
@@ -141,6 +145,8 @@ void main() {
   testWidgets('dismissing the sheet stays on home', (tester) async {
     await pumpHome(tester);
 
+    await tester.ensureVisible(find.byType(CampaignCard));
+    await tester.pumpAndSettle();
     await tester.tap(find.byType(CampaignCard));
     await tester.pumpAndSettle();
     await tester.tapAt(const Offset(10, 10));

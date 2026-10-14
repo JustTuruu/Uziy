@@ -289,7 +289,7 @@ class _MainShell extends StatelessWidget {
       // is folded into MediaQuery.padding.bottom for them
       // (see AppLayout.scrollBottomPadding).
       extendBody: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: context.colors.background,
       // `child` is the shell's Navigator (GlobalKey). It must not be wrapped
       // in an AnimatedSwitcher: that mounts it twice during the transition
       // and trips `_dependents.isEmpty`. Tab animation lives in [_tab].
