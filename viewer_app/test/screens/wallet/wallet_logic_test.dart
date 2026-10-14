@@ -142,6 +142,14 @@ void main() {
       expect(kDefaultPayoutBank, 'Khan Bank');
       expect(kPayoutBanks, contains(kDefaultPayoutBank));
     });
+
+    test('every bank has its own logo file under assets/banks/', () {
+      expect(kBankLogoAssets.keys, unorderedEquals(kPayoutBanks));
+      for (final path in kBankLogoAssets.values) {
+        expect(path, startsWith('assets/banks/'));
+      }
+      expect(kBankLogoAssets.values.toSet(), hasLength(kPayoutBanks.length));
+    });
   });
 
   group('validators keep the original rules', () {

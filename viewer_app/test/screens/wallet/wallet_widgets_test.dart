@@ -224,6 +224,51 @@ void main() {
     });
   });
 
+  group('BankLogo', () {
+    const palette = [Color(0xFF145C45), Color(0xFF104C39)];
+
+    testWidgets('without a logo it shows the monogram', (tester) async {
+      await pumpWallet(
+        tester,
+        const BankLogo(name: 'Khan Bank', palette: palette),
+      );
+      expect(find.text('K'), findsOneWidget);
+      expect(find.byType(Image), findsNothing);
+    });
+
+    testWidgets('with a bundled logo it shows the image, not the monogram',
+        (tester) async {
+      await pumpWallet(
+        tester,
+        const BankLogo(
+          name: 'Khan Bank',
+          palette: palette,
+          logoAsset: 'assets/logo.png',
+        ),
+      );
+      expect(find.byType(Image), findsOneWidget);
+      expect(find.text('K'), findsNothing);
+    });
+
+    testWidgets('a missing logo file falls back to the monogram',
+        (tester) async {
+      await pumpWallet(
+        tester,
+        const BankLogo(
+          name: 'Golomt Bank',
+          palette: palette,
+          logoAsset: 'assets/banks/does_not_exist.png',
+        ),
+      );
+      await tester.runAsync(() => Future<void>.delayed(
+            const Duration(milliseconds: 50),
+          ));
+      await tester.pump();
+      expect(find.text('G'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   group('BankPicker', () {
     testWidgets('lists all banks and reports the tapped one', (tester) async {
       String? picked;
@@ -237,6 +282,17 @@ void main() {
       await tester.tap(find.text('TDB'));
       await tester.pumpAndSettle();
       expect(picked, 'TDB');
+    });
+
+    testWidgets('gives every bank its logo path', (tester) async {
+      await pumpWallet(
+        tester,
+        BankPicker(selected: kDefaultPayoutBank, onSelected: (_) {}),
+      );
+      final logos = tester.widgetList<BankTile>(find.byType(BankTile));
+      for (final tile in logos) {
+        expect(tile.logoAsset, kBankLogoAssets[tile.name]);
+      }
     });
 
     testWidgets('only the selected bank is marked selected', (tester) async {

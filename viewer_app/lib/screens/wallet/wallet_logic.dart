@@ -23,6 +23,19 @@ const List<String> kPayoutBanks = [
   'Capitron Bank',
 ];
 
+/// Where each bank's logo is bundled (`assets/banks/`, listed in pubspec).
+/// The names above are what the backend stores, so they stay plain strings; a
+/// bank without a logo file simply shows its monogram.
+const Map<String, String> kBankLogoAssets = {
+  'Khan Bank': 'assets/banks/khan_bank.png',
+  'Golomt Bank': 'assets/banks/golomt_bank.png',
+  'TDB': 'assets/banks/tdb.png',
+  'Xac Bank': 'assets/banks/xac_bank.png',
+  'State Bank': 'assets/banks/state_bank.png',
+  'M Bank': 'assets/banks/m_bank.png',
+  'Capitron Bank': 'assets/banks/capitron_bank.png',
+};
+
 /// Bank preselected on the payout form.
 const String kDefaultPayoutBank = 'Khan Bank';
 

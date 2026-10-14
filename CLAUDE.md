@@ -808,6 +808,10 @@ the next session can uncomment once the backend exists.
   …) so a light default cannot sneak into dark mode. White/black overlays are only for
   surfaces that are dark in both modes (video, campaign art, the green wallet card). Dark-palette text keeps
   WCAG AA — `test/theme/dark_theme_test.dart` checks it.
+- **Bank logos on the payout form (2026-10-14)**: `wallet_logic.dart` `kBankLogoAssets` maps each bank name (the
+  string the backend stores) to `assets/banks/<name>.png`; `BankLogo` (`wallet_widgets.dart`) shows it on a white
+  circle and falls back to the coloured monogram when the file is missing. The logo files themselves still have to be
+  added by the owner (official artwork from each bank).
 - **Keyboard closes on a tap outside a field (2026-10-14)**: `widgets/dismiss_keyboard_on_tap.dart` wraps the
   whole app once (`app.dart` builder). Do not add per-screen `GestureDetector(onTap: unfocus)` copies; scroll views
   may keep `keyboardDismissBehavior: onDrag` as well.

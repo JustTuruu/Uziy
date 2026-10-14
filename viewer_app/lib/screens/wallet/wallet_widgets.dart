@@ -694,6 +694,7 @@ class BankPicker extends StatelessWidget {
                       child: start + i < banks.length
                           ? BankTile(
                               name: banks[start + i],
+                              logoAsset: kBankLogoAssets[banks[start + i]],
                               paletteSeed: start + i,
                               selected: banks[start + i] == selected,
                               onTap: () => onSelected(banks[start + i]),
@@ -716,19 +717,25 @@ class BankPicker extends StatelessWidget {
   }
 }
 
-/// One bank option: colored monogram, name, gold ring + check when selected.
+/// One bank option: the bank's logo (or a coloured monogram when there is
+/// none), its name, and a ring + check when selected.
 class BankTile extends StatelessWidget {
   const BankTile({
     super.key,
     required this.name,
     required this.selected,
     required this.onTap,
+    this.logoAsset,
     this.paletteSeed = 0,
   });
 
   final String name;
   final bool selected;
   final VoidCallback onTap;
+
+  /// Bundled logo image; a missing or unreadable file falls back to the
+  /// monogram, so a bank never shows a broken image.
+  final String? logoAsset;
 
   /// Picks the monogram gradient (see [campaignPalette]).
   final int paletteSeed;
@@ -771,30 +778,10 @@ class BankTile extends StatelessWidget {
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [palette[0], palette[1]],
-                          ),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.14),
-                          ),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          monogramOf(name, fallback: 'B'),
-                          textScaler: TextScaler.noScaling,
-                          style: context.textStyles.label.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            height: 1,
-                          ),
-                        ),
+                      BankLogo(
+                        name: name,
+                        logoAsset: logoAsset,
+                        palette: palette,
                       ),
                       Positioned(
                         right: -1,
@@ -847,6 +834,70 @@ class BankTile extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A bank's mark in a 32pt circle: its logo on white (logos are drawn for a
+/// light background, so it stays white in dark mode too), or the coloured
+/// monogram when there is no logo file.
+class BankLogo extends StatelessWidget {
+  const BankLogo({
+    super.key,
+    required this.name,
+    required this.palette,
+    this.logoAsset,
+  });
+
+  static const double size = 32;
+
+  final String name;
+  final List<Color> palette;
+  final String? logoAsset;
+
+  @override
+  Widget build(BuildContext context) {
+    final asset = logoAsset;
+    if (asset == null) return _monogram(context);
+    return Container(
+      width: size,
+      height: size,
+      clipBehavior: Clip.antiAlias,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+        border: Border.all(color: context.colors.border),
+      ),
+      child: Image.asset(
+        asset,
+        fit: BoxFit.contain,
+        errorBuilder: (context, _, __) => _monogram(context),
+      ),
+    );
+  }
+
+  Widget _monogram(BuildContext context) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [palette[0], palette[1]],
+          ),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          monogramOf(name, fallback: 'B'),
+          textScaler: TextScaler.noScaling,
+          style: context.textStyles.label.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            height: 1,
+          ),
+        ),
+      );
 }
 
 // --- Success sheet ----------------------------------------------------------
