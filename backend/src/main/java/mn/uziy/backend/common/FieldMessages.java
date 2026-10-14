@@ -12,6 +12,10 @@ public final class FieldMessages {
     public static final String PASSWORD_REQUIRED = "Нууц үгээ оруулна уу";
     public static final String PASSWORD_LENGTH = "Нууц үг 6–100 тэмдэгт байх ёстой";
     public static final String CODE = "Код 6 оронтой тоо байх ёстой";
+    public static final String LAST_NAME_REQUIRED = "Овгоо оруулна уу";
+    public static final String FIRST_NAME_REQUIRED = "Нэрээ оруулна уу";
+    public static final String NAME_LETTERS = "Овог, нэрт зөвхөн үсэг ашиглана уу";
+    public static final String NAME_TOO_LONG = "Овог, нэр хэт урт байна";
     public static final String GENDER_REQUIRED = "Хүйсээ сонгоно уу";
     public static final String BIRTH_DATE_REQUIRED = "Төрсөн өдрөө оруулна уу";
     public static final String CITY_REQUIRED = "Хотоо сонгоно уу";
@@ -25,7 +29,6 @@ public final class FieldMessages {
     public static final String BANK_REQUIRED = "Банкаа сонгоно уу";
     public static final String ACCOUNT_NUMBER_REQUIRED = "Дансны дугаараа оруулна уу";
     public static final String ACCOUNT_NAME_REQUIRED = "Данс эзэмшигчийн нэрийг оруулна уу";
-    public static final String NATIONAL_ID_REQUIRED = "Регистрийн дугаараа оруулна уу";
 
     public static final String TITLE_REQUIRED = "Аяны нэрийг оруулна уу";
     public static final String TITLE_TOO_LONG = "Аяны нэр хэт урт байна";

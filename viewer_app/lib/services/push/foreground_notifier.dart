@@ -20,8 +20,11 @@ class LocalForegroundNotifier implements ForegroundNotifier {
       : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
 
   static const channelId = 'campaigns';
-  static const channelName = 'Шинэ видео, судалгаа';
-  static const channelDescription = 'Шинэ видео, судалгааны мэдэгдэл';
+  // The id stays 'campaigns' so existing installs keep their settings; the
+  // channel now also carries payout decisions.
+  static const channelName = 'Uziy мэдэгдэл';
+  static const channelDescription =
+      'Шинэ видео, судалгаа болон мөнгө татах хүсэлтийн хариу';
 
   final FlutterLocalNotificationsPlugin _plugin;
   final _taps = StreamController<Map<String, String>>.broadcast();

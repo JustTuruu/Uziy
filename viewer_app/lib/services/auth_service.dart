@@ -17,12 +17,13 @@ class AuthException implements Exception {
   String toString() => 'AuthException($statusCode): $message';
 }
 
-/// Why a one-time code is asked for; [wire] is the backend's `OtpPurpose`.
-/// Registration does not use codes: it proves the phone by SMS (verify.mn).
-enum OtpPurpose {
+/// What a phone check is for; [wire] is the backend's
+/// `PhoneVerificationPurpose`. A check is spent only for its own purpose.
+enum PhoneCheckPurpose {
+  register('REGISTER'),
   passwordReset('PASSWORD_RESET');
 
-  const OtpPurpose(this.wire);
+  const PhoneCheckPurpose(this.wire);
   final String wire;
 }
 
@@ -102,6 +103,8 @@ class AuthService {
   Future<AppUser> register({
     required String phone,
     required String password,
+    required String lastName,
+    required String firstName,
     required Gender gender,
     required DateTime birthDate,
     required String city,
@@ -114,6 +117,8 @@ class AuthService {
         data: {
           'phoneNumber': phone,
           'password': password,
+          'lastName': lastName,
+          'firstName': firstName,
           'gender': gender.name.toUpperCase(),
           'birthDate': '${birthDate.year.toString().padLeft(4, '0')}-'
               '${birthDate.month.toString().padLeft(2, '0')}-'
@@ -132,15 +137,19 @@ class AuthService {
     }
   }
 
-  /// POST /auth/phone-verifications — opens a check of [phone]: the viewer
-  /// must text the returned code from it. 409 for a taken phone, 429 when
-  /// asked again too soon.
-  Future<PhoneVerification> startPhoneVerification(String phone) async {
+  /// POST /auth/phone-verifications — opens a check of [phone] for
+  /// [purpose]: the viewer must text the returned code from it. 409 when
+  /// registering a taken phone, 404 when resetting a phone with no account,
+  /// 429 when asked again too soon.
+  Future<PhoneVerification> startPhoneVerification(
+    String phone, {
+    PhoneCheckPurpose purpose = PhoneCheckPurpose.register,
+  }) async {
     const fallback = 'Баталгаажуулалт эхлүүлж чадсангүй';
     try {
       final res = await ApiService.instance.dio.post<dynamic>(
         '/auth/phone-verifications',
-        data: {'phoneNumber': phone},
+        data: {'phoneNumber': phone, 'purpose': purpose.wire},
       );
       _throwIfNotOk(res, fallback: fallback);
       return PhoneVerification.fromJson(res.data as Map<String, dynamic>);
@@ -163,36 +172,23 @@ class AuthService {
     }
   }
 
-  /// POST /auth/otp/request — texts a 6-digit code to [phone]; answers 429
-  /// when asked again too soon.
-  Future<void> requestOtp({
-    required String phone,
-    required OtpPurpose purpose,
-  }) async {
-    const fallback = 'Код илгээж чадсангүй';
-    try {
-      final res = await ApiService.instance.dio.post<dynamic>(
-        '/auth/otp/request',
-        data: {'phoneNumber': phone, 'purpose': purpose.wire},
-      );
-      _throwIfNotOk(res, fallback: fallback);
-    } on DioException catch (e) {
-      throw _mapDioError(e, fallback);
-    }
-  }
-
-  /// POST /auth/password/reset — sets a new password using a code from
-  /// [requestOtp] (purpose passwordReset).
+  /// POST /auth/password/reset — sets a new password for [phone], proved by
+  /// the confirmed password-reset check [verificationId]. 400 when the check
+  /// is not (or no longer) usable.
   Future<void> resetPassword({
     required String phone,
-    required String code,
+    required String verificationId,
     required String newPassword,
   }) async {
     const fallback = 'Нууц үг шинэчилж чадсангүй';
     try {
       final res = await ApiService.instance.dio.post<dynamic>(
         '/auth/password/reset',
-        data: {'phoneNumber': phone, 'code': code, 'newPassword': newPassword},
+        data: {
+          'phoneNumber': phone,
+          'verificationId': verificationId,
+          'newPassword': newPassword,
+        },
       );
       _throwIfNotOk(res, fallback: fallback);
     } on DioException catch (e) {

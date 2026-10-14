@@ -35,9 +35,36 @@ void main() {
 
       expect(api.calls.single.method, 'POST');
       expect(api.calls.single.path, '/auth/phone-verifications');
-      expect(api.calls.single.body, {'phoneNumber': '88112233'});
+      expect(api.calls.single.body,
+          {'phoneNumber': '88112233', 'purpose': 'REGISTER'});
       expect(v.id, 'v1');
       expect(v.smsText, '482916');
+    });
+
+    test('a password reset sends its own purpose', () async {
+      final api = FakeApi.install((_) => const FakeReply(201, _started));
+
+      await AuthService.instance.startPhoneVerification(
+        '88112233',
+        purpose: PhoneCheckPurpose.passwordReset,
+      );
+
+      expect(api.calls.single.body,
+          {'phoneNumber': '88112233', 'purpose': 'PASSWORD_RESET'});
+    });
+
+    test('resetting a phone with no account (404) carries the message',
+        () async {
+      FakeApi.install((_) =>
+          const FakeReply(404, {'message': 'Энэ дугаараар бүртгэл олдсонгүй'}));
+
+      final e = await _catch(() => AuthService.instance.startPhoneVerification(
+            '88112233',
+            purpose: PhoneCheckPurpose.passwordReset,
+          ));
+
+      expect(e.statusCode, 404);
+      expect(e.message, 'Энэ дугаараар бүртгэл олдсонгүй');
     });
 
     test('a taken phone (409) carries the backend message', () async {

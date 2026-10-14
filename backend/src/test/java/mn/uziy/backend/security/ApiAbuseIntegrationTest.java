@@ -162,10 +162,28 @@ class ApiAbuseIntegrationTest extends AbstractApiIntegrationTest {
 
         int s = status(post("/viewer/payouts"), viewer,
                 "{\"amount\":" + amount + ",\"bank\":\"Khan Bank\",\"accountNumber\":\"1\","
-                        + "\"accountName\":\"A\",\"nationalId\":\"AA00000000\"}");
+                        + "\"accountName\":\"A\"}");
 
         assertThat(s).as(amount).isBetween(400, 499);
         assertThat(balanceOf(viewer)).isEqualTo(1000.0);
+    }
+
+    /**
+     * The form stopped asking for the national ID (2026-10-14) and the column is gone. An app installed before that
+     * still sends the field: the request must keep working and the value must not be kept anywhere.
+     */
+    @Test
+    void anOldAppThatStillSendsTheNationalIdCanCashOutAndTheIdIsNotKept() throws Exception {
+        long viewer = viewer(1000);
+
+        int s = status(post("/viewer/payouts"), viewer,
+                "{\"amount\":1000,\"bank\":\"Khan Bank\",\"accountNumber\":\"1\",\"accountName\":\"A\","
+                        + "\"nationalId\":\"AA00000000\"}");
+
+        assertThat(s).isEqualTo(200);
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM information_schema.columns
+                WHERE table_name = 'payout_requests' AND column_name = 'national_id'""", Integer.class)).isZero();
     }
 
     @Test
@@ -173,8 +191,7 @@ class ApiAbuseIntegrationTest extends AbstractApiIntegrationTest {
         long viewer = viewer(500);
 
         int s = status(post("/viewer/payouts"), viewer,
-                "{\"amount\":501,\"bank\":\"Khan Bank\",\"accountNumber\":\"1\",\"accountName\":\"A\","
-                        + "\"nationalId\":\"AA00000000\"}");
+                "{\"amount\":501,\"bank\":\"Khan Bank\",\"accountNumber\":\"1\",\"accountName\":\"A\"}");
 
         assertThat(s).isEqualTo(400);
         assertThat(balanceOf(viewer)).isEqualTo(500.0);
@@ -258,7 +275,7 @@ class ApiAbuseIntegrationTest extends AbstractApiIntegrationTest {
     @Test
     void aViewerCannotRegisterWithoutAVerifiedPhone() throws Exception {
         int s = status(post("/auth/register/viewer"), null,
-                "{\"phoneNumber\":\"" + freshPhone() + "\",\"password\":\"abcdef\",\"gender\":\"MALE\","
+                "{\"phoneNumber\":\"" + freshPhone() + "\",\"password\":\"abcdef\",\"lastName\":\"Бат\",\"firstName\":\"Болд\",\"gender\":\"MALE\","
                         + "\"birthDate\":\"2000-01-01\",\"city\":\"Улаанбаатар\","
                         + "\"verificationId\":\"" + java.util.UUID.randomUUID() + "\"}");
 
@@ -275,7 +292,7 @@ class ApiAbuseIntegrationTest extends AbstractApiIntegrationTest {
         String started = mvc.perform(post("/auth/phone-verifications").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"phoneNumber\":\"" + phone + "\"}")).andReturn().getResponse().getContentAsString();
         String id = com.jayway.jsonpath.JsonPath.read(started, "$.verificationId");
-        String registration = "{\"phoneNumber\":\"" + phone + "\",\"password\":\"abcdef\",\"gender\":\"MALE\","
+        String registration = "{\"phoneNumber\":\"" + phone + "\",\"password\":\"abcdef\",\"lastName\":\"Бат\",\"firstName\":\"Болд\",\"gender\":\"MALE\","
                 + "\"birthDate\":\"2000-01-01\",\"city\":\"Улаанбаатар\",\"verificationId\":\"" + id + "\"}";
 
         for (int poll = 0; poll < 3; poll++) {
@@ -311,8 +328,8 @@ class ApiAbuseIntegrationTest extends AbstractApiIntegrationTest {
     void aViewerCannotApproveTheirOwnPayout() throws Exception {
         long viewer = viewer(1000);
         long payout = jdbc.queryForObject("""
-                INSERT INTO payout_requests (user_id, amount, bank, account_number, account_name, national_id)
-                VALUES (?, 500, 'Khan Bank', '1', 'A', 'AA00000000') RETURNING id""", Long.class, viewer);
+                INSERT INTO payout_requests (user_id, amount, bank, account_number, account_name)
+                VALUES (?, 500, 'Khan Bank', '1', 'A') RETURNING id""", Long.class, viewer);
 
         assertThat(status(patch("/admin/payouts/" + payout + "/decision").param("decision", "APPROVED"), viewer, null))
                 .isEqualTo(403);
@@ -325,8 +342,8 @@ class ApiAbuseIntegrationTest extends AbstractApiIntegrationTest {
         long admin = admin();
         long viewer = viewer(1000);
         long payout = jdbc.queryForObject("""
-                INSERT INTO payout_requests (user_id, amount, bank, account_number, account_name, national_id)
-                VALUES (?, 500, 'Khan Bank', '1', 'A', 'AA00000000') RETURNING id""", Long.class, viewer);
+                INSERT INTO payout_requests (user_id, amount, bank, account_number, account_name)
+                VALUES (?, 500, 'Khan Bank', '1', 'A') RETURNING id""", Long.class, viewer);
 
         int first = status(patch("/admin/payouts/" + payout + "/decision").param("decision", "REJECTED"), admin, null);
         double afterReject = balanceOf(viewer);
@@ -411,8 +428,7 @@ class ApiAbuseIntegrationTest extends AbstractApiIntegrationTest {
 
         List<Integer> statuses = parallel(6, () -> mvc.perform(post("/viewer/payouts")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"amount\":1000,\"bank\":\"Khan Bank\",\"accountNumber\":\"1\",\"accountName\":\"A\","
-                        + "\"nationalId\":\"AA00000000\"}")
+                .content("{\"amount\":1000,\"bank\":\"Khan Bank\",\"accountNumber\":\"1\",\"accountName\":\"A\"}")
                 .header("Authorization", token)).andReturn().getResponse().getStatus());
 
         assertThat(balanceOf(viewer)).as("balance never goes negative").isGreaterThanOrEqualTo(0.0);

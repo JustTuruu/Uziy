@@ -21,7 +21,7 @@ regression test; **Open** items need a decision or work outside the backend.
 | 10 | **Medium** | Payouts of 0.0000001 ₮ / fractions accepted | `MinimumPayoutRule`: whole ₮, at least 1,000 |
 | 11 | **Medium** | Stack traces in error responses (devtools default on a dev machine); 5xx messages could carry SQL | `SafeErrorAttributes` strips traces/exception names everywhere and masks 5xx messages; `include-stacktrace: never` |
 | 12 | **Medium** | No cap on request size | `RequestSizeLimitFilter` (256 KB → 413) |
-| 13 | **Critical (prod only)** | The V2 dev seed creates an **admin whose password is `password`** (confirmed by a live login) plus other known accounts; JWT secret / simulated payments / logging OTP have dev defaults | `ProductionReadinessCheck`: with `SPRING_PROFILES_ACTIVE=prod` the app **refuses to start** while any of these is true. `application-prod.yml` takes every secret from the environment with no default |
+| 13 | **Critical (prod only)** | The V2 dev seed creates an **admin whose password is `password`** (confirmed by a live login) plus other known accounts; JWT secret / simulated payments / simulated phone verification have dev defaults | `ProductionReadinessCheck`: with `SPRING_PROFILES_ACTIVE=prod` the app **refuses to start** while any of these is true. `application-prod.yml` takes every secret from the environment with no default |
 
 Verified as already safe (kept as tests): role matrix for all 27 protected endpoints × 4 callers, forged /
 unsigned / `alg:none` / expired / tampered tokens, cross-company access to campaigns, payments, analytics
@@ -33,7 +33,7 @@ registration.
 ## To do before going live (needs you)
 
 1. **Create the environment** (`SPRING_PROFILES_ACTIVE=prod`): `JWT_SECRET` (random, ≥ 64 chars),
-   `DB_URL`/`DB_USER`/`DB_PASSWORD`, `CORS_ALLOWED_ORIGINS` (the real panel URLs), `OTP_SENDER`,
+   `DB_URL`/`DB_USER`/`DB_PASSWORD`, `CORS_ALLOWED_ORIGINS` (the real panel URLs),
    `PHONE_VERIFICATION_PROVIDER=verifymn` + `VERIFY_MN_API_KEY` (verify.mn Developer Console),
    `PAYMENTS_SIMULATED=false`. The app will list anything still unsafe when it refuses to start.
 2. **Use a fresh production database** — never one that ran the dev seed — and create the first admin by
@@ -51,8 +51,8 @@ registration.
   can submit correct answers instantly and collect every reward it is targeted for. Mitigation to build:
   a server-issued *view session* (`POST /viewer/campaigns/{id}/start` stores a timestamp; submit is refused
   until the video's duration has passed), plus per-viewer daily caps and device checks. Needs an app change.
-* **Rate limiting is thin.** Only login (per phone) and OTP (per phone) are limited. Add per-IP limits at the
-  gateway (Cloudflare / nginx) for login, registration and OTP; the in-memory login lock is per instance and
+* **Rate limiting is thin.** Only login (per phone) and phone checks (per phone: 60 s cool-down, 5 per hour) are limited. Add per-IP limits at the
+  gateway (Cloudflare / nginx) for login, registration and password reset; the in-memory login lock is per instance and
   lets an attacker lock a *known* phone for 15 min (a nuisance, not a breach).
 * **Open company registration** (`/auth/register/company`) has no verification — spam accounts are possible.
 * **Tokens**: 24 h, no refresh, no revocation list; the web panels keep the JWT in `localStorage` (XSS would

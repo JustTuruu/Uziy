@@ -35,6 +35,8 @@ final _pending = PendingRegistration(
   draft: RegisterDraft(
     phone: '88112233',
     password: 'password1',
+    lastName: 'Оюун-Эрдэнэ',
+    firstName: 'Төрболд',
     gender: Gender.female,
     birthDate: DateTime(2000, 1, 2),
     city: 'Улаанбаатар',
@@ -187,6 +189,8 @@ void main() {
     expect(body['verificationId'], 'v1');
     expect(body['phoneNumber'], '88112233');
     expect(body['gender'], 'FEMALE');
+    expect(body['lastName'], 'Оюун-Эрдэнэ');
+    expect(body['firstName'], 'Төрболд');
     expect(find.text('home-page'), findsOneWidget);
   });
 
@@ -246,7 +250,7 @@ void main() {
     await _settle(tester);
 
     expect(api.callsTo('/auth/phone-verifications').single.body,
-        {'phoneNumber': '88112233'});
+        {'phoneNumber': '88112233', 'purpose': 'REGISTER'});
     expect(find.text('777111'), findsOneWidget);
     expect(find.text('482916'), findsNothing);
     expect(find.text('шинэ заавар 777111'), findsOneWidget);

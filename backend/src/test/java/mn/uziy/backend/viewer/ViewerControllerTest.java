@@ -20,7 +20,7 @@ class ViewerControllerTest {
 
     @Test
     void meAndFeedUseTheCallersId() {
-        Me me = new Me(42L, "77000001", Role.VIEWER, null, null, null, 0.0, false, null);
+        Me me = new Me(42L, "77000001", Role.VIEWER, null, null, null, 0.0, false, null, null, null);
         when(profile.me(42L)).thenReturn(me);
         when(profile.feed(42L)).thenReturn(List.of());
 

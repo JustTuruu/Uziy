@@ -549,8 +549,10 @@ class _TimelinePainter extends CustomPainter {
 
 // --- Reward hint ---------------------------------------------------------------
 
-/// `[coin] Бүтэн үзээд +700 ₮ аваарай`, switching to the survey nudge once
-/// the video is fully watched.
+/// `[coin] Видеог бүтэн үзэж, судалгаанд хариулбал +700 ₮ хэтэвчинд тань
+/// орно`, switching to 'Судалгаанд хариулмагц …' once the video is fully
+/// watched — both steps are named so nobody expects the reward after the
+/// video alone.
 ///
 /// On platforms without announcement support (Android) it is a polite live
 /// region, so TalkBack reads the switch when the survey unlocks. Elsewhere
@@ -566,9 +568,10 @@ class RewardHintRow extends StatelessWidget {
   final num amount;
   final bool completed;
 
-  static String lead(bool completed) =>
-      completed ? 'Судалгаанд хариулаад ' : 'Бүтэн үзээд ';
-  static const trail = ' аваарай';
+  static String lead(bool completed) => completed
+      ? 'Судалгаанд хариулмагц '
+      : 'Видеог бүтэн үзэж, судалгаанд хариулбал ';
+  static const trail = ' хэтэвчинд тань орно';
 
   /// The full sentence, as shown and announced.
   static String text(num amount, bool completed) =>
@@ -629,7 +632,7 @@ class RewardHintRow extends StatelessWidget {
 /// The survey CTA doubling as a progress indicator for the full-watch gate.
 ///
 /// Locked: muted surface slowly filling with gold in step with [progress],
-/// a lock glyph and 'Видеог бүтэн үзнэ үү · 12 сек'. Taps are ignored and
+/// a lock glyph and 'Видео дуусахад судалгаа нээгдэнэ · 12 сек'. Taps are ignored and
 /// it is announced as a disabled button.
 ///
 /// Unlocked: morphs into the gold primary CTA ([label] + arrow). On the
@@ -663,7 +666,7 @@ class WatchProgressButton extends StatefulWidget {
   final VoidCallback? onPressed;
   final String label;
 
-  static const lockedTitle = 'Видеог бүтэн үзнэ үү';
+  static const lockedTitle = 'Видео дуусахад судалгаа нээгдэнэ';
   static const unlockedAnnouncement =
       'Видео дууслаа. Судалгаа руу үргэлжлүүлэх боломжтой';
 

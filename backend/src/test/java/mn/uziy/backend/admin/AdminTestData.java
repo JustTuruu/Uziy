@@ -40,7 +40,6 @@ final class AdminTestData {
         p.setBank("Khan");
         p.setAccountNumber("1");
         p.setAccountName("X");
-        p.setNationalId("Y");
         p.setStatus(PayoutStatus.PENDING);
         return p;
     }

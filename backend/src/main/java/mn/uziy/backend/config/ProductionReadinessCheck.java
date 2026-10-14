@@ -32,16 +32,13 @@ public class ProductionReadinessCheck implements ApplicationRunner {
 
     private final AppProperties props;
     private final UserRepository users;
-    private final String otpSender;
     private final String phoneVerificationProvider;
 
     public ProductionReadinessCheck(AppProperties props, UserRepository users,
-                                    @Value("${uziy.otp.sender:logging}") String otpSender,
                                     @Value("${uziy.phone-verification.provider:simulated}")
                                     String phoneVerificationProvider) {
         this.props = props;
         this.users = users;
-        this.otpSender = otpSender;
         this.phoneVerificationProvider = phoneVerificationProvider;
     }
 
@@ -64,9 +61,6 @@ public class ProductionReadinessCheck implements ApplicationRunner {
         }
         if (props.payments().simulated()) {
             problems.add("PAYMENTS_SIMULATED=true: campaigns would be \"paid\" without any money");
-        }
-        if ("logging".equals(otpSender)) {
-            problems.add("OTP_SENDER=logging: one-time codes are only logged, nobody would receive one");
         }
         if ("simulated".equals(phoneVerificationProvider)) {
             problems.add("PHONE_VERIFICATION_PROVIDER=simulated: every phone would count as verified without an SMS");

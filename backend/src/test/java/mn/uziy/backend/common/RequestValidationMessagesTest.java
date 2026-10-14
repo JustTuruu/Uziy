@@ -17,7 +17,7 @@ import mn.uziy.backend.auth.RegisterCompanyReq;
 import mn.uziy.backend.auth.RegisterViewerReq;
 import mn.uziy.backend.company.CreateCampaignReq;
 import mn.uziy.backend.domain.Gender;
-import mn.uziy.backend.otp.ResetPasswordReq;
+import mn.uziy.backend.passwordreset.ResetPasswordReq;
 import mn.uziy.backend.payout.CreatePayoutReq;
 import mn.uziy.backend.phoneverify.StartPhoneVerificationReq;
 import org.junit.jupiter.api.Test;
@@ -41,11 +41,11 @@ class RequestValidationMessagesTest {
         String huge = "x".repeat(5_000);
         return Stream.of(
                 new LoginReq("123", ""),
-                new RegisterViewerReq("12", "123", null, null, "", huge, null),
+                new RegisterViewerReq("12", "123", " ", "1abc", null, null, "", huge, null),
                 new RegisterCompanyReq("abc", "1", " "),
-                new ResetPasswordReq("1", "12", "1"),
-                new StartPhoneVerificationReq("phone"),
-                new CreatePayoutReq(0, "", "", "", ""),
+                new ResetPasswordReq("1", null, "1"),
+                new StartPhoneVerificationReq("phone", null),
+                new CreatePayoutReq(0, "", "", ""),
                 new CreateCampaignReq(" ", huge, null, null, null, null, null, huge, null, null, null,
                         List.of(new CreateCampaignReq.NewQuestion(null, null, List.of(huge), null))));
     }
@@ -61,17 +61,44 @@ class RequestValidationMessagesTest {
 
     @Test
     void theRegistrationFormNamesEachMissingField() {
-        Set<String> messages = messages(new RegisterViewerReq("12", "123", null, null, "", null, null));
+        Set<String> messages = messages(new RegisterViewerReq("12", "123", "", "", null, null, "", null, null));
 
         assertThat(messages).contains(FieldMessages.PHONE, FieldMessages.PASSWORD_LENGTH,
+                FieldMessages.LAST_NAME_REQUIRED, FieldMessages.FIRST_NAME_REQUIRED,
                 FieldMessages.GENDER_REQUIRED, FieldMessages.BIRTH_DATE_REQUIRED, FieldMessages.CITY_REQUIRED,
                 FieldMessages.PHONE_NOT_VERIFIED);
     }
 
     @Test
     void aValidRegistrationHasNoMessages() {
-        assertThat(messages(new RegisterViewerReq("88112233", "password1", Gender.MALE, LocalDate.of(2000, 1, 1),
+        assertThat(messages(new RegisterViewerReq("88112233", "password1", "Бат", "Болд", Gender.MALE, LocalDate.of(2000, 1, 1),
                 "Улаанбаатар", UUID.randomUUID()))).isEmpty();
+    }
+
+    private Set<String> nameMessages(String lastName, String firstName) {
+        return messages(new RegisterViewerReq("88112233", "password1", lastName, firstName, Gender.MALE,
+                LocalDate.of(2000, 1, 1), "Улаанбаатар", UUID.randomUUID()));
+    }
+
+    @Test
+    void realNamesAreAccepted() {
+        assertThat(nameMessages("Оюун-Эрдэнэ", "Төрболд")).isEmpty();
+        assertThat(nameMessages("Бат-Өлзий", "Үүрцайх")).isEmpty();
+        assertThat(nameMessages("Oyunukhaan", "Turbold")).isEmpty();
+        assertThat(nameMessages(" Бат ", "Болд Эрдэнэ")).isEmpty();
+    }
+
+    @Test
+    void aNameWithDigitsOrSymbolsIsRefusedInMongolian() {
+        assertThat(nameMessages("Бат1", "Болд")).containsExactly(FieldMessages.NAME_LETTERS);
+        assertThat(nameMessages("Бат", "-Болд")).containsExactly(FieldMessages.NAME_LETTERS);
+        assertThat(nameMessages("Бат", "Болд@")).containsExactly(FieldMessages.NAME_LETTERS);
+    }
+
+    @Test
+    void anOverlongNameIsRefused() {
+        assertThat(nameMessages("Б".repeat(RegisterViewerReq.NAME_MAX + 1), "Болд"))
+                .contains(FieldMessages.NAME_TOO_LONG);
     }
 
     @Test

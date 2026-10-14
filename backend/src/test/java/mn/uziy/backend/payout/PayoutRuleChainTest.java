@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 class PayoutRuleChainTest {
 
     private final UserEntity user = new UserEntity();
-    private final CreatePayoutReq req = new CreatePayoutReq(500.0, "b", "1", "n", "id");
+    private final CreatePayoutReq req = new CreatePayoutReq(500.0, "b", "1", "n");
 
     @Test
     void sufficientBalanceRuleRejectsWhenBalanceIsLowerThanAmount() {

@@ -374,7 +374,7 @@ void main() {
         context: ctx,
         builder: (_) => AlertDialog(
           title: const Text('Хүсэлт илгээгдлээ'),
-          content: const Text('Админ таны мэдээллийг шалгаад баталгаажуулна.'),
+          content: const Text('Таны мэдээллийг шалгаад баталгаажуулна.'),
           actions: [
             TextButton(onPressed: () {}, child: const Text('Болих')),
             ElevatedButton(onPressed: () {}, child: const Text('Ойлголоо')),

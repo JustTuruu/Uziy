@@ -11,7 +11,7 @@ public class PayoutMapper {
         return new PayoutDto(
                 p.getId(), p.getUserId(), phone,
                 p.getAmount(), p.getBank(), p.getAccountNumber(),
-                p.getAccountName(), p.getNationalId(),
+                p.getAccountName(),
                 p.getStatus(), p.isFirstPayout(),
                 p.getRequestedAt(), p.getDecidedAt(),
                 p.getRejectReason());

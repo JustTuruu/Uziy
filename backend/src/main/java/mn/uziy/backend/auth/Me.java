@@ -13,5 +13,7 @@ public record Me(
         @Nullable String city,
         double balance,
         boolean isVerified,
-        @Nullable String companyName) {
+        @Nullable String companyName,
+        @Nullable String lastName,
+        @Nullable String firstName) {
 }

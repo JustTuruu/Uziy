@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/campaign.dart';
+import '../models/password_reset.dart';
 import '../models/register_draft.dart';
 import '../screens/auth/forgot_password_screen.dart';
 import '../screens/auth/login_screen.dart';
@@ -31,6 +32,7 @@ class Routes {
   static const register = '/register';
   static const verify = '/register/verify';
   static const forgot = '/forgot';
+  static const forgotVerify = '/forgot/verify';
   static const resetPassword = '/forgot/reset';
   static const home = '/home';
   static const wallet = '/wallet';
@@ -164,13 +166,27 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (_, state) =>
           _cupertino(const ForgotPasswordScreen(), state.pageKey),
     ),
+    // Both reset steps need the check from the step before; without it (a
+    // deep link, a restored app) the reset starts over.
+    GoRoute(
+      path: Routes.forgotVerify,
+      pageBuilder: (_, state) {
+        final reset = state.extra;
+        return _cupertino(
+          reset is PendingPasswordReset
+              ? PhoneVerifyScreen.passwordReset(reset: reset)
+              : const ForgotPasswordScreen(),
+          state.pageKey,
+        );
+      },
+    ),
     GoRoute(
       path: Routes.resetPassword,
       pageBuilder: (_, state) {
-        final phone = state.extra;
+        final reset = state.extra;
         return _cupertino(
-          phone is String
-              ? ResetPasswordScreen(phone: phone)
+          reset is PendingPasswordReset
+              ? ResetPasswordScreen(reset: reset)
               : const ForgotPasswordScreen(),
           state.pageKey,
         );
@@ -196,8 +212,12 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: Routes.payout,
-      pageBuilder: (_, state) =>
-          _cupertino(const PayoutRequestScreen(), state.pageKey),
+      // extra: true when this is the viewer's first payout (see
+      // isBeforeFirstPayout); anything else hides the first-payout notice.
+      pageBuilder: (_, state) => _cupertino(
+        PayoutRequestScreen(firstPayout: state.extra == true),
+        state.pageKey,
+      ),
     ),
     GoRoute(
       path: Routes.history,

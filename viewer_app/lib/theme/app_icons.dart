@@ -30,6 +30,10 @@ abstract final class AppIcons {
   static const IconData logout = LucideIcons.logOut;
   static const IconData watched = LucideIcons.circlePlay;
 
+  // Wallet history
+  static const IconData payout = LucideIcons.landmark;
+  static const IconData payoutReturned = LucideIcons.undo2;
+
   // How it works
   static const IconData answer = LucideIcons.listChecks;
   static const IconData reward = LucideIcons.coins;

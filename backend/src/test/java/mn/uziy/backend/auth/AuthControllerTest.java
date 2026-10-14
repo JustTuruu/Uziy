@@ -20,7 +20,7 @@ class AuthControllerTest {
     private final AuthController controller = new AuthController(service);
 
     private AuthResponse response(Role role) {
-        return new AuthResponse("t", new Me(1L, "88112233", role, null, null, null, 0.0, false, null));
+        return new AuthResponse("t", new Me(1L, "88112233", role, null, null, null, 0.0, false, null, null, null));
     }
 
     @Test
@@ -33,7 +33,7 @@ class AuthControllerTest {
 
     @Test
     void registerViewerAnswers201WithTheServiceResponse() {
-        RegisterViewerReq req = new RegisterViewerReq("88112233", "password1", Gender.MALE,
+        RegisterViewerReq req = new RegisterViewerReq("88112233", "password1", "Бат", "Болд", Gender.MALE,
                 LocalDate.of(2000, 1, 1), "Улаанбаатар", java.util.UUID.randomUUID());
         when(service.registerViewer(req)).thenReturn(response(Role.VIEWER));
 

@@ -27,6 +27,7 @@ class PushRuntime {
     required PushNavigationTarget target,
     required String videoRoute,
     required String surveyRoute,
+    required String walletRoute,
   }) async {
     try {
       final platform = switch (defaultTargetPlatform) {
@@ -49,6 +50,7 @@ class PushRuntime {
         target: target,
         videoRoute: videoRoute,
         surveyRoute: surveyRoute,
+        walletRoute: walletRoute,
       );
       await PushMessageListener(
         client: client,

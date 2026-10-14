@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** HTTP adapter for proving a phone before registration (open: /auth/** needs no token). */
+/** HTTP adapter for proving a phone before registration or a password reset (open: /auth/** needs no token). */
 @RestController
 @RequestMapping("/auth/phone-verifications")
 public class PhoneVerificationController {
@@ -24,7 +24,7 @@ public class PhoneVerificationController {
 
     @PostMapping
     public ResponseEntity<PhoneVerificationStartedRes> start(@Valid @RequestBody StartPhoneVerificationReq body) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(verifications.start(body.phoneNumber()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(verifications.start(body.phoneNumber(), body.purposeOrDefault()));
     }
 
     @GetMapping("/{verificationId}")

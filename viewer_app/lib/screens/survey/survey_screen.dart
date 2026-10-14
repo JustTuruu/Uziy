@@ -341,7 +341,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
           ),
         ),
         Expanded(child: ScrollEdgeFade(child: _buildQuestionSwitcher())),
-        AnimatedSize(
+        ReducibleAnimatedSize(
           duration: motion,
           curve: AppMotion.standard,
           alignment: Alignment.topCenter,
@@ -513,7 +513,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
       ),
       child: Row(
         children: [
-          AnimatedSize(
+          ReducibleAnimatedSize(
             duration: motion,
             curve: AppMotion.standard,
             child: _index > 0

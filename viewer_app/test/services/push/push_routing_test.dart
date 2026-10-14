@@ -42,6 +42,7 @@ void main() {
       target: RouterPushTarget(router),
       videoRoute: Routes.video,
       surveyRoute: Routes.survey,
+      walletRoute: Routes.wallet,
     );
     await tester.pumpWidget(MaterialApp.router(
       routerConfig: router,

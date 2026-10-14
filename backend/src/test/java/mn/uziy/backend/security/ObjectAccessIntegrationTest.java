@@ -91,8 +91,8 @@ class ObjectAccessIntegrationTest extends AbstractApiIntegrationTest {
         long alice = viewer(0);
         long bob = viewer(0);
         jdbc.update("""
-                INSERT INTO payout_requests (user_id, amount, bank, account_number, account_name, national_id)
-                VALUES (?, 777, 'Khan Bank', 'SECRET-ACCOUNT', 'Bob Secret', 'BB12345678')""", bob);
+                INSERT INTO payout_requests (user_id, amount, bank, account_number, account_name)
+                VALUES (?, 777, 'Khan Bank', 'SECRET-ACCOUNT', 'Bob Secret')""", bob);
 
         String alicesView = body(get("/viewer/payouts"), alice);
 

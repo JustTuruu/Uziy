@@ -9,9 +9,8 @@ import mn.uziy.backend.common.ConflictException;
 import mn.uziy.backend.common.NotFoundException;
 import mn.uziy.backend.common.TooManyRequestsException;
 import mn.uziy.backend.common.UnavailableException;
+import mn.uziy.backend.domain.Role;
 import mn.uziy.backend.domain.UserRepository;
-import mn.uziy.backend.otp.OtpCodeGenerator;
-import mn.uziy.backend.otp.OtpService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -29,18 +28,18 @@ public class PhoneVerificationServiceImpl implements PhoneVerificationService, V
     public static final Duration COOLDOWN = Duration.ofSeconds(60);
     public static final Duration HOURLY_WINDOW = Duration.ofHours(1);
     public static final int MAX_PER_HOUR = 5;
-    /** How long after the SMS a confirmed check can still finish a registration. */
+    /** How long after the SMS a confirmed check can still finish a registration or a reset. */
     public static final Duration CLAIM_WINDOW = Duration.ofMinutes(30);
 
     private final PhoneVerificationRepository verifications;
     private final PhoneVerificationGateway gateway;
-    private final OtpCodeGenerator codes;
+    private final VerificationCodeGenerator codes;
     private final UserRepository users;
     private final PhoneVerificationMapper mapper;
     private final Clock clock;
 
     public PhoneVerificationServiceImpl(PhoneVerificationRepository verifications, PhoneVerificationGateway gateway,
-                                        OtpCodeGenerator codes, UserRepository users,
+                                        VerificationCodeGenerator codes, UserRepository users,
                                         PhoneVerificationMapper mapper, Clock clock) {
         this.verifications = verifications;
         this.gateway = gateway;
@@ -52,10 +51,8 @@ public class PhoneVerificationServiceImpl implements PhoneVerificationService, V
 
     @Override
     @Transactional
-    public PhoneVerificationStartedRes start(String phoneNumber) {
-        if (users.existsByPhoneNumber(phoneNumber)) {
-            throw new ConflictException(PHONE_TAKEN);
-        }
+    public PhoneVerificationStartedRes start(String phoneNumber, PhoneVerificationPurpose purpose) {
+        requireAccountState(phoneNumber, purpose);
         OffsetDateTime now = OffsetDateTime.now(clock);
         requireWithinLimits(phoneNumber, now);
 
@@ -70,6 +67,7 @@ public class PhoneVerificationServiceImpl implements PhoneVerificationService, V
         PhoneVerificationEntity row = new PhoneVerificationEntity();
         row.setId(UUID.randomUUID());
         row.setPhoneNumber(phoneNumber);
+        row.setPurpose(purpose);
         row.setProviderSessionId(session.sessionId());
         row.setStatus(PhoneVerificationStatus.PENDING);
         row.setExpiresAt(session.expiresAt());
@@ -77,15 +75,38 @@ public class PhoneVerificationServiceImpl implements PhoneVerificationService, V
         return mapper.toStarted(verifications.save(row), session);
     }
 
+    /**
+     * Checked before the user is asked to pay for an SMS: registering needs a free number, a reset needs a
+     * viewer's number. (Registration already says when a number is taken, so saying "no account" here
+     * reveals nothing new — and spares a stranger a paid SMS that could never lead anywhere.)
+     */
+    private void requireAccountState(String phoneNumber, PhoneVerificationPurpose purpose) {
+        switch (purpose) {
+            case REGISTER -> {
+                if (users.existsByPhoneNumber(phoneNumber)) {
+                    throw new ConflictException(PHONE_TAKEN);
+                }
+            }
+            case PASSWORD_RESET -> {
+                boolean viewer = users.findByPhoneNumber(phoneNumber)
+                        .filter(u -> u.getRole() == Role.VIEWER)
+                        .isPresent();
+                if (!viewer) {
+                    throw new NotFoundException(ACCOUNT_NOT_FOUND);
+                }
+            }
+        }
+    }
+
     private void requireWithinLimits(String phoneNumber, OffsetDateTime now) {
         boolean tooSoon = verifications.findFirstByPhoneNumberOrderByCreatedAtDesc(phoneNumber)
                 .filter(latest -> latest.getCreatedAt().plus(COOLDOWN).isAfter(now))
                 .isPresent();
         if (tooSoon) {
-            throw new TooManyRequestsException(OtpService.TOO_SOON);
+            throw new TooManyRequestsException(TOO_SOON);
         }
         if (verifications.countByPhoneNumberAndCreatedAtAfter(phoneNumber, now.minus(HOURLY_WINDOW)) >= MAX_PER_HOUR) {
-            throw new TooManyRequestsException(OtpService.TOO_MANY);
+            throw new TooManyRequestsException(TOO_MANY);
         }
     }
 
@@ -100,14 +121,14 @@ public class PhoneVerificationServiceImpl implements PhoneVerificationService, V
 
     @Override
     @Transactional
-    public void claim(UUID verificationId, String phoneNumber) {
+    public void claim(UUID verificationId, String phoneNumber, PhoneVerificationPurpose purpose) {
         PhoneVerificationEntity row = verifications.findById(verificationId)
-                .filter(r -> r.getPhoneNumber().equals(phoneNumber))
+                .filter(r -> r.getPhoneNumber().equals(phoneNumber) && r.getPurpose() == purpose)
                 .orElseThrow(() -> new BadRequestException(NOT_VERIFIED));
-        // The app may register before its next poll saw the SMS: ask once more.
+        // The app may finish before its next poll saw the SMS: ask once more.
         refresh(row);
         OffsetDateTime verifiedAfter = OffsetDateTime.now(clock).minus(CLAIM_WINDOW);
-        if (verifications.tryClaim(verificationId, phoneNumber, verifiedAfter) == 0) {
+        if (verifications.tryClaim(verificationId, phoneNumber, purpose, verifiedAfter) == 0) {
             throw new BadRequestException(NOT_VERIFIED);
         }
     }

@@ -13,7 +13,7 @@ class MinimumPayoutRuleTest {
     private final UserEntity user = new UserEntity();
 
     private static CreatePayoutReq req(double amount) {
-        return new CreatePayoutReq(amount, "Khan Bank", "1", "A", "AA00000000");
+        return new CreatePayoutReq(amount, "Khan Bank", "1", "A");
     }
 
     @Test

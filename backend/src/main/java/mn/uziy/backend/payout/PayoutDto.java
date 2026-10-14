@@ -12,7 +12,6 @@ public record PayoutDto(
         String bank,
         String accountNumber,
         String accountName,
-        String nationalId,
         PayoutStatus status,
         boolean isFirstPayout,
         OffsetDateTime requestedAt,

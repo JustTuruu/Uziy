@@ -24,6 +24,9 @@ const String kSmsCostNote =
     'SMS-ийн төлбөр 150₮ (операторын үнэ). Нэг удаа илгээхэд хангалттай.';
 const String kWaitingForSms = 'Таны SMS-ийг хүлээж байна…';
 const String kCreatingAccount = 'Бүртгэл үүсгэж байна…';
+const String kResetVerifySubtitle =
+    'Нууц үгээ сэргээхийн тулд бүртгэлтэй утаснаасаа нэг SMS илгээнэ үү.';
+const String kPhoneConfirmed = 'Утас баталгаажлаа…';
 const String kSmsAppFailed =
     'SMS апп нээгдсэнгүй. Дээрх кодыг 144773 дугаарт гараар илгээнэ үү.';
 const String kCodeExpiredTitle = 'Кодын хугацаа дууслаа';
@@ -38,7 +41,8 @@ enum PhoneVerifyPhase {
   /// Waiting for the SMS; polling.
   waiting,
 
-  /// The SMS arrived; the account is being created.
+  /// The SMS arrived; the page is finishing (creating the account, or
+  /// opening the new-password page).
   registering,
 
   /// Time ran out (or the check can no longer be used): a new code is needed.

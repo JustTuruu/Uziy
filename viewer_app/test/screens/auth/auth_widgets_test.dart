@@ -55,6 +55,33 @@ void main() {
       expect(AuthValidators.password('123456'), isNull);
       expect(AuthValidators.password('a much longer one'), isNull);
     });
+
+    test('names: real names pass, like the backend rule', () {
+      for (final name in [
+        'Оюун-Эрдэнэ',
+        'Төрболд',
+        'Бат-Өлзий',
+        'Turbold',
+        ' Болд ',
+        "O'Neil",
+        'Болд Эрдэнэ'
+      ]) {
+        expect(AuthValidators.lastName(name), isNull, reason: name);
+        expect(AuthValidators.firstName(name), isNull, reason: name);
+      }
+    });
+
+    test('names: empty, digits, symbols and overlong are refused', () {
+      expect(AuthValidators.lastName(''), AuthValidators.lastNameRequired);
+      expect(AuthValidators.firstName('  '), AuthValidators.firstNameRequired);
+      expect(AuthValidators.lastName('Бат1'), AuthValidators.nameLetters);
+      expect(AuthValidators.firstName('-Болд'), AuthValidators.nameLetters);
+      expect(AuthValidators.firstName('Болд@'), AuthValidators.nameLetters);
+      expect(
+        AuthValidators.lastName('Б' * (AuthValidators.nameMaxLength + 1)),
+        AuthValidators.nameTooLong,
+      );
+    });
   });
 
   test('phoneDigits strips everything but digits', () {

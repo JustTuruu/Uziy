@@ -1,37 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../../widgets/ui.dart';
-import 'otp_logic.dart';
 
-/// Counts the resend lock down once a second. Mix into the State of a screen
-/// that sends a code: call [startResendCooldown] right after every send.
-mixin ResendCooldown<T extends StatefulWidget> on State<T> {
-  Timer? _cooldownTimer;
-  int resendSecondsLeft = 0;
-
-  void startResendCooldown([int seconds = kOtpResendSeconds]) {
-    _cooldownTimer?.cancel();
-    setState(() => resendSecondsLeft = seconds);
-    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      setState(() => resendSecondsLeft--);
-      if (resendSecondsLeft <= 0) timer.cancel();
-    });
-  }
-
-  @override
-  void dispose() {
-    _cooldownTimer?.cancel();
-    super.dispose();
-  }
-}
-
-/// Icon medallion, [title] and [subtitle] at the top of a code screen.
+/// Icon medallion, [title] and [subtitle] at the top of a phone-check or
+/// password-reset step.
 class OtpHeader extends StatelessWidget {
   const OtpHeader({
     super.key,
@@ -80,7 +52,7 @@ class OtpHeader extends StatelessWidget {
   }
 }
 
-/// Red one-line message under the code boxes; takes no space when empty.
+/// Red one-line message under a step's field; takes no space when empty.
 class OtpErrorText extends StatelessWidget {
   const OtpErrorText({super.key, required this.message});
 
@@ -98,38 +70,6 @@ class OtpErrorText extends StatelessWidget {
         textAlign: TextAlign.center,
         style: context.textStyles.bodySmall
             .copyWith(color: context.colors.dangerLight),
-      ),
-    );
-  }
-}
-
-/// 'Дахин илгээх' — greyed with the time left while locked.
-class ResendCodeButton extends StatelessWidget {
-  const ResendCodeButton({
-    super.key,
-    required this.secondsLeft,
-    required this.onPressed,
-    this.busy = false,
-  });
-
-  final int secondsLeft;
-  final VoidCallback onPressed;
-
-  /// A resend request is in flight.
-  final bool busy;
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = secondsLeft <= 0 && !busy;
-    return Center(
-      child: TextButton(
-        onPressed: enabled ? onPressed : null,
-        style: TextButton.styleFrom(
-          foregroundColor: context.colors.primary,
-          disabledForegroundColor: context.colors.textTertiary,
-          minimumSize: const Size(0, AppLayout.minTapTarget),
-        ),
-        child: Text(resendLabel(secondsLeft)),
       ),
     );
   }

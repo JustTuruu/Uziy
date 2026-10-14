@@ -46,7 +46,11 @@ void main() {
     for (final mode in ThemeMode.values) {
       expect(find.text(ThemeController.label(mode)), findsWidgets);
     }
-    expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+    final cards = tester.widgetList<ThemeModeCard>(find.byType(ThemeModeCard));
+    expect(cards.map((c) => c.mode), ThemeModeChoices.order);
+    expect(
+        cards.where((c) => c.selected).map((c) => c.mode), [ThemeMode.system]);
+    expect(find.byType(ThemePreview), findsNWidgets(3));
   });
 
   testWidgets('choosing Бараан switches to dark and saves it', (tester) async {
@@ -93,6 +97,11 @@ void main() {
     await _pump(tester, c);
     await tester.tap(find.text('Харагдах горим'));
     await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    // Too narrow for three cards side by side: they stack.
+    final light = tester.getTopLeft(find.byType(ThemeModeCard).at(0));
+    final dark = tester.getTopLeft(find.byType(ThemeModeCard).at(1));
+    expect(dark.dy, greaterThan(light.dy));
     await tester.ensureVisible(find.text('Бараан'));
     await tester.tap(find.text('Бараан'));
     await tester.pumpAndSettle();
@@ -108,5 +117,102 @@ void main() {
     expect(find.byType(AppearanceSheet), findsNothing);
     expect(c.mode, ThemeMode.dark);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('on a normal phone the three cards sit side by side',
+      (tester) async {
+    final c = _controller();
+    await _pump(tester, c);
+    await tester.tap(find.text('Харагдах горим'));
+    await tester.pumpAndSettle();
+    final tops = [
+      for (var i = 0; i < 3; i++)
+        tester.getTopLeft(find.byType(ThemeModeCard).at(i)).dy,
+    ];
+    expect(tops.toSet(), hasLength(1));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('tapping a preview card picks that mode', (tester) async {
+    final c = _controller();
+    await _pump(tester, c);
+    await tester.tap(find.text('Харагдах горим'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(ThemePreview).at(1));
+    await tester.pumpAndSettle();
+    expect(c.mode, ThemeMode.dark);
+  });
+
+  group('ThemeModeButton', () {
+    Future<void> pumpButton(WidgetTester tester, ThemeController c,
+        {Brightness platform = Brightness.light}) {
+      tester.platformDispatcher.platformBrightnessTestValue = platform;
+      addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+      return tester.pumpWidget(ListenableBuilder(
+        listenable: c,
+        builder: (_, __) => MaterialApp(
+          theme: AppTheme.light(),
+          darkTheme: AppTheme.dark(),
+          themeMode: c.mode,
+          home: Scaffold(body: Center(child: ThemeModeButton(controller: c))),
+        ),
+      ));
+    }
+
+    test('icon and label follow the look on screen', () {
+      expect(ThemeModeButton.iconFor(Brightness.light),
+          isNot(ThemeModeButton.iconFor(Brightness.dark)));
+      expect(ThemeModeButton.labelFor(Brightness.light),
+          ThemeModeButton.toDarkLabel);
+      expect(ThemeModeButton.labelFor(Brightness.dark),
+          ThemeModeButton.toLightLabel);
+    });
+
+    testWidgets('a tap switches light -> dark -> light at once',
+        (tester) async {
+      final saved = <String>[];
+      final c = _controller(saved: saved);
+      await pumpButton(tester, c);
+      expect(find.byIcon(Icons.light_mode_rounded), findsOneWidget);
+
+      await tester.tap(find.byType(ThemeModeButton));
+      await tester.pumpAndSettle();
+      expect(c.mode, ThemeMode.dark);
+      expect(find.byIcon(Icons.dark_mode_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.light_mode_rounded), findsNothing);
+
+      await tester.tap(find.byType(ThemeModeButton));
+      await tester.pumpAndSettle();
+      expect(c.mode, ThemeMode.light);
+      expect(saved, ['dark', 'light']);
+      expect(find.byType(AppearanceSheet), findsNothing);
+    });
+
+    testWidgets('following a dark device, a tap goes to light', (tester) async {
+      final c = _controller();
+      await pumpButton(tester, c, platform: Brightness.dark);
+      expect(find.byIcon(Icons.dark_mode_rounded), findsOneWidget);
+      await tester.tap(find.byType(ThemeModeButton));
+      await tester.pumpAndSettle();
+      expect(c.mode, ThemeMode.light);
+    });
+
+    testWidgets('a failed save keeps the new look and says so', (tester) async {
+      final c = _controller(failWrites: true);
+      await pumpButton(tester, c);
+      await tester.tap(find.byType(ThemeModeButton));
+      await tester.pumpAndSettle();
+      expect(c.mode, ThemeMode.dark);
+      expect(find.text(AppearanceSheet.saveFailedMessage), findsOneWidget);
+    });
+
+    testWidgets('a long press opens the full appearance sheet', (tester) async {
+      final c = _controller();
+      await pumpButton(tester, c);
+      await tester.longPress(find.byType(ThemeModeButton));
+      await tester.pumpAndSettle();
+      expect(find.byType(AppearanceSheet), findsOneWidget);
+      expect(c.mode, ThemeMode.system);
+    });
   });
 }

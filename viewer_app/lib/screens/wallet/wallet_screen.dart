@@ -3,16 +3,25 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../models/payout_request.dart';
 import '../../models/user.dart';
+import '../../models/view_history_item.dart';
 import '../../routes/app_router.dart';
 import '../../services/auth_service.dart';
+import '../../services/auto_refresher.dart';
 import '../../services/viewer_service.dart';
 import '../../widgets/ui.dart';
 import 'wallet_logic.dart';
 import 'wallet_widgets.dart';
 
-/// Wallet tab: gold balance card, payout action (+ progress toward the
-/// 1,000 ₮ minimum), how rewards work, and the transaction history area.
+/// Wallet tab: balance card, payout action (+ progress toward the 1,000 ₮
+/// minimum), the wallet history (rewards in, payouts out, each payout with
+/// its status) right on the page, and how rewards work.
+///
+/// Stays fresh on its own: reloads when the app returns to the foreground,
+/// after the payout form closes and — while a request waits for the admin —
+/// every [AutoRefresher.defaultInterval], so an approval shows up without a
+/// manual pull-to-refresh.
 ///
 /// A body inside the main shell (floating nav bar): no bottom SafeArea, the
 /// scroll content ends with [AppLayout.scrollBottomPadding].
@@ -25,26 +34,46 @@ class WalletScreen extends StatefulWidget {
 
 class _WalletScreenState extends State<WalletScreen> {
   AppUser? _me;
+  List<PayoutRequest>? _payouts;
+  List<ViewHistoryItem>? _rewards;
   String? _error;
+  late final AutoRefresher _refresher = AutoRefresher(onRefresh: _load);
 
   static const _unverifiedNote =
-      'Эхний удаа мөнгө татахад админ дансны нэрийг таны бүртгэлтэй '
+      'Эхний удаа мөнгө татахад дансны нэрийг таны бүртгэлтэй '
       'мэдээлэлтэй тулгаж баталгаажуулна.';
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _refresher.refresh();
+  }
+
+  @override
+  void dispose() {
+    _refresher.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
     try {
-      final me = await ViewerService.instance.me();
+      final results = await Future.wait([
+        ViewerService.instance.me(),
+        _secondary(ViewerService.instance.myPayouts),
+        _secondary(ViewerService.instance.history),
+      ]);
       if (!mounted) return;
+      final me = results[0] as AppUser;
+      final payouts = results[1] as List<PayoutRequest>?;
+      final rewards = results[2] as List<ViewHistoryItem>?;
+      _announceDecisions(payouts);
       setState(() {
         _me = me;
+        if (payouts != null) _payouts = payouts;
+        if (rewards != null) _rewards = rewards;
         _error = null;
       });
+      _refresher.polling = hasPendingPayout(_payouts ?? const []);
     } on ApiException catch (e) {
       if (!mounted) return;
       if (e.statusCode == 401 || e.statusCode == 403) {
@@ -60,11 +89,45 @@ class _WalletScreenState extends State<WalletScreen> {
     }
   }
 
+  /// The history lists are secondary: if one fails, keep what was shown
+  /// last and still show the balance.
+  Future<T?> _secondary<T>(Future<T> Function() load) async {
+    try {
+      return await load();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// A request that was waiting and is now decided gets a snack bar.
+  void _announceDecisions(List<PayoutRequest>? payouts) {
+    final before = _payouts;
+    if (before == null || payouts == null) return;
+    final decided = newlyDecided(before, payouts);
+    if (decided.isEmpty) return;
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      payoutDecisionSnackBar(decided.first, palette: context.colors),
+    );
+  }
+
+  Future<void> _openPayoutForm() async {
+    final me = _me;
+    await context.push(
+      Routes.payout,
+      extra: me != null &&
+          isBeforeFirstPayout(
+            isVerified: me.isVerified,
+            payouts: _payouts ?? const [],
+          ),
+    );
+    if (mounted) await _refresher.refresh();
+  }
+
   /// Retry from the error banner: clear the error (so the skeleton shows
   /// again while nothing is loaded yet) and reload.
   void _retry() {
     setState(() => _error = null);
-    _load();
+    _refresher.refresh();
   }
 
   @override
@@ -81,7 +144,7 @@ class _WalletScreenState extends State<WalletScreen> {
       child: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          onRefresh: _load,
+          onRefresh: _refresher.refresh,
           color: context.colors.primary,
           backgroundColor: context.colors.surfaceElevated,
           child: CustomScrollView(
@@ -108,50 +171,26 @@ class _WalletScreenState extends State<WalletScreen> {
                     ],
                     if (loading) const WalletCardSkeleton(),
                     if (me != null) ..._balanceSection(me),
+                    if (me != null) ...[
+                      const SizedBox(height: AppSpacing.xxxl),
+                      FadeSlideIn(
+                        index: 3,
+                        child: WalletHistorySection(
+                          rewards: _rewards ?? const [],
+                          payouts: _payouts ?? const [],
+                          now: DateTime.now(),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: AppSpacing.xxxl),
                     const FadeSlideIn(
-                      index: 3,
+                      index: 4,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           SectionHeader(title: 'Хэрхэн ажилладаг вэ'),
                           SizedBox(height: AppSpacing.md),
                           HowItWorksCard(),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xxxl),
-                    FadeSlideIn(
-                      index: 4,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const SectionHeader(title: 'Урамшууллын түүх'),
-                          const SizedBox(height: AppSpacing.md),
-                          AppCard(
-                            onTap: () => context.push(Routes.history),
-                            semanticLabel: 'Урамшууллын түүх харах',
-                            child: Row(
-                              children: [
-                                Icon(Icons.receipt_long_outlined,
-                                    color: context.colors.primary),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                    child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Цуглуулсан урамшуулал',
-                                        style: context.textStyles.bodyStrong),
-                                    const SizedBox(height: 4),
-                                    Text('Үзсэн контент, авсан дүнгээ харах',
-                                        style: context.textStyles.caption),
-                                  ],
-                                )),
-                                Icon(Icons.chevron_right_rounded,
-                                    color: context.colors.textSecondary),
-                              ],
-                            ),
-                          ),
                         ],
                       ),
                     ),
@@ -190,6 +229,12 @@ class _WalletScreenState extends State<WalletScreen> {
         child: WalletBalanceCard(
           balance: me.balance,
           verified: me.isVerified,
+          phoneNumber: me.phoneNumber,
+          holderName: walletCardName(
+            lastName: me.lastName,
+            firstName: me.firstName,
+            payouts: _payouts ?? const [],
+          ),
           progress: payoutProgress(me.balance),
         ),
       ),
@@ -203,9 +248,12 @@ class _WalletScreenState extends State<WalletScreen> {
               label: 'Мөнгө татах',
               icon: Icons.account_balance_rounded,
               haptic: true,
-              onPressed: canPayout ? () => context.push(Routes.payout) : null,
+              onPressed: canPayout ? _openPayoutForm : null,
             ),
-            if (!me.isVerified) ...[
+            if (isBeforeFirstPayout(
+              isVerified: me.isVerified,
+              payouts: _payouts ?? const [],
+            )) ...[
               const SizedBox(height: AppSpacing.md),
               const WalletNote(
                 icon: Icons.verified_user_outlined,

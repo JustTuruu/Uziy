@@ -7,6 +7,8 @@ class RegisterDraft {
   const RegisterDraft({
     required this.phone,
     required this.password,
+    required this.lastName,
+    required this.firstName,
     required this.gender,
     required this.birthDate,
     required this.city,
@@ -15,6 +17,10 @@ class RegisterDraft {
 
   final String phone;
   final String password;
+
+  /// Овог (family name) and нэр (given name), already trimmed.
+  final String lastName;
+  final String firstName;
   final Gender gender;
   final DateTime birthDate;
   final String city;

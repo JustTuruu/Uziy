@@ -7,11 +7,13 @@ import 'push_message_parser.dart';
 /// What [PushNavigator] needs from the app shell (router + snackbar).
 abstract class PushNavigationTarget {
   void push(String location, {Object? extra});
+  void go(String location);
   void goHome();
   void showMessage(String text);
 }
 
-/// Opens the video or survey screen for a tapped campaign push.
+/// Opens the screen a tapped push points at: the video or survey screen for
+/// a campaign push, the wallet for a payout decision.
 ///
 /// Taps that arrive before the user is on Home (cold start: splash/login)
 /// are held and replayed by [markReady], so the splash redirect can't
@@ -22,6 +24,7 @@ class PushNavigator {
     required PushNavigationTarget target,
     required this.videoRoute,
     required this.surveyRoute,
+    required this.walletRoute,
   })  : _resolver = resolver,
         _target = target;
 
@@ -32,15 +35,25 @@ class PushNavigator {
   final PushNavigationTarget _target;
   final String videoRoute;
   final String surveyRoute;
+  final String walletRoute;
 
   bool _ready = false;
-  CampaignPush? _pending;
+  PushLink? _pending;
 
-  Future<void> open(CampaignPush push) async {
+  Future<void> open(PushLink link) async {
     if (!_ready) {
-      _pending = push;
+      _pending = link;
       return;
     }
+    switch (link) {
+      case CampaignPush():
+        await _openCampaign(link);
+      case PayoutPush():
+        _target.go(walletRoute);
+    }
+  }
+
+  Future<void> _openCampaign(CampaignPush push) async {
     Campaign? campaign;
     try {
       campaign = await _resolver.resolve(push);

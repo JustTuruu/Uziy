@@ -20,11 +20,23 @@ class PhoneVerificationControllerTest {
     void startAnswers201WithTheInstructions() {
         var started = new PhoneVerificationStartedRes(id, "88112233", "144773", "482916", "sms:144773?body=482916",
                 "instruction", PhoneVerificationStatus.PENDING, expires);
-        when(service.start("88112233")).thenReturn(started);
+        when(service.start("88112233", PhoneVerificationPurpose.REGISTER)).thenReturn(started);
 
-        var res = controller.start(new StartPhoneVerificationReq("88112233"));
+        var res = controller.start(new StartPhoneVerificationReq("88112233", null));
 
         assertThat(res.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(res.getBody()).isEqualTo(started);
+    }
+
+    @Test
+    void aResetStartPassesItsPurposeThrough() {
+        var started = new PhoneVerificationStartedRes(id, "88112233", "144773", "482916", "sms:144773?body=482916",
+                "instruction", PhoneVerificationStatus.PENDING, expires);
+        when(service.start("88112233", PhoneVerificationPurpose.PASSWORD_RESET)).thenReturn(started);
+
+        var res = controller.start(
+                new StartPhoneVerificationReq("88112233", PhoneVerificationPurpose.PASSWORD_RESET));
+
         assertThat(res.getBody()).isEqualTo(started);
     }
 

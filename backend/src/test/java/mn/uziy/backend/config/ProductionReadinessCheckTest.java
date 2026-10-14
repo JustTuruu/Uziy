@@ -17,19 +17,19 @@ class ProductionReadinessCheckTest {
 
     private final UserRepository users = mock(UserRepository.class);
 
-    private ProductionReadinessCheck check(String secret, boolean simulated, String otp, List<String> origins) {
-        return check(secret, simulated, otp, "verifymn", origins);
+    private ProductionReadinessCheck check(String secret, boolean simulated, List<String> origins) {
+        return check(secret, simulated, "verifymn", origins);
     }
 
-    private ProductionReadinessCheck check(String secret, boolean simulated, String otp, String phoneVerification,
+    private ProductionReadinessCheck check(String secret, boolean simulated, String phoneVerification,
                                            List<String> origins) {
         var props = new AppProperties(new AppProperties.Jwt(secret, 24), new AppProperties.Cors(origins),
                 new AppProperties.Payments(simulated), new AppProperties.Push(false, ""));
-        return new ProductionReadinessCheck(props, users, otp, phoneVerification);
+        return new ProductionReadinessCheck(props, users, phoneVerification);
     }
 
     private ProductionReadinessCheck ready() {
-        return check(REAL_SECRET, false, "sms", List.of("https://console.uziy.mn"));
+        return check(REAL_SECRET, false, List.of("https://console.uziy.mn"));
     }
 
     @Test
@@ -42,38 +42,32 @@ class ProductionReadinessCheckTest {
     void theDevelopmentJwtSecretIsRefused() {
         var secret = "dev-only-secret-change-me-please-do-not-ship-this-keyminimum-256-bit";
 
-        assertThat(check(secret, false, "sms", List.of("https://x.mn")).problems()).anyMatch(p -> p.contains("JWT_SECRET"));
+        assertThat(check(secret, false, List.of("https://x.mn")).problems()).anyMatch(p -> p.contains("JWT_SECRET"));
     }
 
     @Test
     void aShortJwtSecretIsRefused() {
-        assertThat(check("short", false, "sms", List.of("https://x.mn")).problems())
+        assertThat(check("short", false, List.of("https://x.mn")).problems())
                 .anyMatch(p -> p.contains("shorter"));
     }
 
     @Test
     void simulatedPaymentsAreRefused() {
-        assertThat(check(REAL_SECRET, true, "sms", List.of("https://x.mn")).problems())
+        assertThat(check(REAL_SECRET, true, List.of("https://x.mn")).problems())
                 .anyMatch(p -> p.contains("PAYMENTS_SIMULATED"));
     }
 
     @Test
-    void theLoggingOtpSenderIsRefused() {
-        assertThat(check(REAL_SECRET, false, "logging", List.of("https://x.mn")).problems())
-                .anyMatch(p -> p.contains("OTP_SENDER"));
-    }
-
-    @Test
     void simulatedPhoneVerificationIsRefused() {
-        assertThat(check(REAL_SECRET, false, "sms", "simulated", List.of("https://x.mn")).problems())
+        assertThat(check(REAL_SECRET, false, "simulated", List.of("https://x.mn")).problems())
                 .anyMatch(p -> p.contains("PHONE_VERIFICATION_PROVIDER"));
     }
 
     @Test
     void aLocalCorsOriginIsRefused() {
-        assertThat(check(REAL_SECRET, false, "sms", List.of("http://localhost:3000")).problems())
+        assertThat(check(REAL_SECRET, false, List.of("http://localhost:3000")).problems())
                 .anyMatch(p -> p.contains("CORS"));
-        assertThat(check(REAL_SECRET, false, "sms", List.of("http://127.0.0.1:3001")).problems())
+        assertThat(check(REAL_SECRET, false, List.of("http://127.0.0.1:3001")).problems())
                 .anyMatch(p -> p.contains("CORS"));
     }
 
@@ -86,12 +80,12 @@ class ProductionReadinessCheckTest {
 
     @Test
     void startupFailsAndNamesEveryProblem() {
-        var bad = check("short", true, "logging", "simulated", List.of("http://localhost:3000"));
+        var bad = check("short", true, "simulated", List.of("http://localhost:3000"));
 
         assertThatThrownBy(() -> bad.run(new DefaultApplicationArguments()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("JWT_SECRET").hasMessageContaining("PAYMENTS_SIMULATED")
-                .hasMessageContaining("OTP_SENDER").hasMessageContaining("PHONE_VERIFICATION_PROVIDER")
+                .hasMessageContaining("PHONE_VERIFICATION_PROVIDER")
                 .hasMessageContaining("CORS");
     }
 }

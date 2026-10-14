@@ -5,8 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../models/password_reset.dart';
 import '../../models/phone_verification.dart';
 import '../../models/register_draft.dart';
+import '../../routes/app_router.dart' show Routes;
 import '../../routes/auth_gate.dart';
 import '../../services/api_error.dart';
 import '../../services/auth_service.dart';
@@ -21,23 +23,80 @@ typedef SmsLauncher = Future<bool> Function(Uri uri);
 Future<bool> _openSmsApp(Uri uri) =>
     launchUrl(uri, mode: LaunchMode.externalApplication);
 
-/// Second step of registration: the viewer texts the shown code from their
-/// own phone to 144773 (verify.mn). The page polls the backend every
-/// [kPhoneVerifyPollInterval]; once the SMS has arrived it creates the
-/// account with the form and the confirmed check, and goes on.
-class PhoneVerifyScreen extends StatefulWidget {
-  const PhoneVerifyScreen({
-    super.key,
-    required this.pending,
-    this.next,
-    this.launchSms = _openSmsApp,
-    this.now = DateTime.now,
-  });
+/// What a phone check on [PhoneVerifyScreen] is for, and what happens once
+/// the SMS has arrived.
+///
+/// Pattern: Strategy (sealed) — registration creates the account right
+/// here; a password reset moves on to the new-password page.
+sealed class PhoneCheckGoal {
+  const PhoneCheckGoal();
+
+  String get phone;
+  PhoneCheckPurpose get purpose;
+  String get subtitle;
+
+  /// Shown while the page finishes after the SMS arrived.
+  String get finishingLabel;
+}
+
+class RegisterGoal extends PhoneCheckGoal {
+  const RegisterGoal(this.pending, {this.next});
 
   final PendingRegistration pending;
 
   /// Page to open after registering (see `auth_gate.dart`).
   final String? next;
+
+  @override
+  String get phone => pending.draft.phone;
+  @override
+  PhoneCheckPurpose get purpose => PhoneCheckPurpose.register;
+  @override
+  String get subtitle => kPhoneVerifySubtitle;
+  @override
+  String get finishingLabel => kCreatingAccount;
+}
+
+class PasswordResetGoal extends PhoneCheckGoal {
+  const PasswordResetGoal(this.phone);
+
+  @override
+  final String phone;
+  @override
+  PhoneCheckPurpose get purpose => PhoneCheckPurpose.passwordReset;
+  @override
+  String get subtitle => kResetVerifySubtitle;
+  @override
+  String get finishingLabel => kPhoneConfirmed;
+}
+
+/// The viewer proves their phone by texting the shown code from it to
+/// 144773 (verify.mn) — to register, or to reset a forgotten password. The
+/// page polls the backend every [kPhoneVerifyPollInterval]; once the SMS has
+/// arrived the [goal] decides what happens next.
+class PhoneVerifyScreen extends StatefulWidget {
+  /// Second step of registration: creates the account once verified.
+  PhoneVerifyScreen({
+    super.key,
+    required PendingRegistration pending,
+    String? next,
+    this.launchSms = _openSmsApp,
+    this.now = DateTime.now,
+  })  : goal = RegisterGoal(pending, next: next),
+        verification = pending.verification;
+
+  /// Second step of a password reset: opens the new-password page once
+  /// verified.
+  PhoneVerifyScreen.passwordReset({
+    super.key,
+    required PendingPasswordReset reset,
+    this.launchSms = _openSmsApp,
+    this.now = DateTime.now,
+  })  : goal = PasswordResetGoal(reset.phone),
+        verification = reset.verification;
+
+  final PhoneCheckGoal goal;
+  final PhoneVerification verification;
 
   /// Injected so tests need no platform plugin.
   final SmsLauncher launchSms;
@@ -49,7 +108,7 @@ class PhoneVerifyScreen extends StatefulWidget {
 
 class _PhoneVerifyScreenState extends State<PhoneVerifyScreen>
     with WidgetsBindingObserver {
-  late PhoneVerification _check = widget.pending.verification;
+  late PhoneVerification _check = widget.verification;
   PhoneVerifyPhase _phase = PhoneVerifyPhase.waiting;
   Timer? _poller;
   bool _polling = false;
@@ -101,7 +160,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen>
       if (next == PhoneVerifyPhase.waiting) return;
       _stopPolling();
       setState(() => _phase = next);
-      if (next == PhoneVerifyPhase.registering) await _register();
+      if (next == PhoneVerifyPhase.registering) await _finish();
     } catch (_) {
       // A missed poll is harmless: the next tick asks again.
     } finally {
@@ -109,16 +168,36 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen>
     }
   }
 
-  Future<void> _register() async {
+  Future<void> _finish() async {
+    switch (widget.goal) {
+      case RegisterGoal goal:
+        await _register(goal);
+      case PasswordResetGoal goal:
+        _openNewPassword(goal);
+    }
+  }
+
+  /// The check is confirmed; it is spent only when the new password is sent.
+  void _openNewPassword(PasswordResetGoal goal) {
+    HapticFeedback.mediumImpact();
+    context.pushReplacement(
+      Routes.resetPassword,
+      extra: PendingPasswordReset(phone: goal.phone, verification: _check),
+    );
+  }
+
+  Future<void> _register(RegisterGoal goal) async {
     setState(() {
       _phase = PhoneVerifyPhase.registering;
       _error = null;
     });
-    final d = widget.pending.draft;
+    final d = goal.pending.draft;
     try {
       await AuthService.instance.register(
         phone: d.phone,
         password: d.password,
+        lastName: d.lastName,
+        firstName: d.firstName,
         gender: d.gender,
         birthDate: d.birthDate,
         city: d.city,
@@ -127,7 +206,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen>
       );
       if (!mounted) return;
       HapticFeedback.mediumImpact();
-      await finishAuth(context, widget.next);
+      await finishAuth(context, goal.next);
     } on AuthException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -151,8 +230,10 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen>
       _error = null;
     });
     try {
-      final fresh = await AuthService.instance
-          .startPhoneVerification(widget.pending.draft.phone);
+      final fresh = await AuthService.instance.startPhoneVerification(
+        widget.goal.phone,
+        purpose: widget.goal.purpose,
+      );
       if (!mounted) return;
       setState(() {
         _check = fresh;
@@ -209,10 +290,10 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const OtpHeader(
+                OtpHeader(
                   icon: AppIcons.otp,
                   title: kPhoneVerifyTitle,
-                  subtitle: kPhoneVerifySubtitle,
+                  subtitle: widget.goal.subtitle,
                 ),
                 const SizedBox(height: AppSpacing.xxl),
                 SmsCodeCard(
@@ -255,7 +336,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen>
           const ProgressNote(label: kWaitingForSms),
         ];
       case PhoneVerifyPhase.registering:
-        return [const ProgressNote(label: kCreatingAccount)];
+        return [ProgressNote(label: widget.goal.finishingLabel)];
       case PhoneVerifyPhase.expired:
         return [
           StatusBanner(
@@ -274,7 +355,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen>
         return [
           OtpErrorText(message: _error),
           const SizedBox(height: AppSpacing.lg),
-          AppButton(label: kRetryLabel, onPressed: _register),
+          AppButton(label: kRetryLabel, onPressed: _finish),
         ];
     }
   }

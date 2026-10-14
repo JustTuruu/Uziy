@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../models/password_reset.dart';
 import '../../routes/app_router.dart' show Routes;
 import '../../services/api_error.dart';
 import '../../services/auth_service.dart';
@@ -10,12 +11,13 @@ import 'otp_widgets.dart';
 
 const String kForgotTitle = 'Нууц үг сэргээх';
 const String kForgotSubtitle =
-    'Бүртгэлтэй утасны дугаараа оруулбал 6 оронтой код илгээнэ';
-const String kForgotSendLabel = 'Код авах';
+    'Бүртгэлтэй утасны дугаараа оруулна уу. Дараа нь тэр утаснаасаа нэг SMS '
+    'илгээж баталгаажуулна.';
+const String kForgotSendLabel = 'Үргэлжлүүлэх';
 
-/// Step 1 of a password reset: the phone number. The backend answers the
-/// same whether or not the number has an account, so this always moves on to
-/// the code screen.
+/// Step 1 of a password reset: the phone number. Opens a password-reset
+/// phone check; a number without an account is told so here (404), before
+/// the viewer pays for an SMS.
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
 
@@ -44,13 +46,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     });
     final phone = phoneDigits(_phone.text);
     try {
-      await AuthService.instance.requestOtp(
-        phone: phone,
-        purpose: OtpPurpose.passwordReset,
+      final check = await AuthService.instance.startPhoneVerification(
+        phone,
+        purpose: PhoneCheckPurpose.passwordReset,
       );
       if (!mounted) return;
       setState(() => _loading = false);
-      await context.push(Routes.resetPassword, extra: phone);
+      await context.push(
+        Routes.forgotVerify,
+        extra: PendingPasswordReset(phone: phone, verification: check),
+      );
     } on AuthException catch (e) {
       if (!mounted) return;
       setState(() {

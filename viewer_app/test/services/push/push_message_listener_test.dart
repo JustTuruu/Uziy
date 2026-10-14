@@ -35,6 +35,7 @@ void main() {
       target: target,
       videoRoute: '/video',
       surveyRoute: '/survey',
+      walletRoute: '/wallet',
     );
   });
 

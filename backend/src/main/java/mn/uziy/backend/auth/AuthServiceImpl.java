@@ -6,6 +6,7 @@ import mn.uziy.backend.common.UnauthorizedException;
 import mn.uziy.backend.common.event.DomainEventPublisher;
 import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
+import mn.uziy.backend.phoneverify.PhoneVerificationPurpose;
 import mn.uziy.backend.phoneverify.VerifiedPhoneClaim;
 import mn.uziy.backend.security.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -58,7 +59,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthResponse registerViewer(RegisterViewerReq req) {
         requirePhoneFree(req.phoneNumber());
-        verifiedPhones.claim(req.verificationId(), req.phoneNumber());
+        verifiedPhones.claim(req.verificationId(), req.phoneNumber(), PhoneVerificationPurpose.REGISTER);
         UserEntity user = userFactory.newViewer(req, encoder.encode(req.password()));
         return registered(users.save(user));
     }

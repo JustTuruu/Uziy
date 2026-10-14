@@ -19,6 +19,12 @@ String feedFilterLabel(FeedFilter filter) => switch (filter) {
 
 /// Campaigns matching [filter]. Always returns a new list (the input is
 /// never aliased or mutated) and keeps the server's order.
+/// The feed without a campaign the viewer just finished.
+List<Campaign> withoutCampaign(List<Campaign> feed, int campaignId) => [
+      for (final c in feed)
+        if (c.id != campaignId) c
+    ];
+
 List<Campaign> filterFeed(List<Campaign> feed, FeedFilter filter) {
   return switch (filter) {
     FeedFilter.all => List<Campaign>.of(feed),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -8,6 +9,8 @@ import '../../models/user.dart';
 import '../../routes/app_router.dart';
 import '../../routes/auth_gate.dart';
 import '../../services/auth_service.dart';
+import '../../services/auto_refresher.dart';
+import '../../services/campaign_events.dart';
 import '../../services/push/push_runtime.dart';
 import '../../services/viewer_service.dart';
 import '../../widgets/ui.dart';
@@ -17,6 +20,11 @@ import 'guest_gate_sheet.dart';
 
 /// Home tab: greeting + balance, earning-potential hero, kind filter and the
 /// targeted campaign feed.
+///
+/// Stays current without pull-to-refresh: a campaign the viewer finishes
+/// (see [CampaignEvents]) leaves the feed at once and the balance reloads;
+/// coming back to the app reloads too. Home stays alive under the video and
+/// survey screens, so without this the finished card would linger.
 ///
 /// Tab-screen layout contract: this is a body inside the shell's Scaffold
 /// (which uses `extendBody: true` and a floating nav bar), so it uses
@@ -42,12 +50,39 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
   /// True while a button-triggered reload (retry / 'Шинэчлэх') is running.
   bool _reloading = false;
 
+  late final AutoRefresher _refresher = AutoRefresher(onRefresh: _load);
+  StreamSubscription<CampaignCompleted>? _completions;
+
+  /// Finished here; kept out of every later load, so a reply that was
+  /// already on its way cannot bring the card back.
+  final Set<int> _finished = {};
+
   @override
   void initState() {
     super.initState();
-    _load();
+    _refresher.refresh();
+    _completions = CampaignEvents.instance.completed.listen(_onCompleted);
     // Logged in and on Home: the right moment for the notification prompt.
     if (!_guest) PushRuntime.instance.onHomeReached();
+  }
+
+  @override
+  void dispose() {
+    _completions?.cancel();
+    _refresher.dispose();
+    super.dispose();
+  }
+
+  /// Drop the finished card now; then reload quietly for the new balance
+  /// (and anything else that changed on the server).
+  void _onCompleted(CampaignCompleted event) {
+    final feed = _feed;
+    if (!mounted) return;
+    _finished.add(event.campaignId);
+    if (feed != null) {
+      setState(() => _feed = withoutCampaign(feed, event.campaignId));
+    }
+    _refresher.refresh();
   }
 
   Future<void> _load() async {
@@ -59,7 +94,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       ]);
       if (!mounted) return;
       setState(() {
-        _feed = results[0] as List<Campaign>;
+        _feed = _finished.fold<List<Campaign>>(
+          results[0] as List<Campaign>,
+          withoutCampaign,
+        );
         _me = results[1] as AppUser;
         _error = null;
       });
@@ -105,7 +143,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       if (clearError) _error = null;
     });
     try {
-      await _load();
+      await _refresher.refresh();
     } finally {
       if (mounted) setState(() => _reloading = false);
     }
@@ -159,7 +197,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                 EdgeInsets.fromLTRB(gutter, top, gutter, 0);
 
             return RefreshIndicator(
-              onRefresh: _load,
+              onRefresh: _refresher.refresh,
               color: context.colors.primary,
               backgroundColor: context.colors.surfaceElevated,
               child: CustomScrollView(

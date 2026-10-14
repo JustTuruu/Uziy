@@ -19,6 +19,7 @@ import mn.uziy.backend.domain.Gender;
 import mn.uziy.backend.domain.Role;
 import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
+import mn.uziy.backend.phoneverify.PhoneVerificationPurpose;
 import mn.uziy.backend.phoneverify.VerifiedPhoneClaim;
 import mn.uziy.backend.security.JwtService;
 import mn.uziy.backend.web.ApiExceptionHandler;
@@ -103,7 +104,7 @@ class AuthServiceTest {
         });
 
         AuthResponse res = service.registerViewer(new RegisterViewerReq(
-                "77000001", "password1", Gender.MALE, LocalDate.of(2000, 5, 5), "Улаанбаатар", CHECK));
+                "77000001", "password1", "Бат", "Болд", Gender.MALE, LocalDate.of(2000, 5, 5), "Улаанбаатар", CHECK));
 
         Me me = res.user();
         assertThat(me.id()).isEqualTo(100L);
@@ -114,17 +115,17 @@ class AuthServiceTest {
         assertThat(saved.getValue().getRole()).isEqualTo(Role.VIEWER);
         assertThat(saved.getValue().getPasswordHash()).isEqualTo("bcrypt-hash");
         verify(events).publish(new UserRegistered(100L, Role.VIEWER));
-        verify(verifiedPhones).claim(CHECK, "77000001");
+        verify(verifiedPhones).claim(CHECK, "77000001", PhoneVerificationPurpose.REGISTER);
     }
 
     @Test
     void registerViewerWithAnUnverifiedPhoneCreatesNoUser() {
         when(users.existsByPhoneNumber("77000001")).thenReturn(false);
         org.mockito.Mockito.doThrow(new mn.uziy.backend.common.BadRequestException(VerifiedPhoneClaim.NOT_VERIFIED))
-                .when(verifiedPhones).claim(CHECK, "77000001");
+                .when(verifiedPhones).claim(CHECK, "77000001", PhoneVerificationPurpose.REGISTER);
 
         assertThat(statusOf(() -> service.registerViewer(new RegisterViewerReq(
-                "77000001", "password1", Gender.MALE, LocalDate.of(2000, 1, 1), "Улаанбаатар", CHECK))))
+                "77000001", "password1", "Бат", "Болд", Gender.MALE, LocalDate.of(2000, 1, 1), "Улаанбаатар", CHECK))))
                 .isEqualTo(HttpStatus.BAD_REQUEST);
         org.mockito.Mockito.verify(users, org.mockito.Mockito.never()).save(any(UserEntity.class));
         org.mockito.Mockito.verifyNoInteractions(events);
@@ -135,7 +136,7 @@ class AuthServiceTest {
         when(users.existsByPhoneNumber("77000001")).thenReturn(true);
         org.mockito.Mockito.verifyNoInteractions(events);
         assertThat(statusOf(() -> service.registerViewer(new RegisterViewerReq(
-                "77000001", "password1", Gender.MALE, LocalDate.of(2000, 1, 1), "Улаанбаатар", CHECK))))
+                "77000001", "password1", "Бат", "Болд", Gender.MALE, LocalDate.of(2000, 1, 1), "Улаанбаатар", CHECK))))
                 .isEqualTo(HttpStatus.CONFLICT);
         org.mockito.Mockito.verifyNoInteractions(verifiedPhones);
     }

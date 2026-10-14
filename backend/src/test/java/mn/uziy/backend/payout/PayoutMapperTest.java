@@ -19,7 +19,6 @@ class PayoutMapperTest {
         p.setBank("Khan");
         p.setAccountNumber("123");
         p.setAccountName("Name");
-        p.setNationalId("УУ98761234");
         p.setStatus(PayoutStatus.REJECTED);
         p.setFirstPayout(true);
         p.setDecidedAt(decided);
@@ -28,6 +27,6 @@ class PayoutMapperTest {
         PayoutDto dto = new PayoutMapper().toDto(p, "77000001");
 
         assertThat(dto).isEqualTo(new PayoutDto(7L, 42L, "77000001", 500.0, "Khan", "123", "Name",
-                "УУ98761234", PayoutStatus.REJECTED, true, p.getRequestedAt(), decided, "bad"));
+                PayoutStatus.REJECTED, true, p.getRequestedAt(), decided, "bad"));
     }
 }

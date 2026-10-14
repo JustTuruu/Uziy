@@ -179,4 +179,15 @@ class DeviceTokenRepositoryIntegrationTest {
 
         assertThat(tokens.findByToken("cascade-1")).isEmpty();
     }
+
+    @Test
+    void tokensByUserIdReturnsEveryDeviceOfThatViewerOnly() {
+        UserEntity viewer = user(Role.VIEWER, Gender.MALE, TODAY.minusYears(30), "Улаанбаатар");
+        UserEntity other = user(Role.VIEWER, Gender.MALE, TODAY.minusYears(30), "Улаанбаатар");
+        String phone = token(viewer, "u1-phone");
+        String tablet = token(viewer, "u1-tablet");
+        token(other, "u1-other");
+
+        assertThat(tokens.findTokensByUserId(viewer.getId())).containsExactlyInAnyOrder(phone, tablet);
+    }
 }

@@ -49,6 +49,10 @@ class ThemeController extends ChangeNotifier {
     return saved;
   }
 
+  /// The explicit mode a one-tap toggle switches to from the look on screen.
+  static ThemeMode oppositeOf(Brightness shown) =>
+      shown == Brightness.dark ? ThemeMode.light : ThemeMode.dark;
+
   static String label(ThemeMode mode) => switch (mode) {
         ThemeMode.system => 'Төхөөрөмжийн тохиргоо',
         ThemeMode.light => 'Цайвар',

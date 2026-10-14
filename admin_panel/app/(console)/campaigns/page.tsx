@@ -81,7 +81,7 @@ export default function AdminCampaignsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--color-divider)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
-                  <th className="px-5 py-3 font-semibold">Кампани</th>
+                  <th className="px-5 py-3 font-semibold">Судалгаа</th>
                   <th className="px-5 py-3 font-semibold">Зорилтот</th>
                   <th className="px-5 py-3 font-semibold text-right">Төсөв</th>
                   <th className="px-5 py-3 font-semibold text-right">Үйлдэл</th>
@@ -188,7 +188,7 @@ export default function AdminCampaignsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--color-divider)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
-                  <th className="px-5 py-3 font-semibold">Кампани</th>
+                  <th className="px-5 py-3 font-semibold">Судалгаа</th>
                   <th className="px-5 py-3 font-semibold">Төлөв</th>
                   <th className="px-5 py-3 font-semibold text-right">Төсөв</th>
                   <th className="px-5 py-3 font-semibold text-right">

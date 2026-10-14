@@ -21,6 +21,12 @@ Campaign _c({
     );
 
 void main() {
+  test('withoutCampaign drops only the finished one', () {
+    final feed = [_c(id: 1), _c(id: 2), _c(id: 3)];
+    expect(withoutCampaign(feed, 2).map((c) => c.id), [1, 3]);
+    expect(withoutCampaign(feed, 9).map((c) => c.id), [1, 2, 3]);
+  });
+
   group('summarizeFeed', () {
     test('mock feed: totals and counts', () {
       final s = summarizeFeed(Campaign.mockFeed());

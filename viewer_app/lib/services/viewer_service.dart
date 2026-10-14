@@ -4,11 +4,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/campaign.dart';
+import '../models/payout_request.dart';
 import '../models/survey_question.dart';
 import '../models/user.dart';
 import '../models/view_history_item.dart';
 import 'api_error.dart';
 import 'api_service.dart';
+import 'campaign_events.dart';
 
 class ApiException implements Exception {
   final int statusCode;
@@ -118,14 +120,31 @@ class ViewerService {
         data: body,
       );
       _check(r, 'Илгээхэд алдаа гарлаа');
-      return RewardResult(
+      final result = RewardResult(
         rewardPaid: (r.data!['rewardPaid'] as num).toDouble(),
         newBalance: (r.data!['newBalance'] as num).toDouble(),
       );
+      CampaignEvents.instance.publishCompleted(
+        CampaignCompleted(campaignId, newBalance: result.newBalance),
+      );
+      return result;
     } on DioException catch (e) {
-      throw _map(e, 'Илгээхэд алдаа гарлаа');
+      throw _alreadyCompleted(campaignId, _map(e, 'Илгээхэд алдаа гарлаа'));
+    } on ApiException catch (e) {
+      throw _alreadyCompleted(campaignId, e);
     }
   }
+
+  /// 409 means this campaign was already rewarded: it must leave the feed
+  /// just like a fresh completion. The error itself is still reported.
+  ApiException _alreadyCompleted(int campaignId, ApiException e) {
+    if (e.statusCode == _conflict) {
+      CampaignEvents.instance.publishCompleted(CampaignCompleted(campaignId));
+    }
+    return e;
+  }
+
+  static const int _conflict = 409;
 
   /// POST /viewer/payouts — request a bank payout (approval by admin).
   Future<Map<String, dynamic>> requestPayout({
@@ -133,7 +152,6 @@ class ViewerService {
     required String bank,
     required String accountNumber,
     required String accountName,
-    required String nationalId,
   }) async {
     try {
       final r = await _dio.post<Map<String, dynamic>>(
@@ -143,13 +161,26 @@ class ViewerService {
           'bank': bank,
           'accountNumber': accountNumber,
           'accountName': accountName,
-          'nationalId': nationalId,
         },
       );
       _check(r, 'Хүсэлт илгээхэд алдаа гарлаа');
       return r.data!;
     } on DioException catch (e) {
       throw _map(e, 'Хүсэлт илгээхэд алдаа гарлаа');
+    }
+  }
+
+  /// GET /viewer/payouts — the viewer's own payout requests, newest first.
+  Future<List<PayoutRequest>> myPayouts() async {
+    try {
+      final r = await _dio.get<dynamic>('/viewer/payouts');
+      _check(r, 'Хүсэлтүүдийг ачаалж чадсангүй');
+      final list = r.data as List<dynamic>;
+      return list
+          .map((e) => PayoutRequest.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw _map(e, 'Хүсэлтүүдийг ачаалж чадсангүй');
     }
   }
 

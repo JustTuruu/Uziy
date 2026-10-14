@@ -75,7 +75,6 @@ public class PayoutServiceImpl implements PayoutService {
         p.setBank(req.bank());
         p.setAccountNumber(req.accountNumber());
         p.setAccountName(req.accountName());
-        p.setNationalId(req.nationalId());
         p.setFirstPayout(isFirst);
         PayoutDto dto = mapper.toDto(payouts.save(p), user.getPhoneNumber());
         events.publish(new PayoutRequested(dto.id(), dto.userId(), dto.amount()));

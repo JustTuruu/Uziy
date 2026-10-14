@@ -1,7 +1,140 @@
+import 'dart:io';
+
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:viewer_app/models/payout_request.dart';
+import 'package:viewer_app/models/view_history_item.dart';
 import 'package:viewer_app/screens/wallet/wallet_logic.dart';
 
+PayoutRequest _payout(
+  int id,
+  PayoutStatus status, {
+  DateTime? requestedAt,
+  DateTime? decidedAt,
+  String? reason,
+}) =>
+    PayoutRequest(
+      id: id,
+      amount: 5000,
+      bank: 'Khan Bank',
+      status: status,
+      requestedAt: requestedAt ?? DateTime(2026, 10, 14, 9),
+      decidedAt: decidedAt,
+      rejectReason: reason,
+    );
+
+ViewHistoryItem _reward(int id, DateTime at, {double paid = 700}) =>
+    ViewHistoryItem(
+      campaignId: id,
+      title: 'Видео $id',
+      companyName: 'MobiCom',
+      rewardPaid: paid,
+      watchedAt: at,
+    );
+
 void main() {
+  group('wallet history', () {
+    test('rewards and payouts merge into one list, newest first', () {
+      final entries = buildWalletHistory(
+        [
+          _reward(1, DateTime(2026, 10, 10)),
+          _reward(2, DateTime(2026, 10, 13)),
+        ],
+        [_payout(7, PayoutStatus.pending, requestedAt: DateTime(2026, 10, 12))],
+      );
+      expect(
+          entries.map((e) => switch (e) {
+                RewardEntry(:final reward) => 'r${reward.campaignId}',
+                PayoutEntry(:final payout) => 'p${payout.id}',
+              }),
+          ['r2', 'p7', 'r1']);
+    });
+
+    test('income sums the rewards', () {
+      expect(walletIncome(const []), 0);
+      expect(
+        walletIncome([
+          _reward(1, DateTime(2026), paid: 700),
+          _reward(2, DateTime(2026), paid: 500),
+        ]),
+        1200,
+      );
+    });
+
+    test('spending counts pending and approved, not refunded requests', () {
+      expect(
+        walletSpending([
+          _payout(1, PayoutStatus.approved),
+          _payout(2, PayoutStatus.pending),
+          _payout(3, PayoutStatus.rejected),
+        ]),
+        10000,
+      );
+    });
+
+    test('row copy', () {
+      expect(payoutEntryTitle(_payout(1, PayoutStatus.pending)),
+          'Мөнгө татсан · Khan Bank');
+      expect(payoutEntryStatus(_payout(1, PayoutStatus.pending)),
+          'Хянагдаж байна');
+      expect(payoutEntryStatus(_payout(1, PayoutStatus.approved)),
+          'Дансанд шилжүүлсэн');
+      expect(payoutEntryStatus(_payout(1, PayoutStatus.rejected)),
+          'Татгалзсан · хэтэвчинд буцсан');
+    });
+  });
+
+  group('payout status on the wallet', () {
+    test('polls only while something waits for the admin', () {
+      expect(hasPendingPayout(const []), isFalse);
+      expect(hasPendingPayout([_payout(1, PayoutStatus.approved)]), isFalse);
+      expect(
+        hasPendingPayout([
+          _payout(1, PayoutStatus.approved),
+          _payout(2, PayoutStatus.pending),
+        ]),
+        isTrue,
+      );
+    });
+
+    test('newlyDecided finds requests that were waiting and are now decided',
+        () {
+      final before = [
+        _payout(1, PayoutStatus.pending),
+        _payout(2, PayoutStatus.pending),
+        _payout(3, PayoutStatus.rejected),
+      ];
+      final after = [
+        _payout(1, PayoutStatus.approved),
+        _payout(2, PayoutStatus.pending),
+        _payout(3, PayoutStatus.rejected),
+        _payout(4, PayoutStatus.approved),
+      ];
+      expect(newlyDecided(before, after).map((p) => p.id), [1]);
+      expect(newlyDecided(after, after), isEmpty);
+    });
+
+    test('decision copy for the snack bar', () {
+      expect(payoutDecisionMessage(_payout(1, PayoutStatus.approved)),
+          '5,000 ₮ татах хүсэлт тань батлагдлаа');
+      expect(payoutDecisionMessage(_payout(1, PayoutStatus.rejected)),
+          contains('хэтэвчинд буцлаа'));
+    });
+  });
+
+  group('maskedCardNumber', () {
+    test('keeps only the last four digits', () {
+      expect(maskedCardNumber('99119911'), '•••• 9911');
+      expect(maskedCardNumber('+976 8800 1234'), '•••• 1234');
+    });
+
+    test('shows dots only when there is no usable number', () {
+      expect(maskedCardNumber(null), '•••• ••••');
+      expect(maskedCardNumber(''), '•••• ••••');
+      expect(maskedCardNumber('12'), '•••• ••••');
+    });
+  });
+
   group('payoutProgress', () {
     test('empty wallet: nothing collected, full minimum missing', () {
       final p = payoutProgress(0);
@@ -102,13 +235,12 @@ void main() {
       }
     });
 
-    test('quickAmountValue writes plain digits with the caret at the end', () {
+    test('quickAmountValue writes the grouped amount, caret at the end', () {
       final v = quickAmountValue(5000);
-      expect(v.text, '5000');
+      expect(v.text, '5,000');
       expect(v.selection.isCollapsed, isTrue);
-      expect(v.selection.baseOffset, 4);
-      // The form parses the field with double.parse, so no grouping commas.
-      expect(double.parse(v.text), 5000);
+      expect(v.selection.baseOffset, 5);
+      expect(payoutAmountOf(v.text), 5000);
     });
 
     test('quickAmountValue text passes the amount validator', () {
@@ -119,12 +251,176 @@ void main() {
 
     test('selectedQuickAmount matches exact chip values only', () {
       expect(selectedQuickAmount('2000'), 2000);
+      expect(selectedQuickAmount('2,000'), 2000);
       expect(selectedQuickAmount(' 5000 '), 5000);
       expect(selectedQuickAmount('10000'), 10000);
       expect(selectedQuickAmount('2500'), isNull);
       expect(selectedQuickAmount(''), isNull);
       expect(selectedQuickAmount('abc'), isNull);
       expect(selectedQuickAmount('300', amounts: const [300]), 300);
+    });
+  });
+
+  group('typed payout amount', () {
+    TextEditingValue type(String text, {int? caret}) =>
+        const PayoutAmountFormatter().formatEditUpdate(
+          TextEditingValue.empty,
+          TextEditingValue(
+            text: text,
+            selection: TextSelection.collapsed(offset: caret ?? text.length),
+          ),
+        );
+
+    test('groups thousands as the user types', () {
+      expect(type('1').text, '1');
+      expect(type('1000').text, '1,000');
+      expect(type('12500').text, '12,500');
+      expect(type('1234567').text, '1,234,567');
+    });
+
+    test('keeps digits only, drops leading zeros', () {
+      expect(type('12a3.4').text, '1,234');
+      expect(type('0005000').text, '5,000');
+      expect(type('0').text, '');
+      expect(type('').text, '');
+    });
+
+    test('stops at the maximum length', () {
+      expect(payoutAmountOf(type('12345678901234').text), 123456789);
+    });
+
+    test('the caret stays after the same digit when editing in the middle', () {
+      // '1,2|00' after typing a 2 between 1 and 0 in '1,000' -> '12,000'.
+      final v = type('1,2000', caret: 3);
+      expect(v.text, '12,000');
+      expect(v.text.substring(0, v.selection.baseOffset), '12');
+    });
+
+    test('payoutAmountOf reads the number back', () {
+      expect(payoutAmountOf('12,500'), 12500);
+      expect(payoutAmountOf('5000'), 5000);
+      expect(payoutAmountOf(''), isNull);
+      expect(payoutAmountOf(null), isNull);
+    });
+  });
+
+  group('walletCardName', () {
+    final paid = PayoutRequest(
+      id: 1,
+      amount: 2000,
+      bank: 'Khan Bank',
+      status: PayoutStatus.approved,
+      requestedAt: DateTime(2026, 10, 14),
+      accountName: 'GGGG',
+    );
+
+    /// Regression (2026-10-14): the card showed a test account name ('GGGG')
+    /// typed on a payout; the registered name now wins.
+    test('the registered name wins, given name first, in capitals', () {
+      expect(
+        walletCardName(
+            lastName: 'Оюун-Эрдэнэ', firstName: 'Төрболд', payouts: [paid]),
+        'ТӨРБОЛД ОЮУН-ЭРДЭНЭ',
+      );
+    });
+
+    test('an account from before names were asked falls back to the payout',
+        () {
+      expect(walletCardName(payouts: [paid]), 'GGGG');
+      expect(walletCardName(lastName: ' ', firstName: '', payouts: [paid]),
+          'GGGG');
+    });
+
+    test('nothing at all gives no name', () {
+      expect(walletCardName(payouts: const []), isNull);
+    });
+  });
+
+  group('cardHolderName', () {
+    PayoutRequest req(PayoutStatus status, String? name, int day) =>
+        PayoutRequest(
+          id: day,
+          amount: 2000,
+          bank: 'Khan Bank',
+          status: status,
+          requestedAt: DateTime(2026, 10, day),
+          accountName: name,
+        );
+
+    test('none before any payout', () {
+      expect(cardHolderName(const []), isNull);
+    });
+
+    test("the newest usable request's name, in capitals", () {
+      expect(
+        cardHolderName([
+          req(PayoutStatus.approved, 'Болд Эрдэнэ', 1),
+          req(PayoutStatus.pending, 'Болд Эрдэнэбат', 5),
+        ]),
+        'БОЛД ЭРДЭНЭБАТ',
+      );
+    });
+
+    test('a rejected request never names the card', () {
+      expect(
+        cardHolderName([
+          req(PayoutStatus.approved, 'Болд', 1),
+          req(PayoutStatus.rejected, 'Өөр хүн', 9),
+        ]),
+        'БОЛД',
+      );
+      expect(
+          cardHolderName([req(PayoutStatus.rejected, 'Өөр хүн', 9)]), isNull);
+    });
+
+    test('requests without a name are skipped', () {
+      expect(
+        cardHolderName([
+          req(PayoutStatus.approved, 'Сараа', 1),
+          req(PayoutStatus.pending, null, 3),
+        ]),
+        'САРАА',
+      );
+    });
+  });
+
+  group('isBeforeFirstPayout', () {
+    PayoutRequest req(PayoutStatus status) => PayoutRequest(
+          id: 1,
+          amount: 2000,
+          bank: 'Khan Bank',
+          status: status,
+          requestedAt: DateTime(2026, 10, 14),
+        );
+
+    test('a new, unverified viewer is before the first payout', () {
+      expect(isBeforeFirstPayout(isVerified: false, payouts: const []), isTrue);
+    });
+
+    /// Regression (2026-10-14): the notice came back after the first payout.
+    test('not any more once a request is waiting or was paid', () {
+      expect(
+        isBeforeFirstPayout(
+            isVerified: false, payouts: [req(PayoutStatus.pending)]),
+        isFalse,
+      );
+      expect(
+        isBeforeFirstPayout(
+            isVerified: false, payouts: [req(PayoutStatus.approved)]),
+        isFalse,
+      );
+    });
+
+    test('a verified viewer never is', () {
+      expect(isBeforeFirstPayout(isVerified: true, payouts: const []), isFalse);
+    });
+
+    test('only rejected requests keep it: the check happens again', () {
+      expect(
+        isBeforeFirstPayout(
+            isVerified: false, payouts: [req(PayoutStatus.rejected)]),
+        isTrue,
+      );
     });
   });
 
@@ -150,6 +446,20 @@ void main() {
       }
       expect(kBankLogoAssets.values.toSet(), hasLength(kPayoutBanks.length));
     });
+
+    // BankLogo draws the file edge to edge, so a raw download (odd size,
+    // transparent margins) would look smaller or clipped next to the others.
+    test('every logo file is a 256 px opaque square', () {
+      for (final path in kBankLogoAssets.values) {
+        final bytes = File(path).readAsBytesSync();
+        final header = ByteData.sublistView(bytes, 16, 26);
+        final width = header.getUint32(0);
+        final height = header.getUint32(4);
+        const rgbNoAlpha = 2;
+        expect((width, height), (256, 256), reason: path);
+        expect(header.getUint8(9), rgbNoAlpha, reason: '$path has alpha');
+      }
+    });
   });
 
   group('validators keep the original rules', () {
@@ -159,6 +469,8 @@ void main() {
       expect(validatePayoutAmount('999'), isNotNull);
       expect(validatePayoutAmount('1000'), isNull);
       expect(validatePayoutAmount('2000'), isNull);
+      expect(validatePayoutAmount('12,500'), isNull);
+      expect(validatePayoutAmount('999'), isNotNull);
     });
 
     test('account number: 8 or more characters', () {
@@ -172,13 +484,6 @@ void main() {
       expect(validateAccountName(null), isNotNull);
       expect(validateAccountName('  аб  '), isNotNull);
       expect(validateAccountName('Бат'), isNull);
-    });
-
-    test('national ID: exactly 10 characters', () {
-      expect(validateNationalId(null), isNotNull);
-      expect(validateNationalId('АА9999999'), isNotNull);
-      expect(validateNationalId('АА99999999'), isNull);
-      expect(validateNationalId('АА999999999'), isNotNull);
     });
   });
 }

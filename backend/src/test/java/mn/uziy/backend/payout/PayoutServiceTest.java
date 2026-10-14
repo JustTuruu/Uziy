@@ -54,7 +54,7 @@ class PayoutServiceTest {
     }
 
     private static CreatePayoutReq reqBody(double amount) {
-        return new CreatePayoutReq(amount, "Khan Bank", "5001234567", "БОЛД ЭРДЭНЭ", "УУ98761234");
+        return new CreatePayoutReq(amount, "Khan Bank", "5001234567", "БОЛД ЭРДЭНЭ");
     }
 
     private static PayoutEntity payout(long id, double amount, PayoutStatus status, boolean first) {
@@ -65,7 +65,6 @@ class PayoutServiceTest {
         p.setBank("Khan");
         p.setAccountNumber("1");
         p.setAccountName("X");
-        p.setNationalId("Y");
         p.setStatus(status);
         p.setFirstPayout(first);
         return p;

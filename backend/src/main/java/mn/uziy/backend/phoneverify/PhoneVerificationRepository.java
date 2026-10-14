@@ -17,15 +17,16 @@ public interface PhoneVerificationRepository extends JpaRepository<PhoneVerifica
     long countByPhoneNumberAndCreatedAtAfter(String phoneNumber, OffsetDateTime since);
 
     /**
-     * Marks a confirmed, unused check as used — in one conditional UPDATE, so two registrations racing with
+     * Marks a confirmed, unused check opened for {@code purpose} as used — in one conditional UPDATE, so two registrations racing with
      * the same id cannot both succeed. Returns 1 when this caller won, 0 otherwise.
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE PhoneVerificationEntity v SET v.claimed = true
-            WHERE v.id = :id AND v.phoneNumber = :phone AND v.claimed = false
+            WHERE v.id = :id AND v.phoneNumber = :phone AND v.purpose = :purpose AND v.claimed = false
               AND v.status = mn.uziy.backend.phoneverify.PhoneVerificationStatus.VERIFIED
               AND v.verifiedAt > :verifiedAfter""")
     int tryClaim(@Param("id") UUID id, @Param("phone") String phoneNumber,
+                 @Param("purpose") PhoneVerificationPurpose purpose,
                  @Param("verifiedAfter") OffsetDateTime verifiedAfter);
 }

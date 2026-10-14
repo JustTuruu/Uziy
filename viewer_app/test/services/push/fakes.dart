@@ -79,10 +79,13 @@ class FakeNotifier implements ForegroundNotifier {
 class FakeTarget implements PushNavigationTarget {
   final pushed = <(String, Object?)>[];
   int homes = 0;
+  final went = <String>[];
   final messages = <String>[];
 
   @override
   void push(String location, {Object? extra}) => pushed.add((location, extra));
+  @override
+  void go(String location) => went.add(location);
   @override
   void goHome() => homes++;
   @override

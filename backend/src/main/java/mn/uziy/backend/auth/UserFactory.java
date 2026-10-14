@@ -10,6 +10,8 @@ public class UserFactory {
 
     public UserEntity newViewer(RegisterViewerReq req, String passwordHash) {
         UserEntity user = base(req.phoneNumber(), passwordHash, Role.VIEWER);
+        user.setLastName(req.lastName().strip());
+        user.setFirstName(req.firstName().strip());
         user.setGender(req.gender());
         user.setBirthDate(req.birthDate());
         user.setCity(req.city());

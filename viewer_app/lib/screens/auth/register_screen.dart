@@ -26,6 +26,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _phoneCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
+  final _lastNameCtrl = TextEditingController();
+  final _firstNameCtrl = TextEditingController();
   final _cityCtrl = TextEditingController(text: 'Улаанбаатар');
   final _districtCtrl = TextEditingController();
   final _passFocus = FocusNode();
@@ -71,6 +73,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _passFocus.dispose();
     _phoneCtrl.dispose();
     _passCtrl.dispose();
+    _lastNameCtrl.dispose();
+    _firstNameCtrl.dispose();
     _cityCtrl.dispose();
     _districtCtrl.dispose();
     super.dispose();
@@ -112,7 +116,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _submit() async {
     if (!_attempted) setState(() => _attempted = true);
     if (!_formKey.currentState!.validate()) {
-      _scrollTo(_credentialsKey);
+      // Scroll to the first section that has a wrong field.
+      final credentialsOk =
+          AuthValidators.phone(_phoneCtrl.text, message: '') == null &&
+              AuthValidators.password(_passCtrl.text) == null;
+      _scrollTo(credentialsOk ? _aboutKey : _credentialsKey);
       return;
     }
     if (_gender == null || _birthDate == null) {
@@ -149,6 +157,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           draft: RegisterDraft(
             phone: phone,
             password: _passCtrl.text,
+            lastName: _lastNameCtrl.text.trim(),
+            firstName: _firstNameCtrl.text.trim(),
             gender: _gender!,
             birthDate: _birthDate!,
             city: _cityCtrl.text,
@@ -324,6 +334,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         title: 'Таны тухай',
                         subtitle: 'Таны мэдээлэл нууцлагдан хадгалагдана',
                         children: [
+                          const FieldLabel('Овог'),
+                          TextFormField(
+                            controller: _lastNameCtrl,
+                            textCapitalization: TextCapitalization.words,
+                            textInputAction: TextInputAction.next,
+                            autofillHints: const [AutofillHints.familyName],
+                            style: context.textStyles.body,
+                            decoration: const InputDecoration(
+                              prefixIcon: Icon(Icons.badge_outlined),
+                              hintText: 'Жишээ нь: Оюун-Эрдэнэ',
+                            ),
+                            validator: AuthValidators.lastName,
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          const FieldLabel('Нэр'),
+                          TextFormField(
+                            controller: _firstNameCtrl,
+                            textCapitalization: TextCapitalization.words,
+                            textInputAction: TextInputAction.done,
+                            autofillHints: const [AutofillHints.givenName],
+                            style: context.textStyles.body,
+                            decoration: const InputDecoration(
+                              prefixIcon: Icon(Icons.person_outline_rounded),
+                              hintText: 'Жишээ нь: Төрболд',
+                            ),
+                            validator: AuthValidators.firstName,
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
                           const FieldLabel('Хүйс'),
                           Row(
                             children: [
@@ -512,7 +550,7 @@ class _SubmitBar extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  AnimatedSize(
+                  ReducibleAnimatedSize(
                     duration: AppMotion.duration(context, AppDurations.normal),
                     curve: AppMotion.standard,
                     alignment: Alignment.bottomCenter,

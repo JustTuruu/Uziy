@@ -13,7 +13,14 @@ import {
   Users,
 } from "lucide-react";
 import { CampaignStatusBadge } from "@/components/campaign-status-badge";
-import { Button, Card, CardBody, CardHeader, PageHeader, StatCard } from "@uziy/ui";
+import {
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  PageHeader,
+  StatCard,
+} from "@uziy/ui";
 import {
   ApiError,
   auth,
@@ -104,12 +111,12 @@ export default function CompanyDashboard() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          label="Идэвхтэй кампани"
+          label="Идэвхтэй судалгаа"
           value={String(activeCount)}
           icon={<Play size={16} />}
         />
         <StatCard
-          label="Нийт кампани"
+          label="Нийт судалгаа"
           value={String(campaigns?.length ?? 0)}
           icon={<Users size={16} />}
         />

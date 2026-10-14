@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:viewer_app/screens/wallet/payout_request_screen.dart';
+import 'package:viewer_app/screens/wallet/wallet_logic.dart';
 import 'package:viewer_app/screens/wallet/wallet_widgets.dart';
 import 'package:viewer_app/widgets/ui.dart';
 
-// These tests only exercise the form UI and validation; none of them reaches
-// a valid submit, so no network request is made.
+import '../../support/fake_api.dart';
+
+// Most tests exercise the form UI and validation only; the submit test
+// answers through FakeApi.
 
 Future<void> pumpPayout(
   WidgetTester tester, {
   Size size = const Size(390, 844),
   double textScale = 1.0,
+  bool firstPayout = false,
 }) async {
   tester.view.physicalSize = size * 3;
   tester.view.devicePixelRatio = 3;
@@ -24,7 +28,7 @@ Future<void> pumpPayout(
         ),
         child: app!,
       ),
-      home: const PayoutRequestScreen(),
+      home: PayoutRequestScreen(firstPayout: firstPayout),
     ),
   );
   await tester.pumpAndSettle();
@@ -58,7 +62,7 @@ void main() {
     await pumpPayout(tester);
 
     expect(find.text('Мөнгө татах'), findsOneWidget); // app bar title
-    expect(_amountText(tester), '2000');
+    expect(_amountText(tester), '2,000');
     expect(
       tester.getSemantics(find.text('2,000 ₮')),
       isSemantics(isSelected: true),
@@ -75,28 +79,113 @@ void main() {
   testWidgets('first-payout info banner is shown without dev jargon', (
     tester,
   ) async {
-    await pumpPayout(tester);
+    await pumpPayout(tester, firstPayout: true);
     expect(find.byType(StatusBanner), findsOneWidget);
     expect(find.textContaining('заавал таарсан'), findsOneWidget);
     expect(find.textContaining('is_verified'), findsNothing);
+  });
+
+  /// Regression (2026-10-14): the notice came back after the first payout.
+  testWidgets('no first-payout banner unless it is the first payout',
+      (tester) async {
+    await pumpPayout(tester);
+    expect(find.text('Эхний таталт'), findsNothing);
+    expect(find.byType(StatusBanner), findsNothing);
   });
 
   testWidgets('quick amount chip fills the amount field', (tester) async {
     await pumpPayout(tester);
     await tester.tap(find.text('5,000 ₮'));
     await tester.pumpAndSettle();
-    expect(_amountText(tester), '5000');
+    expect(_amountText(tester), '5,000');
 
     await tester.tap(find.text('10,000 ₮'));
     await tester.pumpAndSettle();
-    expect(_amountText(tester), '10000');
+    expect(_amountText(tester), '10,000');
   });
 
   testWidgets('amount field accepts digits only', (tester) async {
     await pumpPayout(tester);
     await tester.enterText(_amountField, '12a3.4');
     await tester.pump();
-    expect(_amountText(tester), '1234');
+    expect(_amountText(tester), '1,234');
+  });
+
+  /// The user's request (2026-10-14): the amount must be typable by hand,
+  /// with the quick picks still there.
+  testWidgets('a typed amount is grouped and no chip is selected',
+      (tester) async {
+    final handle = tester.ensureSemantics();
+    await pumpPayout(tester);
+
+    await tester.enterText(_amountField, '12500');
+    await tester.pump();
+
+    expect(_amountText(tester), '12,500');
+    for (final chip in ['1,000 ₮', '2,000 ₮', '5,000 ₮', '10,000 ₮']) {
+      expect(
+          tester.getSemantics(find.text(chip)), isSemantics(isSelected: false));
+    }
+    expect(find.text(kQuickAmountsLabel), findsOneWidget);
+    expect(find.text(kPayoutAmountHelper), findsOneWidget);
+    handle.dispose();
+  });
+
+  testWidgets('typing a quick amount lights up its chip', (tester) async {
+    final handle = tester.ensureSemantics();
+    await pumpPayout(tester);
+
+    await tester.enterText(_amountField, '5000');
+    await tester.pump();
+
+    expect(tester.getSemantics(find.text('5,000 ₮')),
+        isSemantics(isSelected: true));
+    handle.dispose();
+  });
+
+  testWidgets('tapping the amount selects it so typing replaces it',
+      (tester) async {
+    await pumpPayout(tester);
+
+    await tester.tap(_amountField);
+    await tester.pump();
+
+    final controller = tester
+        .widget<EditableText>(
+          find.descendant(
+              of: _amountField, matching: find.byType(EditableText)),
+        )
+        .controller;
+    expect(controller.selection.start, 0);
+    expect(controller.selection.end, controller.text.length);
+  });
+
+  testWidgets('a typed, grouped amount is sent as a plain number',
+      (tester) async {
+    final api = FakeApi.install((_) => const FakeReply(200, {
+          'id': 1,
+          'amount': 12500,
+          'status': 'PENDING',
+        }));
+    await pumpPayout(tester);
+
+    await tester.enterText(_amountField, '12500');
+    await tester.enterText(_accountNumberField, '5001234567');
+    await tester.enterText(find.byType(TextFormField).at(2), 'БОЛД');
+    await _tapSubmit(tester);
+
+    final body = api.callsTo('/viewer/payouts').single.body as Map;
+    expect(body['amount'], 12500.0);
+  });
+
+  testWidgets('the amount field is a framed input', (tester) async {
+    await pumpPayout(tester);
+    final decorator = tester.widget<InputDecorator>(find.descendant(
+      of: _amountField,
+      matching: find.byType(InputDecorator),
+    ));
+    expect(decorator.decoration.enabledBorder, isA<OutlineInputBorder>());
+    expect(decorator.decoration.filled, isTrue);
   });
 
   testWidgets('tapping a bank tile selects it', (tester) async {
@@ -129,7 +218,6 @@ void main() {
       find.text('Дансны эзэмшигчийн нэрийг бүтэн оруулна уу'),
       findsOneWidget,
     );
-    expect(find.text('Регистрийн дугаар 10 тэмдэгттэй байна'), findsOneWidget);
     // Amount is prefilled with a valid 2,000.
     expect(find.text('Хамгийн бага дүн: 1,000 ₮'), findsNothing);
     // Still on the form: nothing was sent.
@@ -162,19 +250,12 @@ void main() {
     expect(find.text('Хамгийн бага дүн: 1,000 ₮'), findsNothing);
   });
 
-  testWidgets('national ID input stops at 10 characters', (tester) async {
+  /// The national ID is no longer asked for (owner, 2026-10-14).
+  testWidgets('the form asks only for amount, account number and name',
+      (tester) async {
     await pumpPayout(tester);
-    final idField = find.byType(TextFormField).at(3);
-    await tester.ensureVisible(idField);
-    await tester.enterText(idField, 'АА999999999999');
-    await tester.pump();
-    final text = tester
-        .widget<EditableText>(
-          find.descendant(of: idField, matching: find.byType(EditableText)),
-        )
-        .controller
-        .text;
-    expect(text.length, 10);
+    expect(find.byType(TextFormField), findsNWidgets(3));
+    expect(find.textContaining('Регистр'), findsNothing);
   });
 
   testWidgets('no overflow on iPhone SE with 1.3x text', (tester) async {

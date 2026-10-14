@@ -52,6 +52,14 @@ public class UserEntity {
     @Column(length = 50)
     private String district;
 
+    /** Овог (family name); null for companies and for viewers who registered before it was asked. */
+    @Column(name = "last_name", length = 60)
+    private String lastName;
+
+    /** Нэр (given name); null like {@link #lastName}. */
+    @Column(name = "first_name", length = 60)
+    private String firstName;
+
     @Column(nullable = false)
     private double balance = 0.0;
 
@@ -90,6 +98,12 @@ public class UserEntity {
 
     public @Nullable String getDistrict() { return district; }
     public void setDistrict(@Nullable String district) { this.district = district; }
+
+    public @Nullable String getLastName() { return lastName; }
+    public void setLastName(@Nullable String lastName) { this.lastName = lastName; }
+
+    public @Nullable String getFirstName() { return firstName; }
+    public void setFirstName(@Nullable String firstName) { this.firstName = firstName; }
 
     public double getBalance() { return balance; }
     public void setBalance(double balance) { this.balance = balance; }

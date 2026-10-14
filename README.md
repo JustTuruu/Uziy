@@ -461,7 +461,6 @@ erDiagram
         string bank
         string account_number
         string account_name
-        string national_id
         string status
         boolean is_first_payout
     }
@@ -484,7 +483,7 @@ On registration, viewers see this exact message (in Cyrillic Mongolian):
 > нэмэгдүүлэх боломжтой болно.
 
 Honesty is enforced at the **first payout**: the admin checks that the bank
-account name and national ID match the profile data. On match, `is_verified`
+account is in the viewer's own name (the national ID is no longer collected). On match, `is_verified`
 is set to `TRUE`. Fake profiles never reach cash.
 
 ### 2. Targeted home feed

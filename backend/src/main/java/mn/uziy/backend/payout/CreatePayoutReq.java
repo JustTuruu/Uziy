@@ -9,6 +9,5 @@ public record CreatePayoutReq(
         @Positive(message = PAYOUT_AMOUNT) double amount,
         @NotBlank(message = BANK_REQUIRED) String bank,
         @NotBlank(message = ACCOUNT_NUMBER_REQUIRED) String accountNumber,
-        @NotBlank(message = ACCOUNT_NAME_REQUIRED) String accountName,
-        @NotBlank(message = NATIONAL_ID_REQUIRED) String nationalId) {
+        @NotBlank(message = ACCOUNT_NAME_REQUIRED) String accountName) {
 }

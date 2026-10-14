@@ -23,9 +23,9 @@ import mn.uziy.backend.common.ConflictException;
 import mn.uziy.backend.common.NotFoundException;
 import mn.uziy.backend.common.TooManyRequestsException;
 import mn.uziy.backend.common.UnavailableException;
+import mn.uziy.backend.domain.Role;
+import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
-import mn.uziy.backend.otp.OtpCodeGenerator;
-import mn.uziy.backend.otp.OtpService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -35,9 +35,12 @@ class PhoneVerificationServiceTest {
     private static final Instant T0 = Instant.parse("2026-10-13T04:00:00Z");
     private static final UUID ID = UUID.fromString("11111111-2222-3333-4444-555555555555");
 
+    private static final PhoneVerificationPurpose REGISTER = PhoneVerificationPurpose.REGISTER;
+    private static final PhoneVerificationPurpose RESET = PhoneVerificationPurpose.PASSWORD_RESET;
+
     private final PhoneVerificationRepository verifications = mock(PhoneVerificationRepository.class);
     private final PhoneVerificationGateway gateway = mock(PhoneVerificationGateway.class);
-    private final OtpCodeGenerator codes = mock(OtpCodeGenerator.class);
+    private final VerificationCodeGenerator codes = mock(VerificationCodeGenerator.class);
     private final UserRepository users = mock(UserRepository.class);
     private final PhoneVerificationServiceImpl service = new PhoneVerificationServiceImpl(verifications, gateway,
             codes, users, new PhoneVerificationMapper(), Clock.fixed(T0, ZoneOffset.UTC));
@@ -75,11 +78,12 @@ class PhoneVerificationServiceTest {
         when(gateway.start(PHONE, "482916")).thenReturn(session());
         when(verifications.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        PhoneVerificationStartedRes res = service.start(PHONE);
+        PhoneVerificationStartedRes res = service.start(PHONE, REGISTER);
 
         ArgumentCaptor<PhoneVerificationEntity> saved = ArgumentCaptor.forClass(PhoneVerificationEntity.class);
         verify(verifications).save(saved.capture());
         assertThat(saved.getValue().getProviderSessionId()).isEqualTo("vmn-1");
+        assertThat(saved.getValue().getPurpose()).isEqualTo(REGISTER);
         assertThat(saved.getValue().getStatus()).isEqualTo(PhoneVerificationStatus.PENDING);
         assertThat(saved.getValue().getCreatedAt()).isEqualTo(at(T0));
         assertThat(res.verificationId()).isEqualTo(saved.getValue().getId());
@@ -93,7 +97,7 @@ class PhoneVerificationServiceTest {
     void startRefusesAPhoneThatAlreadyHasAnAccount() {
         when(users.existsByPhoneNumber(PHONE)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.start(PHONE))
+        assertThatThrownBy(() -> service.start(PHONE, REGISTER))
                 .isInstanceOf(ConflictException.class)
                 .hasMessage(PhoneVerificationService.PHONE_TAKEN);
         verifyNoInteractions(gateway);
@@ -105,9 +109,9 @@ class PhoneVerificationServiceTest {
         latest.setCreatedAt(at(T0.minus(PhoneVerificationServiceImpl.COOLDOWN).plusSeconds(1)));
         when(verifications.findFirstByPhoneNumberOrderByCreatedAtDesc(PHONE)).thenReturn(Optional.of(latest));
 
-        assertThatThrownBy(() -> service.start(PHONE))
+        assertThatThrownBy(() -> service.start(PHONE, REGISTER))
                 .isInstanceOf(TooManyRequestsException.class)
-                .hasMessage(OtpService.TOO_SOON);
+                .hasMessage(PhoneVerificationService.TOO_SOON);
         verifyNoInteractions(gateway);
     }
 
@@ -117,9 +121,9 @@ class PhoneVerificationServiceTest {
                 PHONE, at(T0.minus(PhoneVerificationServiceImpl.HOURLY_WINDOW))))
                 .thenReturn((long) PhoneVerificationServiceImpl.MAX_PER_HOUR);
 
-        assertThatThrownBy(() -> service.start(PHONE))
+        assertThatThrownBy(() -> service.start(PHONE, REGISTER))
                 .isInstanceOf(TooManyRequestsException.class)
-                .hasMessage(OtpService.TOO_MANY);
+                .hasMessage(PhoneVerificationService.TOO_MANY);
     }
 
     @Test
@@ -128,7 +132,7 @@ class PhoneVerificationServiceTest {
         when(gateway.start(anyString(), anyString()))
                 .thenThrow(new PhoneVerificationGatewayException("verify.mn create session answered 401"));
 
-        assertThatThrownBy(() -> service.start(PHONE))
+        assertThatThrownBy(() -> service.start(PHONE, REGISTER))
                 .isInstanceOf(UnavailableException.class)
                 .hasMessage(PhoneVerificationService.START_FAILED);
         verify(verifications, never()).save(any());
@@ -203,12 +207,12 @@ class PhoneVerificationServiceTest {
     @Test
     void claimSpendsAConfirmedCheckForThatPhone() {
         stored(row(PhoneVerificationStatus.VERIFIED, T0.plusSeconds(200)));
-        when(verifications.tryClaim(ID, PHONE, at(T0.minus(PhoneVerificationServiceImpl.CLAIM_WINDOW))))
+        when(verifications.tryClaim(ID, PHONE, REGISTER, at(T0.minus(PhoneVerificationServiceImpl.CLAIM_WINDOW))))
                 .thenReturn(1);
 
-        service.claim(ID, PHONE);
+        service.claim(ID, PHONE, REGISTER);
 
-        verify(verifications).tryClaim(ID, PHONE, at(T0.minus(PhoneVerificationServiceImpl.CLAIM_WINDOW)));
+        verify(verifications).tryClaim(ID, PHONE, REGISTER, at(T0.minus(PhoneVerificationServiceImpl.CLAIM_WINDOW)));
     }
 
     @Test
@@ -216,9 +220,9 @@ class PhoneVerificationServiceTest {
         PhoneVerificationEntity r = row(PhoneVerificationStatus.PENDING, T0.plusSeconds(200));
         stored(r);
         when(gateway.status("vmn-1")).thenReturn(PhoneVerificationStatus.VERIFIED);
-        when(verifications.tryClaim(eq(ID), eq(PHONE), any())).thenReturn(1);
+        when(verifications.tryClaim(eq(ID), eq(PHONE), eq(REGISTER), any())).thenReturn(1);
 
-        service.claim(ID, PHONE);
+        service.claim(ID, PHONE, REGISTER);
 
         assertThat(r.getStatus()).isEqualTo(PhoneVerificationStatus.VERIFIED);
     }
@@ -226,9 +230,9 @@ class PhoneVerificationServiceTest {
     @Test
     void claimRefusesAnUnconfirmedOrAlreadyUsedCheck() {
         stored(row(PhoneVerificationStatus.VERIFIED, T0.plusSeconds(200)));
-        when(verifications.tryClaim(eq(ID), eq(PHONE), any())).thenReturn(0);
+        when(verifications.tryClaim(eq(ID), eq(PHONE), eq(REGISTER), any())).thenReturn(0);
 
-        assertThatThrownBy(() -> service.claim(ID, PHONE))
+        assertThatThrownBy(() -> service.claim(ID, PHONE, REGISTER))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage(VerifiedPhoneClaim.NOT_VERIFIED);
     }
@@ -237,17 +241,92 @@ class PhoneVerificationServiceTest {
     void aCheckCannotRegisterAnotherPhone() {
         stored(row(PhoneVerificationStatus.VERIFIED, T0.plusSeconds(200)));
 
-        assertThatThrownBy(() -> service.claim(ID, "99000000"))
+        assertThatThrownBy(() -> service.claim(ID, "99000000", REGISTER))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage(VerifiedPhoneClaim.NOT_VERIFIED);
-        verify(verifications, never()).tryClaim(any(), any(), any());
+        verify(verifications, never()).tryClaim(any(), any(), any(), any());
     }
 
     @Test
     void anUnknownIdCannotBeClaimed() {
         when(verifications.findById(ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.claim(ID, PHONE)).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> service.claim(ID, PHONE, REGISTER)).isInstanceOf(BadRequestException.class);
+    }
+
+    // ------- password reset ----------------------------------------------
+
+    private void account(Role role) {
+        UserEntity u = new UserEntity();
+        u.setPhoneNumber(PHONE);
+        u.setRole(role);
+        when(users.findByPhoneNumber(PHONE)).thenReturn(Optional.of(u));
+    }
+
+    @Test
+    void aResetCheckIsOpenedForAViewersPhoneAndRemembersItsPurpose() {
+        account(Role.VIEWER);
+        when(codes.next()).thenReturn("482916");
+        when(gateway.start(PHONE, "482916")).thenReturn(session());
+        when(verifications.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.start(PHONE, RESET);
+
+        ArgumentCaptor<PhoneVerificationEntity> saved = ArgumentCaptor.forClass(PhoneVerificationEntity.class);
+        verify(verifications).save(saved.capture());
+        assertThat(saved.getValue().getPurpose()).isEqualTo(RESET);
+    }
+
+    @Test
+    void aResetForAPhoneWithoutAnAccountIs404BeforeTheUserPaysForAnSms() {
+        when(users.findByPhoneNumber(PHONE)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.start(PHONE, RESET))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage(PhoneVerificationService.ACCOUNT_NOT_FOUND);
+        verifyNoInteractions(gateway);
+        verify(verifications, never()).save(any());
+    }
+
+    @Test
+    void aResetForACompanyOrAdminPhoneIs404Too() {
+        account(Role.COMPANY);
+
+        assertThatThrownBy(() -> service.start(PHONE, RESET)).isInstanceOf(NotFoundException.class);
+        verifyNoInteractions(gateway);
+    }
+
+    @Test
+    void aRegisteredPhoneMayStartAResetEvenThoughItCannotRegisterAgain() {
+        account(Role.VIEWER);
+        when(users.existsByPhoneNumber(PHONE)).thenReturn(true);
+        when(codes.next()).thenReturn("482916");
+        when(gateway.start(PHONE, "482916")).thenReturn(session());
+        when(verifications.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThat(service.start(PHONE, RESET).verificationId()).isNotNull();
+    }
+
+    @Test
+    void aCheckOpenedToRegisterCannotResetAPassword() {
+        stored(row(PhoneVerificationStatus.VERIFIED, T0.plusSeconds(200))); // purpose REGISTER
+
+        assertThatThrownBy(() -> service.claim(ID, PHONE, RESET))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage(VerifiedPhoneClaim.NOT_VERIFIED);
+        verify(verifications, never()).tryClaim(any(), any(), any(), any());
+    }
+
+    @Test
+    void aResetCheckIsClaimedForItsOwnPurpose() {
+        PhoneVerificationEntity r = row(PhoneVerificationStatus.VERIFIED, T0.plusSeconds(200));
+        r.setPurpose(RESET);
+        stored(r);
+        when(verifications.tryClaim(eq(ID), eq(PHONE), eq(RESET), any())).thenReturn(1);
+
+        service.claim(ID, PHONE, RESET);
+
+        verify(verifications).tryClaim(eq(ID), eq(PHONE), eq(RESET), any());
     }
 
     @Test

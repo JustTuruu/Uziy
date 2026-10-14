@@ -864,5 +864,23 @@ void main() {
       expect(find.bySemanticsLabel('Uziy'), findsOneWidget);
       handle.dispose();
     });
+
+    for (final dark in [false, true]) {
+      testWidgets(
+          'UziyWordmark tints the mark and name with the text colour '
+          '(${dark ? 'dark' : 'light'})', (tester) async {
+        await tester.pumpWidget(MaterialApp(
+          theme: dark ? AppTheme.dark() : AppTheme.light(),
+          home: const Scaffold(body: Center(child: UziyWordmark())),
+        ));
+        final expected = AppPalette(dark).textPrimary;
+        final mark = tester.widget<Image>(find.byType(Image));
+        expect(mark.color, expected);
+        expect(mark.colorBlendMode, BlendMode.srcIn);
+        final name = tester.widget<Text>(find.text(UziyWordmark.name));
+        expect(name.style?.color, expected);
+        expect(tester.getSize(find.byType(Image)).height, 28);
+      });
+    }
   });
 }

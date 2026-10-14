@@ -28,6 +28,27 @@ abstract final class AuthValidators {
 
   static String? password(String? v) =>
       (v == null || v.length < minPasswordLength) ? passwordTooShort : null;
+
+  /// Same rule and wording as the backend (`RegisterViewerReq.NAME_PATTERN`,
+  /// `FieldMessages`): letters of any alphabet plus the spaces, hyphens and
+  /// apostrophes double names use ("Оюун-Эрдэнэ"); starts with a letter.
+  static final RegExp _name = RegExp(r"^\p{L}[\p{L} '\-]*$", unicode: true);
+  static const int nameMaxLength = 60;
+  static const String lastNameRequired = 'Овгоо оруулна уу';
+  static const String firstNameRequired = 'Нэрээ оруулна уу';
+  static const String nameLetters = 'Овог, нэрт зөвхөн үсэг ашиглана уу';
+  static const String nameTooLong = 'Овог, нэр хэт урт байна';
+
+  static String? lastName(String? v) => _personName(v, lastNameRequired);
+  static String? firstName(String? v) => _personName(v, firstNameRequired);
+
+  static String? _personName(String? v, String required) {
+    final name = (v ?? '').trim();
+    if (name.isEmpty) return required;
+    if (name.length > nameMaxLength) return nameTooLong;
+    if (!_name.hasMatch(name)) return nameLetters;
+    return null;
+  }
 }
 
 final RegExp _nonDigits = RegExp(r'\D');
@@ -497,15 +518,11 @@ class InlineFieldError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final child = show ? FieldError(message) : const FillWidth();
-    // Reduce-motion: no AnimatedSize at all. With a zero duration it
-    // re-dirties itself in the middle of its own layout and throws.
-    if (AppMotion.reduced(context)) return child;
-    return AnimatedSize(
+    return ReducibleAnimatedSize(
       duration: AppDurations.normal,
       curve: AppMotion.standard,
       alignment: Alignment.topCenter,
-      child: child,
+      child: show ? FieldError(message) : const FillWidth(),
     );
   }
 }

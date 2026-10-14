@@ -29,6 +29,7 @@ Future<void> main() async {
     target: RouterPushTarget(appRouter),
     videoRoute: Routes.video,
     surveyRoute: Routes.survey,
+    walletRoute: Routes.wallet,
   );
   runApp(const ProviderScope(child: ViewerApp()));
 }

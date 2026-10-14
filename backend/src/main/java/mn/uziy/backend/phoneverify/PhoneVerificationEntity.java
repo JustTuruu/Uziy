@@ -10,7 +10,7 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
-/** One provider session checking a phone number before registration. */
+/** One provider session checking a phone number, before registration or a password reset. */
 @Entity
 @Table(name = "phone_verifications")
 public class PhoneVerificationEntity {
@@ -21,6 +21,10 @@ public class PhoneVerificationEntity {
 
     @Column(name = "phone_number", nullable = false)
     private String phoneNumber = "";
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PhoneVerificationPurpose purpose = PhoneVerificationPurpose.REGISTER;
 
     @Column(name = "provider_session_id", nullable = false)
     private String providerSessionId = "";
@@ -49,6 +53,9 @@ public class PhoneVerificationEntity {
 
     public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+
+    public PhoneVerificationPurpose getPurpose() { return purpose; }
+    public void setPurpose(PhoneVerificationPurpose purpose) { this.purpose = purpose; }
 
     public String getProviderSessionId() { return providerSessionId; }
     public void setProviderSessionId(String providerSessionId) { this.providerSessionId = providerSessionId; }

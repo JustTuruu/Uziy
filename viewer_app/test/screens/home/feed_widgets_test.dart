@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:viewer_app/models/campaign.dart';
 import 'package:viewer_app/screens/home/feed_logic.dart';
 import 'package:viewer_app/screens/home/feed_widgets.dart';
+import 'package:viewer_app/widgets/appearance_settings.dart';
 import 'package:viewer_app/widgets/ui.dart';
 
 const _video = Campaign(
@@ -342,6 +343,10 @@ void main() {
       expect(find.text('Өглөөний мэнд'), findsOneWidget);
       expect(find.text(FeedHeader.title), findsOneWidget);
       expect(find.text('700 ₮'), findsOneWidget);
+      expect(find.byType(UziyWordmark), findsOneWidget);
+      expect(find.byType(ThemeModeButton), findsOneWidget);
+      expect(find.byType(TagChip), findsNothing,
+          reason: 'the tagline chip was removed from the header');
 
       await tester.tap(find.byType(BalancePill));
       expect(taps, 1);

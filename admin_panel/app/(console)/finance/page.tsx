@@ -56,7 +56,7 @@ export default function FinancePage() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <StatCard
-          label="Идэвхтэй кампани"
+          label="Идэвхтэй судалгаа"
           value={stats ? String(stats.activeCampaigns) : "—"}
           icon={<TrendingUp size={16} />}
           hint="Одоо хэрэглэгчдэд харагдаж байгаа"

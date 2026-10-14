@@ -137,6 +137,22 @@ abstract final class AppGradients {
     stops: [0.0, 0.45, 1.0],
   );
 
+  /// The wallet card: deep forest like a premium bank card. Fixed artwork,
+  /// the same in light and dark mode (white ink on it).
+  static const LinearGradient walletCard = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF1F7356), Color(0xFF145C45), Color(0xFF0B3527)],
+    stops: [0.0, 0.42, 1.0],
+  );
+
+  /// EMV chip on the wallet card.
+  static const LinearGradient cardChip = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFFF6E2A6), Color(0xFFD9B565), Color(0xFFB8913F)],
+  );
+
   /// Tinted translucent gold for highlighted (non-CTA) panels.
   static const LinearGradient goldSoft = LinearGradient(
     begin: Alignment.topLeft,

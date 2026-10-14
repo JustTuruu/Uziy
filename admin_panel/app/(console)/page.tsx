@@ -99,7 +99,7 @@ export default function AdminDashboard() {
           icon={<Users size={16} />}
         />
         <StatCard
-          label="Идэвхтэй кампани"
+          label="Идэвхтэй судалгаа"
           value={formatNumber(stats.activeCampaigns)}
           icon={<TrendingUp size={16} />}
         />
@@ -128,7 +128,7 @@ export default function AdminDashboard() {
         <Card>
           <CardHeader
             title="Хүлээгдэж буй мөнгө татах хүсэлт"
-            description="Дансны нэрийг регистртэй тулгана"
+            description="Дансны эзэмшигчийн нэрийг шалгаж батална"
             action={
               <Link
                 href="/payouts"
@@ -188,7 +188,7 @@ export default function AdminDashboard() {
           <CardBody className="space-y-3">
             {pendingCampaigns.length === 0 && (
               <div className="text-sm text-[var(--color-text-muted)]">
-                Хүлээгдэж буй кампани байхгүй.
+                Хүлээгдэж буй суртчилгаа байхгүй.
               </div>
             )}
             {pendingCampaigns.slice(0, 4).map((c) => (

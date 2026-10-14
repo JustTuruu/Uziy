@@ -27,6 +27,11 @@ ThemeController _controller(_Store s) =>
     ThemeController(read: s.read, write: s.write);
 
 void main() {
+  test('a one-tap toggle goes to the opposite of the look on screen', () {
+    expect(ThemeController.oppositeOf(Brightness.light), ThemeMode.dark);
+    expect(ThemeController.oppositeOf(Brightness.dark), ThemeMode.light);
+  });
+
   test('starts by following the device', () {
     expect(_controller(_Store()).mode, ThemeMode.system);
   });

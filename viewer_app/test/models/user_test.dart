@@ -23,6 +23,29 @@ void main() {
       expect(u.city, 'Улаанбаатар');
       expect(u.balance, 3400.0);
       expect(u.isVerified, isTrue);
+      expect(u.lastName, isNull, reason: 'older accounts have no name');
+    });
+
+    test('reads the registered овог / нэр, blank as none', () {
+      final u = AppUser.fromJson({
+        'id': 1,
+        'phoneNumber': '88112233',
+        'role': 'VIEWER',
+        'lastName': ' Оюун-Эрдэнэ ',
+        'firstName': 'Төрболд',
+      });
+      expect(u.lastName, 'Оюун-Эрдэнэ');
+      expect(u.firstName, 'Төрболд');
+
+      final blank = AppUser.fromJson({
+        'id': 1,
+        'phoneNumber': '88112233',
+        'role': 'VIEWER',
+        'lastName': '  ',
+        'firstName': '',
+      });
+      expect(blank.lastName, isNull);
+      expect(blank.firstName, isNull);
     });
 
     test('handles missing optional fields (COMPANY account)', () {

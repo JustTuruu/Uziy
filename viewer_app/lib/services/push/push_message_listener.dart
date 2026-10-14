@@ -56,7 +56,7 @@ class PushMessageListener {
 
   void _onTap(PushMessage m) => _open(_parser.parse(m));
 
-  void _open(CampaignPush? push) {
+  void _open(PushLink? push) {
     if (push != null) _navigator.open(push);
   }
 }

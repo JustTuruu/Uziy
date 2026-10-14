@@ -31,72 +31,40 @@ void main() {
     ApiService.instance.setAuthToken(null);
   });
 
-  group('requestOtp', () {
-    test('posts the phone and the backend purpose name', () async {
-      final api = FakeApi.install((_) => const FakeReply(204));
-
-      await AuthService.instance.requestOtp(
-        phone: '88112233',
-        purpose: OtpPurpose.passwordReset,
-      );
-
-      expect(api.calls.single.path, '/auth/otp/request');
-      expect(api.calls.single.body, {
-        'phoneNumber': '88112233',
-        'purpose': 'PASSWORD_RESET',
-      });
-    });
-
-    test('asking too soon (429) carries the backend message', () async {
-      FakeApi.install(
-        (_) => const FakeReply(
-            429, {'message': 'Түр хүлээгээд дахин оролдоно уу'}),
-      );
-
-      final e = await _catch(
-        () => AuthService.instance.requestOtp(
-          phone: '88112233',
-          purpose: OtpPurpose.passwordReset,
-        ),
-      );
-
-      expect(e.statusCode, 429);
-      expect(e.message, 'Түр хүлээгээд дахин оролдоно уу');
-    });
-  });
-
   group('resetPassword', () {
-    test('posts phone, code and the new password', () async {
+    test('posts the phone, the confirmed check and the new password',
+        () async {
       final api = FakeApi.install((_) => const FakeReply(204));
 
       await AuthService.instance.resetPassword(
         phone: '88112233',
-        code: '123456',
+        verificationId: 'check-9',
         newPassword: 'new-password',
       );
 
       expect(api.calls.single.path, '/auth/password/reset');
       expect(api.calls.single.body, {
         'phoneNumber': '88112233',
-        'code': '123456',
+        'verificationId': 'check-9',
         'newPassword': 'new-password',
       });
     });
 
-    test('a wrong code (400) becomes an AuthException with the message',
+    test('an unusable check (400) becomes an AuthException with the message',
         () async {
-      FakeApi.install((_) => const FakeReply(400, {'message': 'Код буруу'}));
+      FakeApi.install((_) => const FakeReply(
+          400, {'message': 'Утасны дугаар баталгаажаагүй байна'}));
 
       final e = await _catch(
         () => AuthService.instance.resetPassword(
           phone: '88112233',
-          code: '000000',
+          verificationId: 'check-9',
           newPassword: 'new-password',
         ),
       );
 
       expect(e.statusCode, 400);
-      expect(e.message, 'Код буруу');
+      expect(e.message, 'Утасны дугаар баталгаажаагүй байна');
     });
   });
 
@@ -118,6 +86,8 @@ void main() {
       await AuthService.instance.register(
         phone: '88112233',
         password: 'password1',
+        lastName: 'Оюун-Эрдэнэ',
+        firstName: 'Төрболд',
         gender: Gender.male,
         birthDate: DateTime(2000, 1, 2),
         city: 'Улаанбаатар',
@@ -130,6 +100,8 @@ void main() {
       expect(body.containsKey('otpCode'), isFalse);
       expect(body['birthDate'], '2000-01-02');
       expect(body['gender'], 'MALE');
+      expect(body['lastName'], 'Оюун-Эрдэнэ');
+      expect(body['firstName'], 'Төрболд');
     });
   });
 }

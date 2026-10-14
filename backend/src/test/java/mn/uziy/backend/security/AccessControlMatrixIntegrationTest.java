@@ -121,8 +121,8 @@ class AccessControlMatrixIntegrationTest extends AbstractApiIntegrationTest {
         long admin = admin();
         long ownCampaign = activeCampaign(company);
         long payout = jdbc.queryForObject("""
-                INSERT INTO payout_requests (user_id, amount, bank, account_number, account_name, national_id)
-                VALUES (?, 500, 'Khan Bank', '1', 'A', 'AA00000000') RETURNING id""", Long.class, viewer);
+                INSERT INTO payout_requests (user_id, amount, bank, account_number, account_name)
+                VALUES (?, 500, 'Khan Bank', '1', 'A') RETURNING id""", Long.class, viewer);
         var tokens = java.util.Map.of("VIEWER", viewer, "COMPANY", company, "ADMIN", admin);
         return protectedEndpoints(ownCampaign, payout).stream().map(e -> DynamicTest.dynamicTest(e.toString(), () -> {
             int status = statusOf(e, bearer(tokens.get(e.role())));
@@ -137,7 +137,8 @@ class AccessControlMatrixIntegrationTest extends AbstractApiIntegrationTest {
                 ep(HttpMethod.GET, "/platform-settings", "-"),
                 ep(HttpMethod.GET, "/public/feed", "-"),
                 ep(HttpMethod.GET, "/actuator/health", "-"),
-                new Endpoint(HttpMethod.POST, "/auth/otp/request", "-", "{\"phoneNumber\":\"12345678\",\"purpose\":\"PASSWORD_RESET\"}"),
+                new Endpoint(HttpMethod.POST, "/auth/password/reset", "-", "{\"phoneNumber\":\"" + freshPhone()
+                        + "\",\"verificationId\":\"" + java.util.UUID.randomUUID() + "\",\"newPassword\":\"secret12\"}"),
                 new Endpoint(HttpMethod.POST, "/auth/phone-verifications", "-", "{\"phoneNumber\":\"" + freshPhone() + "\"}"),
                 ep(HttpMethod.GET, "/auth/phone-verifications/" + java.util.UUID.randomUUID(), "-"),
                 ep(HttpMethod.POST, "/auth/phone-verifications/simulated-sms/unknown", "-"));

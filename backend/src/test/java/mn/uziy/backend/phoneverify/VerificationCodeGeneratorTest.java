@@ -1,4 +1,4 @@
-package mn.uziy.backend.otp;
+package mn.uziy.backend.phoneverify;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -6,14 +6,14 @@ import java.util.HashSet;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
-class OtpCodeGeneratorTest {
+class VerificationCodeGeneratorTest {
 
-    private final OtpCodeGenerator generator = new OtpCodeGenerator();
+    private final VerificationCodeGenerator generator = new VerificationCodeGenerator();
 
     @Test
     void codesAreAlwaysSixDigitsIncludingLeadingZeros() {
         for (int i = 0; i < 2_000; i++) {
-            assertThat(generator.next()).matches("\\d{" + OtpCodeGenerator.LENGTH + "}");
+            assertThat(generator.next()).matches("\\d{" + VerificationCodeGenerator.LENGTH + "}");
         }
     }
 

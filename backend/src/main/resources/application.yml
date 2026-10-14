@@ -49,14 +49,8 @@ uziy:
     # service-account JSON, otherwise startup fails.
     enabled: ${PUSH_ENABLED:false}
     credentials-path: ${FCM_CREDENTIALS_PATH:}
-  otp:
-    # Password-reset codes (registration uses phone-verification below).
-    # logging -> one-time codes are only written to the log (development).
-    # A real SMS channel = a new OtpSender @Component selected by this value; with
-    # "logging" left on in production nobody receives a code and nobody can register.
-    sender: ${OTP_SENDER:logging}
   phone-verification:
-    # Registration proves the phone: the user texts a 6-digit code FROM it to verify.mn's 144773.
+    # Registration and password reset prove the phone: the user texts a 6-digit code FROM it to verify.mn's 144773.
     # simulated -> nothing is texted; a check is verified only when a developer runs the curl the log prints (development).
     # verifymn  -> verify.mn; VERIFY_MN_API_KEY (Developer Console) is required, startup fails without it.
     provider: ${PHONE_VERIFICATION_PROVIDER:simulated}

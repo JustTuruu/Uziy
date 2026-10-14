@@ -1,11 +1,11 @@
-package mn.uziy.backend.otp;
+package mn.uziy.backend.phoneverify;
 
 import java.security.SecureRandom;
 import org.springframework.stereotype.Component;
 
-/** Draws uniformly random zero-padded numeric codes from a cryptographic source. */
+/** The code the user texts to the short code. Draws uniformly random zero-padded numeric codes from a cryptographic source. */
 @Component
-public class OtpCodeGenerator {
+public class VerificationCodeGenerator {
 
     public static final int LENGTH = 6;
     private static final int BOUND = 1_000_000;

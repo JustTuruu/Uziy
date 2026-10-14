@@ -110,7 +110,7 @@ class PhoneVerificationFlowIntegrationTest {
 
     private ResultActions register(String phone, String verificationId) throws Exception {
         return json("/auth/register/viewer", """
-                {"phoneNumber":"%s","password":"password1","gender":"FEMALE","birthDate":"2000-01-01",
+                {"phoneNumber":"%s","password":"password1","lastName":"Бат","firstName":"Болд","gender":"FEMALE","birthDate":"2000-01-01",
                  "city":"Улаанбаатар","verificationId":"%s"}""".formatted(phone, verificationId));
     }
 
@@ -125,7 +125,9 @@ class PhoneVerificationFlowIntegrationTest {
         script.byPhone.put(phone, PhoneVerificationStatus.VERIFIED);
         check(id).andExpect(jsonPath("$.status").value("VERIFIED"));
 
-        register(phone, id).andExpect(status().isCreated());
+        register(phone, id).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.user.lastName").value("Бат"))
+                .andExpect(jsonPath("$.user.firstName").value("Болд"));
     }
 
     @Test
@@ -187,7 +189,7 @@ class PhoneVerificationFlowIntegrationTest {
     @Test
     void registeringWithoutACheckIsRefused() throws Exception {
         json("/auth/register/viewer", """
-                {"phoneNumber":"71000008","password":"password1","gender":"FEMALE","birthDate":"2000-01-01",
+                {"phoneNumber":"71000008","password":"password1","lastName":"Бат","firstName":"Болд","gender":"FEMALE","birthDate":"2000-01-01",
                  "city":"Улаанбаатар"}""").andExpect(status().isBadRequest());
     }
 }

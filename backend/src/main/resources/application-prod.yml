@@ -6,8 +6,6 @@ uziy:
     secret: ${JWT_SECRET}
   payments:
     simulated: false
-  otp:
-    sender: ${OTP_SENDER}
   phone-verification:
     provider: ${PHONE_VERIFICATION_PROVIDER}
     verify-mn:

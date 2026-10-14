@@ -80,8 +80,7 @@ export default function PayoutsPage() {
               Хэрхэн шалгах вэ
             </div>
             <div className="mt-1 text-[var(--color-text-primary)]">
-              Дансны эзэмшигчийн нэр болон регистр нь хэрэглэгчийн бүртгэлтэй
-              мэдээлэлтэй тохирч байвал <b>Батлах</b>. Тохирохгүй тохиолдолд{" "}
+              Данс хэрэглэгчийн өөрийн нэр дээр байгаа бол <b>Батлах</b>. Тохирохгүй тохиолдолд{" "}
               <b>Татгалзах</b> сонгож, шалтгааныг зааж өгнө. Эхний удаагийн
               баталгаажсан таталтад хэрэглэгчийн <b>is_verified = TRUE</b>{" "}
               болно. Мөнгө шилжүүлэх ажиллагаа одоохондоо гараар хийгдэнэ.
@@ -116,7 +115,6 @@ export default function PayoutsPage() {
                 <tr className="border-b border-[var(--color-divider)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
                   <th className="px-5 py-3 font-semibold">Хэрэглэгч</th>
                   <th className="px-5 py-3 font-semibold">Данс</th>
-                  <th className="px-5 py-3 font-semibold">Регистр</th>
                   <th className="px-5 py-3 font-semibold text-right">Дүн</th>
                   <th className="px-5 py-3 font-semibold text-right">Үйлдэл</th>
                 </tr>
@@ -125,7 +123,7 @@ export default function PayoutsPage() {
                 {pending.length === 0 && (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={4}
                       className="px-5 py-10 text-center text-sm text-[var(--color-text-muted)]"
                     >
                       Хүлээгдэж буй хүсэлт байхгүй.
@@ -155,9 +153,6 @@ export default function PayoutsPage() {
                       <div className="text-xs text-[var(--color-text-muted)]">
                         {p.accountNumber}
                       </div>
-                    </td>
-                    <td className="px-5 py-4 font-mono text-[var(--color-text-primary)]">
-                      {p.nationalId}
                     </td>
                     <td className="px-5 py-4 text-right font-mono text-lg font-bold text-[var(--color-primary)]">
                       {formatTugrik(p.amount)}

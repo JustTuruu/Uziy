@@ -17,6 +17,8 @@ public class MeMapper {
                 u.getCity(),
                 u.getBalance(),
                 u.isVerified(),
-                u.getCompanyName());
+                u.getCompanyName(),
+                u.getLastName(),
+                u.getFirstName());
     }
 }

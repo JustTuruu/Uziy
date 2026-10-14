@@ -15,7 +15,7 @@ class UserFactoryTest {
     @Test
     void buildsViewerWithProfileFields() {
         UserEntity u = factory.newViewer(new RegisterViewerReq(
-                "77000001", "pw", Gender.FEMALE, LocalDate.of(2000, 5, 5), "Дархан", "1-р хороо", java.util.UUID.randomUUID()), "hash");
+                "77000001", "pw", "Бат", "Болд", Gender.FEMALE, LocalDate.of(2000, 5, 5), "Дархан", "1-р хороо", java.util.UUID.randomUUID()), "hash");
         assertThat(u.getRole()).isEqualTo(Role.VIEWER);
         assertThat(u.getPhoneNumber()).isEqualTo("77000001");
         assertThat(u.getPasswordHash()).isEqualTo("hash");
@@ -23,6 +23,16 @@ class UserFactoryTest {
         assertThat(u.getBirthDate()).isEqualTo(LocalDate.of(2000, 5, 5));
         assertThat(u.getCity()).isEqualTo("Дархан");
         assertThat(u.getDistrict()).isEqualTo("1-р хороо");
+        assertThat(u.getLastName()).isEqualTo("Бат");
+        assertThat(u.getFirstName()).isEqualTo("Болд");
+    }
+
+    @Test
+    void storesTheNamesWithoutSurroundingSpaces() {
+        UserEntity u = factory.newViewer(new RegisterViewerReq("77000001", "password1", "  Оюун-Эрдэнэ ",
+                " Төрболд  ", Gender.MALE, LocalDate.of(2000, 5, 5), "Дархан", java.util.UUID.randomUUID()), "hash");
+        assertThat(u.getLastName()).isEqualTo("Оюун-Эрдэнэ");
+        assertThat(u.getFirstName()).isEqualTo("Төрболд");
     }
 
     @Test

@@ -607,30 +607,28 @@ verify.mn's short code **144773** (mobile-originated SMS; the user's operator ch
 - **Callback** (verify.mn → us) is not implemented; add a `GET` route that only triggers a status check, and
   whitelist 3.34.8.248 / 13.124.219.192, if push-speed confirmation is ever wanted.
 
-### One-time codes (OTP) (added 2026-10-07)
+### Password reset — verify.mn (2026-10-14; replaced the 2026-10-07 OTP codes)
 
-Used to **reset a forgotten password** (registration used them until 2026-10-13 — see verify.mn above; the
-`REGISTER` purpose is gone); the code goes to the account's phone number (accounts are phone-based).
-- **Backend** (`otp/`): `POST /auth/otp/request {phoneNumber, purpose: PASSWORD_RESET}` → 204;
-  `POST /auth/password/reset {phoneNumber, code,
-  newPassword}` → 204 (viewers only). Table `otp_codes` (V7) keeps only a bcrypt hash. Rules in
-  `OtpServiceImpl`: 6 digits, 5 min TTL, 60 s cool-down, 5 requests/hour, 5 wrong guesses kill the code
-  (`noRollbackFor` so the count survives the failed call), only the newest code is valid. A password
-  reset for an unknown phone answers 204 and sends nothing. 429 is the new `TooManyRequestsException`.
-- **Sending** is `OtpSender` (Strategy). Only `LoggingOtpSender` exists (`uziy.otp.sender=logging`,
-  env `OTP_SENDER`): **the code is written to the backend log and nothing is texted** — a real SMS
-  gateway sender must be added before release.
-- **Flutter** (`screens/auth/`): login's 'Нууц үг мартсан?' → `ForgotPasswordScreen` (`/forgot`) → `ResetPasswordScreen`
-  (`/forgot/reset`). Shared pieces: `widgets/otp_input.dart` (`OtpInput`: 6 boxes over one hidden
-  numeric field; no `LayoutBuilder`, it must work inside `SliverFillRemaining`), `otp_widgets.dart`
-  (`ResendCooldown` mixin, `OtpHeader`, `ResendCodeButton`), `otp_logic.dart`. Test helper:
-  `test/support/fake_api.dart`.
-- **Done state (2026-10-12)**: when every digit is typed `OtpInput` runs one 1.1 s sequence
-  (`_done` controller): the boxes slide together into the centre (`FractionalTranslation`, digits
-  travel with them), `OtpDoneBadge` pops up, then `CheckPainter` strokes the check left to right
-  (`PathMetric.extractPath`). `hasError` or clearing the code reverses it; reduce-motion jumps to the end.
-  Used on the password-reset screen (the widget owns it).
-- Company registration (`/auth/register/company`) is unchanged and has no OTP.
+A forgotten password is proved exactly like registration: the viewer **texts a code FROM the phone** to 144773.
+The old OTP path (`otp/` package, `otp_codes` table, `LoggingOtpSender`, `POST /auth/otp/request`, `OTP_SENDER`) is
+gone — it only ever wrote codes to the server log.
+- **Backend**: `phone_verifications.purpose` (`REGISTER` | `PASSWORD_RESET`, V12; V12 also drops `otp_codes`).
+  `POST /auth/phone-verifications {phoneNumber, purpose?}` — `purpose` defaults to `REGISTER`; REGISTER → 409 for a
+  taken phone, PASSWORD_RESET → **404 'Энэ дугаараар бүртгэл олдсонгүй…' for a phone with no viewer account, before
+  any SMS** (owner's choice: registration already reveals taken numbers, and a stranger must not pay 150 ₮ for
+  nothing). `VerifiedPhoneClaim.claim(id, phone, purpose)` — a check is spent only for its own purpose (`tryClaim`
+  matches `purpose`). `passwordreset/`: `POST /auth/password/reset {phoneNumber, verificationId, newPassword}` → 204;
+  `PasswordResetServiceImpl` (viewers only, one transaction) also clears the login lock. The code generator moved to
+  `phoneverify/VerificationCodeGenerator`. Existing JWTs stay valid after a reset (no token revocation yet).
+  Tests: `PasswordResetFlowIntegrationTest` (reuses the scripted provider of `PhoneVerificationFlowIntegrationTest`).
+- **Flutter**: login 'Нууц үг мартсан?' → `ForgotPasswordScreen` (`/forgot`, opens a PASSWORD_RESET check) →
+  `PhoneVerifyScreen.passwordReset` (`/forgot/verify`, extra `PendingPasswordReset`, `models/password_reset.dart`) →
+  on VERIFIED `ResetPasswordScreen` (`/forgot/reset`: new password only; a 400 offers 'Дахин эхлэх'). The verify page's
+  behaviour per purpose is the sealed `PhoneCheckGoal` (`RegisterGoal` | `PasswordResetGoal`). `OtpInput`,
+  `otp_logic.dart` and the resend timer were removed; `otp_widgets.dart` keeps `OtpHeader` / `OtpErrorText`.
+
+### Auth screens
+
 - **Phone entry (2026-10-14, replaced the 2026-10-12 slotted `BigPhoneField`)**: login, register and
   forgot-password all use `PhoneField` (`auth_widgets.dart`; register wraps it in `PhoneNumberSection`: heading
   'Утасны дугаар' + one helper line). It is an ordinary `TextFormField` built exactly like `PasswordField` (same
@@ -662,6 +660,12 @@ already completed).
   `PushService` facade (permission asked on reaching Home, token register/refresh, unregister on
   logout), `PushNavigator` opens the video/survey screen. Firebase init failure ⇒ push silently
   off, app unaffected (no `google-services.json` / `GoogleService-Info.plist` are committed).
+- **Payout decisions are pushed too (2026-10-14)**: `PayoutPushNotifier` (Observer on `PayoutDecided`, @Async,
+  AFTER_COMMIT, never fails the decision) sends to every device of that viewer (`DeviceTokenRepository.findTokensByUserId`).
+  `PushMessageFactory.payoutDecided`: 'Мөнгө татах хүсэлт батлагдлаа' / '… татгалзагдлаа', body with amount + bank or
+  the refund + reason, data `{type: PAYOUT, payoutId, status}`. Flutter: `PushMessageParser` returns a sealed
+  `PushLink` (`CampaignPush` | `PayoutPush`); `PushNavigator` opens the wallet for a payout (`walletRoute`,
+  `PushNavigationTarget.go`). The Android channel id stays `campaigns`, its name is now 'Uziy мэдэгдэл'.
 - Owner setup steps: `docs/PUSH_SETUP.md`. Placeholder app ids still
   `com.example.viewer_app` / `com.example.viewerApp`.
 - **iOS Debug signing (2026-10-13)**: the Debug configuration signs with `ios/Runner/RunnerDebug.entitlements`
@@ -776,9 +780,20 @@ Gold balance card + fake transaction history (rewards + one payout). Tap
 
 **This is the anti-fraud gate from spec §4A.** Collects bank + account number
 
-- account holder name + national ID (АА99999999 format, 10 chars). Success
-  dialog explains that Admin will match the account name against profile data
-  and flip `is_verified = TRUE`. Wire the POST here.
+- account holder name. **The national ID is no longer collected (owner, 2026-10-14)**: the form, the API
+  (`CreatePayoutReq` / `PayoutDto` have no `nationalId`; a stray field from an old app is ignored), the admin
+  payouts table and `payout_requests.national_id` (dropped in `V10`, stored values deleted) are all gone. Do not
+  re-add it without asking the owner. **Amount (2026-10-14)**: a framed input the viewer types into, grouped as they
+  type (`PayoutAmountFormatter`, `12500` -> `12,500`; read it back with `payoutAmountOf`, never `double.parse`),
+  with the quick-pick chips under it filling the same field; focusing the field selects the amount. The 'Эхний таталт' notice (payout form, route `extra: true`) and the wallet's
+  note show only while `isBeforeFirstPayout` — unverified and no waiting/paid request (a rejected one keeps it). Names (2026-10-14): registration asks овог (`lastName`) and нэр (`firstName`)
+  separately — `RegisterViewerReq` (letters, spaces, hyphens, apostrophes; max 60; same rule as the app's
+  `AuthValidators.lastName/firstName`), `users.last_name/first_name` (V11, null for older accounts and companies),
+  returned in `Me`. The wallet card prints `walletCardName`: НЭР ОВОГ in capitals; older accounts fall back to
+  `cardHolderName` (the newest non-rejected payout's `accountName`).
+- **Reduce-motion and `AnimatedSize`**: an `AnimatedSize` whose duration follows `AppMotion.duration` (zero under
+  reduce-motion) throws; use `ReducibleAnimatedSize` (`widgets/`) instead. The admin approves after checking the account is in the viewer's own name and
+  flips `is_verified = TRUE`.
 
 ### `lib/screens/profile/profile_screen.dart`
 
@@ -809,14 +824,56 @@ the next session can uncomment once the backend exists.
   surfaces that are dark in both modes (video, campaign art, the green wallet card). Dark-palette text keeps
   WCAG AA — `test/theme/dark_theme_test.dart` checks it.
 - **Bank logos on the payout form (2026-10-14)**: `wallet_logic.dart` `kBankLogoAssets` maps each bank name (the
-  string the backend stores) to `assets/banks/<name>.png`; `BankLogo` (`wallet_widgets.dart`) shows it on a white
-  circle and falls back to the coloured monogram when the file is missing. The logo files themselves still have to be
-  added by the owner (official artwork from each bank).
+  string the backend stores) to `assets/banks/<name>.png`; `BankLogo` (`wallet_widgets.dart`) shows it (see below) and falls back to the coloured monogram when the file is missing. **(2026-10-14)** The logo is now a 32pt rounded
+  square (radius 25 %), drawn edge to edge with no padding; the monogram uses the same shape. Every file must be a
+  **256 px opaque square** — the bank's full-bleed app icon, or its bare mark trimmed and centred on white with ~16 %
+  margin — `wallet_logic_test` checks the PNG header. Raw downloads (odd sizes, transparent margins) made the logos look
+  different sizes; normalise new ones the same way.
+- **Home header brand row (2026-10-14)**: `UziyWordmark` (`widgets/brand_logo.dart`) — the bare mark
+  `assets/logo_mark.png` (transparent, made from `logo.png`) tinted with `context.colors.textPrimary` + the name
+  'uziy', so it is dark on light and light on dark (no white tile). On the right `ThemeModeButton`
+  (`widgets/appearance_settings.dart`): a **tap flips light ↔ dark at once** (`ThemeController.oppositeOf` the look on
+  screen, so "follow the device" flips too; sun/moon icon spins), a **long press opens the sheet**; a failed save shows a
+  snack bar. The sheet (also Profile → 'Харагдах горим') picks a mode with `ThemeModeChoices`: three `ThemeModeCard`s
+  with a `ThemePreview` miniature of the home screen in that palette (device = diagonal light/dark split); side by
+  side, stacked when they would not fit (small phone + large text). The
+  'Үз. Хариул. Урамшуулал ав.' tagline chip was removed at the owner's request. `UziyLogo` (white tile) stays on
+  splash/login.
+- **Wallet card looks like a bank card (2026-10-14)**: `WalletBalanceCard` (`wallet_widgets.dart`) is ID-1 proportioned
+  (`aspectRatio` 85.6/53.98, a minimum — large text may grow it) on fixed forest artwork (`AppGradients.walletCard`,
+  same in both themes, white ink): `UziyWordmark(color: white)` + 'ХЭТЭВЧ' + contactless glyph, gold EMV `CardChip`,
+  balance, the phone as `maskedCardNumber` ('•••• 9911', `wallet_logic.dart`) and `WalletVerifiedBadge` (fixed
+  white/forest). Guilloche waves are painted (`_CardEngravingPainter`); a one-time light sweep (`_CardSheen`, skipped
+  under reduce-motion). The payout meter now sits on an `AppCard` UNDER the card, in theme colours.
+- **Wallet refreshes itself (2026-10-14)**: an admin's payout decision used to show only after pull-to-refresh.
+  `services/auto_refresher.dart` `AutoRefresher` (Observer on the app lifecycle) reloads on resume and, while
+  `polling` is on, every 10 s (stops in the background; never two loads at once). `WalletScreen` loads `/viewer/me` +
+  `GET /viewer/payouts` (`ViewerService.myPayouts`, model `models/payout_request.dart`), polls only while
+  `hasPendingPayout`, reloads after the payout form closes, and shows a snack bar for `newlyDecided` requests.
+  **(later 2026-10-14)** The status banner is gone: the wallet page itself lists **'Хэтэвчний түүх'**
+  (`WalletHistorySection`): totals (`walletIncome` / `walletSpending` — rejected requests were refunded, so they do
+  not count) and every reward (`HistoryRow`, from `GET /viewer/history`) and payout request (`PayoutHistoryRow`: status,
+  reject reason, struck-through amount when refunded), merged newest first by `buildWalletHistory` (sealed
+  `WalletEntry` = `RewardEntry` | `PayoutEntry`). The old 'Урамшууллын түүх' link card was removed; Profile's
+  'Үзсэн видеонуудын түүх' page stays. Regression test:
+  `test/screens/wallet/wallet_screen_test.dart`. Reuse `AutoRefresher` for any other screen that waits on an admin.
+- **Finished campaigns leave Home by themselves (2026-10-14)**: Home stays alive under the video/survey routes, so a
+  finished card used to linger until pull-to-refresh. `services/campaign_events.dart` `CampaignEvents` (Observer,
+  broadcast stream): `ViewerService.submitSurvey` publishes `CampaignCompleted` on success AND on 409 (already
+  rewarded). `HomeFeedScreen` drops the card at once (`feed_logic.dart` `withoutCampaign`), remembers the id so an
+  in-flight reply cannot bring it back, and reloads quietly for the balance; it also reloads on app resume
+  (`AutoRefresher`). Regression test: `test/screens/home/home_feed_completion_test.dart`.
+- **Video screen copy (2026-10-14)**: the reward line says both steps — 'Видеог бүтэн үзэж, судалгаанд хариулбал
+  +700 ₮ хэтэвчинд тань орно' → after the video 'Судалгаанд хариулмагц +700 ₮ хэтэвчинд тань орно'
+  (`RewardHintRow`); the locked button reads 'Видео дуусахад судалгаа нээгдэнэ · 12 сек'.
 - **Keyboard closes on a tap outside a field (2026-10-14)**: `widgets/dismiss_keyboard_on_tap.dart` wraps the
   whole app once (`app.dart` builder). Do not add per-screen `GestureDetector(onTap: unfocus)` copies; scroll views
   may keep `keyboardDismissBehavior: onDrag` as well.
 - **Copy is Mongolian Cyrillic throughout.** If you add new strings, match the
   tone (short, informal, second-person plural "Та"). Don't switch to Latin.
+- **No "админ" in viewer-facing copy (owner, 2026-10-14).** Say what happens ('Таны дансны мэдээллийг шалгасны
+  дараа …'), not who does it; in policy text use 'эрх бүхий ажилтан'. `test/copy/viewer_copy_test.dart` scans
+  `lib/` string literals and fails on the word (comments are fine).
 - **No i18n system yet** — strings are inline. If localization comes up, hoist
   them to `flutter_localizations` / ARB files then.
 - **Mock data lives on the models.** `Campaign.mockFeed()` and

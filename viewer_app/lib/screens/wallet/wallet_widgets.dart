@@ -2,7 +2,11 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../models/payout_request.dart';
+import '../../models/view_history_item.dart';
 import '../../widgets/ui.dart';
+import '../profile/history_logic.dart' show historyDayLabel, historyTimeLabel;
+import '../profile/history_screen.dart' show HistoryRow;
 import 'wallet_logic.dart';
 
 // Presentational widgets for the wallet tab and the payout form.
@@ -12,40 +16,105 @@ import 'wallet_logic.dart';
 
 // --- Balance card -----------------------------------------------------------
 
-/// The hero gold card on the wallet tab: coin, 'Одоогийн үлдэгдэл', the
-/// balance counting up, the verification badge and, while the balance is
-/// still under the payout minimum, a progress meter toward it.
+/// The wallet balance drawn as an Uziy bank card: brand mark, EMV chip and
+/// contactless glyph, the balance counting up, the masked phone in the
+/// card-number slot and the verification badge. A light sheen sweeps across
+/// once when it appears. While the balance is under the payout minimum a
+/// progress meter sits right under the card.
 class WalletBalanceCard extends StatelessWidget {
   const WalletBalanceCard({
     super.key,
     required this.balance,
     required this.verified,
+    this.phoneNumber,
+    this.holderName,
     this.progress,
   });
 
   final num balance;
   final bool verified;
 
+  /// Printed above the number like a bank card's holder name; nothing is
+  /// shown when null (see `cardHolderName`).
+  final String? holderName;
+
+  /// Shown masked ('•••• 9911') where a bank card prints its number.
+  final String? phoneNumber;
+
   /// Shown as a meter when set and the minimum is not reached yet.
   final PayoutProgress? progress;
 
   static const String balanceLabel = 'Одоогийн үлдэгдэл';
+  static const String cardTitle = 'ХЭТЭВЧ';
+  static const String holderLabel = 'Данс эзэмшигч';
+
+  /// ISO/IEC 7810 ID-1 card proportions. The card never gets shorter than
+  /// this, but may grow with very large text instead of clipping it.
+  static const double aspectRatio = 85.6 / 53.98;
 
   @override
   Widget build(BuildContext context) {
     final meter = progress;
-    final ink = context.colors.onPrimary;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        LayoutBuilder(
+          builder: (context, box) => ConstrainedBox(
+            constraints: BoxConstraints(minHeight: box.maxWidth / aspectRatio),
+            child: _CardFace(
+              balance: balance,
+              verified: verified,
+              cardNumber: maskedCardNumber(phoneNumber),
+              holderName: holderName,
+            ),
+          ),
+        ),
+        if (meter != null && !meter.reached) ...[
+          const SizedBox(height: AppSpacing.md),
+          AppCard(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+            child: PayoutProgressMeter(progress: meter),
+          ),
+        ],
+      ],
+    );
+  }
+}
 
-    return AppCard(
-      gradient: context.gradients.gold,
-      radius: AppRadii.xl,
-      padding: EdgeInsets.zero,
-      borderColor: Colors.white.withValues(alpha: 0.30),
-      shadows: AppShadows.glow(
-        context.colors.primary,
-        strength: 0.75,
-        blur: 30,
-        offset: const Offset(0, 14),
+/// The card itself. White ink on fixed forest artwork in both themes.
+class _CardFace extends StatelessWidget {
+  const _CardFace({
+    required this.balance,
+    required this.verified,
+    required this.cardNumber,
+    this.holderName,
+  });
+
+  final num balance;
+  final bool verified;
+  final String cardNumber;
+  final String? holderName;
+
+  static const Color _ink = Colors.white;
+
+  @override
+  Widget build(BuildContext context) {
+    final soft = _ink.withValues(alpha: 0.72);
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        gradient: AppGradients.walletCard,
+        borderRadius: AppRadii.brXl,
+        border: Border.all(color: _ink.withValues(alpha: 0.14)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x33082A1E),
+            blurRadius: 24,
+            spreadRadius: -6,
+            offset: Offset(0, 14),
+          ),
+        ],
       ),
       child: Stack(
         children: [
@@ -54,32 +123,50 @@ class WalletBalanceCard extends StatelessWidget {
               child: CustomPaint(painter: _CardEngravingPainter()),
             ),
           ),
+          const Positioned.fill(child: _CardSheen()),
           Padding(
-            padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  children: [
+                    const UziyWordmark(height: 22, color: _ink),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        textAlign: TextAlign.end,
+                        WalletBalanceCard.cardTitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.textStyles.caption.copyWith(
+                          color: soft,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    ExcludeSemantics(
+                      child: Icon(Icons.contactless_outlined,
+                          size: 22, color: soft),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                const ExcludeSemantics(child: CardChip()),
+                const SizedBox(height: AppSpacing.md),
                 MergeSemantics(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          const CoinIcon(size: 28),
-                          const SizedBox(width: AppSpacing.sm + 2),
-                          Expanded(
-                            child: Text(
-                              balanceLabel,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: context.textStyles.label.copyWith(
-                                color: ink.withValues(alpha: 0.72),
-                              ),
-                            ),
-                          ),
-                        ],
+                      Text(
+                        WalletBalanceCard.balanceLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.textStyles.caption.copyWith(color: soft),
                       ),
-                      const SizedBox(height: AppSpacing.md + 2),
+                      const SizedBox(height: 2),
                       // Scales down instead of overflowing for very large
                       // balances or big OS text sizes.
                       FittedBox(
@@ -88,22 +175,53 @@ class WalletBalanceCard extends StatelessWidget {
                         child: AnimatedMoney(
                           value: balance,
                           style: context.textStyles.moneyLarge.copyWith(
-                            color: ink,
-                            fontSize: 42,
+                            color: _ink,
+                            fontSize: 36,
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: AppSpacing.md + 2),
-                WalletVerifiedBadge(verified: verified),
-                if (meter != null && !meter.reached) ...[
-                  const SizedBox(height: AppSpacing.lg + 2),
-                  Container(height: 1, color: ink.withValues(alpha: 0.10)),
-                  const SizedBox(height: AppSpacing.md + 2),
-                  PayoutProgressMeter(progress: meter),
+                const SizedBox(height: AppSpacing.sm + 2),
+                if (holderName case final name?) ...[
+                  Semantics(
+                    label: WalletBalanceCard.holderLabel,
+                    child: Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.textStyles.label.copyWith(
+                        color: _ink,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
                 ],
+                Row(
+                  children: [
+                    Expanded(
+                      child: Semantics(
+                        label: 'Утасны дугаарын сүүлийн 4 орон',
+                        child: Text(
+                          cardNumber,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.textStyles.label.copyWith(
+                            color: soft,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 2,
+                            fontFeatures: AppTextStyles.tabular,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Flexible(child: WalletVerifiedBadge(verified: verified)),
+                  ],
+                ),
               ],
             ),
           ),
@@ -113,8 +231,122 @@ class WalletBalanceCard extends StatelessWidget {
   }
 }
 
-/// Pill on the gold card: solid dark 'Баталгаажсан' or outlined
-/// 'Баталгаажаагүй'.
+/// A gold EMV contact chip, as printed on bank cards. Decorative.
+class CardChip extends StatelessWidget {
+  const CardChip({super.key});
+
+  static const Size size = Size(40, 30);
+
+  @override
+  Widget build(BuildContext context) => SizedBox.fromSize(
+        size: size,
+        child: const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: AppGradients.cardChip,
+            borderRadius: BorderRadius.all(Radius.circular(6)),
+          ),
+          child: CustomPaint(painter: _ChipContactsPainter()),
+        ),
+      );
+}
+
+/// The chip's contact pads: a centre pad and the lines dividing the sides.
+class _ChipContactsPainter extends CustomPainter {
+  const _ChipContactsPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final line = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = const Color(0x99775521);
+    final pad = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+          center: Offset(w / 2, h / 2), width: w * 0.34, height: h * 0.5),
+      const Radius.circular(3),
+    );
+    canvas.drawRRect(pad, line);
+    for (final y in [h / 3, h * 2 / 3]) {
+      canvas.drawLine(Offset(0, y), Offset(pad.left, y), line);
+      canvas.drawLine(Offset(pad.right, y), Offset(w, y), line);
+    }
+    canvas.drawLine(Offset(w / 2, 0), Offset(w / 2, pad.top), line);
+    canvas.drawLine(Offset(w / 2, pad.bottom), Offset(w / 2, h), line);
+  }
+
+  @override
+  bool shouldRepaint(_ChipContactsPainter oldDelegate) => false;
+}
+
+/// One diagonal light sweep across the card when it first appears, like
+/// tilting a real card under a lamp. Skipped under reduce-motion.
+class _CardSheen extends StatefulWidget {
+  const _CardSheen();
+
+  @override
+  State<_CardSheen> createState() => _CardSheenState();
+}
+
+class _CardSheenState extends State<_CardSheen>
+    with SingleTickerProviderStateMixin {
+  /// A short pause (the card settles in first), then a 1.4 s sweep.
+  static const Duration total = Duration(milliseconds: 1750);
+  static const Curve _curve = Interval(0.2, 1, curve: Curves.easeInOutCubic);
+
+  late final AnimationController _controller =
+      AnimationController(vsync: this, duration: total);
+  bool _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+    if (!AppMotion.reduced(context)) _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, _) {
+            final t = _curve.transform(_controller.value);
+            if (t == 0 || t == 1) return const SizedBox.expand();
+            final centre = -0.3 + t * 1.6;
+            return DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white.withValues(alpha: 0),
+                    Colors.white.withValues(alpha: 0.18),
+                    Colors.white.withValues(alpha: 0),
+                  ],
+                  stops: [
+                    (centre - 0.12).clamp(0.0, 1.0),
+                    centre.clamp(0.0, 1.0),
+                    (centre + 0.12).clamp(0.0, 1.0),
+                  ],
+                ),
+              ),
+              child: const SizedBox.expand(),
+            );
+          },
+        ),
+      );
+}
+
+/// Pill on the wallet card: solid white 'Баталгаажсан' or outlined
+/// 'Баталгаажаагүй'. Fixed colours: the card is dark in both themes.
 class WalletVerifiedBadge extends StatelessWidget {
   const WalletVerifiedBadge({super.key, required this.verified});
 
@@ -125,7 +357,8 @@ class WalletVerifiedBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ink = context.colors.onPrimary;
+    const ink = Colors.white;
+    const onBadge = AppColors.primary;
     final label = verified ? verifiedLabel : unverifiedLabel;
     return Semantics(
       label: 'Бүртгэл: $label',
@@ -133,12 +366,10 @@ class WalletVerifiedBadge extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.fromLTRB(8, 5, 11, 5),
         decoration: BoxDecoration(
-          color: verified
-              ? ink.withValues(alpha: 0.88)
-              : ink.withValues(alpha: 0.07),
+          color: verified ? ink : ink.withValues(alpha: 0.08),
           borderRadius: AppRadii.brPill,
           border: Border.all(
-            color: verified ? Colors.transparent : ink.withValues(alpha: 0.22),
+            color: verified ? Colors.transparent : ink.withValues(alpha: 0.30),
           ),
         ),
         child: Row(
@@ -147,7 +378,7 @@ class WalletVerifiedBadge extends StatelessWidget {
             Icon(
               verified ? Icons.verified_rounded : Icons.shield_outlined,
               size: 15,
-              color: verified ? context.colors.primary : ink,
+              color: verified ? onBadge : ink,
             ),
             const SizedBox(width: 5),
             Flexible(
@@ -156,7 +387,7 @@ class WalletVerifiedBadge extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: context.textStyles.caption.copyWith(
-                  color: verified ? context.colors.primary : ink,
+                  color: verified ? onBadge : ink,
                   fontWeight: FontWeight.w700,
                   height: 1.15,
                 ),
@@ -169,8 +400,8 @@ class WalletVerifiedBadge extends StatelessWidget {
   }
 }
 
-/// 'Мөнгө татахад 600 ₮ дутуу' + percent + an engraved bar. Designed to sit
-/// on the gold balance card (dark ink on gold).
+/// 'Мөнгө татахад 600 ₮ дутуу' + percent + a bar, on the panel under the
+/// wallet card.
 class PayoutProgressMeter extends StatelessWidget {
   const PayoutProgressMeter({super.key, required this.progress});
 
@@ -182,7 +413,6 @@ class PayoutProgressMeter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ink = context.colors.onPrimary;
     final percent = (progress.fraction * 100).floor();
     final label = labelFor(progress);
 
@@ -201,7 +431,7 @@ class PayoutProgressMeter extends StatelessWidget {
                 child: Text(
                   label,
                   style: context.textStyles.label.copyWith(
-                    color: ink,
+                    color: context.colors.textPrimary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -210,7 +440,7 @@ class PayoutProgressMeter extends StatelessWidget {
               Text(
                 '$percent%',
                 style: context.textStyles.label.copyWith(
-                  color: ink.withValues(alpha: 0.68),
+                  color: context.colors.textSecondary,
                   fontWeight: FontWeight.w700,
                   fontFeatures: AppTextStyles.tabular,
                 ),
@@ -232,11 +462,10 @@ class _MeterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ink = context.colors.onPrimary;
     return Container(
       height: 8,
       decoration: BoxDecoration(
-        color: ink.withValues(alpha: 0.12),
+        color: context.colors.surfaceHighlight,
         borderRadius: AppRadii.brPill,
       ),
       alignment: Alignment.centerLeft,
@@ -249,7 +478,7 @@ class _MeterBar extends StatelessWidget {
           heightFactor: 1,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: ink,
+              color: context.colors.primary,
               borderRadius: AppRadii.brPill,
             ),
           ),
@@ -259,71 +488,43 @@ class _MeterBar extends StatelessWidget {
   }
 }
 
-/// Satin sheen + engraved coin rings with a reeded edge, anchored to the
-/// bottom-right corner of the gold card. Purely decorative.
+/// Fine guilloche waves (the security pattern on bank cards) and a large
+/// faint ring in the bottom-right corner. Purely decorative.
 class _CardEngravingPainter extends CustomPainter {
   const _CardEngravingPainter();
+
+  static const int _waves = 14;
 
   @override
   void paint(Canvas canvas, Size size) {
     if (size.isEmpty) return;
     final w = size.width;
     final h = size.height;
-    final bounds = Offset.zero & size;
 
-    // Diagonal satin band.
-    canvas.drawRect(
-      bounds,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withValues(alpha: 0),
-            Colors.white.withValues(alpha: 0.16),
-            Colors.white.withValues(alpha: 0),
-          ],
-          stops: const [0.16, 0.30, 0.44],
-        ).createShader(bounds),
-    );
+    final wave = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+    for (var i = 0; i < _waves; i++) {
+      wave.color = Colors.white.withValues(alpha: 0.035 + (i % 3) * 0.012);
+      final baseY = h * (0.15 + i * 0.065);
+      final path = Path()..moveTo(0, baseY);
+      for (var x = 0.0; x <= w; x += 4) {
+        final y = baseY +
+            math.sin(x / w * math.pi * 2 + i * 0.45) * h * 0.06 +
+            math.sin(x / w * math.pi * 5 + i) * h * 0.012;
+        path.lineTo(x, y);
+      }
+      canvas.drawPath(path, wave);
+    }
 
-    // Concentric rings, like the face of a big coin peeking in.
-    final center = Offset(w * 0.96, h * 1.02);
-    final base = math.max(w, h) * 0.34;
+    final center = Offset(w * 0.98, h * 1.05);
     final ring = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.2;
-    for (var i = 0; i < 5; i++) {
-      ring.color = AppColors.primaryInk.withValues(alpha: 0.14 - i * 0.022);
-      canvas.drawCircle(center, base * (0.55 + i * 0.22), ring);
+    for (var i = 0; i < 4; i++) {
+      ring.color = Colors.white.withValues(alpha: 0.07 - i * 0.014);
+      canvas.drawCircle(center, h * (0.42 + i * 0.16), ring);
     }
-
-    // Reeded edge: short radial ticks around the second ring.
-    final inner = base * 0.77 + 3;
-    final outer = inner + 7;
-    final tick = Paint()
-      ..strokeWidth = 1.1
-      ..strokeCap = StrokeCap.round
-      ..color = AppColors.primaryInk.withValues(alpha: 0.12);
-    const ticks = 96;
-    for (var i = 0; i < ticks; i++) {
-      final a = (i / ticks) * math.pi * 2;
-      final d = Offset(math.cos(a), math.sin(a));
-      canvas.drawLine(center + d * inner, center + d * outer, tick);
-    }
-
-    // Specular highlight on the innermost ring.
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: base * 0.55),
-      math.pi * 1.08,
-      math.pi * 0.34,
-      false,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
-        ..strokeCap = StrokeCap.round
-        ..color = Colors.white.withValues(alpha: 0.20),
-    );
   }
 
   @override
@@ -341,29 +542,41 @@ class WalletCardSkeleton extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Card outline with the balance card's layout blocked in.
-          Container(
-            height: 188,
-            padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
-            decoration: BoxDecoration(
-              color: context.colors.surface,
-              borderRadius: AppRadii.brXl,
-              border: Border.all(color: context.colors.border),
-            ),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Skeleton(width: 28, height: 28, radius: 14),
-                    SizedBox(width: AppSpacing.sm + 2),
-                    Skeleton(width: 120, height: 14),
-                  ],
-                ),
-                SizedBox(height: AppSpacing.lg + 2),
-                Skeleton(width: 170, height: 40, radius: 10),
-                Spacer(),
-                Skeleton(width: 120, height: 28, radius: AppRadii.pill),
-              ],
+          AspectRatio(
+            aspectRatio: WalletBalanceCard.aspectRatio,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+              decoration: BoxDecoration(
+                color: context.colors.surface,
+                borderRadius: AppRadii.brXl,
+                border: Border.all(color: context.colors.border),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Skeleton(width: 70, height: 22),
+                      Spacer(),
+                      Skeleton(width: 60, height: 14),
+                    ],
+                  ),
+                  SizedBox(height: AppSpacing.md),
+                  Skeleton(width: 40, height: 30, radius: 6),
+                  Spacer(),
+                  Skeleton(width: 90, height: 12),
+                  SizedBox(height: AppSpacing.sm),
+                  Skeleton(width: 160, height: 34, radius: 10),
+                  SizedBox(height: AppSpacing.sm + 2),
+                  Row(
+                    children: [
+                      Skeleton(width: 90, height: 14),
+                      Spacer(),
+                      Skeleton(width: 110, height: 26, radius: AppRadii.pill),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -836,9 +1049,13 @@ class BankTile extends StatelessWidget {
   }
 }
 
-/// A bank's mark in a 32pt circle: its logo on white (logos are drawn for a
-/// light background, so it stays white in dark mode too), or the coloured
-/// monogram when there is no logo file.
+/// A bank's mark in a 32pt rounded square (the shape banks' own app icons
+/// use), or the coloured monogram when there is no logo file.
+///
+/// The files in `assets/banks/` are normalised to one format — a 256 px
+/// opaque square, either the bank's full-bleed app icon or its mark centred
+/// on white — so the image is drawn edge to edge and every bank looks the
+/// same size. Add a new logo in that format, not as a raw download.
 class BankLogo extends StatelessWidget {
   const BankLogo({
     super.key,
@@ -848,6 +1065,11 @@ class BankLogo extends StatelessWidget {
   });
 
   static const double size = 32;
+
+  /// Large enough to hide the rounded corners baked into some app icons.
+  static const double cornerRadius = size * 0.25;
+  static const BorderRadius _radius =
+      BorderRadius.all(Radius.circular(cornerRadius));
 
   final String name;
   final List<Color> palette;
@@ -861,15 +1083,22 @@ class BankLogo extends StatelessWidget {
       width: size,
       height: size,
       clipBehavior: Clip.antiAlias,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
+      decoration: const BoxDecoration(
+        borderRadius: _radius,
         color: Colors.white,
+      ),
+      // Painted over the image so a white logo still has an edge on a light
+      // tile.
+      foregroundDecoration: BoxDecoration(
+        borderRadius: _radius,
         border: Border.all(color: context.colors.border),
       ),
       child: Image.asset(
         asset,
-        fit: BoxFit.contain,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        filterQuality: FilterQuality.medium,
         errorBuilder: (context, _, __) => _monogram(context),
       ),
     );
@@ -879,7 +1108,7 @@ class BankLogo extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          shape: BoxShape.circle,
+          borderRadius: _radius,
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -917,7 +1146,7 @@ class PayoutSuccessSheet extends StatelessWidget {
 
   static const String title = 'Хүсэлт хүлээн авлаа';
   static const String message =
-      'Админ таны дансны мэдээллийг шалгасны дараа мөнгө шилжинэ. '
+      'Таны дансны мэдээллийг шалгасны дараа мөнгө шилжинэ. '
       'Эхний амжилттай таталтын дараа таны бүртгэл баталгаажна.';
   static const String doneLabel = 'Ойлголоо';
 
@@ -1024,16 +1253,190 @@ class _SuccessMedallion extends StatelessWidget {
 
 /// Error SnackBar with an icon, using the themed floating style.
 SnackBar walletErrorSnackBar(String message, {required AppPalette palette}) =>
+    _walletSnackBar(message, Icons.error_outline_rounded, palette.dangerLight);
+
+/// News that a payout request was decided while the wallet was open.
+SnackBar payoutDecisionSnackBar(PayoutRequest p,
+        {required AppPalette palette}) =>
+    _walletSnackBar(
+      payoutDecisionMessage(p),
+      p.status == PayoutStatus.approved
+          ? Icons.check_circle_rounded
+          : Icons.undo_rounded,
+      p.status == PayoutStatus.approved
+          ? palette.successLight
+          : palette.warning,
+    );
+
+SnackBar _walletSnackBar(String message, IconData icon, Color iconColor) =>
     SnackBar(
       content: Row(
         children: [
-          Icon(
-            Icons.error_outline_rounded,
-            size: 20,
-            color: palette.dangerLight,
-          ),
+          Icon(icon, size: 20, color: iconColor),
           const SizedBox(width: AppSpacing.md - 2),
           Expanded(child: Text(message)),
         ],
       ),
     );
+
+/// 'Хэтэвчний түүх' on the wallet tab itself: money in and money out
+/// totals, then every reward and payout request, newest first, so a payout
+/// decision shows up as the status of its own row.
+class WalletHistorySection extends StatelessWidget {
+  const WalletHistorySection({
+    super.key,
+    required this.rewards,
+    required this.payouts,
+    required this.now,
+  });
+
+  final List<ViewHistoryItem> rewards;
+  final List<PayoutRequest> payouts;
+
+  /// Reference time for 'Өнөөдөр' / 'Өчигдөр'.
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = buildWalletHistory(rewards, payouts);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SectionHeader(title: kWalletHistoryTitle),
+        const SizedBox(height: AppSpacing.md),
+        if (entries.isEmpty)
+          const EmptyState(
+            icon: AppIcons.history,
+            title: kWalletHistoryEmptyTitle,
+            message: kWalletHistoryEmptyMessage,
+          )
+        else ...[
+          WalletTotalsCard(
+            income: walletIncome(rewards),
+            spending: walletSpending(payouts),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          GroupedCard(
+            children: [
+              for (final e in entries)
+                switch (e) {
+                  RewardEntry(:final reward) =>
+                    HistoryRow(item: reward, now: now),
+                  PayoutEntry(:final payout) =>
+                    PayoutHistoryRow(payout: payout, now: now),
+                },
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// 'Нийт орлого +12,600 ₮' next to 'Нийт зарлага -5,000 ₮'.
+class WalletTotalsCard extends StatelessWidget {
+  const WalletTotalsCard({
+    super.key,
+    required this.income,
+    required this.spending,
+  });
+
+  final double income;
+  final double spending;
+
+  @override
+  Widget build(BuildContext context) => AppCard(
+        child: Row(
+          children: [
+            Expanded(
+              child: _Total(
+                label: kWalletIncomeLabel,
+                value: formatTugrik(income, withSign: true),
+                color: context.colors.success,
+              ),
+            ),
+            Expanded(
+              child: _Total(
+                label: kWalletSpendingLabel,
+                value: formatTugrik(-spending),
+                color: context.colors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+class _Total extends StatelessWidget {
+  const _Total({required this.label, required this.value, required this.color});
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        label: '$label: $value',
+        excludeSemantics: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: context.textStyles.caption),
+            const SizedBox(height: 2),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                style: context.textStyles.title.copyWith(
+                  color: color,
+                  fontFeatures: AppTextStyles.tabular,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+/// One payout request in the history: bank, status · day · time, and the
+/// amount going out. A rejected one is struck through — it came back.
+class PayoutHistoryRow extends StatelessWidget {
+  const PayoutHistoryRow({super.key, required this.payout, required this.now});
+
+  final PayoutRequest payout;
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context) {
+    final rejected = payout.status == PayoutStatus.rejected;
+    final time = payout.decidedAt ?? payout.requestedAt;
+    final when = '${historyDayLabel(time, now)} · ${historyTimeLabel(time)}';
+    final reason = payout.rejectReason;
+    return InfoRow(
+      icon: rejected ? AppIcons.payoutReturned : AppIcons.payout,
+      iconColor: switch (payout.status) {
+        PayoutStatus.pending => context.colors.warning,
+        PayoutStatus.approved => context.colors.primary,
+        PayoutStatus.rejected => context.colors.textTertiary,
+      },
+      label: payoutEntryTitle(payout),
+      subtitle: [
+        payoutEntryStatus(payout),
+        if (rejected && reason != null) reason,
+        when,
+      ].join(' · '),
+      trailing: Text(
+        formatTugrik(-payout.amount),
+        style: context.textStyles.body.copyWith(
+          color: rejected
+              ? context.colors.textTertiary
+              : context.colors.textPrimary,
+          fontWeight: FontWeight.w700,
+          fontFeatures: AppTextStyles.tabular,
+          decoration: rejected ? TextDecoration.lineThrough : null,
+        ),
+      ),
+    );
+  }
+}

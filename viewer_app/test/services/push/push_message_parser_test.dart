@@ -21,19 +21,16 @@ void main() {
 
   test('missing hasVideo defaults to video', () {
     expect(
-      parser.parseData({'type': 'CAMPAIGN', 'campaignId': '7'})?.hasVideo,
-      isTrue,
+      parser.parseData({'type': 'CAMPAIGN', 'campaignId': '7'}),
+      const CampaignPush(campaignId: 7, hasVideo: true),
     );
   });
 
   test('hasVideo is case-insensitive', () {
     expect(
-      parser.parseData({
-        'type': 'CAMPAIGN',
-        'campaignId': '7',
-        'hasVideo': 'FALSE'
-      })?.hasVideo,
-      isFalse,
+      parser.parseData(
+          {'type': 'CAMPAIGN', 'campaignId': '7', 'hasVideo': 'FALSE'}),
+      const CampaignPush(campaignId: 7, hasVideo: false),
     );
   });
 
@@ -52,6 +49,20 @@ void main() {
       title: 'a',
       data: {'type': 'CAMPAIGN', 'campaignId': '5'},
     );
-    expect(parser.parse(m)?.campaignId, 5);
+    expect(parser.parse(m), const CampaignPush(campaignId: 5, hasVideo: true));
+  });
+
+  test('payout decision payload', () {
+    expect(
+      parser
+          .parseData({'type': 'PAYOUT', 'payoutId': '9', 'status': 'APPROVED'}),
+      const PayoutPush(payoutId: 9),
+    );
+  });
+
+  test('payout payload with a bad or missing id is ignored', () {
+    expect(parser.parseData({'type': 'PAYOUT'}), isNull);
+    expect(parser.parseData({'type': 'PAYOUT', 'payoutId': 'x'}), isNull);
+    expect(parser.parseData({'type': 'PAYOUT', 'payoutId': '0'}), isNull);
   });
 }

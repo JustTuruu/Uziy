@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:viewer_app/models/payout_request.dart';
+import 'package:viewer_app/models/view_history_item.dart';
+import 'package:viewer_app/screens/profile/history_screen.dart' show HistoryRow;
 import 'package:viewer_app/screens/wallet/wallet_logic.dart';
 import 'package:viewer_app/screens/wallet/wallet_widgets.dart';
 import 'package:viewer_app/widgets/ui.dart';
@@ -55,7 +58,116 @@ void main() {
       expect(find.text(WalletVerifiedBadge.unverifiedLabel), findsNothing);
       // Minimum reached: no progress meter.
       expect(find.byType(PayoutProgressMeter), findsNothing);
-      expect(find.byType(CoinIcon), findsOneWidget);
+      // Bank-card furniture.
+      expect(find.byType(UziyWordmark), findsOneWidget);
+      expect(find.byType(CardChip), findsOneWidget);
+      expect(find.text(WalletBalanceCard.cardTitle), findsOneWidget);
+    });
+
+    testWidgets('prints the masked phone where a card has its number',
+        (tester) async {
+      await pumpWallet(
+        tester,
+        const WalletBalanceCard(
+            balance: 0, verified: false, phoneNumber: '99119911'),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('•••• 9911'), findsOneWidget);
+      expect(find.textContaining('9911991'), findsNothing);
+    });
+
+    /// The user's request (2026-10-14): the card shows whose wallet it is.
+    testWidgets('prints the holder name above the number', (tester) async {
+      await pumpWallet(
+        tester,
+        const WalletBalanceCard(
+          balance: 3400,
+          verified: true,
+          phoneNumber: '99119911',
+          holderName: 'БОЛД ЭРДЭНЭ',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('БОЛД ЭРДЭНЭ'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('БОЛД ЭРДЭНЭ')).dy,
+        lessThan(tester.getTopLeft(find.text('•••• 9911')).dy),
+      );
+      // The extra line still fits the bank-card shape on a phone.
+      final size = tester.getSize(find.byType(WalletBalanceCard));
+      expect(
+          size.height, closeTo(size.width / WalletBalanceCard.aspectRatio, 1));
+    });
+
+    testWidgets('no name line without a holder name', (tester) async {
+      await pumpWallet(
+        tester,
+        const WalletBalanceCard(balance: 0, verified: false),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.bySemanticsLabel(WalletBalanceCard.holderLabel),
+        findsNothing,
+      );
+    });
+
+    testWidgets('a very long name is cut, never overflows', (tester) async {
+      await pumpWallet(
+        tester,
+        WalletBalanceCard(
+          balance: 3400,
+          verified: true,
+          holderName: 'БОЛДБААТАР ' * 6,
+        ),
+        width: 300,
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('has bank-card proportions', (tester) async {
+      await pumpWallet(
+        tester,
+        const WalletBalanceCard(balance: 3400, verified: true),
+        width: 340,
+      );
+      await tester.pumpAndSettle();
+      final size = tester.getSize(find.byType(WalletBalanceCard));
+      expect(size.width, 340);
+      expect(size.height, closeTo(340 / WalletBalanceCard.aspectRatio, 1));
+    });
+
+    testWidgets('the payout meter sits under the card, not on it',
+        (tester) async {
+      await pumpWallet(
+        tester,
+        WalletBalanceCard(
+          balance: 400,
+          verified: false,
+          progress: payoutProgress(400),
+        ),
+        width: 340,
+      );
+      await tester.pumpAndSettle();
+      final chipBottom = tester.getBottomLeft(find.text('•••• ••••')).dy;
+      final meterTop = tester.getTopLeft(find.byType(PayoutProgressMeter)).dy;
+      expect(meterTop, greaterThan(chipBottom));
+    });
+
+    testWidgets('verified badge stays legible on the card in dark mode',
+        (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        theme: AppTheme.dark(),
+        home: const Scaffold(
+          body: WalletBalanceCard(balance: 10, verified: true),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      final label =
+          tester.widget<Text>(find.text(WalletVerifiedBadge.verifiedLabel));
+      // Fixed card artwork: the badge keeps forest-on-white in both themes.
+      expect(label.style?.color, AppColors.primary);
     });
 
     testWidgets('unverified user gets the unverified label', (tester) async {
@@ -250,6 +362,34 @@ void main() {
       expect(find.text('K'), findsNothing);
     });
 
+    testWidgets('the logo fills a rounded square edge to edge', (tester) async {
+      await pumpWallet(
+        tester,
+        const Center(
+          child: BankLogo(
+            name: 'Khan Bank',
+            palette: palette,
+            logoAsset: 'assets/banks/khan_bank.png',
+          ),
+        ),
+      );
+      final box = tester.widget<Container>(
+        find.ancestor(of: find.byType(Image), matching: find.byType(Container)),
+      );
+      final decoration = box.decoration! as BoxDecoration;
+      expect(decoration.shape, BoxShape.rectangle);
+      expect(
+        decoration.borderRadius,
+        BorderRadius.circular(BankLogo.cornerRadius),
+      );
+      expect(box.padding, isNull);
+      expect(
+        tester.getSize(find.byType(Image)),
+        const Size.square(BankLogo.size),
+      );
+      expect(tester.widget<Image>(find.byType(Image)).fit, BoxFit.cover);
+    });
+
     testWidgets('a missing logo file falls back to the monogram',
         (tester) async {
       await pumpWallet(
@@ -392,7 +532,12 @@ void main() {
       final handle = tester.ensureSemantics();
       await pumpWallet(tester, const WalletCardSkeleton());
       await tester.pump(const Duration(milliseconds: 300));
-      expect(find.byType(Skeleton), findsNWidgets(5));
+      // Seven blocks on the card (mark, title, chip, label, balance, number,
+      // badge) plus the payout button.
+      expect(find.byType(Skeleton), findsNWidgets(8));
+      final card = tester.getSize(find.byType(AspectRatio).first);
+      expect(card.width / card.height,
+          closeTo(WalletBalanceCard.aspectRatio, 0.01));
       expect(tester.takeException(), isNull);
       expect(find.bySemanticsLabel('Ачаалж байна'), findsOneWidget);
       handle.dispose();
@@ -421,5 +566,84 @@ void main() {
     final bar = walletErrorSnackBar('Алдаа', palette: dark);
     final icon = (bar.content as Row).children.first as Icon;
     expect(icon.color, dark.dangerLight);
+  });
+
+  group('WalletHistorySection', () {
+    final now = DateTime(2026, 10, 14, 12);
+    final reward = ViewHistoryItem(
+      campaignId: 1,
+      title: 'Шинэ 5G багц',
+      companyName: 'MobiCom',
+      rewardPaid: 700,
+      watchedAt: DateTime(2026, 10, 14, 9),
+    );
+    PayoutRequest payout(PayoutStatus status, {String? reason}) =>
+        PayoutRequest(
+          id: 7,
+          amount: 5000,
+          bank: 'Khan Bank',
+          status: status,
+          requestedAt: DateTime(2026, 10, 14, 10),
+          decidedAt: status == PayoutStatus.pending
+              ? null
+              : DateTime(2026, 10, 14, 11),
+          rejectReason: reason,
+        );
+
+    testWidgets('empty: says how the history fills up', (tester) async {
+      await pumpWallet(
+        tester,
+        WalletHistorySection(rewards: const [], payouts: const [], now: now),
+      );
+      expect(find.text(kWalletHistoryTitle), findsOneWidget);
+      expect(find.text(kWalletHistoryEmptyTitle), findsOneWidget);
+      expect(find.byType(WalletTotalsCard), findsNothing);
+    });
+
+    testWidgets('shows income, spending and both kinds of rows',
+        (tester) async {
+      await pumpWallet(
+        tester,
+        SingleChildScrollView(
+          child: WalletHistorySection(
+            rewards: [reward],
+            payouts: [payout(PayoutStatus.approved)],
+            now: now,
+          ),
+        ),
+      );
+      expect(find.text('+700 ₮'), findsNWidgets(2)); // total + the row
+      expect(find.text('-5,000 ₮'), findsNWidgets(2));
+      expect(find.byType(HistoryRow), findsOneWidget);
+      expect(find.text('Мөнгө татсан · Khan Bank'), findsOneWidget);
+      expect(find.textContaining('Дансанд шилжүүлсэн · Өнөөдөр · 11:00'),
+          findsOneWidget);
+      // Newest first: the payout (10:00) above the reward (09:00).
+      expect(
+        tester.getTopLeft(find.byType(PayoutHistoryRow)).dy,
+        lessThan(tester.getTopLeft(find.byType(HistoryRow)).dy),
+      );
+    });
+
+    testWidgets(
+        'a rejected payout is struck through, shows the reason and '
+        'does not count as spending', (tester) async {
+      await pumpWallet(
+        tester,
+        SingleChildScrollView(
+          child: WalletHistorySection(
+            rewards: [reward],
+            payouts: [payout(PayoutStatus.rejected, reason: 'Нэр таарахгүй')],
+            now: now,
+          ),
+        ),
+      );
+      expect(
+          find.textContaining('Татгалзсан · хэтэвчинд буцсан · Нэр таарахгүй'),
+          findsOneWidget);
+      final amount = tester.widget<Text>(find.text('-5,000 ₮'));
+      expect(amount.style?.decoration, TextDecoration.lineThrough);
+      expect(find.text('0 ₮'), findsOneWidget, reason: 'spending total');
+    });
   });
 }

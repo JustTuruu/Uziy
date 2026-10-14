@@ -21,6 +21,8 @@ class MeMapperTest {
         u.setBirthDate(LocalDate.now().minusYears(30).minusDays(1));
         u.setCity("Улаанбаатар");
         u.setBalance(1200.0);
+        u.setLastName("Оюун-Эрдэнэ");
+        u.setFirstName("Төрболд");
 
         Me me = new MeMapper().toMe(u);
 
@@ -33,5 +35,7 @@ class MeMapperTest {
         assertThat(me.balance()).isEqualTo(1200.0);
         assertThat(me.isVerified()).isFalse();
         assertThat(me.companyName()).isNull();
+        assertThat(me.lastName()).isEqualTo("Оюун-Эрдэнэ");
+        assertThat(me.firstName()).isEqualTo("Төрболд");
     }
 }

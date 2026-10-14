@@ -17,7 +17,8 @@ import 'feed_logic.dart';
 // Header
 // ---------------------------------------------------------------------------
 
-/// Greeting line + balance pill, then the big 'Шинэ видеонууд' title and a
+/// Brand row (wordmark + appearance button), greeting line + balance pill,
+/// then the big 'Шинэ видеонууд' title and a
 /// one-line explainer.
 class FeedHeader extends StatelessWidget {
   const FeedHeader({
@@ -59,25 +60,11 @@ class FeedHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
+        const Row(
           children: [
-            const UziyLogo(size: 36, glow: false),
-            const SizedBox(width: 10),
-            Text('uziy',
-                style: context.textStyles.headline.copyWith(letterSpacing: -1)),
-            IconButton(
-              tooltip: 'Харагдах горим',
-              onPressed: () => showAppearanceSettings(context),
-              icon: Icon(Icons.contrast_rounded,
-                  color: context.colors.textSecondary),
-            ),
-            const Expanded(
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: TagChip(
-                    label: 'Үз. Хариул. Урамшуулал ав.', tone: TagTone.gold),
-              ),
-            ),
+            UziyWordmark(),
+            Spacer(),
+            ThemeModeButton(),
           ],
         ),
         const SizedBox(height: AppSpacing.xxl),

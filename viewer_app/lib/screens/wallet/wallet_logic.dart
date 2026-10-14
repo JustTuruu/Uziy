@@ -2,14 +2,27 @@
 /// everything here is unit-testable in isolation.
 library;
 
-import 'package:flutter/services.dart' show TextEditingValue, TextSelection;
+import 'package:flutter/services.dart'
+    show TextEditingValue, TextInputFormatter, TextSelection;
+
+import '../../models/payout_request.dart';
+import '../../models/view_history_item.dart';
+import '../../utils/format.dart';
 
 /// Smallest payout a viewer can request, in tögrög. The wallet's
 /// "Мөнгө татах" button stays disabled below it and the payout form rejects
 /// smaller amounts.
 const int kPayoutMinimum = 1000;
 
-/// Quick-pick amounts offered above the payout amount field.
+/// Amount the payout form opens with (also one of the quick picks).
+const int kDefaultPayoutAmount = 2000;
+
+const String kPayoutAmountLabel = 'Татах дүн';
+const String kPayoutAmountHelper =
+    'Дүнгээ бичнэ үү, эсвэл доороос сонгоно уу. Хамгийн багадаа 1,000 ₮.';
+const String kQuickAmountsLabel = 'Хурдан сонгох';
+
+/// Quick-pick amounts offered under the payout amount field.
 const List<int> kQuickPayoutAmounts = [1000, 2000, 5000, 10000];
 
 /// Banks a viewer can cash out to. The first one is the default selection.
@@ -105,10 +118,71 @@ PayoutProgress payoutProgress(num balance, {int minimum = kPayoutMinimum}) {
 bool canRequestPayout(num? balance, {int minimum = kPayoutMinimum}) =>
     balance != null && balance >= minimum;
 
-/// The field value a quick-amount chip writes: plain digits (the form parses
-/// the text with `double.parse`, so no grouping), caret at the end.
+/// Longest amount the field takes (999,999,999 ₮): far above any balance,
+/// short enough that a stray paste cannot overflow anything.
+const int kPayoutAmountMaxDigits = 9;
+
+/// The whole tögrög typed in the amount field, ignoring the grouping commas
+/// (`'12,500'` -> 12500); null when there are no digits.
+int? payoutAmountOf(String? text) {
+  final digits = (text ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+  return digits.isEmpty ? null : int.tryParse(digits);
+}
+
+/// The amount field while the user types: digits only, grouped in thousands
+/// (`12500` -> `12,500`), at most [kPayoutAmountMaxDigits] digits and no
+/// leading zeros. The caret keeps its place among the digits, so editing in
+/// the middle of the number works.
+class PayoutAmountFormatter extends TextInputFormatter {
+  const PayoutAmountFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final caret = newValue.selection.isValid
+        ? newValue.selection.extentOffset.clamp(0, newValue.text.length)
+        : newValue.text.length;
+    var digitsBeforeCaret = _digitCount(newValue.text.substring(0, caret));
+    var digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    final leadingZeros =
+        digits.length - digits.replaceFirst(RegExp(r'^0+'), '').length;
+    digits = digits.substring(leadingZeros);
+    digitsBeforeCaret =
+        (digitsBeforeCaret - leadingZeros).clamp(0, digits.length);
+    if (digits.length > kPayoutAmountMaxDigits) {
+      digits = digits.substring(0, kPayoutAmountMaxDigits);
+      digitsBeforeCaret = digitsBeforeCaret.clamp(0, digits.length);
+    }
+    final text = digits.isEmpty ? '' : formatGrouped(int.parse(digits));
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(
+        offset: _offsetAfterDigits(text, digitsBeforeCaret),
+      ),
+    );
+  }
+
+  static int _digitCount(String s) =>
+      s.replaceAll(RegExp(r'[^0-9]'), '').length;
+
+  /// Position in [text] just after its [count]-th digit.
+  static int _offsetAfterDigits(String text, int count) {
+    if (count <= 0) return 0;
+    var seen = 0;
+    for (var i = 0; i < text.length; i++) {
+      if (_digitCount(text[i]) == 1) seen++;
+      if (seen == count) return i + 1;
+    }
+    return text.length;
+  }
+}
+
+/// The field value a quick-amount chip writes: the amount grouped like typed
+/// text (`5,000`), caret at the end.
 TextEditingValue quickAmountValue(int amount) {
-  final text = amount.toString();
+  final text = formatGrouped(amount);
   return TextEditingValue(
     text: text,
     selection: TextSelection.collapsed(offset: text.length),
@@ -121,7 +195,7 @@ int? selectedQuickAmount(
   String text, {
   List<int> amounts = kQuickPayoutAmounts,
 }) {
-  final value = int.tryParse(text.trim());
+  final value = payoutAmountOf(text);
   if (value == null) return null;
   return amounts.contains(value) ? value : null;
 }
@@ -132,7 +206,7 @@ int? selectedQuickAmount(
 
 /// Amount: whole tögrög, at least [kPayoutMinimum].
 String? validatePayoutAmount(String? value) {
-  final n = int.tryParse(value ?? '') ?? 0;
+  final n = payoutAmountOf(value) ?? 0;
   if (n < kPayoutMinimum) return 'Хамгийн бага дүн: 1,000 ₮';
   return null;
 }
@@ -149,8 +223,145 @@ String? validateAccountName(String? value) =>
         ? 'Дансны эзэмшигчийн нэрийг бүтэн оруулна уу'
         : null;
 
-/// National ID: exactly 10 characters (e.g. АА99999999).
-String? validateNationalId(String? value) =>
-    (value == null || value.length != 10)
-        ? 'Регистрийн дугаар 10 тэмдэгттэй байна'
-        : null;
+/// The phone shown like a card number on the wallet card: only the last four
+/// digits, e.g. '•••• 9911'. Anything without four trailing digits shows
+/// dots only, so a malformed value never leaks.
+String maskedCardNumber(String? phone) {
+  final digits = (phone ?? '').replaceAll(RegExp(r'\D'), '');
+  const hidden = '••••';
+  if (digits.length < 4) return '$hidden $hidden';
+  return '$hidden ${digits.substring(digits.length - 4)}';
+}
+
+/// The name printed on the wallet card: the registered нэр + овог in capitals
+/// (bank-card style, given name first), or — for accounts made before names
+/// were asked — [cardHolderName] of their payout requests.
+String? walletCardName({
+  String? lastName,
+  String? firstName,
+  required List<PayoutRequest> payouts,
+}) {
+  final registered = [firstName, lastName]
+      .whereType<String>()
+      .map((s) => s.trim())
+      .where((s) => s.isNotEmpty)
+      .join(' ');
+  return registered.isNotEmpty
+      ? registered.toUpperCase()
+      : cardHolderName(payouts);
+}
+
+/// The account holder from the viewer's
+/// newest payout request that was not rejected (a rejected one may carry a
+/// wrong name — that can be why it was rejected), in capitals like a bank
+/// card. Null when there is none, e.g. before the first payout.
+String? cardHolderName(List<PayoutRequest> payouts) {
+  final usable = payouts
+      .where((p) => p.status != PayoutStatus.rejected && p.accountName != null)
+      .toList()
+    ..sort((a, b) => b.requestedAt.compareTo(a.requestedAt));
+  return usable.isEmpty ? null : usable.first.accountName!.toUpperCase();
+}
+
+/// Whether the viewer has not made their first payout yet — the one the
+/// admin uses to verify the account. False once they are verified, or once a
+/// request is waiting or was paid (they have seen the notice and acted on
+/// it). A rejected request alone keeps it true: the check happens again.
+bool isBeforeFirstPayout({
+  required bool isVerified,
+  required List<PayoutRequest> payouts,
+}) =>
+    !isVerified && payouts.every((p) => p.status == PayoutStatus.rejected);
+
+/// True while any request still waits for the admin — the wallet then
+/// checks back regularly so the decision shows up without a manual refresh.
+bool hasPendingPayout(List<PayoutRequest> payouts) =>
+    payouts.any((p) => p.isPending);
+
+/// Requests that were pending in [before] and are decided in [after]: the
+/// decisions that arrived since the last load.
+List<PayoutRequest> newlyDecided(
+  List<PayoutRequest> before,
+  List<PayoutRequest> after,
+) {
+  final wasPending = {
+    for (final p in before)
+      if (p.isPending) p.id,
+  };
+  return [
+    for (final p in after)
+      if (!p.isPending && wasPending.contains(p.id)) p,
+  ];
+}
+
+/// One-line news for a decision that just arrived.
+String payoutDecisionMessage(PayoutRequest p) => switch (p.status) {
+      PayoutStatus.approved =>
+        '${formatTugrik(p.amount)} татах хүсэлт тань батлагдлаа',
+      PayoutStatus.rejected =>
+        '${formatTugrik(p.amount)} татах хүсэлт татгалзагдаж, мөнгө тань хэтэвчинд буцлаа',
+      PayoutStatus.pending => '',
+    };
+
+// --- Wallet history ----------------------------------------------------------
+
+const String kWalletHistoryTitle = 'Хэтэвчний түүх';
+const String kWalletHistoryEmptyTitle = 'Түүх хоосон байна';
+const String kWalletHistoryEmptyMessage =
+    'Урамшуулал авах, мөнгө татах бүрт энд бүртгэгдэнэ.';
+const String kWalletIncomeLabel = 'Нийт орлого';
+const String kWalletSpendingLabel = 'Нийт зарлага';
+
+/// One line of the wallet history, newest first: money in (a reward) or
+/// money out (a payout request).
+///
+/// Pattern: sealed variants, so every screen that lists them handles both.
+sealed class WalletEntry {
+  const WalletEntry();
+  DateTime get at;
+}
+
+class RewardEntry extends WalletEntry {
+  const RewardEntry(this.reward);
+  final ViewHistoryItem reward;
+  @override
+  DateTime get at => reward.watchedAt;
+}
+
+class PayoutEntry extends WalletEntry {
+  const PayoutEntry(this.payout);
+  final PayoutRequest payout;
+  @override
+  DateTime get at => payout.requestedAt;
+}
+
+/// Rewards and payout requests merged into one list, newest first.
+List<WalletEntry> buildWalletHistory(
+  List<ViewHistoryItem> rewards,
+  List<PayoutRequest> payouts,
+) =>
+    [
+      for (final r in rewards) RewardEntry(r),
+      for (final p in payouts) PayoutEntry(p),
+    ]..sort((a, b) => b.at.compareTo(a.at));
+
+/// Everything the rewards paid in.
+double walletIncome(List<ViewHistoryItem> rewards) =>
+    rewards.fold(0.0, (sum, r) => sum + r.rewardPaid);
+
+/// Money that left (or is on its way out of) the wallet. A rejected
+/// request was refunded, so it does not count.
+double walletSpending(List<PayoutRequest> payouts) => payouts
+    .where((p) => p.status != PayoutStatus.rejected)
+    .fold(0.0, (sum, p) => sum + p.amount);
+
+/// Status line of a payout row.
+String payoutEntryStatus(PayoutRequest p) => switch (p.status) {
+      PayoutStatus.pending => 'Хянагдаж байна',
+      PayoutStatus.approved => 'Дансанд шилжүүлсэн',
+      PayoutStatus.rejected => 'Татгалзсан · хэтэвчинд буцсан',
+    };
+
+/// Title of a payout row: 'Мөнгө татсан · Khan Bank'.
+String payoutEntryTitle(PayoutRequest p) =>
+    p.bank.isEmpty ? 'Мөнгө татсан' : 'Мөнгө татсан · ${p.bank}';

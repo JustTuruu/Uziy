@@ -149,7 +149,7 @@ void main() {
       expect(
         tester.getSemantics(find.byType(Pressable)),
         matchesSemantics(
-          label: 'Видеог бүтэн үзнэ үү, 12 сек үлдсэн',
+          label: 'Видео дуусахад судалгаа нээгдэнэ, 12 сек үлдсэн',
           isButton: true,
           hasEnabledState: true,
           isEnabled: false,
@@ -358,7 +358,9 @@ void main() {
       await _pump(tester, const RewardHintRow(amount: 700, completed: false));
       await tester.pumpAndSettle();
       expect(
-        find.text('Бүтэн үзээд +700 ₮ аваарай', findRichText: true),
+        find.text(
+            'Видеог бүтэн үзэж, судалгаанд хариулбал +700 ₮ хэтэвчинд тань орно',
+            findRichText: true),
         findsOneWidget,
       );
       expect(find.byType(CoinIcon), findsOneWidget);
@@ -369,7 +371,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         find.text(
-          'Судалгаанд хариулаад +700 ₮ аваарай',
+          'Судалгаанд хариулмагц +700 ₮ хэтэвчинд тань орно',
           findRichText: true,
         ),
         findsOneWidget,

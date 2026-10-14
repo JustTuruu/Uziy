@@ -35,8 +35,6 @@ public class PayoutEntity {
     @Column(name = "account_name", nullable = false, length = 120)
     private String accountName = "";
 
-    @Column(name = "national_id", nullable = false, length = 20)
-    private String nationalId = "";
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -78,8 +76,6 @@ public class PayoutEntity {
     public String getAccountName() { return accountName; }
     public void setAccountName(String accountName) { this.accountName = accountName; }
 
-    public String getNationalId() { return nationalId; }
-    public void setNationalId(String nationalId) { this.nationalId = nationalId; }
 
     public PayoutStatus getStatus() { return status; }
     public void setStatus(PayoutStatus status) { this.status = status; }

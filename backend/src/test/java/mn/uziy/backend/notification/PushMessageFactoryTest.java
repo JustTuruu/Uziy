@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
 import mn.uziy.backend.domain.CampaignEntity;
+import mn.uziy.backend.domain.PayoutEntity;
+import mn.uziy.backend.domain.PayoutStatus;
 import org.junit.jupiter.api.Test;
 
 class PushMessageFactoryTest {
@@ -36,5 +38,34 @@ class PushMessageFactoryTest {
 
         c.setRewardPerUser(700.0);
         assertThat(factory.campaignLive(c, "X").body()).contains("Үзээд 700 ₮");
+    }
+
+    @Test
+    void approvedPayoutSaysWhereTheMoneyGoes() {
+        PushMessage m = factory.payoutDecided(NotificationTestData.payout(9L, PayoutStatus.APPROVED));
+
+        assertThat(m.title()).isEqualTo("Мөнгө татах хүсэлт батлагдлаа");
+        assertThat(m.body()).isEqualTo("5,000 ₮ Khan Bank дансанд тань шилжинэ");
+        assertThat(m.data()).isEqualTo(Map.of("type", "PAYOUT", "payoutId", "9", "status", "APPROVED"));
+    }
+
+    @Test
+    void rejectedPayoutSaysTheMoneyIsBackWithTheReason() {
+        PayoutEntity p = NotificationTestData.payout(9L, PayoutStatus.REJECTED);
+        p.setRejectReason("  Дансны нэр таарахгүй ");
+
+        PushMessage m = factory.payoutDecided(p);
+
+        assertThat(m.title()).isEqualTo("Мөнгө татах хүсэлт татгалзагдлаа");
+        assertThat(m.body()).isEqualTo("5,000 ₮ хэтэвчинд тань буцлаа. Шалтгаан: Дансны нэр таарахгүй");
+        assertThat(m.data()).containsEntry("status", "REJECTED");
+    }
+
+    @Test
+    void rejectedPayoutWithoutAReasonEndsAfterTheRefund() {
+        PayoutEntity p = NotificationTestData.payout(9L, PayoutStatus.REJECTED);
+        p.setRejectReason(" ");
+
+        assertThat(factory.payoutDecided(p).body()).isEqualTo("5,000 ₮ хэтэвчинд тань буцлаа");
     }
 }

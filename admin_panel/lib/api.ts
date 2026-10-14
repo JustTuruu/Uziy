@@ -249,7 +249,6 @@ export interface Payout {
   bank: string;
   accountNumber: string;
   accountName: string;
-  nationalId: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
   isFirstPayout: boolean;
   requestedAt: string;

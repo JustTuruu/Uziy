@@ -20,6 +20,9 @@ class RouterPushTarget implements PushNavigationTarget {
       _router.push(location, extra: extra);
 
   @override
+  void go(String location) => _router.go(location);
+
+  @override
   void goHome() => _router.go(Routes.home);
 
   @override

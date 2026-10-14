@@ -18,6 +18,11 @@ class AppUser {
   final bool isVerified;
   final String? companyName;
 
+  /// Овог / нэр, asked at registration since 2026-10-14; null for older
+  /// accounts and companies.
+  final String? lastName;
+  final String? firstName;
+
   const AppUser({
     required this.id,
     required this.phoneNumber,
@@ -29,6 +34,8 @@ class AppUser {
     this.balance = 0.0,
     this.isVerified = false,
     this.companyName,
+    this.lastName,
+    this.firstName,
   });
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
@@ -53,6 +60,13 @@ class AppUser {
       balance: (json['balance'] as num?)?.toDouble() ?? 0.0,
       isVerified: json['isVerified'] as bool? ?? false,
       companyName: json['companyName'] as String?,
+      lastName: _nonBlank(json['lastName']),
+      firstName: _nonBlank(json['firstName']),
     );
+  }
+
+  static String? _nonBlank(Object? value) {
+    final text = (value as String?)?.trim();
+    return text == null || text.isEmpty ? null : text;
   }
 }

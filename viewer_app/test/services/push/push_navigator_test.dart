@@ -14,6 +14,7 @@ void main() {
       target: target,
       videoRoute: '/video',
       surveyRoute: '/survey',
+      walletRoute: '/wallet',
     );
   }
 
@@ -67,5 +68,26 @@ void main() {
     n.markNotReady();
     await n.markReady();
     expect(target.pushed, isEmpty);
+  });
+
+  test('a payout decision opens the wallet without a feed lookup', () async {
+    var lookups = 0;
+    final n = build(() async {
+      lookups++;
+      return [];
+    });
+    await n.markReady();
+    await n.open(const PayoutPush(payoutId: 9));
+    expect(target.went, ['/wallet']);
+    expect(target.pushed, isEmpty);
+    expect(lookups, 0);
+  });
+
+  test('a payout tap before Home is held and replayed', () async {
+    final n = build(() async => []);
+    await n.open(const PayoutPush(payoutId: 9));
+    expect(target.went, isEmpty);
+    await n.markReady();
+    expect(target.went, ['/wallet']);
   });
 }

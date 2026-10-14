@@ -4,7 +4,10 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:viewer_app/services/api_service.dart';
+import 'package:viewer_app/services/campaign_events.dart';
 import 'package:viewer_app/services/viewer_service.dart';
+
+import '../support/fake_api.dart';
 
 /// Replies to every request with a fixed status + JSON body.
 class _FakeAdapter implements HttpClientAdapter {
@@ -55,6 +58,11 @@ void main() {
       expect(e.message, 'Дахин нэвтэрнэ үү');
     });
 
+    test('myPayouts 403', () async {
+      _reply(403, forbidden);
+      expect((await _catch(svc.myPayouts)).statusCode, 403);
+    });
+
     test('me 403', () async {
       _reply(403, forbidden);
       expect((await _catch(svc.me)).statusCode, 403);
@@ -92,11 +100,29 @@ void main() {
           bank: 'Khan',
           accountNumber: '1',
           accountName: 'A',
-          nationalId: 'АА99999999',
         ),
       );
       expect(e.statusCode, 400);
       expect(e.message, 'Үлдэгдэл хүрэлцэхгүй');
+    });
+  });
+
+  /// The national ID is no longer collected (owner, 2026-10-14).
+  test('a payout request sends the account, never a national ID', () async {
+    final api = FakeApi.install((_) => const FakeReply(200, {'id': 1}));
+
+    await svc.requestPayout(
+      amount: 2000,
+      bank: 'Khan Bank',
+      accountNumber: '5001234567',
+      accountName: 'БОЛД',
+    );
+
+    expect(api.callsTo('/viewer/payouts').single.body, {
+      'amount': 2000.0,
+      'bank': 'Khan Bank',
+      'accountNumber': '5001234567',
+      'accountName': 'БОЛД',
     });
   });
 
@@ -196,6 +222,44 @@ void main() {
       // answered "Хариулт буруу байна".
       const text = 'нэг\nхоёр\tгурав "ишлэл" a\\b';
       expect(roundTrip(text), text);
+    });
+  });
+
+  group('submitSurvey tells the app the campaign is finished', () {
+    Future<List<int>> completionsDuring(Future<void> Function() call) async {
+      final ids = <int>[];
+      final sub = CampaignEvents.instance.completed
+          .listen((e) => ids.add(e.campaignId));
+      await call();
+      await Future<void>.delayed(Duration.zero);
+      await sub.cancel();
+      return ids;
+    }
+
+    test('after a paid reward', () async {
+      _reply(200, const {'rewardPaid': 700, 'newBalance': 1700});
+      final ids = await completionsDuring(
+          () => svc.submitSurvey(campaignId: 5, answers: const {1: 'Тийм'}));
+      expect(ids, [5]);
+    });
+
+    test('when the server says it was already rewarded (409)', () async {
+      _reply(409, const {'status': 409, 'message': 'Аль хэдийн авсан'});
+      final ids = await completionsDuring(() async {
+        final e = await _catch(
+            () => svc.submitSurvey(campaignId: 5, answers: const {1: 'Тийм'}));
+        expect(e.statusCode, 409);
+      });
+      expect(ids, [5]);
+    });
+
+    test('not when the answers are rejected (400)', () async {
+      _reply(400, const {'status': 400, 'message': 'Хариулт буруу байна'});
+      final ids = await completionsDuring(() async {
+        await _catch(
+            () => svc.submitSurvey(campaignId: 5, answers: const {1: 'x'}));
+      });
+      expect(ids, isEmpty);
     });
   });
 }

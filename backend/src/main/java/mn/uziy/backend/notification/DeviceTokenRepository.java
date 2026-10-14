@@ -22,6 +22,10 @@ public interface DeviceTokenRepository extends JpaRepository<DeviceTokenEntity, 
     @Query("DELETE FROM DeviceTokenEntity d WHERE d.userId = :userId AND d.token = :token")
     int deleteByUserIdAndToken(@Param("userId") long userId, @Param("token") String token);
 
+    /** Every device one viewer registered, e.g. to tell them their payout was decided. */
+    @Query("SELECT d.token FROM DeviceTokenEntity d WHERE d.userId = :userId")
+    List<String> findTokensByUserId(@Param("userId") long userId);
+
     /** Removes tokens FCM reported as dead. */
     @Transactional
     @Modifying
