@@ -6,7 +6,7 @@ import java.util.Map;
 import mn.uziy.backend.analytics.AnalyticsDtos.Slice;
 
 /** Groups ages into the bands advertisers read: 13–17, 18–24, 25–34, 35–44, 45+. */
-final class AgeBands {
+public final class AgeBands {
 
     private record Band(String label, int min, int max) {
         boolean contains(int age) {
@@ -21,11 +21,16 @@ final class AgeBands {
             new Band("35–44", 35, 44),
             new Band("45+", 45, Integer.MAX_VALUE));
 
+    /** Every band label, youngest first. */
+    public static List<String> labels() {
+        return BANDS.stream().map(Band::label).toList();
+    }
+
     private AgeBands() {
     }
 
     /** Label of the band an age falls in. */
-    static String labelOf(int age) {
+    public static String labelOf(int age) {
         for (Band band : BANDS) {
             if (band.contains(age)) {
                 return band.label();

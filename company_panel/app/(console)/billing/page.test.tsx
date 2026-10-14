@@ -10,7 +10,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => router }));
 function campaign(over: Partial<Campaign>): Campaign {
   return {
     id: 1,
-    title: "Аян",
+    title: "Хэрэглэгчийн сэтгэл ханамж",
     videoUrl: "",
     durationSeconds: 0,
     hasVideo: false,
@@ -35,7 +35,7 @@ function payment(over: Partial<Payment>): Payment {
   return {
     id: 1,
     campaignId: 1,
-    campaignTitle: "Аян",
+    campaignTitle: "Хэрэглэгчийн сэтгэл ханамж",
     amount: 1_000_000,
     provider: "SIMULATED",
     status: "PAID",
@@ -60,7 +60,7 @@ describe("Company billing page", () => {
     expect(await screen.findByText("Одоогоор төлбөр хийгдээгүй байна.")).toBeInTheDocument();
     expect(screen.queryByText(/Данс цэнэглэх/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Дансны үлдэгдэл/)).not.toBeInTheDocument();
-    expect(screen.getByText("Аян тус бүрийн төлбөрөө энд хянана")).toBeInTheDocument();
+    expect(screen.getByText("Судалгаа тус бүрийн төлбөрөө энд хянана")).toBeInTheDocument();
   });
 
   it("shows totals, awaiting-payment campaigns and the payment history", async () => {

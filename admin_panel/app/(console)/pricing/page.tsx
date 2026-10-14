@@ -104,7 +104,7 @@ export default function CommissionSettingsPage() {
     <>
       <PageHeader
         title="Шимтгэл ба урамшуулал"
-        description="Аян бүрийн төсвөөс платформын авах шимтгэл болон үзэгчид олгох хамгийн бага урамшууллыг тохируулна"
+        description="Судалгаа бүрийн төсвөөс платформын авах шимтгэл болон үзэгчид олгох хамгийн бага урамшууллыг тохируулна"
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -113,8 +113,8 @@ export default function CommissionSettingsPage() {
             title="Одоогийн тохиргоо"
             description={
               settings
-                ? `Хадгалсны дараа шинээр үүсэх аянуудад мөрдөгдөнө · Сүүлд шинэчилсэн: ${relativeTime(settings.updatedAt)}`
-                : "Хадгалсны дараа шинээр үүсэх аянуудад мөрдөгдөнө"
+                ? `Хадгалсны дараа шинээр үүсэх судалгаануудад мөрдөгдөнө · Сүүлд шинэчилсэн: ${relativeTime(settings.updatedAt)}`
+                : "Хадгалсны дараа шинээр үүсэх судалгаануудад мөрдөгдөнө"
             }
           />
           <CardBody>
@@ -133,7 +133,7 @@ export default function CommissionSettingsPage() {
                       setPercentText(text);
                       setSaved(false);
                     }}
-                    hint={`${MIN_COMMISSION_PERCENT}–${MAX_COMMISSION_PERCENT}% хооронд. Аяны төсвөөс хасагдана.`}
+                    hint={`${MIN_COMMISSION_PERCENT}–${MAX_COMMISSION_PERCENT}% хооронд. Судалгааны төсвөөс хасагдана.`}
                   />
                   <NumericInput
                     label="Нэг үзэгчид олгох хамгийн бага урамшуулал (₮)"
@@ -143,7 +143,7 @@ export default function CommissionSettingsPage() {
                       setMinRewardText(text);
                       setSaved(false);
                     }}
-                    hint="Үүнээс бага урамшуулалтай аян үүсгэх боломжгүй"
+                    hint="Үүнээс бага урамшуулалтай судалгаа үүсгэх боломжгүй"
                   />
                 </div>
 
@@ -206,10 +206,10 @@ export default function CommissionSettingsPage() {
                 className="mt-0.5 shrink-0 text-[var(--color-primary)]"
               />
               <p>
-                Компани аяндаа{" "}
+                Компани судалгаандаа{" "}
                 <b className="text-[var(--color-text-primary)]">нийт төсөв</b>{" "}
                 оруулаад хүрэх үзэгчийн тоо эсвэл нэг үзэгчид олгох урамшууллаа
-                сонгоно. Төлбөрийг аян тус бүрээр төлнө.
+                сонгоно. Төлбөрийг судалгаа тус бүрээр төлнө.
               </p>
             </div>
             <div className="flex gap-3">
@@ -232,8 +232,8 @@ export default function CommissionSettingsPage() {
                 <b className="text-[var(--color-text-primary)]">
                   Хамгийн бага урамшуулал
                 </b>{" "}
-                нь үзэгчдэд хэт бага урамшуулалтай аян үүсэхээс сэргийлнэ. Өмнө
-                үүссэн аянууд үүсэх үеийнхээ шимтгэлээр үргэлжилнэ.
+                нь үзэгчдэд хэт бага урамшуулалтай судалгаа үүсэхээс сэргийлнэ. Өмнө
+                үүссэн судалгаанууд үүсэх үеийнхээ шимтгэлээр үргэлжилнэ.
               </p>
             </div>
           </CardBody>

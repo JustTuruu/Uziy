@@ -71,7 +71,7 @@ export default function FinancePage() {
                 : "—"
           }
           icon={<Banknote size={16} />}
-          hint="Аяны төсвөөс"
+          hint="Судалгааны төсвөөс"
         />
         <StatCard
           label="Хүлээгдэж буй таталт"

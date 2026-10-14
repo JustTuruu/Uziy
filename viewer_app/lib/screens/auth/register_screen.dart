@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../models/regions.dart';
 import '../../models/register_draft.dart';
 import '../../models/user.dart';
 import '../../routes/app_router.dart' show Routes;
@@ -11,6 +12,21 @@ import '../../services/auth_service.dart';
 import '../../widgets/incentive_banner.dart';
 import '../../widgets/ui.dart';
 import 'auth_widgets.dart';
+import 'location_fields.dart';
+import 'phone_verify_logic.dart' show kSmsPriceNote;
+import 'reward_promise.dart';
+import 'login_fields.dart';
+
+/// The pinned button: it does not create the account yet, it opens the
+/// SMS step.
+const String kContinueLabel = 'Үргэлжлүүлэх';
+
+/// Caption above it, ending in the operator's SMS price.
+const String kNextStepNote =
+    'Дараа нь дугаараа SMS-ээр баталгаажуулна. $kSmsPriceNote';
+
+/// Shown under the terms tile when 'Бүртгүүлэх' is tapped before agreeing.
+const String kTermsRequired = 'Үйлчилгээний нөхцөлийг зөвшөөрнө үү';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key, this.next});
@@ -28,7 +44,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passCtrl = TextEditingController();
   final _lastNameCtrl = TextEditingController();
   final _firstNameCtrl = TextEditingController();
-  final _cityCtrl = TextEditingController(text: 'Улаанбаатар');
+  final _cityCtrl = TextEditingController();
   final _districtCtrl = TextEditingController();
   final _passFocus = FocusNode();
   final _scrollCtrl = ScrollController();
@@ -36,6 +52,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // Scroll targets for "jump to the first problem" after a failed submit.
   final _credentialsKey = GlobalKey();
   final _aboutKey = GlobalKey();
+  final _termsKey = GlobalKey();
 
   Gender? _gender;
   DateTime? _birthDate;
@@ -48,17 +65,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   /// The large page title has scrolled away: show it in the app bar.
   bool _compactTitle = false;
-
-  static final _cities = [
-    'Улаанбаатар',
-    'Дархан',
-    'Эрдэнэт',
-    'Чойбалсан',
-    'Мөрөн',
-    'Ховд',
-    'Өлгий',
-    'Бусад',
-  ];
 
   @override
   void initState() {
@@ -124,20 +130,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
     if (_gender == null || _birthDate == null) {
+      // The fields say what is missing themselves; no extra snack bar.
       _scrollTo(_aboutKey);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Хүйс болон төрсөн өдрөө сонгоно уу'),
-        ),
-      );
       return;
     }
     if (!_agreedToTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Үйлчилгээний нөхцөлийг зөвшөөрнө үү'),
-        ),
-      );
+      // The button stays tappable so the viewer learns why nothing happened:
+      // the tile turns red and comes into view.
+      _scrollTo(_termsKey);
       return;
     }
     FocusScope.of(context).unfocus();
@@ -162,9 +162,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             gender: _gender!,
             birthDate: _birthDate!,
             city: _cityCtrl.text,
-            district: _districtCtrl.text.trim().isEmpty
-                ? null
-                : _districtCtrl.text.trim(),
+            district: districtFor(_cityCtrl.text, _districtCtrl.text),
           ),
         ),
       );
@@ -200,10 +198,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  void _selectGender(Gender g) {
-    if (_gender == g) return;
-    setState(() => _gender = g);
-  }
+  void _selectGender(Gender g) => setState(() => _gender = g);
 
   @override
   Widget build(BuildContext context) {
@@ -211,11 +206,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final fast = AppMotion.duration(context, AppDurations.fast);
     final showGenderError = _attempted && _gender == null;
     final showBirthError = _attempted && _birthDate == null;
+    final showTermsError = _attempted && !_agreedToTerms;
 
-    return AmbientBackground(
-      variant: AmbientVariant.gold,
+    return LoginFieldsTheme(
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: context.colors.background,
         appBar: AppBar(
           backgroundColor: _compactTitle
               ? context.colors.background.withValues(alpha: 0.94)
@@ -226,14 +221,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
           automaticallyImplyLeading: false,
+          leadingWidth: AppLayout.screenPadding + AppLayout.minTapTarget,
           leading: canPop
-              ? Center(
-                  child: AppIconButton(
-                    icon: Icons.arrow_back_ios_new_rounded,
-                    semanticLabel: 'Буцах',
-                    size: 40,
-                    iconSize: 18,
-                    onPressed: () => Navigator.of(context).maybePop(),
+              ? Padding(
+                  padding: const EdgeInsetsDirectional.only(
+                    start: AppLayout.screenPadding,
+                  ),
+                  child: Center(
+                    child: AuthBackButton(
+                      onPressed: () => Navigator.of(context).maybePop(),
+                    ),
                   ),
                 )
               : null,
@@ -244,7 +241,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
         bottomNavigationBar: _SubmitBar(
-          agreed: _agreedToTerms,
           loading: _loading,
           onSubmit: _submit,
         ),
@@ -268,30 +264,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    FadeSlideIn(
+                    const FadeSlideIn(
                       index: 0,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Semantics(
-                            header: true,
-                            child: Text(
-                              'Бүртгүүлэх',
-                              style: context.textStyles.display,
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          Text(
-                            'Мэдээллээ оруулаад урамшуулалт видео үзэж '
-                            'эхлээрэй.',
-                            style: context.textStyles.body.copyWith(
-                              color: context.colors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
+                      child: AuthPageTitle('Бүртгүүлэх'),
                     ),
+                    const SizedBox(height: AppSpacing.xxl),
+                    const FadeSlideIn(index: 1, child: RewardPromise()),
                     const SizedBox(height: AppSpacing.xl),
+                    // Spec §4A: shown before the profile questions so the
+                    // viewer knows why honest answers pay off.
                     const FadeSlideIn(index: 1, child: IncentiveBanner()),
                     const SizedBox(height: AppSpacing.xxxl),
                     FadeSlideIn(
@@ -300,28 +281,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          PhoneNumberSection(
-                            controller: _phoneCtrl,
-                            textInputAction: TextInputAction.next,
-                            onFieldSubmitted: (_) => _passFocus.requestFocus(),
-                            validator: (v) => AuthValidators.phone(
-                              v,
-                              message: '8 оронтой утасны дугаар',
+                          LabeledField(
+                            label: 'Утасны дугаар',
+                            child: PhoneField(
+                              controller: _phoneCtrl,
+                              hintText: '',
+                              textInputAction: TextInputAction.next,
+                              onFieldSubmitted: (_) =>
+                                  _passFocus.requestFocus(),
+                              validator: (v) => AuthValidators.phone(v,
+                                  message: AuthValidators.phoneInvalid),
                             ),
                           ),
                           const SizedBox(height: AppSpacing.xxl),
-                          _FormSection(
-                            title: 'Нууц үг',
-                            subtitle: 'Дараа нэвтрэхдээ ашиглана',
-                            children: [
-                              PasswordField(
-                                controller: _passCtrl,
-                                focusNode: _passFocus,
-                                hintText: 'Нууц үг (доод тал нь 6 тэмдэгт)',
-                                textInputAction: TextInputAction.done,
-                                validator: AuthValidators.password,
-                              ),
-                            ],
+                          LabeledField(
+                            label: 'Нууц үг',
+                            child: PasswordField(
+                              controller: _passCtrl,
+                              focusNode: _passFocus,
+                              hintText: '',
+                              showLeadingIcon: false,
+                              helperText: '6-аас доошгүй тэмдэгт',
+                              autofillHints: const [AutofillHints.newPassword],
+                              textInputAction: TextInputAction.next,
+                              validator: AuthValidators.password,
+                            ),
                           ),
                         ],
                       ),
@@ -332,59 +316,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       index: 3,
                       child: _FormSection(
                         title: 'Таны тухай',
-                        subtitle: 'Таны мэдээлэл нууцлагдан хадгалагдана',
                         children: [
-                          const FieldLabel('Овог'),
-                          TextFormField(
-                            controller: _lastNameCtrl,
-                            textCapitalization: TextCapitalization.words,
-                            textInputAction: TextInputAction.next,
-                            autofillHints: const [AutofillHints.familyName],
-                            style: context.textStyles.body,
-                            decoration: const InputDecoration(
-                              prefixIcon: Icon(Icons.badge_outlined),
-                              hintText: 'Жишээ нь: Оюун-Эрдэнэ',
+                          LabeledField(
+                            label: 'Овог',
+                            child: TextFormField(
+                              controller: _lastNameCtrl,
+                              textCapitalization: TextCapitalization.words,
+                              textInputAction: TextInputAction.next,
+                              autofillHints: const [AutofillHints.familyName],
+                              style: context.textStyles.body,
+                              decoration: const InputDecoration(),
+                              validator: AuthValidators.lastName,
                             ),
-                            validator: AuthValidators.lastName,
                           ),
                           const SizedBox(height: AppSpacing.lg),
-                          const FieldLabel('Нэр'),
-                          TextFormField(
-                            controller: _firstNameCtrl,
-                            textCapitalization: TextCapitalization.words,
-                            textInputAction: TextInputAction.done,
-                            autofillHints: const [AutofillHints.givenName],
-                            style: context.textStyles.body,
-                            decoration: const InputDecoration(
-                              prefixIcon: Icon(Icons.person_outline_rounded),
-                              hintText: 'Жишээ нь: Төрболд',
+                          LabeledField(
+                            label: 'Нэр',
+                            child: TextFormField(
+                              controller: _firstNameCtrl,
+                              textCapitalization: TextCapitalization.words,
+                              textInputAction: TextInputAction.done,
+                              autofillHints: const [AutofillHints.givenName],
+                              style: context.textStyles.body,
+                              decoration: const InputDecoration(),
+                              validator: AuthValidators.firstName,
                             ),
-                            validator: AuthValidators.firstName,
                           ),
                           const SizedBox(height: AppSpacing.lg),
                           const FieldLabel('Хүйс'),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: GenderOptionCard(
-                                  label: 'Эрэгтэй',
-                                  icon: Icons.male_rounded,
-                                  selected: _gender == Gender.male,
-                                  error: showGenderError,
-                                  onTap: () => _selectGender(Gender.male),
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.md),
-                              Expanded(
-                                child: GenderOptionCard(
-                                  label: 'Эмэгтэй',
-                                  icon: Icons.female_rounded,
-                                  selected: _gender == Gender.female,
-                                  error: showGenderError,
-                                  onTap: () => _selectGender(Gender.female),
-                                ),
-                              ),
-                            ],
+                          GenderSelector(
+                            value: _gender,
+                            error: showGenderError,
+                            onChanged: _selectGender,
                           ),
                           InlineFieldError(
                             show: showGenderError,
@@ -393,6 +356,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const SizedBox(height: AppSpacing.xl),
                           const FieldLabel('Төрсөн он сар өдөр'),
                           BirthDateTile(
+                            placeholder: '',
                             value: _birthDate,
                             error: showBirthError,
                             onTap: _pickBirthDate,
@@ -409,66 +373,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       index: 4,
                       child: _FormSection(
                         title: 'Байршил',
-                        subtitle: 'Таны бүсийн урамшууллыг харуулахад '
-                            'ашиглана',
                         children: [
-                          const FieldLabel('Хот'),
-                          DropdownButtonFormField<String>(
-                            initialValue:
-                                _cityCtrl.text.isEmpty ? null : _cityCtrl.text,
-                            decoration: const InputDecoration(
-                              prefixIcon: Icon(Icons.location_city_rounded),
-                            ),
-                            // Fill the field and ellipsize, so a long city
-                            // name never overflows at small widths / large
-                            // text.
-                            isExpanded: true,
-                            icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                            iconEnabledColor: context.colors.textSecondary,
-                            dropdownColor: context.colors.surfaceElevated,
-                            borderRadius: AppRadii.brMd,
-                            menuMaxHeight: 360,
-                            style: context.textStyles.body,
-                            items: _cities
-                                .map(
-                                  (c) => DropdownMenuItem(
-                                    value: c,
-                                    child: Text(
-                                      c,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (v) {
-                              HapticFeedback.selectionClick();
-                              setState(
-                                () => _cityCtrl.text = v ?? 'Улаанбаатар',
-                              );
-                            },
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                          TextFormField(
-                            controller: _districtCtrl,
-                            textInputAction: TextInputAction.done,
-                            style: context.textStyles.body,
-                            decoration: const InputDecoration(
-                              prefixIcon: Icon(Icons.pin_drop_outlined),
-                              hintText: 'Дүүрэг / Сум (заавал биш)',
-                            ),
+                          LocationFields(
+                            city: _cityCtrl,
+                            district: _districtCtrl,
+                            onCityChanged: (_) => setState(() {}),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xxxl),
                     FadeSlideIn(
+                      key: _termsKey,
                       index: 5,
-                      child: TermsAgreementTile(
-                        value: _agreedToTerms,
-                        onChanged: (v) => setState(() => _agreedToTerms = v),
-                        onTapTerms: _openTerms,
-                        onTapPrivacy: _openPrivacy,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          TermsAgreementTile(
+                            value: _agreedToTerms,
+                            error: showTermsError,
+                            onChanged: (v) =>
+                                setState(() => _agreedToTerms = v),
+                            onTapTerms: _openTerms,
+                            onTapPrivacy: _openPrivacy,
+                          ),
+                          InlineFieldError(
+                            show: showTermsError,
+                            message: kTermsRequired,
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -486,12 +419,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 class _FormSection extends StatelessWidget {
   const _FormSection({
     required this.title,
-    required this.subtitle,
     required this.children,
   });
 
   final String title;
-  final String subtitle;
   final List<Widget> children;
 
   @override
@@ -501,8 +432,7 @@ class _FormSection extends StatelessWidget {
       children: [
         SectionHeader(
           title: title,
-          subtitle: subtitle,
-          padding: const EdgeInsets.only(left: 2, bottom: AppSpacing.lg),
+          padding: const EdgeInsets.only(bottom: AppSpacing.lg),
         ),
         ...children,
       ],
@@ -514,12 +444,10 @@ class _FormSection extends StatelessWidget {
 /// typing (Scaffold.bottomNavigationBar), always reachable otherwise.
 class _SubmitBar extends StatelessWidget {
   const _SubmitBar({
-    required this.agreed,
     required this.loading,
     required this.onSubmit,
   });
 
-  final bool agreed;
   final bool loading;
   final VoidCallback onSubmit;
 
@@ -550,41 +478,19 @@ class _SubmitBar extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  ReducibleAnimatedSize(
-                    duration: AppMotion.duration(context, AppDurations.normal),
-                    curve: AppMotion.standard,
-                    alignment: Alignment.bottomCenter,
-                    child: agreed
-                        ? const SizedBox(width: double.infinity)
-                        : Padding(
-                            padding:
-                                const EdgeInsets.only(bottom: AppSpacing.sm),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.info_outline_rounded,
-                                  size: 14,
-                                  color: context.colors.textTertiary,
-                                ),
-                                const SizedBox(width: 6),
-                                Flexible(
-                                  child: Text(
-                                    'Үргэлжлүүлэхийн тулд нөхцөлийг '
-                                    'зөвшөөрнө үү',
-                                    textAlign: TextAlign.center,
-                                    style: context.textStyles.caption.copyWith(
-                                      color: context.colors.textTertiary,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                  // Said before the tap: the next step is a paid SMS
+                  // (Product principle 2: nothing costs money unannounced).
+                  Text(
+                    kNextStepNote,
+                    textAlign: TextAlign.center,
+                    style: context.textStyles.caption,
                   ),
+                  const SizedBox(height: AppSpacing.sm),
                   AppButton(
-                    label: 'Бүртгүүлэх',
-                    onPressed: agreed ? onSubmit : null,
+                    label: kContinueLabel,
+                    trailingIcon: AppIcons.next,
+                    raised: true,
+                    onPressed: onSubmit,
                     loading: loading,
                     haptic: true,
                   ),

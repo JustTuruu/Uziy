@@ -7,6 +7,7 @@ import '../../services/api_error.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/ui.dart';
 import 'auth_widgets.dart';
+import 'login_fields.dart';
 import 'otp_widgets.dart';
 
 const String kForgotTitle = 'Нууц үг сэргээх';
@@ -73,23 +74,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AmbientBackground(
-      variant: AmbientVariant.gold,
+    // The same paper, fields and back control as the sign-in page.
+    return LoginFieldsTheme(
+      raised: true,
       child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          automaticallyImplyLeading: false,
-          leading: Center(
-            child: AppIconButton(
-              icon: Icons.arrow_back_ios_new_rounded,
-              semanticLabel: 'Буцах',
-              size: 40,
-              iconSize: 18,
-              onPressed: () => context.pop(),
-            ),
-          ),
-        ),
+        backgroundColor: context.colors.background,
+        appBar: AuthStepAppBar(onBack: () => context.pop()),
         body: SafeArea(
           child: AuthScrollShell(
             padding: const EdgeInsets.fromLTRB(
@@ -109,19 +99,26 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     subtitle: kForgotSubtitle,
                   ),
                   const SizedBox(height: AppSpacing.xxxl),
-                  PhoneField(
-                    controller: _phone,
-                    textInputAction: TextInputAction.done,
-                    onFieldSubmitted: (_) => _submit(),
-                    validator: (v) => AuthValidators.phone(
-                      v,
-                      message: 'Утасны дугаараа шалгана уу',
+                  LabeledField(
+                    label: 'Утасны дугаар',
+                    child: PhoneField(
+                      controller: _phone,
+                      adorned: true,
+                      hintText: PhoneField.adornedHint,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => _submit(),
+                      validator: (v) => AuthValidators.phone(
+                        v,
+                        message: AuthValidators.phoneInvalid,
+                      ),
                     ),
                   ),
                   OtpErrorText(message: _error),
                   const SizedBox(height: AppSpacing.xxl),
                   AppButton(
                     label: kForgotSendLabel,
+                    trailingIcon: AppIcons.next,
+                    raised: true,
                     loading: _loading,
                     haptic: true,
                     onPressed: _submit,

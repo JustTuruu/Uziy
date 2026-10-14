@@ -25,10 +25,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class CampaignModerationServiceImpl implements CampaignModerationService {
 
-    public static final String UNPAID_MESSAGE = "Төлбөр нь төлөгдөөгүй аяныг хянах боломжгүй";
+    public static final String UNPAID_MESSAGE = "Төлбөр нь төлөгдөөгүй судалгааг хянах боломжгүй";
     private static final String NOT_FOUND_MESSAGE = Messages.CAMPAIGN_NOT_FOUND;
-    private static final String INVALID_DECISION_MESSAGE = "Аяныг зөвхөн зөвшөөрөх эсвэл татгалзах боломжтой";
-    private static final String ALREADY_MODERATED_MESSAGE = "Энэ аяныг аль хэдийн хянаж шийдвэрлэсэн байна";
+    private static final String INVALID_DECISION_MESSAGE = "Судалгааг зөвхөн зөвшөөрөх эсвэл татгалзах боломжтой";
+    private static final String ALREADY_MODERATED_MESSAGE = "Энэ судалгааг аль хэдийн хянаж шийдвэрлэсэн байна";
 
     private final CampaignRepository campaigns;
     private final UserRepository users;

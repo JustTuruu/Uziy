@@ -103,3 +103,15 @@ docker compose down -v && docker compose up -d postgres
 "Uziy (local)" server is pre-registered; when it asks for a password use
 `uziy_dev`. Tables: Servers → Uziy (local) → Databases → uziy → Schemas →
 public → Tables → right-click → View/Edit Data. Dev only.
+
+### Campaign cover images
+
+Admins can upload or replace a cover from the campaign detail page in `admin_panel`.
+`POST /admin/campaigns/{id}/image` accepts a multipart `file` (JPG/PNG, at most 5 MiB
+and 16 million pixels); `DELETE` removes it. The backend validates and re-encodes
+images, stores one per campaign in PostgreSQL (`V14__campaign_images.sql`), and
+returns a versioned relative `thumbnailUrl`. Images are intentionally public at
+`GET /public/campaigns/{id}/image`, matching the guest feed's visible covers.
+The admin and viewer resolve relative URLs against their configured API host.
+Restart the backend to apply the migration; image bytes are included in database
+backups and require no local upload directory or external storage credentials.

@@ -61,3 +61,17 @@ export function companyStatusTransitions(
 export function isCampaignPaid(status: CampaignStatus): boolean {
   return status !== "AWAITING_PAYMENT";
 }
+
+/** Statuses in which the company may still set its own cover image (mirrors the backend rule). */
+const COVER_EDITABLE: ReadonlySet<CampaignStatus> = new Set([
+  "AWAITING_PAYMENT",
+  "PENDING",
+]);
+
+/**
+ * The cover is part of what the admin approves, so the company may change it
+ * only until approval.
+ */
+export function canEditCover(status: CampaignStatus): boolean {
+  return COVER_EDITABLE.has(status);
+}

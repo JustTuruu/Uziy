@@ -262,4 +262,18 @@ void main() {
       expect(ids, isEmpty);
     });
   });
+
+  group('statistics consent', () {
+    test('a 403 carries the status', () async {
+      _reply(403, forbidden);
+      expect((await _catch(svc.statisticsConsent)).statusCode, 403);
+    });
+
+    test('a decision is read back', () async {
+      _reply(200,
+          const {'status': 'DECLINED', 'decidedAt': '2026-10-14T04:00:00Z'});
+      final c = await svc.decideStatisticsConsent(granted: false);
+      expect(c.granted, isFalse);
+    });
+  });
 }

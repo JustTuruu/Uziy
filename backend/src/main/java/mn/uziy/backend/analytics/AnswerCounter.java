@@ -57,7 +57,7 @@ public class AnswerCounter {
     }
 
     /** The strings in a JSON string or array of strings; empty for anything else. */
-    static List<String> strings(String json) {
+    public static List<String> strings(String json) {
         try {
             JsonNode node = JSON.readTree(json);
             List<String> out = new ArrayList<>();

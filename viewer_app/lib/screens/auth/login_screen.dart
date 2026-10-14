@@ -8,6 +8,7 @@ import '../../services/auth_service.dart';
 import '../../widgets/ui.dart';
 import '../splash_screen.dart';
 import 'auth_widgets.dart';
+import 'login_backdrop.dart';
 import 'login_fields.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -72,195 +73,261 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final switchDuration = AppMotion.duration(context, AppDurations.normal);
-    final hero = authHeroMetrics(MediaQuery.sizeOf(context).height);
-
-    return AmbientBackground(
-      variant: AmbientVariant.gold,
+    return LoginFieldsTheme(
+      raised: true,
       child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: CustomScrollView(
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            slivers: [
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: AppLayout.maxContentWidth,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppLayout.screenPadding,
-                        AppSpacing.xxl,
-                        AppLayout.screenPadding,
-                        AppSpacing.md,
+        backgroundColor: context.colors.background,
+        body: Stack(
+          children: [
+            const Positioned.fill(child: LoginBackdrop()),
+            SafeArea(
+              child: AuthScrollShell(
+                padding: const EdgeInsets.fromLTRB(
+                  AppLayout.screenPadding,
+                  AppSpacing.xxl,
+                  AppLayout.screenPadding,
+                  AppSpacing.xxl,
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _BrandRow(onGuest: () => context.go(Routes.home)),
+                      const SizedBox(height: kLoginHeaderGap),
+                      const AuthPageTitle(
+                        'Нэвтрэх',
+                        subtitle: kLoginSubtitle,
                       ),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const Spacer(),
-                            // Not wrapped in FadeSlideIn: it may arrive via
-                            // a Hero flight from the splash screen.
-                            Center(
-                              child: UziyLogo(
-                                size: hero.logoSize,
-                                heroTag: SplashScreen.logoHeroTag,
-                              ),
-                            ),
-                            SizedBox(height: hero.gap),
-                            FadeSlideIn(
-                              index: 0,
-                              child: Text(
-                                'Тавтай морил',
-                                textAlign: TextAlign.center,
-                                style: context.textStyles.overline.copyWith(
-                                  color: context.colors.primary,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
-                            FadeSlideIn(
-                              index: 1,
-                              child: Semantics(
-                                header: true,
-                                child: Text(
-                                  'Нэвтрэх',
-                                  textAlign: TextAlign.center,
-                                  style: context.textStyles.display,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
-                            FadeSlideIn(
-                              index: 2,
-                              child: Text(
-                                'Утасны дугаар болон нууц үгээ оруулна уу',
-                                textAlign: TextAlign.center,
-                                style: context.textStyles.body.copyWith(
-                                  color: context.colors.textSecondary,
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: hero.gap),
-                            FadeSlideIn(
-                              index: 3,
-                              child: LoginFieldsTheme(
-                                child: AppCard(
-                                  padding: const EdgeInsets.all(AppSpacing.lg),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: [
-                                      const FieldLabel('Утасны дугаар'),
-                                      PhoneField(
-                                        controller: _phoneCtrl,
-                                        hintText: 'Утасны дугаараа оруулна уу',
-                                        textInputAction: TextInputAction.next,
-                                        onFieldSubmitted: (_) =>
-                                            _passFocus.requestFocus(),
-                                        validator: (v) => AuthValidators.phone(
-                                          v,
-                                          message: 'Утасны дугаараа шалгана уу',
-                                        ),
-                                      ),
-                                      const SizedBox(height: AppSpacing.lg),
-                                      const FieldLabel('Нууц үг'),
-                                      PasswordField(
-                                        controller: _passCtrl,
-                                        focusNode: _passFocus,
-                                        hintText: 'Нууц үгээ оруулна уу',
-                                        textInputAction: TextInputAction.done,
-                                        onFieldSubmitted: (_) => _submit(),
-                                        validator: AuthValidators.password,
-                                      ),
-                                      Align(
-                                        alignment: Alignment.centerRight,
-                                        child: TextButton(
-                                          style: TextButton.styleFrom(
-                                            foregroundColor:
-                                                context.colors.primary,
-                                          ),
-                                          onPressed: () =>
-                                              context.push(Routes.forgot),
-                                          child: const Text('Нууц үг мартсан?'),
-                                        ),
-                                      ),
-                                      _ErrorSlot(
-                                        duration: switchDuration,
-                                        child: _error == null
-                                            ? const SizedBox(
-                                                key: ValueKey('no-error'),
-                                                width: double.infinity,
-                                              )
-                                            : Padding(
-                                                key: ValueKey(_error),
-                                                padding: const EdgeInsets.only(
-                                                  bottom: AppSpacing.md,
-                                                ),
-                                                child: StatusBanner(
-                                                  message: _error!,
-                                                ),
-                                              ),
-                                      ),
-                                      AppButton(
-                                        label: 'Нэвтрэх',
-                                        onPressed: _submit,
-                                        loading: _loading,
-                                        haptic: true,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.lg),
-                            Center(
-                              child: TextButton.icon(
-                                style: TextButton.styleFrom(
-                                  foregroundColor: context.colors.textSecondary,
-                                  minimumSize: const Size(
-                                    0,
-                                    AppLayout.minTapTarget,
-                                  ),
-                                ),
-                                onPressed: () => context.go(Routes.home),
-                                iconAlignment: IconAlignment.end,
-                                icon: const Icon(AppIcons.next, size: 16),
-                                label: const Text('Зочноор үзэх'),
-                              ),
-                            ),
-                            if (!hero.compact) ...[
-                              const SizedBox(height: AppSpacing.xl),
-                              const FadeSlideIn(
-                                index: 4,
-                                child: HowItWorksStrip(),
-                              ),
-                            ],
-                            const Spacer(flex: 2),
-                            const SizedBox(height: AppSpacing.xxl),
-                            AuthFooterLink(
-                              prompt: 'Шинээр бүртгүүлэх үү?',
-                              action: 'Бүртгүүлэх',
-                              onTap: () => context.push(
-                                authLocation(Routes.register,
-                                    next: widget.next),
-                              ),
-                            ),
-                          ],
+                      const SizedBox(height: AppSpacing.huge - AppSpacing.sm),
+                      LabeledField(
+                        label: 'Утасны дугаар',
+                        child: PhoneField(
+                          controller: _phoneCtrl,
+                          adorned: true,
+                          hintText: kPhoneHint,
+                          // Reserves the error line: a message never shifts
+                          // the form.
+                          helperText: kReservedLine,
+                          textInputAction: TextInputAction.next,
+                          onFieldSubmitted: (_) => _passFocus.requestFocus(),
+                          validator: (v) => AuthValidators.phone(
+                            v,
+                            message: AuthValidators.phoneInvalid,
+                          ),
                         ),
                       ),
-                    ),
+                      const SizedBox(height: AppSpacing.sm),
+                      LabeledField(
+                        label: 'Нууц үг',
+                        child: PasswordField(
+                          controller: _passCtrl,
+                          focusNode: _passFocus,
+                          hintText: kPasswordHint,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _submit(),
+                          validator: AuthValidators.password,
+                        ),
+                      ),
+                      Align(
+                        alignment: AlignmentDirectional.centerEnd,
+                        child: TextButton(
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.xs,
+                            ),
+                            textStyle: context.textStyles.bodyStrong,
+                          ),
+                          onPressed: () => context.push(Routes.forgot),
+                          child: const Text(
+                            'Нууц үг мартсан?',
+                            textAlign: TextAlign.end,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      _ErrorSlot(
+                        duration: switchDuration,
+                        child: _error == null
+                            ? const SizedBox(
+                                key: ValueKey('no-error'),
+                                width: double.infinity,
+                              )
+                            : Padding(
+                                key: ValueKey(_error),
+                                padding: const EdgeInsets.only(
+                                  bottom: AppSpacing.lg,
+                                ),
+                                child: StatusBanner(message: _error!),
+                              ),
+                      ),
+                      AppButton(
+                        label: 'Нэвтрэх',
+                        trailingIcon: AppIcons.next,
+                        raised: true,
+                        onPressed: _submit,
+                        loading: _loading,
+                        haptic: true,
+                      ),
+                      const SizedBox(height: AppSpacing.xxxl),
+                      const _OrDivider('Шинэ хэрэглэгч үү?'),
+                      const SizedBox(height: AppSpacing.xl),
+                      AppButton(
+                        label: 'Бүртгүүлэх',
+                        variant: AppButtonVariant.secondary,
+                        onPressed: () => context.push(
+                          authLocation(Routes.register, next: widget.next),
+                        ),
+                      ),
+                      // Free height goes under the form, where the paper's
+                      // folds are; the actions stay together with it.
+                      const Spacer(),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+}
+
+/// Header-to-title interval (7 × 8pt).
+const double kLoginHeaderGap = 56;
+
+const String kLoginSubtitle = 'Үргэлжлүүлэхийн тулд нэвтэрнэ үү';
+const String kPhoneHint = PhoneField.adornedHint;
+const String kPasswordHint = 'Нууц үгээ оруулна уу';
+
+/// Helper text of a single space: keeps the line a validation message
+/// will use, so an error appears in place instead of pushing the form.
+const String kReservedLine = ' ';
+
+/// Logo tile and name on the left, the guest pill on the right. The logo
+/// flies in from the splash screen (shared Hero tag).
+class _BrandRow extends StatelessWidget {
+  const _BrandRow({required this.onGuest});
+
+  final VoidCallback onGuest;
+
+  static const double logoSize = 44;
+  static const double nameSize = 26;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const UziyLogo(size: logoSize, heroTag: SplashScreen.logoHeroTag),
+        const SizedBox(width: AppSpacing.md),
+        // The name gives way first: on a narrow screen with large text the
+        // guest pill must stay readable, the logo already says who we are.
+        Flexible(
+          child: Text(
+            'uziy',
+            maxLines: 1,
+            overflow: TextOverflow.fade,
+            softWrap: false,
+            style: context.textStyles.title.copyWith(
+              fontSize: nameSize,
+              letterSpacing: -0.6,
+            ),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Flexible(
+          flex: 3,
+          child: Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: _GuestPill(onTap: onGuest),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 'Зочноор үзэх ›' as a quiet pill: a see-through paper surface, a
+/// hairline and the text colour — present, never louder than 'Нэвтрэх'.
+class _GuestPill extends StatelessWidget {
+  const _GuestPill({required this.onTap});
+
+  final VoidCallback onTap;
+
+  static const String label = 'Зочноор үзэх';
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: onTap,
+      haptic: true,
+      scale: 0.96,
+      semanticLabel: label,
+      excludeSemantics: true,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: AppLayout.minTapTarget),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          color: context.colors.surface.withValues(alpha: 0.6),
+          borderRadius: AppRadii.brPill,
+          border: Border.all(color: context.colors.borderStrong),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 2,
+                textAlign: TextAlign.end,
+                style: context.textStyles.label.copyWith(
+                  color: context.colors.textPrimary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Icon(
+              AppIcons.chevron,
+              size: 16,
+              color: context.colors.textSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A caption between two hairlines ('— Шинэ хэрэглэгч үү? —').
+class _OrDivider extends StatelessWidget {
+  const _OrDivider(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: Divider(color: context.colors.border)),
+        Flexible(
+          flex: 3,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+            child: Text(
+              text,
+              textAlign: TextAlign.center,
+              style: context.textStyles.body
+                  .copyWith(color: context.colors.textSecondary),
+            ),
+          ),
+        ),
+        Expanded(child: Divider(color: context.colors.border)),
+      ],
     );
   }
 }

@@ -293,7 +293,7 @@ class ApiAbuseIntegrationTest extends AbstractApiIntegrationTest {
                 .content("{\"phoneNumber\":\"" + phone + "\"}")).andReturn().getResponse().getContentAsString();
         String id = com.jayway.jsonpath.JsonPath.read(started, "$.verificationId");
         String registration = "{\"phoneNumber\":\"" + phone + "\",\"password\":\"abcdef\",\"lastName\":\"Бат\",\"firstName\":\"Болд\",\"gender\":\"MALE\","
-                + "\"birthDate\":\"2000-01-01\",\"city\":\"Улаанбаатар\",\"verificationId\":\"" + id + "\"}";
+                + "\"birthDate\":\"2000-01-01\",\"city\":\"Улаанбаатар\",\"district\":\"Баянзүрх\",\"verificationId\":\"" + id + "\"}";
 
         for (int poll = 0; poll < 3; poll++) {
             String state = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders

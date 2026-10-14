@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../models/user.dart';
 import '../../widgets/ui.dart';
 import '../../widgets/appearance_settings.dart';
+import '../../widgets/stats_consent.dart';
 import 'profile_logic.dart';
 
 // Presentational pieces of the profile tab. Nothing here imports the router:
@@ -156,7 +157,7 @@ class ProfileTitle extends StatelessWidget {
       children: [
         Semantics(
           header: true,
-          child: Text(title, style: context.textStyles.display),
+          child: Text(title, style: context.textStyles.pageTitle),
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(subtitle, style: context.textStyles.bodySmall),
@@ -433,9 +434,7 @@ class ProfileBalanceTile extends StatelessWidget {
                   child: AnimatedMoney(
                     value: balance,
                     style: context.textStyles.headline,
-                    // The home and wallet tabs already play the count-up;
-                    // here it only animates when a refresh changes it.
-                    animateOnMount: false,
+                    memoryKey: MoneyMemory.balance,
                   ),
                 ),
               ],
@@ -944,6 +943,7 @@ class ProfileBody extends StatelessWidget {
               GroupedCard(
                 children: [
                   const AppearanceSettings(),
+                  if (canAskStatsConsent(user?.age)) const StatsConsentTile(),
                   InfoRow(
                     icon: AppIcons.history,
                     iconColor: context.colors.accent,

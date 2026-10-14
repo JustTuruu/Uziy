@@ -33,11 +33,21 @@ abstract final class AppIcons {
   // Wallet history
   static const IconData payout = LucideIcons.landmark;
   static const IconData payoutReturned = LucideIcons.undo2;
+  static const IconData moneyIn = LucideIcons.arrowDownLeft;
+  static const IconData moneyOut = LucideIcons.arrowUpRight;
 
   // How it works
   static const IconData answer = LucideIcons.listChecks;
   static const IconData reward = LucideIcons.coins;
   static const IconData next = LucideIcons.arrowRight;
+
+  // Password visibility (thin Lucide strokes, like the rest of the set)
+  static const IconData passwordHidden = LucideIcons.eyeOff;
+  static const IconData passwordShown = LucideIcons.eye;
+
+  // Login field adornments (2026-10-14 reference design)
+  static const IconData phone = LucideIcons.phone;
+  static const IconData lock = LucideIcons.lock;
 
   // One-time code
   static const IconData otp = LucideIcons.messageSquareText;
@@ -45,6 +55,7 @@ abstract final class AppIcons {
 
   // Controls
   static const IconData chevron = LucideIcons.chevronRight;
+  static const IconData back = LucideIcons.chevronLeft;
   static const IconData expand = LucideIcons.chevronDown;
   static const IconData retry = LucideIcons.refreshCw;
 }

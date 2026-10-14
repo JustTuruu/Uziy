@@ -41,6 +41,12 @@ public class ApiExceptionHandler {
     static final String MALFORMED_BODY = "Илгээсэн мэдээлэл буруу хэлбэртэй байна. Дахин оролдоно уу";
     static final String BUSY = Messages.BUSY;
 
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public void handleLargeUpload(Exception e, HttpServletRequest request, HttpServletResponse response)
+            throws IOException {
+        send(request, response, HttpStatus.PAYLOAD_TOO_LARGE, mn.uziy.backend.media.CampaignImageService.INVALID);
+    }
+
     @ExceptionHandler(DomainException.class)
     public void handle(DomainException e, HttpServletRequest request, HttpServletResponse response)
             throws IOException {

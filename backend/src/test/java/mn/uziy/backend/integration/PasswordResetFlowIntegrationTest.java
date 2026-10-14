@@ -72,7 +72,7 @@ class PasswordResetFlowIntegrationTest {
         String id = verifiedCheck(phone, "REGISTER");
         json("/auth/register/viewer", """
                 {"phoneNumber":"%s","password":"oldpass1","lastName":"Бат","firstName":"Болд","gender":"MALE",
-                 "birthDate":"2000-01-01","city":"Улаанбаатар","verificationId":"%s"}""".formatted(phone, id))
+                 "birthDate":"2000-01-01","city":"Улаанбаатар","district":"Баянзүрх","verificationId":"%s"}""".formatted(phone, id))
                 .andExpect(status().isCreated());
         script.byPhone.remove(phone);
         jdbc.update("UPDATE phone_verifications SET created_at = created_at - INTERVAL '2 minutes' "

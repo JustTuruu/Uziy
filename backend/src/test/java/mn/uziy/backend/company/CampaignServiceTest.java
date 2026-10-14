@@ -288,6 +288,27 @@ class CampaignServiceTest {
             assertThat(saved.get().getRewardPerUser()).isEqualTo(350.0);
         }
 
+        private CreateCampaignReq targeting(String city) {
+            return new CreateCampaignReq(
+                    "Шинэ 5G", null, null, 45, TargetGender.ALL, 18, 45, city, 1_000_000.0, 1_000, null,
+                    List.of(new CreateCampaignReq.NewQuestion("P", "SINGLE_CHOICE", List.of("A", "B"), null)));
+        }
+
+        @Test
+        void aTargetCityOutsideTheListIs400SoNoCampaignTargetsNobody() {
+            assertBadRequest(CampaignServiceImpl.UNKNOWN_TARGET_CITY,
+                    () -> campaignSvc.create(companyId, targeting("Дархан")));
+            assertBadRequest(CampaignServiceImpl.UNKNOWN_TARGET_CITY,
+                    () -> campaignSvc.create(companyId, targeting("улаанбаатар")));
+        }
+
+        @Test
+        void everywhereOrAnAimagIsAccepted() {
+            captureSave();
+            campaignSvc.create(companyId, targeting("ALL"));
+            campaignSvc.create(companyId, targeting("Дархан-Уул"));
+        }
+
         @Test
         void videoCampaignWithDurationOutside5To180Is400() {
             assertBadRequest(CompanyMessages.DURATION_MESSAGE,

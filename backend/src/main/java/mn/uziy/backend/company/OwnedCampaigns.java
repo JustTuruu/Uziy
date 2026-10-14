@@ -9,7 +9,7 @@ import mn.uziy.backend.domain.CampaignRepository;
 /** Loads a campaign and enforces that the caller is the company that owns it. */
 final class OwnedCampaigns {
 
-    static final String NOT_YOURS = "Энэ аян танай компанийнх биш байна";
+    static final String NOT_YOURS = "Энэ судалгаа танай компанийнх биш байна";
 
     private OwnedCampaigns() {
     }

@@ -59,7 +59,7 @@ export default function CampaignsPage() {
       {list && list.length === 0 && (
         <Card>
           <CardBody className="py-16 text-center text-sm text-[var(--color-text-muted)]">
-            Кампани байхгүй байна. Дээрх товч дээр дараад эхлүүлээрэй.
+            Судалгаа байхгүй байна. Дээрх товч дээр дараад эхлүүлээрэй.
           </CardBody>
         </Card>
       )}

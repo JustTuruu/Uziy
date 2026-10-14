@@ -111,7 +111,7 @@ class PhoneVerificationFlowIntegrationTest {
     private ResultActions register(String phone, String verificationId) throws Exception {
         return json("/auth/register/viewer", """
                 {"phoneNumber":"%s","password":"password1","lastName":"Бат","firstName":"Болд","gender":"FEMALE","birthDate":"2000-01-01",
-                 "city":"Улаанбаатар","verificationId":"%s"}""".formatted(phone, verificationId));
+                 "city":"Улаанбаатар","district":"Баянзүрх","verificationId":"%s"}""".formatted(phone, verificationId));
     }
 
     @Test

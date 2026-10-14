@@ -13,6 +13,7 @@ import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import mn.uziy.backend.common.BadRequestException;
+import mn.uziy.backend.common.MongolianRegions;
 import mn.uziy.backend.common.ConflictException;
 import mn.uziy.backend.common.event.DomainEventPublisher;
 import mn.uziy.backend.domain.CampaignActor;
@@ -128,7 +129,13 @@ public class CampaignServiceImpl implements CampaignService {
         throw new BadRequestException(EXACTLY_ONE_DRIVER_MESSAGE);
     }
 
+    /** Viewers are matched on this exact name, so a typo would reach nobody. */
+    static final String UNKNOWN_TARGET_CITY = "Байршлыг жагсаалтаас сонгоно уу";
+
     private static void validateShape(CreateCampaignReq req) {
+        if (!MongolianRegions.isTargetCity(req.targetCity())) {
+            throw new BadRequestException(UNKNOWN_TARGET_CITY);
+        }
         if (req.hasVideo()) {
             int d = req.durationSeconds();
             if (d < MIN_DURATION_SECONDS || d > MAX_DURATION_SECONDS) {

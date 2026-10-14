@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
-import 'coin.dart';
 
 /// The "Incentivized Profiling" banner shown on registration.
 /// Verbatim message required by the product spec — see docs/SPEC.md §4A.
 ///
-/// Styled as a premium gold info card: gold-tinted gradient, gold hairline
-/// and soft glow, a coin medallion with a "grow" badge and a large faint
-/// coin in the corner. The message itself must never be edited.
+/// Flat like the rest of the auth forms (owner, 2026-10-14): a faint green
+/// wash and a hairline in the brand colour. No gradient, no glow.
+/// The message itself must never be edited.
 class IncentiveBanner extends StatelessWidget {
   const IncentiveBanner({super.key});
 
@@ -17,132 +16,33 @@ class IncentiveBanner extends StatelessWidget {
       'олон, илүү өндөр дүнтэй видео судалгаануудыг хүлээн авч, урамшууллаа '
       'нэмэгдүүлэх боломжтой болно.';
 
+  /// Share of the brand colour in the fill and in the hairline.
+  static const double washAlpha = 0.07;
+  static const double borderAlpha = 0.22;
+
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        borderRadius: AppRadii.brLg,
-        color: context.colors.surface,
-        boxShadow: AppShadows.glow(
-          context.colors.primary,
-          strength: 0.3,
-          blur: 28,
-          offset: const Offset(0, 10),
+        color: Color.alphaBlend(
+          colors.primary.withValues(alpha: washAlpha),
+          colors.surface,
+        ),
+        // Same corners as the auth fields it sits above.
+        borderRadius: AppRadii.brSm,
+        border: Border.all(
+          color: colors.primary.withValues(alpha: borderAlpha),
         ),
       ),
-      child: DecoratedBox(
-        position: DecorationPosition.foreground,
-        decoration: BoxDecoration(
-          borderRadius: AppRadii.brLg,
-          border: Border.all(
-            color: context.colors.primary.withValues(alpha: 0.32),
-          ),
-        ),
-        child: ClipRRect(
-          borderRadius: AppRadii.brLg,
-          child: Stack(
-            children: [
-              // Gold tint + lit top edge.
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        context.colors.primary.withValues(alpha: 0.20),
-                        context.colors.primaryDeep.withValues(alpha: 0.06),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(gradient: AppGradients.sheen),
-                ),
-              ),
-              // Oversized faint coin peeking from the corner.
-              const Positioned(
-                right: -26,
-                bottom: -30,
-                child: ExcludeSemantics(
-                  child: Opacity(opacity: 0.12, child: CoinIcon(size: 108)),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 18, 16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const _GrowthCoin(),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Text(
-                        _message,
-                        style: context.textStyles.body.copyWith(
-                          fontSize: 14,
-                          height: 1.5,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Coin with a small green "trending up" badge: more accurate profile,
-/// more earnings. Decorative.
-class _GrowthCoin extends StatelessWidget {
-  const _GrowthCoin();
-
-  @override
-  Widget build(BuildContext context) {
-    return ExcludeSemantics(
-      child: SizedBox.square(
-        dimension: 42,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            DecoratedBox(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: AppShadows.glow(
-                  context.colors.primary,
-                  strength: 0.6,
-                  blur: 14,
-                  offset: const Offset(0, 4),
-                ),
-              ),
-              child: const CoinIcon(size: 42),
-            ),
-            Positioned(
-              right: -4,
-              bottom: -4,
-              child: Container(
-                width: 20,
-                height: 20,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: context.gradients.success,
-                  border: Border.all(color: context.colors.surface, width: 2),
-                ),
-                alignment: Alignment.center,
-                child: Icon(
-                  Icons.trending_up_rounded,
-                  size: 12,
-                  color: context.colors.onPrimary,
-                ),
-              ),
-            ),
-          ],
-        ),
+      // No coin of its own: the register page's RewardPromise right above
+      // already carries it.
+      child: Text(
+        _message,
+        // Body size, not small print: it is a promise, not a disclaimer
+        // (critique 2026-10-14).
+        style: context.textStyles.body.copyWith(height: 1.45),
       ),
     );
   }

@@ -14,6 +14,7 @@ import '../../services/api_error.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/ui.dart';
 import 'auth_widgets.dart';
+import 'login_fields.dart';
 import 'otp_widgets.dart';
 import 'phone_verify_logic.dart';
 
@@ -262,23 +263,12 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen>
 
   @override
   Widget build(BuildContext context) {
-    return AmbientBackground(
-      variant: AmbientVariant.gold,
+    // The same paper, fields and back control as the sign-in page.
+    return LoginFieldsTheme(
+      raised: true,
       child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          automaticallyImplyLeading: false,
-          leading: Center(
-            child: AppIconButton(
-              icon: Icons.arrow_back_ios_new_rounded,
-              semanticLabel: 'Буцах',
-              size: 40,
-              iconSize: 18,
-              onPressed: () => context.pop(),
-            ),
-          ),
-        ),
+        backgroundColor: context.colors.background,
+        appBar: AuthStepAppBar(onBack: () => context.pop()),
         body: SafeArea(
           child: AuthScrollShell(
             padding: const EdgeInsets.fromLTRB(

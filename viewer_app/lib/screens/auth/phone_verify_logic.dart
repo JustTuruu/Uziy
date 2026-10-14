@@ -20,8 +20,11 @@ const String kPhoneVerifySubtitle =
 const String kSendSmsLabel = 'SMS илгээх';
 const String kSmsToLabel = 'Хүлээн авах дугаар';
 const String kSmsTextLabel = 'Текст';
-const String kSmsCostNote =
-    'SMS-ийн төлбөр 150₮ (операторын үнэ). Нэг удаа илгээхэд хангалттай.';
+
+/// The operator's price of the one verification SMS, said the same way on
+/// the register page and on the verify page.
+const String kSmsPriceNote = 'SMS-ийн төлбөр 150₮ (операторын үнэ).';
+const String kSmsCostNote = '$kSmsPriceNote Нэг удаа илгээхэд хангалттай.';
 const String kWaitingForSms = 'Таны SMS-ийг хүлээж байна…';
 const String kCreatingAccount = 'Бүртгэл үүсгэж байна…';
 const String kResetVerifySubtitle =

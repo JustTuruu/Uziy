@@ -15,8 +15,8 @@ import 'wallet_logic.dart';
 import 'wallet_widgets.dart';
 
 /// Wallet tab: balance card, payout action (+ progress toward the 1,000 ₮
-/// minimum), the wallet history (rewards in, payouts out, each payout with
-/// its status) right on the page, and how rewards work.
+/// minimum) and the wallet history (rewards in, payouts out, each payout
+/// with its status) right on the page.
 ///
 /// Stays fresh on its own: reloads when the app returns to the foreground,
 /// after the payout form closes and — while a request waits for the admin —
@@ -182,18 +182,6 @@ class _WalletScreenState extends State<WalletScreen> {
                         ),
                       ),
                     ],
-                    const SizedBox(height: AppSpacing.xxxl),
-                    const FadeSlideIn(
-                      index: 4,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          SectionHeader(title: 'Хэрхэн ажилладаг вэ'),
-                          SizedBox(height: AppSpacing.md),
-                          HowItWorksCard(),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -205,19 +193,9 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Widget _header() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Semantics(
-          header: true,
-          child: Text('Хэтэвч', style: context.textStyles.display),
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          'Урамшууллаа цуглуулж, дансандаа татаарай',
-          style: context.textStyles.bodySmall,
-        ),
-      ],
+    return Semantics(
+      header: true,
+      child: Text('Хэтэвч', style: context.textStyles.pageTitle),
     );
   }
 

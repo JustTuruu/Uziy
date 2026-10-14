@@ -18,8 +18,7 @@ import 'feed_logic.dart';
 // ---------------------------------------------------------------------------
 
 /// Brand row (wordmark + appearance button), greeting line + balance pill,
-/// then the big 'Шинэ видеонууд' title and a
-/// one-line explainer.
+/// then the big 'Шинэ судалгаанууд' title.
 class FeedHeader extends StatelessWidget {
   const FeedHeader({
     super.key,
@@ -40,8 +39,7 @@ class FeedHeader extends StatelessWidget {
   /// ([onBalanceTap] then opens sign-in).
   final bool guest;
 
-  static const String title = 'Шинэ видеонууд';
-  static const String subtitle = 'Үзэж, хариулж, урамшуулал аваарай';
+  static const String title = 'Шинэ судалгаанууд';
 
   /// Share of the header width the balance pill may use.
   static const double pillMaxWidthFactor = 0.62;
@@ -106,10 +104,8 @@ class FeedHeader extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
         Semantics(
           header: true,
-          child: Text(title, style: context.textStyles.display),
+          child: Text(title, style: context.textStyles.pageTitle),
         ),
-        const SizedBox(height: 6),
-        Text(subtitle, style: context.textStyles.bodySmall),
       ],
     );
   }
@@ -202,6 +198,7 @@ class BalancePill extends StatelessWidget {
                   : AnimatedMoney(
                       key: const ValueKey('balance-value'),
                       value: b,
+                      memoryKey: MoneyMemory.balance,
                       style: context.textStyles.money.copyWith(fontSize: 15),
                     ),
             );
@@ -486,9 +483,8 @@ class _FilterSegment extends StatelessWidget {
 // Campaign card
 // ---------------------------------------------------------------------------
 
-/// Feed card: 16:9 art with duration / reward chips and a play (or survey)
-/// medallion, then title, company and a subtle 'Үзэх' / 'Бөглөх' CTA.
-/// The whole card is one button with a single screen-reader sentence.
+/// Artwork, publisher and headline lead into a separate reward/action row.
+/// The entire card remains one accessible button.
 class CampaignCard extends StatelessWidget {
   const CampaignCard({super.key, required this.campaign, required this.onTap});
 
@@ -499,61 +495,81 @@ class CampaignCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = campaign;
     final company = c.companyName.trim();
-
     return Pressable(
       onTap: onTap,
-      scale: 0.98,
+      scale: 0.985,
+      haptic: true,
       semanticLabel: campaignSemanticLabel(c),
       excludeSemantics: true,
       child: AppCard(
-        padding: EdgeInsets.zero,
-        shadows: AppShadows.soft,
+        padding: const EdgeInsets.all(10),
+        radius: 24,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: _CardArt(campaign: c),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: _CardArt(campaign: c),
+              ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+              padding: const EdgeInsets.fromLTRB(6, 16, 6, 6),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CardTitle(title: c.title),
-                  const SizedBox(height: AppSpacing.md),
-                  Row(
-                    children: [
+                  if (company.isNotEmpty) ...[
+                    Row(children: [
+                      _CompanyAvatar(campaignId: c.id, companyName: company),
+                      const SizedBox(width: 8),
                       Expanded(
-                        child: company.isEmpty
-                            ? const SizedBox.shrink()
-                            : Row(
-                                children: [
-                                  _CompanyAvatar(
-                                    campaignId: c.id,
-                                    companyName: company,
-                                  ),
-                                  const SizedBox(width: AppSpacing.sm),
-                                  Flexible(
-                                    child: Text(
-                                      company,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style:
-                                          context.textStyles.bodySmall.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      _CardCta(label: campaignCtaLabel(c)),
-                    ],
+                          child: Text(
+                        company,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.textStyles.caption.copyWith(
+                          color: context.colors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      )),
+                    ]),
+                    const SizedBox(height: 12),
+                  ],
+                  CardTitle(title: c.title),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Divider(height: 1, color: context.colors.border),
                   ),
+                  LayoutBuilder(builder: (context, constraints) {
+                    final reward = Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('Урамшуулал',
+                            style: context.textStyles.caption.copyWith(
+                              color: context.colors.textSecondary,
+                            )),
+                        const SizedBox(height: 6),
+                        RewardChip(amount: c.rewardPerUser),
+                      ],
+                    );
+                    final action = _CardCta(label: campaignCtaLabel(c));
+                    if (constraints.maxWidth < 260 ||
+                        MediaQuery.textScalerOf(context).scale(14) > 21) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [reward, const SizedBox(height: 12), action],
+                      );
+                    }
+                    return Row(children: [
+                      Expanded(child: reward),
+                      const SizedBox(width: 12),
+                      action,
+                    ]);
+                  }),
                 ],
               ),
             ),
@@ -619,9 +635,6 @@ class _CardArt extends StatelessWidget {
 
   final Campaign campaign;
 
-  /// Below this width the kind tag shows its label only.
-  static const double _tagIconMinWidth = 72;
-
   @override
   Widget build(BuildContext context) {
     final c = campaign;
@@ -637,36 +650,21 @@ class _CardArt extends StatelessWidget {
         const DecoratedBox(
           decoration: BoxDecoration(gradient: AppGradients.scrimBottom),
         ),
-        Center(child: _Medallion(hasVideo: c.hasVideo)),
         Positioned(
-          top: AppSpacing.md,
-          left: AppSpacing.md,
-          right: AppSpacing.md,
-          // Badges on artwork stop growing past 1.3x OS text size (the
-          // RewardChip caps itself the same way).
+          left: 14,
+          bottom: 14,
+          child: _Medallion(hasVideo: c.hasVideo),
+        ),
+        Positioned(
+          right: 12,
+          bottom: 16,
           child: MediaQuery.withClampedTextScaling(
             maxScaleFactor: RewardChip.maxTextScale,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  // The reward wins the space; when the kind tag is left
-                  // with too little room it drops its icon and ellipsizes.
-                  child: LayoutBuilder(
-                    builder: (context, box) => TagChip(
-                      label: campaignKindLabel(c),
-                      icon: box.maxWidth < _tagIconMinWidth
-                          ? null
-                          : (c.hasVideo
-                              ? Icons.schedule_rounded
-                              : Icons.checklist_rounded),
-                      tone: TagTone.glass,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                RewardChip(amount: c.rewardPerUser),
-              ],
+            child: TagChip(
+              label: campaignKindLabel(c),
+              icon:
+                  c.hasVideo ? Icons.schedule_rounded : Icons.checklist_rounded,
+              tone: TagTone.glass,
             ),
           ),
         ),
@@ -692,8 +690,8 @@ class _Medallion extends StatelessWidget {
           color: Colors.white.withValues(alpha: 0.08),
         ),
         child: Container(
-          width: 60,
-          height: 60,
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.black.withValues(alpha: 0.38),
@@ -716,7 +714,7 @@ class _Medallion extends StatelessWidget {
                   padding: EdgeInsets.only(left: 3),
                   child: Icon(
                     Icons.play_arrow_rounded,
-                    size: 36,
+                    size: 28,
                     color: Colors.white,
                   ),
                 )
@@ -779,11 +777,11 @@ class _CardCta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 32),
-      padding: const EdgeInsets.fromLTRB(12, 6, 8, 6),
+      constraints: const BoxConstraints(minHeight: 44),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: context.colors.primary.withValues(alpha: 0.12),
-        borderRadius: AppRadii.brPill,
+        color: context.colors.primary,
+        borderRadius: BorderRadius.circular(12),
         border:
             Border.all(color: context.colors.primary.withValues(alpha: 0.26)),
       ),
@@ -794,7 +792,7 @@ class _CardCta extends StatelessWidget {
             label,
             maxLines: 1,
             style: context.textStyles.label.copyWith(
-              color: context.colors.primary,
+              color: context.colors.onPrimary,
               fontWeight: FontWeight.w700,
               height: 1.1,
             ),
@@ -803,7 +801,7 @@ class _CardCta extends StatelessWidget {
           Icon(
             Icons.arrow_forward_rounded,
             size: 16,
-            color: context.colors.primary,
+            color: context.colors.onPrimary,
           ),
         ],
       ),
@@ -815,47 +813,47 @@ class _CardCta extends StatelessWidget {
 // Loading skeletons
 // ---------------------------------------------------------------------------
 
-/// Static placeholder with the exact shape of a [CampaignCard]. Put it
-/// inside a [SkeletonShimmer] (see [FeedSkeleton]).
+/// Loading placeholder follows the artwork, publisher and reward hierarchy.
 class CampaignCardSkeleton extends StatelessWidget {
   const CampaignCardSkeleton({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: context.colors.surface,
-        borderRadius: AppRadii.brLg,
-        border: Border.all(color: context.colors.border),
-      ),
-      clipBehavior: Clip.antiAlias,
+    return AppCard(
+      radius: 24,
+      padding: const EdgeInsets.all(10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          AspectRatio(
-            aspectRatio: 16 / 9,
-            child: ColoredBox(color: context.colors.surfaceElevated),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: ColoredBox(color: context.colors.surfaceElevated),
+            ),
           ),
           const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 16),
+            padding: EdgeInsets.fromLTRB(6, 16, 6, 6),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Skeleton(height: 16),
-                SizedBox(height: AppSpacing.sm),
+                Row(children: [
+                  Skeleton(width: 24, height: 24, radius: 12),
+                  SizedBox(width: 8),
+                  Skeleton(width: 88, height: 12),
+                ]),
+                SizedBox(height: 12),
+                Skeleton(height: 22),
+                SizedBox(height: 8),
                 Skeleton(width: 160, height: 16),
-                SizedBox(height: AppSpacing.lg),
-                Row(
-                  children: [
-                    Skeleton(width: 24, height: 24, radius: 12),
-                    SizedBox(width: AppSpacing.sm),
-                    Skeleton(width: 88, height: 12),
-                    Spacer(),
-                    Skeleton(width: 72, height: 32, radius: AppRadii.pill),
-                  ],
-                ),
+                SizedBox(height: 32),
+                Row(children: [
+                  Expanded(child: Skeleton(height: 44, radius: 12)),
+                  SizedBox(width: 32),
+                  Skeleton(width: 82, height: 44, radius: 12),
+                ]),
               ],
             ),
           ),

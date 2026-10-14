@@ -8,7 +8,7 @@ public final class Messages {
 
     public static final String USER_NOT_FOUND = "Хэрэглэгч олдсонгүй";
     /** Company and admin side. */
-    public static final String CAMPAIGN_NOT_FOUND = "Аян олдсонгүй";
+    public static final String CAMPAIGN_NOT_FOUND = "Судалгаа олдсонгүй";
     /** Viewer side: also used when the viewer is outside the audience, so targeting cannot be probed. */
     public static final String OFFER_NOT_FOUND = "Энэ урамшуулал олдсонгүй эсвэл дууссан байна";
     public static final String PHONE_TAKEN = "Энэ утасны дугаар аль хэдийн бүртгэлтэй байна. Нэвтэрч орно уу";

@@ -19,6 +19,6 @@ public class CampaignMapper {
                 c.getStatus(), c.getCreatedAt(),
                 c.getTargetViewers(),
                 c.getCommissionPercent(),
-                c.getPaidAt());
+                c.getPaidAt(), c.getThumbnailUrl());
     }
 }

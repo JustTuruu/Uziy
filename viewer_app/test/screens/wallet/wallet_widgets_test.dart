@@ -472,31 +472,6 @@ void main() {
     });
   });
 
-  group('HowItWorksCard', () {
-    testWidgets('shows the three steps in order', (tester) async {
-      await pumpWallet(tester, const HowItWorksCard(), width: 280);
-      await tester.pumpAndSettle();
-      final xs = [
-        for (final t in ['Үзэх', 'Хариулах', 'Авах'])
-          tester.getCenter(find.text(t)).dx,
-      ];
-      expect(xs[0], lessThan(xs[1]));
-      expect(xs[1], lessThan(xs[2]));
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets('fits 1.3x text on a narrow column', (tester) async {
-      await pumpWallet(
-        tester,
-        const HowItWorksCard(),
-        width: 280,
-        textScale: 1.3,
-      );
-      await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull);
-    });
-  });
-
   group('PayoutSuccessSheet', () {
     testWidgets('shows the confirmation, summary and closes via Ойлголоо', (
       tester,
@@ -625,6 +600,42 @@ void main() {
       );
     });
 
+    testWidgets('a long history scrolls inside its own box', (tester) async {
+      final many = [
+        for (var i = 0; i < 30; i++)
+          ViewHistoryItem(
+            campaignId: i,
+            title: 'Видео $i',
+            companyName: 'MobiCom',
+            rewardPaid: 700,
+            watchedAt: DateTime(2026, 10, 14, 9).subtract(Duration(hours: i)),
+          ),
+      ];
+      await pumpWallet(
+        tester,
+        SingleChildScrollView(
+          child: WalletHistorySection(
+            rewards: many,
+            payouts: const [],
+            now: now,
+          ),
+        ),
+      );
+
+      final box = find.byType(GroupedCard);
+      expect(tester.getSize(box).height, kWalletHistoryBoxHeight);
+      final oldest = find.text('Видео 29');
+      expect(oldest.hitTestable(), findsNothing);
+
+      await tester.dragUntilVisible(
+        oldest,
+        find.descendant(of: box, matching: find.byType(Scrollable)),
+        const Offset(0, -200),
+      );
+      expect(oldest.hitTestable(), findsOneWidget);
+      expect(tester.getSize(box).height, kWalletHistoryBoxHeight);
+    });
+
     testWidgets(
         'a rejected payout is struck through, shows the reason and '
         'does not count as spending', (tester) async {
@@ -644,6 +655,52 @@ void main() {
       final amount = tester.widget<Text>(find.text('-5,000 ₮'));
       expect(amount.style?.decoration, TextDecoration.lineThrough);
       expect(find.text('0 ₮'), findsOneWidget, reason: 'spending total');
+    });
+  });
+
+  group('WalletTotalsCard', () {
+    testWidgets('money in sits on the left, money out on the right',
+        (tester) async {
+      await pumpWallet(
+          tester, const WalletTotalsCard(income: 4100, spending: 4000));
+      await tester.pumpAndSettle();
+
+      final card = tester.getRect(find.byType(WalletTotalsCard));
+      final income = tester.getRect(find.text('+4,100 ₮'));
+      final spending = tester.getRect(find.text('-4,000 ₮'));
+      final spendingLabel = tester.getRect(find.text(kWalletSpendingLabel));
+
+      expect(income.left - card.left, lessThan(card.width / 4));
+      expect(card.right - spending.right, lessThan(card.width / 4));
+      // The label and the amount share one right edge.
+      expect(spendingLabel.right, closeTo(spending.right, 1));
+      expect(find.byType(VerticalDivider), findsOneWidget);
+      expect(find.byIcon(AppIcons.moneyIn), findsOneWidget);
+      expect(find.byIcon(AppIcons.moneyOut), findsOneWidget);
+    });
+
+    testWidgets('each side reads as one phrase to a screen reader',
+        (tester) async {
+      await pumpWallet(
+          tester, const WalletTotalsCard(income: 4100, spending: 4000));
+      await tester.pumpAndSettle();
+
+      expect(find.bySemanticsLabel('$kWalletIncomeLabel: +4,100 ₮'),
+          findsOneWidget);
+      expect(find.bySemanticsLabel('$kWalletSpendingLabel: -4,000 ₮'),
+          findsOneWidget);
+    });
+
+    testWidgets('big amounts and large text still fit', (tester) async {
+      await pumpWallet(
+        tester,
+        const WalletTotalsCard(income: 12345678, spending: 9876543),
+        width: 320,
+        textScale: 1.6,
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
     });
   });
 }

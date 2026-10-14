@@ -12,8 +12,16 @@ import {
   Play,
   X,
 } from "lucide-react";
+import { CampaignImageEditor } from "@/components/campaign-image-editor";
 import { CampaignStatusBadge } from "@/components/campaign-status-badge";
-import { Button, Card, CardBody, CardHeader, PageHeader, StatCard } from "@uziy/ui";
+import {
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  PageHeader,
+  StatCard,
+} from "@uziy/ui";
 import { adminApi, ApiError, auth, type AdminCampaignDetail } from "@/lib/api";
 import { campaignInvoice } from "@/lib/billing";
 import {
@@ -44,7 +52,7 @@ export default function AdminCampaignDetailPage() {
           return;
         }
         if (e instanceof ApiError && e.status === 404) {
-          setError("Кампани олдсонгүй");
+          setError("Судалгаа олдсонгүй");
           return;
         }
         setError(e instanceof Error ? e.message : "Алдаа гарлаа");
@@ -72,7 +80,7 @@ export default function AdminCampaignDetailPage() {
   };
 
   const invalidId = !Number.isFinite(id);
-  const shownError = invalidId ? "Кампанийн ID буруу" : error;
+  const shownError = invalidId ? "Судалгааны ID буруу" : error;
 
   if (shownError) {
     return (
@@ -166,10 +174,26 @@ export default function AdminCampaignDetailPage() {
         />
       </div>
 
+      <CampaignImageEditor
+        key={id}
+        campaignId={id}
+        thumbnailUrl={c.thumbnailUrl}
+        onSaved={(thumbnailUrl) =>
+          setData((current) =>
+            current
+              ? {
+                  ...current,
+                  campaign: { ...current.campaign, thumbnailUrl },
+                }
+              : current,
+          )
+        }
+      />
+
       <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader
-            title="Кампанийн мэдээлэл"
+            title="Судалгааны мэдээлэл"
             description="Компанийн үүсгэсэн үед бөглөсөн тохиргоо"
           />
           <CardBody className="space-y-3 text-sm">
@@ -267,7 +291,7 @@ function BackLink() {
       href="/campaigns"
       className="mb-4 inline-flex items-center gap-1 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
     >
-      <ArrowLeft size={12} /> Бүх кампани
+      <ArrowLeft size={12} /> Бүх судалгаа
     </Link>
   );
 }

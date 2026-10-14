@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:viewer_app/models/user.dart';
 import 'package:viewer_app/screens/auth/auth_widgets.dart';
 import 'package:viewer_app/widgets/ui.dart';
 
@@ -303,49 +304,6 @@ void main() {
     });
   });
 
-  group('PhoneNumberSection', () {
-    testWidgets('shows the heading, the helper line and the phone field',
-        (tester) async {
-      final semantics = tester.ensureSemantics();
-      final ctrl = TextEditingController();
-      addTearDown(ctrl.dispose);
-      await _pump(tester, PhoneNumberSection(controller: ctrl));
-
-      expect(find.text(PhoneNumberSection.title), findsOneWidget);
-      expect(find.text(PhoneNumberSection.helper), findsOneWidget);
-      expect(find.byType(PhoneField), findsOneWidget);
-      expect(
-        tester.getSemantics(find.text(PhoneNumberSection.title)),
-        isSemantics(isHeader: true),
-      );
-      semantics.dispose();
-    });
-
-    testWidgets('passes the controller and validator through', (tester) async {
-      final ctrl = TextEditingController();
-      addTearDown(ctrl.dispose);
-      final formKey = GlobalKey<FormState>();
-      var submitted = '';
-      await _pump(
-        tester,
-        Form(
-          key: formKey,
-          child: PhoneNumberSection(
-            controller: ctrl,
-            onFieldSubmitted: (v) => submitted = v,
-            validator: (v) => AuthValidators.phone(v, message: 'bad'),
-          ),
-        ),
-      );
-      await tester.enterText(find.byType(TextField), '88112233');
-      await tester.testTextInput.receiveAction(TextInputAction.done);
-      await tester.pump();
-      expect(ctrl.text, '88112233');
-      expect(submitted, '88112233');
-      expect(formKey.currentState!.validate(), isTrue);
-    });
-  });
-
   testWidgets('the password field opens the ordinary text keyboard',
       (tester) async {
     await _pump(
@@ -371,12 +329,12 @@ void main() {
       expect(obscured(), isTrue);
       expect(find.bySemanticsLabel(PasswordField.showLabel), findsOneWidget);
 
-      await tester.tap(find.byIcon(Icons.visibility_off_outlined));
+      await tester.tap(find.byIcon(AppIcons.passwordHidden));
       await tester.pumpAndSettle();
       expect(obscured(), isFalse);
       expect(find.bySemanticsLabel(PasswordField.hideLabel), findsOneWidget);
 
-      await tester.tap(find.byIcon(Icons.visibility_outlined));
+      await tester.tap(find.byIcon(AppIcons.passwordShown));
       await tester.pumpAndSettle();
       expect(obscured(), isTrue);
       semantics.dispose();
@@ -392,127 +350,122 @@ void main() {
     });
   });
 
-  group('GenderOptionCard', () {
-    double badgeScale(WidgetTester tester) => tester
-        .widget<AnimatedScale>(find.byKey(GenderOptionCard.checkBadgeKey))
-        .scale;
-
-    testWidgets('tap fires onTap', (tester) async {
-      var taps = 0;
+  group('GenderSelector', () {
+    testWidgets('nothing chosen at first; a tap reports the gender once',
+        (tester) async {
+      final picked = <Gender>[];
       await _pump(
         tester,
-        GenderOptionCard(
-          label: 'Эрэгтэй',
-          icon: Icons.male_rounded,
-          selected: false,
-          onTap: () => taps++,
-        ),
+        GenderSelector(value: null, onChanged: picked.add),
       );
-      await tester.tap(find.text('Эрэгтэй'));
-      await tester.pumpAndSettle();
-      expect(taps, 1);
+      expect(find.text('Эрэгтэй'), findsOneWidget);
+      expect(find.text('Эмэгтэй'), findsOneWidget);
+      expect(
+        tester
+            .widget<SegmentedButton<Gender>>(
+                find.byType(SegmentedButton<Gender>))
+            .selected,
+        isEmpty,
+      );
+      await tester.tap(find.text('Эмэгтэй'));
+      await tester.pump();
+      expect(picked, [Gender.female]);
     });
 
-    testWidgets('selected state shows the check badge and semantics',
-        (tester) async {
-      final semantics = tester.ensureSemantics();
-      Widget card(bool selected) => GenderOptionCard(
-            label: 'Эмэгтэй',
-            icon: Icons.female_rounded,
-            selected: selected,
-            onTap: () {},
-          );
-
-      await _pump(tester, card(false));
-      expect(badgeScale(tester), 0);
-      expect(
-        tester.getSemantics(find.byType(GenderOptionCard)),
-        isSemantics(
-          label: 'Эмэгтэй',
-          isButton: true,
-          isSelected: false,
-          isInMutuallyExclusiveGroup: true,
-          hasTapAction: true,
-        ),
+    testWidgets('tapping the chosen one again reports nothing', (tester) async {
+      final picked = <Gender>[];
+      await _pump(
+        tester,
+        GenderSelector(value: Gender.male, onChanged: picked.add),
       );
+      await tester.tap(find.text('Эрэгтэй'));
+      await tester.pump();
+      expect(picked, isEmpty);
+    });
 
-      await _pump(tester, card(true));
-      await tester.pumpAndSettle();
-      expect(badgeScale(tester), 1);
+    testWidgets('as tall as a text field, no check mark', (tester) async {
+      await _pump(
+        tester,
+        GenderSelector(value: Gender.male, onChanged: (_) {}),
+      );
       expect(
-        tester.getSemantics(find.byType(GenderOptionCard)),
-        isSemantics(label: 'Эмэгтэй', isSelected: true),
+        tester.getSize(find.byType(SegmentedButton<Gender>)).height,
+        greaterThanOrEqualTo(GenderSelector.height),
+      );
+      expect(find.byIcon(Icons.check), findsNothing);
+    });
+  });
+
+  group('AuthPageTitle', () {
+    testWidgets('is a heading at the flow title size', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pump(tester, const AuthPageTitle('Нэвтрэх'));
+      expect(
+        tester.getSemantics(find.text('Нэвтрэх')),
+        isSemantics(isHeader: true),
+      );
+      expect(
+        tester.widget<Text>(find.text('Нэвтрэх')).style?.fontSize,
+        AuthPageTitle.titleSize,
       );
       semantics.dispose();
     });
+  });
 
-    testWidgets('selection in a pair: only the tapped card is selected',
+  group('LabeledField', () {
+    testWidgets('the label turns brand green while its field has the cursor',
         (tester) async {
-      String? selected;
       await _pump(
         tester,
-        StatefulBuilder(
-          builder: (context, setState) => Row(
-            children: [
-              Expanded(
-                child: GenderOptionCard(
-                  key: const ValueKey('m'),
-                  label: 'Эрэгтэй',
-                  icon: Icons.male_rounded,
-                  selected: selected == 'm',
-                  onTap: () => setState(() => selected = 'm'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: GenderOptionCard(
-                  key: const ValueKey('f'),
-                  label: 'Эмэгтэй',
-                  icon: Icons.female_rounded,
-                  selected: selected == 'f',
-                  onTap: () => setState(() => selected = 'f'),
-                ),
-              ),
-            ],
-          ),
-        ),
+        LabeledField(label: 'Овог', child: TextFormField()),
       );
-      double scaleOf(String k) => tester
-          .widget<AnimatedScale>(
-            find.descendant(
-              of: find.byKey(ValueKey(k)),
-              matching: find.byKey(GenderOptionCard.checkBadgeKey),
-            ),
-          )
-          .scale;
-
-      await tester.tap(find.text('Эмэгтэй'));
+      Color? labelColor() => tester
+          .widget<AnimatedDefaultTextStyle>(find
+              .ancestor(
+                of: find.text('Овог'),
+                matching: find.byType(AnimatedDefaultTextStyle),
+              )
+              .first)
+          .style
+          .color;
+      final primary = AppTheme.light().colorScheme.primary;
+      expect(labelColor(), isNot(primary));
+      await tester.tap(find.byType(TextField));
       await tester.pumpAndSettle();
-      expect(selected, 'f');
-      expect(scaleOf('f'), 1);
-      expect(scaleOf('m'), 0);
-
-      await tester.tap(find.text('Эрэгтэй'));
-      await tester.pumpAndSettle();
-      expect(selected, 'm');
-      expect(scaleOf('m'), 1);
-      expect(scaleOf('f'), 0);
+      expect(labelColor(), primary);
     });
 
-    testWidgets('reduce motion: selected state applies immediately',
-        (tester) async {
+    testWidgets('a trailing action shares the label line', (tester) async {
       await _pump(
         tester,
-        GenderOptionCard(
-          label: 'Эрэгтэй',
-          icon: Icons.male_rounded,
-          selected: true,
-          onTap: () {},
+        LabeledField(
+          label: 'Нууц үг',
+          trailing: const Text('link'),
+          child: TextFormField(),
         ),
-        reduceMotion: true,
       );
-      await tester.pump();
-      expect(badgeScale(tester), 1);
+      expect(
+        (tester.getCenter(find.text('link')).dy -
+                tester.getCenter(find.text('Нууц үг')).dy)
+            .abs(),
+        lessThan(8),
+      );
+    });
+  });
+
+  group('AuthBackButton', () {
+    testWidgets('a 44pt round control named Буцах', (tester) async {
+      final semantics = tester.ensureSemantics();
+      var taps = 0;
+      await _pump(tester, AuthBackButton(onPressed: () => taps++));
+      expect(tester.getSize(find.byType(AuthBackButton)),
+          const Size.square(AppLayout.minTapTarget));
+      expect(tester.getSemantics(find.byType(AuthBackButton)),
+          isSemantics(label: AuthBackButton.label, isButton: true));
+      await tester.tap(find.byType(AuthBackButton));
+      await tester.pumpAndSettle();
+      expect(taps, 1);
+      semantics.dispose();
     });
   });
 
@@ -556,6 +509,42 @@ void main() {
   });
 
   group('TermsAgreementTile', () {
+    testWidgets('error paints the frame red; the box fill is flat',
+        (tester) async {
+      Future<BoxDecoration> frame(
+          {required bool value, bool error = false}) async {
+        await _pump(
+          tester,
+          TermsAgreementTile(
+            value: value,
+            error: error,
+            onChanged: (_) {},
+            onTapTerms: () {},
+            onTapPrivacy: () {},
+          ),
+        );
+        await tester.pumpAndSettle();
+        final boxes = tester
+            .widgetList<AnimatedContainer>(find.descendant(
+              of: find.byType(TermsAgreementTile),
+              matching: find.byType(AnimatedContainer),
+            ))
+            .map((c) => c.decoration as BoxDecoration)
+            .toList();
+        for (final b in boxes) {
+          expect(b.gradient, isNull);
+        }
+        return boxes.first;
+      }
+
+      final red = await frame(value: false, error: true);
+      expect((red.border! as Border).top.color,
+          AppTheme.light().colorScheme.error);
+      final ok = await frame(value: false);
+      expect((ok.border! as Border).top.color,
+          isNot(AppTheme.light().colorScheme.error));
+    });
+
     testWidgets('tapping the box toggles; links open the sheets',
         (tester) async {
       final changes = <bool>[];
@@ -614,28 +603,6 @@ void main() {
     });
   });
 
-  group('AuthFooterLink', () {
-    testWidgets('is a 44pt tappable link', (tester) async {
-      var taps = 0;
-      await _pump(
-        tester,
-        AuthFooterLink(
-          prompt: 'Шинээр бүртгүүлэх үү?',
-          action: 'Бүртгүүлэх',
-          onTap: () => taps++,
-        ),
-      );
-      expect(find.text('Шинээр бүртгүүлэх үү? Бүртгүүлэх'), findsOneWidget);
-      expect(
-        tester.getSize(find.byType(Pressable)).height,
-        greaterThanOrEqualTo(AppLayout.minTapTarget),
-      );
-      await tester.tap(find.byType(AuthFooterLink));
-      await tester.pumpAndSettle();
-      expect(taps, 1);
-    });
-  });
-
   group('small screens + large text', () {
     testWidgets('auth pieces do not overflow at 320pt and 1.3x text',
         (tester) async {
@@ -648,34 +615,17 @@ void main() {
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            PhoneNumberSection(controller: phone),
+            PhoneField(controller: phone),
             const SizedBox(height: 12),
             PasswordField(
               controller: pass,
               hintText: 'Нууц үг (доод тал нь 6 тэмдэгт)',
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: GenderOptionCard(
-                    label: 'Эрэгтэй',
-                    icon: Icons.male_rounded,
-                    selected: true,
-                    onTap: () {},
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: GenderOptionCard(
-                    label: 'Эмэгтэй',
-                    icon: Icons.female_rounded,
-                    selected: false,
-                    error: true,
-                    onTap: () {},
-                  ),
-                ),
-              ],
+            GenderSelector(
+              value: Gender.male,
+              error: true,
+              onChanged: (_) {},
             ),
             const SizedBox(height: 12),
             BirthDateTile(value: DateTime(1999, 12, 31), onTap: () {}),
@@ -686,11 +636,6 @@ void main() {
               onChanged: (_) {},
               onTapTerms: () {},
               onTapPrivacy: () {},
-            ),
-            AuthFooterLink(
-              prompt: 'Шинээр бүртгүүлэх үү?',
-              action: 'Бүртгүүлэх',
-              onTap: () {},
             ),
           ],
         ),

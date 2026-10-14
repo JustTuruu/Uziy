@@ -16,6 +16,11 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface CampaignRepository extends JpaRepository<CampaignEntity, Long> {
 
+    /** Cover edits must not overwrite concurrently changing budgets or moderation state. */
+    @Modifying
+    @Query("UPDATE CampaignEntity c SET c.thumbnailUrl = :url WHERE c.id = :id")
+    int updateThumbnail(@Param("id") long id, @Param("url") @org.jspecify.annotations.Nullable String url);
+
     List<CampaignEntity> findAllByCompanyIdOrderByCreatedAtDesc(long companyId);
 
     List<CampaignEntity> findAllByStatusOrderByCreatedAtDesc(CampaignStatus status);

@@ -59,6 +59,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthResponse registerViewer(RegisterViewerReq req) {
         requirePhoneFree(req.phoneNumber());
+        ViewerLocationRule.check(req.city(), req.district());
         verifiedPhones.claim(req.verificationId(), req.phoneNumber(), PhoneVerificationPurpose.REGISTER);
         UserEntity user = userFactory.newViewer(req, encoder.encode(req.password()));
         return registered(users.save(user));

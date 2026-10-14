@@ -22,6 +22,7 @@ import {
   pricingFromFields,
   type BudgetFieldsValue,
 } from "@/components/campaign-budget-fields";
+import { CampaignCoverCard } from "@/components/campaign-cover-card";
 import { CampaignPaymentCard } from "@/components/campaign-payment-card";
 import {
   Button,
@@ -45,6 +46,12 @@ import {
   type QuestionType,
 } from "@/lib/api";
 import { RATING_LABELS, takesOptions } from "@/lib/survey";
+import {
+  CAPITAL,
+  EVERYWHERE,
+  EVERYWHERE_LABEL,
+  TARGET_CITY_OPTIONS,
+} from "@/lib/regions";
 import { pricingErrorMessage, pricingRequestFields } from "@/lib/pricing";
 import {
   cn,
@@ -71,22 +78,6 @@ type Step =
   | "survey"
   | "review"
   | "payment";
-
-const cities = [
-  "ALL",
-  "Улаанбаатар",
-  "Дархан",
-  "Эрдэнэт",
-  "Чойбалсан",
-  "Мөрөн",
-  "Ховд",
-  "Өлгий",
-];
-
-const cityOptions = cities.map((c) => ({
-  value: c,
-  label: c === "ALL" ? "Бүх хот" : c,
-}));
 
 const QUESTION_TYPE_OPTIONS = [
   { value: "SINGLE_CHOICE", label: "Ганц сонголт" },
@@ -167,7 +158,7 @@ export default function NewCampaignPage() {
   const [maxAgeText, setMaxAgeText] = useState("45");
   const minAge = parseIntInput(minAgeText);
   const maxAge = parseIntInput(maxAgeText);
-  const [city, setCity] = useState<string>("Улаанбаатар");
+  const [city, setCity] = useState<string>(CAPITAL);
 
   // Step: budget. The company enters a total budget plus EITHER a viewer
   // count or a per-viewer reward; the other is derived (lib/pricing.ts).
@@ -373,10 +364,10 @@ export default function NewCampaignPage() {
         title="Шинэ судалгаа үүсгэх"
         description={
           step === "payment"
-            ? "Аян үүслээ. Төлбөрөө төлснөөр админы шалгалтад орно."
+            ? "Судалгаа үүслээ. Төлбөрөө төлснөөр админы шалгалтад орно."
             : kind === "VIDEO"
               ? "Видео байршуулж, зорилтот үзэгчээ тодорхойлно уу"
-              : "Видеогүй судалгаа кампани — хэрэглэгч видео үзэлгүй шууд хариулна"
+              : "Видеогүй судалгаа — хэрэглэгч видео үзэлгүй шууд хариулна"
         }
       />
 
@@ -386,13 +377,13 @@ export default function NewCampaignPage() {
         {step === "type" && (
           <Card>
             <CardHeader
-              title="Кампанийн төрлөө сонго"
+              title="Судалгааны төрлөө сонго"
               description="Дараах алхмууд төрлийн дагуу өөрчлөгдөнө"
             />
             <CardBody className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <KindCard
                 icon={<Video size={20} />}
-                title="Видеотой кампани"
+                title="Видеотой судалгаа"
                 hint="Компанийн видео хэрэглэгчид харагдана. Видеог бүтэн үзсэний дараа судалгаанд хариулна."
                 active={kind === "VIDEO"}
                 onClick={() => setKind("VIDEO")}
@@ -406,7 +397,7 @@ export default function NewCampaignPage() {
               />
               <div className="md:col-span-2">
                 <Input
-                  label="Кампанийн гарчиг"
+                  label="Судалгааны гарчиг"
                   placeholder="Ж-нь: Шинэ 5G багц"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -498,7 +489,7 @@ export default function NewCampaignPage() {
               title="Зорилтот үзэгч"
               description={
                 kind === "VIDEO"
-                  ? "Аяныг хэнд харуулахаа сонгоно уу"
+                  ? "Судалгааг хэнд харуулахаа сонгоно уу"
                   : "Судалгаа хэнд илгээх вэ"
               }
             />
@@ -532,8 +523,8 @@ export default function NewCampaignPage() {
               </div>
 
               <Select
-                label="Хот"
-                options={cityOptions}
+                label="Аймаг / хот"
+                options={TARGET_CITY_OPTIONS}
                 value={city}
                 onValueChange={setCity}
               />
@@ -545,7 +536,7 @@ export default function NewCampaignPage() {
           <Card>
             <CardHeader
               title="Төсөв ба урамшуулал"
-              description="Нийт төсвөө оруулаад хүрэх үзэгчийн тоо эсвэл нэг үзэгчид олгох урамшууллаа сонгоно уу. Данс цэнэглэх шаардлагагүй — аяны төлбөрийг хамгийн сүүлд төлнө."
+              description="Нийт төсвөө оруулаад хүрэх үзэгчийн тоо эсвэл нэг үзэгчид олгох урамшууллаа сонгоно уу. Данс цэнэглэх шаардлагагүй — судалгааны төлбөрийг хамгийн сүүлд төлнө."
             />
             <CardBody>
               {platformSettings ? (
@@ -749,7 +740,10 @@ export default function NewCampaignPage() {
                 }
               />
               <ReviewRow label="Нас" value={`${minAge} – ${maxAge}`} />
-              <ReviewRow label="Хот" value={city === "ALL" ? "Бүх" : city} />
+              <ReviewRow
+                label="Байршил"
+                value={city === EVERYWHERE ? EVERYWHERE_LABEL : city}
+              />
               <ReviewRow
                 label="Судалгааны асуулт"
                 value={`${questions.length} ширхэг`}
@@ -798,7 +792,15 @@ export default function NewCampaignPage() {
         )}
 
         {step === "payment" && created && (
-          <CampaignPaymentCard campaign={created} variant="wizard" />
+          <div className="space-y-6">
+            <CampaignCoverCard
+              campaign={created}
+              onSaved={(thumbnailUrl) =>
+                setCreated({ ...created, thumbnailUrl })
+              }
+            />
+            <CampaignPaymentCard campaign={created} variant="wizard" />
+          </div>
         )}
       </div>
 

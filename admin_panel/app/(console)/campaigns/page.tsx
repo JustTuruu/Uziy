@@ -53,7 +53,7 @@ export default function AdminCampaignsPage() {
   return (
     <>
       <PageHeader
-        title="Сурталчилгаа"
+        title="Судалгаа"
         description="Шинэ видео агуулга, зорилтот тохиргоог шалгаж баталгаажуулна"
       />
 
@@ -70,7 +70,7 @@ export default function AdminCampaignsPage() {
               ? "Ачаалж байна..."
               : `Хүлээгдэж буй (${pending.length})`
           }
-          description="Төлбөр нь төлөгдсөн аянууд. Видеог бүтэн үзэж, зорилтот бодлогод нийцэж байгаа эсэхийг шалгана"
+          description="Төлбөр нь төлөгдсөн судалгаанууд. Видеог бүтэн үзэж, зорилтот бодлогод нийцэж байгаа эсэхийг шалгана"
         />
         <CardBody className="p-0">
           {all === null ? (
@@ -94,7 +94,7 @@ export default function AdminCampaignsPage() {
                       colSpan={4}
                       className="px-5 py-10 text-center text-sm text-[var(--color-text-muted)]"
                     >
-                      Хүлээгдэж буй суртчилгаа байхгүй.
+                      Хүлээгдэж буй судалгаа байхгүй.
                     </td>
                   </tr>
                 )}
@@ -238,7 +238,7 @@ export default function AdminCampaignsPage() {
                       colSpan={4}
                       className="px-5 py-10 text-center text-sm text-[var(--color-text-muted)]"
                     >
-                      Өөр кампани байхгүй.
+                      Өөр судалгаа байхгүй.
                     </td>
                   </tr>
                 )}

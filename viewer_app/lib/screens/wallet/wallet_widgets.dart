@@ -174,6 +174,7 @@ class _CardFace extends StatelessWidget {
                         alignment: Alignment.centerLeft,
                         child: AnimatedMoney(
                           value: balance,
+                          memoryKey: MoneyMemory.balance,
                           style: context.textStyles.moneyLarge.copyWith(
                             color: _ink,
                             fontSize: 36,
@@ -611,144 +612,6 @@ class WalletNote extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(child: Text(text, style: context.textStyles.caption)),
-        ],
-      ),
-    );
-  }
-}
-
-// --- How it works -----------------------------------------------------------
-
-/// Үзэх -> Хариулах -> Авах, three icon steps in a card.
-class HowItWorksCard extends StatelessWidget {
-  const HowItWorksCard({super.key});
-
-  static List<(String, String)> steps = [
-    ('Үзэх', 'Видеог эцэс хүртэл'),
-    ('Хариулах', 'Богино судалгаа'),
-    ('Авах', 'Хэтэвчинд шууд'),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final icons = <Widget>[
-      Icon(
-        Icons.play_arrow_rounded,
-        size: 24,
-        color: context.colors.primary,
-      ),
-      Icon(
-        Icons.checklist_rounded,
-        size: 22,
-        color: context.colors.primary,
-      ),
-      const CoinIcon(size: 24),
-    ];
-
-    final children = <Widget>[];
-    for (var i = 0; i < steps.length; i++) {
-      if (i > 0) {
-        children.add(
-          ExcludeSemantics(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 13),
-              child: Icon(
-                Icons.chevron_right_rounded,
-                size: 18,
-                color: context.colors.textTertiary,
-              ),
-            ),
-          ),
-        );
-      }
-      final (title, caption) = steps[i];
-      children.add(
-        Expanded(
-          child: _Step(
-            index: i,
-            icon: icons[i],
-            title: title,
-            caption: caption,
-            highlight: i == steps.length - 1,
-          ),
-        ),
-      );
-    }
-
-    return AppCard(
-      padding: const EdgeInsets.fromLTRB(10, 18, 10, 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: children,
-      ),
-    );
-  }
-}
-
-class _Step extends StatelessWidget {
-  const _Step({
-    required this.index,
-    required this.icon,
-    required this.title,
-    required this.caption,
-    required this.highlight,
-  });
-
-  final int index;
-  final Widget icon;
-  final String title;
-  final String caption;
-  final bool highlight;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: '${index + 1}-р алхам: $title. $caption',
-      excludeSemantics: true,
-      child: Column(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: highlight ? context.gradients.goldSoft : null,
-              color: highlight ? null : context.colors.surfaceElevated,
-              border: Border.all(
-                color: highlight
-                    ? context.colors.primary.withValues(alpha: 0.45)
-                    : context.colors.borderStrong,
-              ),
-              boxShadow: highlight
-                  ? AppShadows.glow(
-                      context.colors.primary,
-                      strength: 0.35,
-                      blur: 16,
-                      offset: Offset.zero,
-                    )
-                  : null,
-            ),
-            alignment: Alignment.center,
-            child: icon,
-          ),
-          const SizedBox(height: AppSpacing.sm + 2),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              title,
-              maxLines: 1,
-              style: context.textStyles.label
-                  .copyWith(fontWeight: FontWeight.w700),
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            caption,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: context.textStyles.caption,
-          ),
         ],
       ),
     );
@@ -1281,7 +1144,9 @@ SnackBar _walletSnackBar(String message, IconData icon, Color iconColor) =>
 
 /// 'Хэтэвчний түүх' on the wallet tab itself: money in and money out
 /// totals, then every reward and payout request, newest first, so a payout
-/// decision shows up as the status of its own row.
+/// decision shows up as the status of its own row. The list sits in a box of
+/// [kWalletHistoryBoxHeight] that scrolls on its own, so a long history does
+/// not push the rest of the page away.
 class WalletHistorySection extends StatelessWidget {
   const WalletHistorySection({
     super.key,
@@ -1317,6 +1182,7 @@ class WalletHistorySection extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.md),
           GroupedCard(
+            maxHeight: kWalletHistoryBoxHeight,
             children: [
               for (final e in entries)
                 switch (e) {
@@ -1333,7 +1199,8 @@ class WalletHistorySection extends StatelessWidget {
   }
 }
 
-/// 'Нийт орлого +12,600 ₮' next to 'Нийт зарлага -5,000 ₮'.
+/// 'Нийт орлого +12,600 ₮' on the left, 'Нийт зарлага -5,000 ₮' on the
+/// right, split by a hairline — money in and money out read as two sides.
 class WalletTotalsCard extends StatelessWidget {
   const WalletTotalsCard({
     super.key,
@@ -1346,46 +1213,84 @@ class WalletTotalsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AppCard(
-        child: Row(
-          children: [
-            Expanded(
-              child: _Total(
-                label: kWalletIncomeLabel,
-                value: formatTugrik(income, withSign: true),
-                color: context.colors.success,
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              Expanded(
+                child: _Total(
+                  label: kWalletIncomeLabel,
+                  value: formatTugrik(income, withSign: true),
+                  icon: AppIcons.moneyIn,
+                  color: context.colors.success,
+                ),
               ),
-            ),
-            Expanded(
-              child: _Total(
-                label: kWalletSpendingLabel,
-                value: formatTugrik(-spending),
-                color: context.colors.textPrimary,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                child: VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  color: context.colors.border,
+                ),
               ),
-            ),
-          ],
+              Expanded(
+                child: _Total(
+                  label: kWalletSpendingLabel,
+                  value: formatTugrik(-spending),
+                  icon: AppIcons.moneyOut,
+                  color: context.colors.textPrimary,
+                  alignEnd: true,
+                ),
+              ),
+            ],
+          ),
         ),
       );
 }
 
 class _Total extends StatelessWidget {
-  const _Total({required this.label, required this.value, required this.color});
+  const _Total({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+    this.alignEnd = false,
+  });
 
   final String label;
   final String value;
+  final IconData icon;
   final Color color;
+
+  /// Right-align the whole column (the money going out).
+  final bool alignEnd;
 
   @override
   Widget build(BuildContext context) => Semantics(
         label: '$label: $value',
         excludeSemantics: true,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment:
+              alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
-            Text(label, style: context.textStyles.caption),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 14, color: color),
+                const SizedBox(width: AppSpacing.xs),
+                Flexible(
+                  child: Text(
+                    label,
+                    style: context.textStyles.caption,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 2),
             FittedBox(
               fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
+              alignment:
+                  alignEnd ? Alignment.centerRight : Alignment.centerLeft,
               child: Text(
                 value,
                 style: context.textStyles.title.copyWith(

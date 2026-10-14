@@ -32,8 +32,7 @@ void main() {
   });
 
   group('resetPassword', () {
-    test('posts the phone, the confirmed check and the new password',
-        () async {
+    test('posts the phone, the confirmed check and the new password', () async {
       final api = FakeApi.install((_) => const FakeReply(204));
 
       await AuthService.instance.resetPassword(

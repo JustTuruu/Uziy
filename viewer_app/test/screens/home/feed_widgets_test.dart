@@ -32,10 +32,11 @@ Future<void> _pump(
   Widget child, {
   bool reduceMotion = false,
   double textScale = 1.0,
+  bool dark = false,
 }) {
   return tester.pumpWidget(
     MaterialApp(
-      theme: AppTheme.light(),
+      theme: dark ? AppTheme.dark() : AppTheme.light(),
       builder: (context, app) => MediaQuery(
         data: MediaQuery.of(context).copyWith(
           disableAnimations: reduceMotion,
@@ -117,7 +118,7 @@ void main() {
         id: 9,
         companyName: 'Монголын Үндэсний Худалдаа Аж Үйлдвэрийн Танхим',
         videoUrl: '',
-        title: 'Маш урт гарчигтай кампанит ажил, хоёр мөрөөс хэтэрвэл '
+        title: 'Маш урт гарчигтай судалгаа, хоёр мөрөөс хэтэрвэл '
             'гурван цэгээр таслагдах ёстой бөгөөд хэзээ ч халихгүй',
         durationSeconds: 125,
         rewardPerUser: 12500,
@@ -131,6 +132,17 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.text('2:05'), findsOneWidget);
       expect(find.text('+12,500 ₮'), findsOneWidget);
+    });
+
+    testWidgets('dark card keeps reward and action readable at 2x text',
+        (tester) async {
+      _useSmallPhone(tester);
+      await _pump(tester, CampaignCard(campaign: _video, onTap: () {}),
+          textScale: 2, dark: true);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('+700 ₮'), findsOneWidget);
+      expect(find.text('Үзэх'), findsOneWidget);
     });
 
     testWidgets('renders under reduce-motion', (tester) async {
@@ -341,7 +353,14 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Өглөөний мэнд'), findsOneWidget);
-      expect(find.text(FeedHeader.title), findsOneWidget);
+      expect(find.text('Шинэ судалгаанууд'), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.text('Шинэ судалгаанууд')).style?.fontSize,
+        AppTextStyles.pageTitle.fontSize,
+        reason: 'the home title uses the smaller tab-title size',
+      );
+      expect(find.text('Үзэж, хариулж, урамшуулал аваарай'), findsNothing,
+          reason: 'the explainer under the title was removed');
       expect(find.text('700 ₮'), findsOneWidget);
       expect(find.byType(UziyWordmark), findsOneWidget);
       expect(find.byType(ThemeModeButton), findsOneWidget);

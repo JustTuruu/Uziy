@@ -161,14 +161,14 @@ export default function AdminCompanyDetailPage() {
       <div className="mt-8">
         <Card>
           <CardHeader
-            title={`Кампаниуд (${campaigns.length})`}
-            description="Энэ компанийн бүх кампани, шинэ нь эхэнд"
+            title={`Судалгаанууд (${campaigns.length})`}
+            description="Энэ компанийн бүх судалгаа, шинэ нь эхэнд"
           />
           <CardBody className="p-0">
             {campaigns.length === 0 ? (
               <div className="py-16 text-center text-sm text-[var(--color-text-muted)]">
                 <Building2 size={20} className="mx-auto mb-2" />
-                Энэ компани кампани үүсгээгүй байна.
+                Энэ компани судалгаа үүсгээгүй байна.
               </div>
             ) : (
               <table className="w-full text-sm">

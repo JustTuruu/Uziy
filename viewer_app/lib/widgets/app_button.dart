@@ -28,6 +28,8 @@ enum AppButtonSize { normal, small }
 /// horizontal list) it hugs its label and does not throw. Inside a Row, wrap
 /// it in Expanded to share the width.
 class AppButton extends StatelessWidget {
+  static const double _trailingIconSize = 20;
+
   const AppButton({
     super.key,
     required this.label,
@@ -39,6 +41,8 @@ class AppButton extends StatelessWidget {
     this.size = AppButtonSize.normal,
     this.haptic = false,
     this.semanticLabel,
+    this.trailingIcon,
+    this.raised = false,
   });
 
   final String label;
@@ -56,6 +60,14 @@ class AppButton extends StatelessWidget {
 
   /// Overrides the screen-reader label (defaults to [label]).
   final String? semanticLabel;
+
+  /// An icon pinned to the button's right edge while the label stays
+  /// centred (e.g. the arrow on 'Нэвтрэх'). Hidden while [loading].
+  final IconData? trailingIcon;
+
+  /// A soft shadow in the fill's own colour, offset downwards, for the one
+  /// main action of a page. Off by default: most buttons stay flat.
+  final bool raised;
 
   @override
   Widget build(BuildContext context) {
@@ -127,6 +139,19 @@ class AppButton extends StatelessWidget {
             ],
           );
 
+    final trailing = trailingIcon;
+    final Widget body = trailing == null || loading
+        ? content
+        : Row(
+            children: [
+              // Same width as the icon on the right, so the label is
+              // centred on the button, not on the space left of the icon.
+              const SizedBox(width: _trailingIconSize),
+              Expanded(child: Center(child: content)),
+              Icon(trailing, size: _trailingIconSize, color: fg),
+            ],
+          );
+
     final box = AnimatedContainer(
       duration: AppMotion.duration(context, AppDurations.normal),
       curve: AppMotion.standard,
@@ -137,12 +162,21 @@ class AppButton extends StatelessWidget {
         color: fill,
         borderRadius: radius,
         border: border,
+        boxShadow: raised && !disabled
+            ? [
+                BoxShadow(
+                  color: fill.withValues(alpha: 0.18),
+                  blurRadius: 20,
+                  offset: const Offset(0, 6),
+                ),
+              ]
+            : null,
       ),
       child: Center(
         widthFactor: expand ? null : 1.0,
         child: AnimatedSwitcher(
           duration: AppMotion.duration(context, AppDurations.fast),
-          child: content,
+          child: body,
         ),
       ),
     );

@@ -92,7 +92,7 @@ export default function CompanyDashboard() {
               size={16}
               className="shrink-0 text-[var(--color-warning)]"
             />
-            Төлбөр хүлээгдэж буй {awaitingPayment.length} аян байна ·{" "}
+            Төлбөр хүлээгдэж буй {awaitingPayment.length} судалгаа байна ·{" "}
             <span className="font-mono font-semibold">
               {formatTugrik(awaitingPaymentTotal)}
             </span>
@@ -153,7 +153,7 @@ export default function CompanyDashboard() {
             )}
             {campaigns && campaigns.length === 0 && (
               <div className="py-16 text-center text-sm text-[var(--color-text-muted)]">
-                Кампани байхгүй. Эхлэхийн тулд{" "}
+                Судалгаа байхгүй. Эхлэхийн тулд{" "}
                 <Link
                   href="/campaigns/new"
                   className="text-[var(--color-primary)] hover:underline"

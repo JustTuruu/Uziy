@@ -128,32 +128,80 @@ class GroupedCard extends StatelessWidget {
     required this.children,
     this.dividerIndent = 60,
     this.radius = AppRadii.lg,
+    this.maxHeight,
   });
 
   final List<Widget> children;
   final double dividerIndent;
   final double radius;
 
+  /// When set, the card never grows past this height: longer content
+  /// scrolls inside it (with a visible scrollbar) while the card's frame
+  /// stays put. Shorter content keeps its natural height.
+  final double? maxHeight;
+
   @override
   Widget build(BuildContext context) {
+    final rows = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < children.length; i++) ...[
+          if (i > 0)
+            Divider(
+              height: 1,
+              thickness: 1,
+              indent: dividerIndent,
+              color: context.colors.divider,
+            ),
+          children[i],
+        ],
+      ],
+    );
+    final limit = maxHeight;
     return AppCard(
       padding: EdgeInsets.zero,
       radius: radius,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var i = 0; i < children.length; i++) ...[
-            if (i > 0)
-              Divider(
-                height: 1,
-                thickness: 1,
-                indent: dividerIndent,
-                color: context.colors.divider,
-              ),
-            children[i],
-          ],
-        ],
+      child:
+          limit == null ? rows : _ScrollingBox(maxHeight: limit, child: rows),
+    );
+  }
+}
+
+/// [child] in a box at most [maxHeight] tall that scrolls on its own, with
+/// a scrollbar that shows there is more. Owns its controller so it never
+/// borrows the page's primary scroll controller.
+class _ScrollingBox extends StatefulWidget {
+  const _ScrollingBox({required this.maxHeight, required this.child});
+
+  final double maxHeight;
+  final Widget child;
+
+  @override
+  State<_ScrollingBox> createState() => _ScrollingBoxState();
+}
+
+class _ScrollingBoxState extends State<_ScrollingBox> {
+  final _controller = ScrollController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: widget.maxHeight),
+      child: Scrollbar(
+        controller: _controller,
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          controller: _controller,
+          primary: false,
+          child: widget.child,
+        ),
       ),
     );
   }

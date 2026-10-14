@@ -312,6 +312,9 @@ const String kWalletHistoryEmptyMessage =
 const String kWalletIncomeLabel = 'Нийт орлого';
 const String kWalletSpendingLabel = 'Нийт зарлага';
 
+/// Height of the scrolling history box: about five rows, then it scrolls.
+const double kWalletHistoryBoxHeight = 360;
+
 /// One line of the wallet history, newest first: money in (a reward) or
 /// money out (a payout request).
 ///

@@ -22,6 +22,7 @@ public final class FieldMessages {
     public static final String CITY_TOO_LONG = "Хотын нэр хэт урт байна";
     public static final String DISTRICT_TOO_LONG = "Дүүрэг / сумын нэр хэт урт байна";
     public static final String PHONE_NOT_VERIFIED = "Утасны дугаараа баталгаажуулна уу";
+    public static final String CONSENT_REQUIRED = "Зөвшөөрөх эсэхээ сонгоно уу";
     public static final String COMPANY_NAME_REQUIRED = "Компанийн нэрээ оруулна уу";
     public static final String COMPANY_NAME_TOO_LONG = "Компанийн нэр хэт урт байна";
 
@@ -30,8 +31,8 @@ public final class FieldMessages {
     public static final String ACCOUNT_NUMBER_REQUIRED = "Дансны дугаараа оруулна уу";
     public static final String ACCOUNT_NAME_REQUIRED = "Данс эзэмшигчийн нэрийг оруулна уу";
 
-    public static final String TITLE_REQUIRED = "Аяны нэрийг оруулна уу";
-    public static final String TITLE_TOO_LONG = "Аяны нэр хэт урт байна";
+    public static final String TITLE_REQUIRED = "Судалгааны нэрийг оруулна уу";
+    public static final String TITLE_TOO_LONG = "Судалгааны нэр хэт урт байна";
     public static final String VIDEO_URL_TOO_LONG = "Видеоны холбоос хэт урт байна";
     public static final String TOO_MANY_QUESTIONS = "Асуулт хэт олон байна";
     public static final String QUESTION_REQUIRED = "Асуултынхаа текстийг оруулна уу";

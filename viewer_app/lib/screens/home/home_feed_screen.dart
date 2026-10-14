@@ -13,6 +13,7 @@ import '../../services/auto_refresher.dart';
 import '../../services/campaign_events.dart';
 import '../../services/push/push_runtime.dart';
 import '../../services/viewer_service.dart';
+import '../../widgets/stats_consent.dart';
 import '../../widgets/ui.dart';
 import 'feed_logic.dart';
 import 'feed_widgets.dart';
@@ -218,6 +219,15 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                       ),
                     ),
                   ),
+                  // Asked once, after sign-in; gone for good once answered.
+                  if (!_guest && canAskStatsConsent(_me?.age))
+                    SliverPadding(
+                      key: const ValueKey('stats-consent'),
+                      padding: pad(),
+                      sliver: const SliverToBoxAdapter(
+                        child: StatsConsentPrompt(),
+                      ),
+                    ),
                   if (error != null)
                     SliverPadding(
                       key: const ValueKey('feed-error'),

@@ -280,14 +280,14 @@ describe("companyApi — campaign creation, payment, status", () => {
 
   it("pay() surfaces the server's 409 message as an ApiError", async () => {
     respondWith(409, {
-      message: "Энэ аяны төлбөр аль хэдийн төлөгдсөн эсвэл төлөх боломжгүй",
+      message: "Энэ судалгааны төлбөр аль хэдийн төлөгдсөн эсвэл төлөх боломжгүй",
     });
     const { companyApi } = await import("./api");
 
     await expect(companyApi.pay(42)).rejects.toMatchObject({
       name: "ApiError",
       status: 409,
-      message: "Энэ аяны төлбөр аль хэдийн төлөгдсөн эсвэл төлөх боломжгүй",
+      message: "Энэ судалгааны төлбөр аль хэдийн төлөгдсөн эсвэл төлөх боломжгүй",
     });
   });
 

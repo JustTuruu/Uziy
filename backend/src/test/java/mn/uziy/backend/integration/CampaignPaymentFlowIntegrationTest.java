@@ -365,7 +365,7 @@ class CampaignPaymentFlowIntegrationTest {
                         .header("Authorization", bearer(MOBICOM))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"title":"HTTP аян","hasVideo":false,"totalBudget":1000000,"rewardPerUser":700,
+                                {"title":"HTTP судалгаа","hasVideo":false,"totalBudget":1000000,"rewardPerUser":700,
                                  "costPerView":5,
                                  "questions":[{"prompt":"Асуулт?","type":"TEXT"}]}
                                 """))
@@ -396,7 +396,7 @@ class CampaignPaymentFlowIntegrationTest {
                 .andExpect(jsonPath("$.campaign.status").value("PENDING"))
                 .andExpect(jsonPath("$.campaign.paidAt").exists())
                 .andExpect(jsonPath("$.payment.campaignId").value(id))
-                .andExpect(jsonPath("$.payment.campaignTitle").value("HTTP аян"))
+                .andExpect(jsonPath("$.payment.campaignTitle").value("HTTP судалгаа"))
                 .andExpect(jsonPath("$.payment.amount").value(1_000_000.0))
                 .andExpect(jsonPath("$.payment.provider").value("SIMULATED"))
                 .andExpect(jsonPath("$.payment.status").value("PAID"))

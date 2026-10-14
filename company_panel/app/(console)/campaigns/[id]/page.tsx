@@ -11,6 +11,7 @@ import {
   Pause,
   Play,
 } from "lucide-react";
+import { CampaignCoverCard } from "@/components/campaign-cover-card";
 import { CampaignPaymentCard } from "@/components/campaign-payment-card";
 import { CampaignStatusBadge } from "@/components/campaign-status-badge";
 import { Button, Card, CardBody, CardHeader, PageHeader, StatCard } from "@uziy/ui";
@@ -51,7 +52,7 @@ export default function CampaignDetailPage() {
           return;
         }
         if (e instanceof ApiError && e.status === 404) {
-          setError("Кампани олдсонгүй");
+          setError("Судалгаа олдсонгүй");
           return;
         }
         setError(e instanceof Error ? e.message : "Алдаа гарлаа");
@@ -63,7 +64,7 @@ export default function CampaignDetailPage() {
     if (
       next === "COMPLETED" &&
       !window.confirm(
-        "Аяныг дуусгах уу? Дууссан аяныг дахин идэвхжүүлэх боломжгүй.",
+        "Судалгааг дуусгах уу? Дууссан судалгааг дахин идэвхжүүлэх боломжгүй.",
       )
     ) {
       return;
@@ -83,7 +84,7 @@ export default function CampaignDetailPage() {
   };
 
   const invalidId = !Number.isFinite(id);
-  const shownError = invalidId ? "Кампанийн ID буруу" : error;
+  const shownError = invalidId ? "Судалгааны ID буруу" : error;
 
   if (shownError) {
     return (
@@ -92,7 +93,7 @@ export default function CampaignDetailPage() {
           href="/campaigns"
           className="mb-4 inline-flex items-center gap-1 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
         >
-          <ArrowLeft size={12} /> Бүх кампани
+          <ArrowLeft size={12} /> Бүх судалгаа
         </Link>
         <Card>
           <CardBody className="py-10 text-center text-sm text-[var(--color-danger)]">
@@ -195,9 +196,15 @@ export default function CampaignDetailPage() {
             size={14}
             className="shrink-0 text-[var(--color-accent)]"
           />
-          Төлбөр төлөгдсөн. Админ шалгаж баталгаажуулсны дараа аян идэвхжинэ.
+          Төлбөр төлөгдсөн. Админ шалгаж баталгаажуулсны дараа судалгаа идэвхжинэ.
         </div>
       )}
+
+      <CampaignCoverCard
+        className="mb-8"
+        campaign={campaign}
+        onSaved={(thumbnailUrl) => setCampaign({ ...campaign, thumbnailUrl })}
+      />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <StatCard

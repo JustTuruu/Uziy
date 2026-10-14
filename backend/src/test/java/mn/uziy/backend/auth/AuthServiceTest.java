@@ -104,7 +104,8 @@ class AuthServiceTest {
         });
 
         AuthResponse res = service.registerViewer(new RegisterViewerReq(
-                "77000001", "password1", "Бат", "Болд", Gender.MALE, LocalDate.of(2000, 5, 5), "Улаанбаатар", CHECK));
+                "77000001", "password1", "Бат", "Болд", Gender.MALE, LocalDate.of(2000, 5, 5), "Улаанбаатар",
+                "Баянзүрх", CHECK));
 
         Me me = res.user();
         assertThat(me.id()).isEqualTo(100L);
@@ -119,13 +120,25 @@ class AuthServiceTest {
     }
 
     @Test
+    void registerViewerInTheCapitalWithoutADistrictSpendsNothing() {
+        when(users.existsByPhoneNumber("77000001")).thenReturn(false);
+
+        assertThat(statusOf(() -> service.registerViewer(new RegisterViewerReq(
+                "77000001", "password1", "Бат", "Болд", Gender.MALE, LocalDate.of(2000, 1, 1), "Улаанбаатар", CHECK))))
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        org.mockito.Mockito.verifyNoInteractions(verifiedPhones);
+        org.mockito.Mockito.verify(users, org.mockito.Mockito.never()).save(any(UserEntity.class));
+    }
+
+    @Test
     void registerViewerWithAnUnverifiedPhoneCreatesNoUser() {
         when(users.existsByPhoneNumber("77000001")).thenReturn(false);
         org.mockito.Mockito.doThrow(new mn.uziy.backend.common.BadRequestException(VerifiedPhoneClaim.NOT_VERIFIED))
                 .when(verifiedPhones).claim(CHECK, "77000001", PhoneVerificationPurpose.REGISTER);
 
         assertThat(statusOf(() -> service.registerViewer(new RegisterViewerReq(
-                "77000001", "password1", "Бат", "Болд", Gender.MALE, LocalDate.of(2000, 1, 1), "Улаанбаатар", CHECK))))
+                "77000001", "password1", "Бат", "Болд", Gender.MALE, LocalDate.of(2000, 1, 1), "Улаанбаатар",
+                "Баянзүрх", CHECK))))
                 .isEqualTo(HttpStatus.BAD_REQUEST);
         org.mockito.Mockito.verify(users, org.mockito.Mockito.never()).save(any(UserEntity.class));
         org.mockito.Mockito.verifyNoInteractions(events);

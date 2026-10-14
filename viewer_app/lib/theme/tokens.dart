@@ -225,6 +225,16 @@ abstract final class AppTextStyles {
     color: AppColors.textPrimary,
   );
 
+  /// The big title on top of a tab page (Нүүр, Хэтэвч, Профайл). Smaller and
+  /// lighter than [display]: a page name, not a poster (owner, 2026-10-14).
+  static const TextStyle pageTitle = TextStyle(
+    fontSize: 26,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.5,
+    height: 1.2,
+    color: AppColors.textPrimary,
+  );
+
   static const TextStyle headline = TextStyle(
     fontSize: 24,
     fontWeight: FontWeight.w800,

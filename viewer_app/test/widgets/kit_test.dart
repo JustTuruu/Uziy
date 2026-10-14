@@ -101,6 +101,57 @@ void main() {
   });
 
   group('AppButton', () {
+    testWidgets('trailing icon sits at the right edge, label stays centred',
+        (tester) async {
+      await pumpKit(
+        tester,
+        AppButton(
+          label: 'Нэвтрэх',
+          trailingIcon: AppIcons.next,
+          onPressed: () {},
+        ),
+      );
+      final button = tester.getRect(find.byType(AppButton));
+      final icon = tester.getRect(find.byIcon(AppIcons.next));
+      final label = tester.getCenter(find.text('Нэвтрэх'));
+      expect(button.right - icon.right, lessThan(30));
+      expect((label.dx - button.center.dx).abs(), lessThan(1));
+    });
+
+    testWidgets('trailing icon hides while loading', (tester) async {
+      await pumpKit(
+        tester,
+        AppButton(
+          label: 'Нэвтрэх',
+          trailingIcon: AppIcons.next,
+          loading: true,
+          onPressed: () {},
+        ),
+      );
+      expect(find.byIcon(AppIcons.next), findsNothing);
+    });
+
+    testWidgets('raised casts a soft offset shadow; flat by default',
+        (tester) async {
+      List<BoxShadow>? shadowOf(Widget w) {
+        final box = tester.widget<AnimatedContainer>(find.descendant(
+          of: find.byWidget(w),
+          matching: find.byType(AnimatedContainer),
+        ));
+        return (box.decoration! as BoxDecoration).boxShadow;
+      }
+
+      final raised = AppButton(label: 'A', raised: true, onPressed: () {});
+      await pumpKit(tester, raised);
+      final shadow = shadowOf(raised)!.single;
+      expect(shadow.offset.dy, greaterThan(0));
+      expect(shadow.blurRadius, greaterThan(0));
+
+      final flat = AppButton(label: 'B', onPressed: () {});
+      await pumpKit(tester, flat);
+      expect(shadowOf(flat), isNull);
+    });
+
     testWidgets('tap fires onPressed', (tester) async {
       var taps = 0;
       await pumpKit(
@@ -294,11 +345,94 @@ void main() {
       setOuter(() => value = 4100);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
-      final mid = tester.widget<Text>(find.byType(Text)).data!;
-      expect(mid, isNot('+4,100 ₮'));
-      expect(mid, isNot('0 ₮')); // starts from 3,400, not from zero
+      // Mid-roll: an odometer from 3,400 (not from zero) to 4,100.
+      final odo = tester.widget<OdometerText>(find.byType(OdometerText));
+      expect(odo.from, '+3,400 ₮');
+      expect(odo.to, '+4,100 ₮');
+      expect(odo.rising, isTrue);
+      expect(find.text('+4,100 ₮'), findsNothing);
       await tester.pumpAndSettle();
       expect(find.text('+4,100 ₮'), findsOneWidget);
+    });
+
+    testWidgets('with a memory key an unchanged amount appears at once',
+        (tester) async {
+      MoneyMemory.clear();
+      addTearDown(MoneyMemory.clear);
+      const money = AnimatedMoney(value: 3400, memoryKey: 'test');
+
+      await pumpKit(tester, money);
+      expect(find.text('3,400 ₮'), findsOneWidget,
+          reason: 'first time ever: no count-up from 0');
+
+      await pumpKit(tester, const SizedBox());
+      await pumpKit(tester, money); // e.g. back on the wallet tab
+      expect(find.text('3,400 ₮'), findsOneWidget);
+      expect(tester.widget<OdometerText>(find.byType(OdometerText)).from,
+          '3,400 ₮',
+          reason: 'nothing to roll');
+    });
+
+    testWidgets('with a memory key a new amount rolls from the last one shown',
+        (tester) async {
+      MoneyMemory.clear();
+      addTearDown(MoneyMemory.clear);
+      await pumpKit(
+          tester, const AnimatedMoney(value: 2700, memoryKey: 'test'));
+      await pumpKit(tester, const SizedBox());
+
+      await pumpKit(
+          tester, const AnimatedMoney(value: 3400, memoryKey: 'test'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(tester.widget<OdometerText>(find.byType(OdometerText)).from,
+          '2,700 ₮');
+      await tester.pumpAndSettle();
+      expect(find.text('3,400 ₮'), findsOneWidget);
+      expect(MoneyMemory.lastShown('test'), 3400);
+    });
+
+    testWidgets('the odometer rolls only the digits that changed',
+        (tester) async {
+      await pumpKit(
+        tester,
+        const OdometerText(
+          from: '2,700 ₮',
+          to: '3,400 ₮',
+          progress: 0.5,
+          style: TextStyle(fontSize: 20),
+        ),
+      );
+      // '2'→'3' and '7'→'4' roll; ',', '00', ' ₮' stay put.
+      expect(
+        find.descendant(
+            of: find.byType(OdometerText), matching: find.byType(ClipRect)),
+        findsNWidgets(2),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a longer amount grows its new leading digits in',
+        (tester) async {
+      await pumpKit(
+        tester,
+        const OdometerText(
+          from: '999 ₮',
+          to: '1,000 ₮',
+          progress: 0.4,
+          style: TextStyle(fontSize: 20),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      await pumpKit(
+        tester,
+        const OdometerText(
+          from: '999 ₮',
+          to: '1,000 ₮',
+          progress: 1,
+          style: TextStyle(fontSize: 20),
+        ),
+      );
+      expect(find.text('1,000 ₮'), findsOneWidget);
     });
 
     testWidgets('reduce-motion shows the final value immediately, prefix ok',
@@ -420,6 +554,43 @@ void main() {
       expect(find.byType(Divider), findsNWidgets(2));
       expect(find.text('Эрэгтэй'), findsOneWidget);
       expect(find.text('Улаанбаатар'), findsOneWidget);
+    });
+
+    List<Widget> rows(int n) => [
+          for (var i = 0; i < n; i++)
+            InfoRow(icon: Icons.history, label: 'Мөр $i'),
+        ];
+
+    testWidgets(
+        'maxHeight: a long list scrolls inside a card that keeps '
+        'its height', (tester) async {
+      await pumpKit(tester, GroupedCard(maxHeight: 200, children: rows(20)));
+
+      expect(tester.getSize(find.byType(GroupedCard)).height, 200);
+      expect(find.byType(Scrollbar), findsOneWidget);
+      expect(find.text('Мөр 19').hitTestable(), findsNothing);
+
+      await tester.dragUntilVisible(
+        find.text('Мөр 19'),
+        find.byType(SingleChildScrollView),
+        const Offset(0, -100),
+      );
+      expect(find.text('Мөр 19').hitTestable(), findsOneWidget);
+      expect(tester.getSize(find.byType(GroupedCard)).height, 200);
+    });
+
+    testWidgets('maxHeight: short content keeps its natural height',
+        (tester) async {
+      await pumpKit(tester, GroupedCard(maxHeight: 400, children: rows(2)));
+
+      expect(tester.getSize(find.byType(GroupedCard)).height, lessThan(400));
+      expect(find.text('Мөр 1').hitTestable(), findsOneWidget);
+    });
+
+    testWidgets('without maxHeight nothing scrolls', (tester) async {
+      await pumpKit(tester, GroupedCard(children: rows(3)));
+
+      expect(find.byType(Scrollbar), findsNothing);
     });
 
     testWidgets('single child -> no dividers', (tester) async {

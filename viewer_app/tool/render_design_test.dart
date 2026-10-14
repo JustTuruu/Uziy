@@ -12,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:viewer_app/models/campaign.dart';
 import 'package:viewer_app/models/user.dart';
 import 'package:viewer_app/screens/auth/login_screen.dart';
+import 'package:viewer_app/screens/auth/register_screen.dart';
 import 'package:viewer_app/screens/home/feed_logic.dart';
 import 'package:viewer_app/screens/home/feed_widgets.dart';
 import 'package:viewer_app/screens/profile/profile_widgets.dart';
@@ -91,9 +92,6 @@ void main() {
         ]),
         'wallet': page([
           Text('Хэтэвч', style: context.textStyles.display),
-          const SizedBox(height: 6),
-          Text('Урамшууллаа цуглуулж, дансандаа татаарай',
-              style: context.textStyles.bodySmall),
           const SizedBox(height: 24),
           WalletBalanceCard(
               balance: user.balance,
@@ -104,10 +102,6 @@ void main() {
               label: 'Мөнгө татах',
               icon: Icons.account_balance_rounded,
               onPressed: () {}),
-          const SizedBox(height: 32),
-          const SectionHeader(title: 'Хэрхэн ажилладаг вэ'),
-          const SizedBox(height: 12),
-          const HowItWorksCard(),
         ], tab: 1),
         'profile': page([
           ProfileBody(
@@ -117,7 +111,8 @@ void main() {
               onHistoryTap: () {})
         ], tab: 2),
         'survey': Scaffold(
-          appBar: AppBar(title: const Text('Судалгаа'), leading: const BackButton()),
+          appBar: AppBar(
+              title: const Text('Судалгаа'), leading: const BackButton()),
           body: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -158,10 +153,35 @@ void main() {
                 ],
               )),
         ),
+        'campaign': Scaffold(
+          body: SafeArea(
+              child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Танд зориулсан', style: context.textStyles.title),
+                const SizedBox(height: 20),
+                CampaignCard(campaign: campaigns.first, onTap: () {}),
+                const SizedBox(height: 20),
+                CampaignCard(campaign: campaigns.last, onTap: () {}),
+              ],
+            ),
+          )),
+        ),
         'login': const LoginScreen(),
+        'register': const RegisterScreen(),
       };
   const dark = bool.fromEnvironment('UI_PREVIEW_DARK');
-  for (final name in ['home', 'wallet', 'profile', 'survey', 'login']) {
+  for (final name in [
+    'home',
+    'wallet',
+    'profile',
+    'survey',
+    'login',
+    'register',
+    'campaign'
+  ]) {
     testWidgets('render $name', (tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;

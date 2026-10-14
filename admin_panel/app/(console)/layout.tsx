@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   Banknote,
+  BarChart3,
   Bell,
   LayoutDashboard,
   Percent,
@@ -40,7 +41,7 @@ function buildNav(pendingPayouts: number, pendingCampaigns: number): NavItem[] {
     },
     {
       href: "/campaigns",
-      label: "Сурталчилгаа",
+      label: "Судалгаа",
       icon: <PlaySquare size={16} />,
       badge: pendingCampaigns,
     },
@@ -48,6 +49,11 @@ function buildNav(pendingPayouts: number, pendingCampaigns: number): NavItem[] {
       href: "/users",
       label: "Хэрэглэгчид",
       icon: <Users size={16} />,
+    },
+    {
+      href: "/insights",
+      label: "Статистик",
+      icon: <BarChart3 size={16} />,
     },
     {
       href: "/finance",

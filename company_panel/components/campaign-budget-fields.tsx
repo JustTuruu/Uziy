@@ -101,7 +101,7 @@ export function CampaignBudgetFields({
         maxLength={MAX_MONEY_DIGITS}
         value={value.budgetText}
         onValueChange={(text) => onChange({ ...value, budgetText: text })}
-        hint="Энэ аянд зарцуулах дээд дүн"
+        hint="Энэ судалгаанд зарцуулах дээд дүн"
       />
 
       <div>

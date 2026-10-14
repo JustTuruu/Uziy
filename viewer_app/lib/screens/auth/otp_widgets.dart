@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../widgets/ui.dart';
+import 'auth_widgets.dart' show AuthPageTitle;
 
 /// Icon medallion, [title] and [subtitle] at the top of a phone-check or
 /// password-reset step.
@@ -16,6 +17,9 @@ class OtpHeader extends StatelessWidget {
   final String title;
   final String subtitle;
 
+  /// The step's glyph tile: flat sage, the field corner (16).
+  static const double tileSize = 56;
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -23,30 +27,19 @@ class OtpHeader extends StatelessWidget {
       children: [
         ExcludeSemantics(
           child: Container(
-            width: 56,
-            height: 56,
+            width: tileSize,
+            height: tileSize,
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: context.colors.primary.withValues(alpha: 0.12),
-              border: Border.all(
-                color: context.colors.primary.withValues(alpha: 0.28),
-              ),
+              color: context.colors.surfaceElevated,
+              borderRadius: AppRadii.brMd,
+              border: Border.all(color: context.colors.border),
             ),
             alignment: Alignment.center,
             child: Icon(icon, size: 26, color: context.colors.primary),
           ),
         ),
-        const SizedBox(height: AppSpacing.xl),
-        Semantics(
-          header: true,
-          child: Text(title, style: context.textStyles.display),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Text(
-          subtitle,
-          style: context.textStyles.body
-              .copyWith(color: context.colors.textSecondary),
-        ),
+        const SizedBox(height: AppSpacing.xxl),
+        AuthPageTitle(title, subtitle: subtitle),
       ],
     );
   }

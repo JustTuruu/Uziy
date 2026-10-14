@@ -73,4 +73,23 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text(_specMessage), findsOneWidget);
   });
+
+  testWidgets('flat: no gradient and no shadow (owner, 2026-10-14)',
+      (tester) async {
+    await _pump(tester);
+    final boxes = tester.widgetList<Container>(
+      find.descendant(
+        of: find.byType(IncentiveBanner),
+        matching: find.byType(Container),
+      ),
+    );
+    for (final box in boxes) {
+      final d = box.decoration;
+      if (d is BoxDecoration) {
+        expect(d.gradient, isNull);
+        expect(d.boxShadow, isNull);
+      }
+    }
+    expect(find.byType(DecoratedBox), findsWidgets);
+  });
 }

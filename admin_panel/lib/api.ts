@@ -116,6 +116,8 @@ interface RequestOptions {
   body?: unknown;
   /** Skip Authorization header even if a token exists (e.g. /auth/login). */
   anonymous?: boolean;
+  /** "text": return the body as a string (e.g. a CSV download) instead of parsed JSON. */
+  responseType?: "json" | "text";
 }
 
 export async function apiFetch<T>(
@@ -125,7 +127,9 @@ export async function apiFetch<T>(
   const url = `${API_BASE_URL}${path}`;
   const headers: Record<string, string> = {};
 
-  if (opts.body !== undefined) headers["Content-Type"] = "application/json";
+  const multipart = opts.body instanceof FormData;
+  if (opts.body !== undefined && !multipart)
+    headers["Content-Type"] = "application/json";
 
   if (!opts.anonymous) {
     const token = auth.getToken();
@@ -137,7 +141,11 @@ export async function apiFetch<T>(
     res = await fetch(url, {
       method: opts.method ?? "GET",
       headers,
-      body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+      body: multipart
+        ? (opts.body as FormData)
+        : opts.body === undefined
+          ? undefined
+          : JSON.stringify(opts.body),
       credentials: "omit",
     });
   } catch {
@@ -151,7 +159,7 @@ export async function apiFetch<T>(
     throw new ApiError(messageOf(parsed), res.status, parsed);
   }
 
-  return parsed as T;
+  return (opts.responseType === "text" ? text : parsed) as T;
 }
 
 /** The backend's own `message`, or the generic sentence when there is none. */
@@ -195,6 +203,7 @@ export type CampaignStatus =
   | "REJECTED";
 
 export interface Campaign {
+  thumbnailUrl?: string | null;
   id: number;
   title: string;
   videoUrl: string;
@@ -282,6 +291,18 @@ export const adminApi = {
   },
   campaign: (id: number) =>
     apiFetch<AdminCampaignDetail>(`/admin/campaigns/${id}`),
+  uploadImage: (id: number, file: File) => {
+    const body = new FormData();
+    body.append("file", file);
+    return apiFetch<{ thumbnailUrl: string }>(`/admin/campaigns/${id}/image`, {
+      method: "POST",
+      body,
+    });
+  },
+  removeImage: (id: number) =>
+    apiFetch<{ thumbnailUrl: null }>(`/admin/campaigns/${id}/image`, {
+      method: "DELETE",
+    }),
   moderate: (id: number, decision: "ACTIVE" | "REJECTED") =>
     apiFetch<Campaign>(`/admin/campaigns/${id}/moderate?decision=${decision}`, {
       method: "PATCH",
@@ -322,4 +343,109 @@ export interface PlatformSettings {
 export const platformSettingsApi = {
   get: () =>
     apiFetch<PlatformSettings>("/platform-settings", { anonymous: true }),
+};
+
+export function mediaUrl(path: string): string {
+  return new URL(path, API_BASE_URL).toString();
+}
+
+// --- Anonymous statistics (super admin only) --------------------------------
+
+/** A group's size, or null when it is under the minimum and must not be shown. */
+export interface InsightGroup {
+  label: string;
+  people: number | null;
+}
+
+export interface InsightsOverview {
+  minGroupSize: number;
+  viewers: number;
+  consentingViewers: number;
+  consentPercent: number;
+  byGender: InsightGroup[];
+  byAgeBand: InsightGroup[];
+  byCity: InsightGroup[];
+  reportableQuestions: number;
+}
+
+export interface InsightQuestion {
+  questionId: number;
+  prompt: string;
+  type: string;
+  surveyTitle: string;
+  companyName: string;
+  /** Consenting respondents, rounded down to tens. */
+  respondents: number;
+  reportable: boolean;
+}
+
+export interface InsightFilter {
+  gender?: "MALE" | "FEMALE" | null;
+  ageBand?: string | null;
+  city?: string | null;
+}
+
+export interface OptionShare {
+  option: string;
+  percent: number;
+}
+
+export interface InsightDistribution {
+  questionId: number;
+  prompt: string;
+  type: string;
+  filter: InsightFilter;
+  suppressed: boolean;
+  people: number | null;
+  shares: OptionShare[];
+}
+
+export interface InsightSegmentRow {
+  dimension: string;
+  label: string;
+  suppressed: boolean;
+  people: number | null;
+  shares: OptionShare[];
+}
+
+export interface InsightSegments {
+  questionId: number;
+  prompt: string;
+  options: string[];
+  rows: InsightSegmentRow[];
+}
+
+export interface AccessLogEntry {
+  id: number;
+  adminPhone: string;
+  action: string;
+  detail: string;
+  at: string;
+}
+
+/** `?gender=…&ageBand=…&city=…` for the filters that are set; "" when none. */
+export function insightFilterQuery(filter: InsightFilter): string {
+  const params = new URLSearchParams();
+  if (filter.gender) params.set("gender", filter.gender);
+  if (filter.ageBand) params.set("ageBand", filter.ageBand);
+  if (filter.city) params.set("city", filter.city);
+  const q = params.toString();
+  return q ? `?${q}` : "";
+}
+
+/** Every call is recorded server-side in the data access log. */
+export const insightsApi = {
+  overview: () => apiFetch<InsightsOverview>("/admin/insights/overview"),
+  questions: () => apiFetch<InsightQuestion[]>("/admin/insights/questions"),
+  distribution: (id: number, filter: InsightFilter) =>
+    apiFetch<InsightDistribution>(
+      `/admin/insights/questions/${id}${insightFilterQuery(filter)}`,
+    ),
+  segments: (id: number) =>
+    apiFetch<InsightSegments>(`/admin/insights/questions/${id}/segments`),
+  exportCsv: (id: number) =>
+    apiFetch<string>(`/admin/insights/questions/${id}/export.csv`, {
+      responseType: "text",
+    }),
+  accessLog: () => apiFetch<AccessLogEntry[]>("/admin/insights/access-log"),
 };

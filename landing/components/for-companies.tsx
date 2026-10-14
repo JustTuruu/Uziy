@@ -21,7 +21,7 @@ export function ForCompanies({ companyPanelUrl }: { companyPanelUrl: string }) {
             ))}
           </ul>
           <a className="button button-lime" href={companyPanelUrl}>
-            Кампанит ажил эхлүүлэх <ArrowUpRight size={18} />
+            Судалгаа эхлүүлэх <ArrowUpRight size={18} />
           </a>
         </div>
         <div className="business-visual">

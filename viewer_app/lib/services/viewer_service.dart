@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/campaign.dart';
 import '../models/payout_request.dart';
+import '../models/statistics_consent.dart';
 import '../models/survey_question.dart';
 import '../models/user.dart';
 import '../models/view_history_item.dart';
@@ -44,7 +45,8 @@ class ViewerService {
       _check(r, 'Санал болгосон видеонуудыг ачаалж чадсангүй');
       return (r.data as List<dynamic>)
           .cast<Map<String, dynamic>>()
-          .map(Campaign.fromJson)
+          .map((json) =>
+              Campaign.fromJson(json, mediaBaseUrl: _dio.options.baseUrl))
           .toList();
     } on DioException catch (e) {
       throw _map(e, 'Санал болгосон видеонуудыг ачаалж чадсангүй');
@@ -60,7 +62,8 @@ class ViewerService {
       _check(r, fallback);
       return (r.data as List<dynamic>)
           .cast<Map<String, dynamic>>()
-          .map(Campaign.fromJson)
+          .map((json) =>
+              Campaign.fromJson(json, mediaBaseUrl: _dio.options.baseUrl))
           .toList();
     } on DioException catch (e) {
       throw _map(e, fallback);
@@ -167,6 +170,35 @@ class ViewerService {
       return r.data!;
     } on DioException catch (e) {
       throw _map(e, 'Хүсэлт илгээхэд алдаа гарлаа');
+    }
+  }
+
+  /// GET /viewer/consents/statistics — the viewer's anonymous-statistics
+  /// consent.
+  Future<StatisticsConsent> statisticsConsent() async {
+    try {
+      final r =
+          await _dio.get<Map<String, dynamic>>('/viewer/consents/statistics');
+      _check(r, 'Тохиргоо ачаалж чадсангүй');
+      return StatisticsConsent.fromJson(r.data!);
+    } on DioException catch (e) {
+      throw _map(e, 'Тохиргоо ачаалж чадсангүй');
+    }
+  }
+
+  /// PUT /viewer/consents/statistics — yes or no; takes effect at once.
+  Future<StatisticsConsent> decideStatisticsConsent({
+    required bool granted,
+  }) async {
+    try {
+      final r = await _dio.put<Map<String, dynamic>>(
+        '/viewer/consents/statistics',
+        data: {'granted': granted},
+      );
+      _check(r, 'Хадгалж чадсангүй');
+      return StatisticsConsent.fromJson(r.data!);
+    } on DioException catch (e) {
+      throw _map(e, 'Хадгалж чадсангүй');
     }
   }
 

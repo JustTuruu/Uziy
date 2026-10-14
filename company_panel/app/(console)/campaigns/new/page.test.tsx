@@ -56,7 +56,7 @@ const next = () => screen.getByRole("button", { name: "Дараах" });
 async function toBudgetStep() {
   render(<NewCampaignPage />);
   await userEvent.click(screen.getByRole("button", { name: /Судалгаа зөвхөн/ }));
-  await userEvent.type(screen.getByLabelText("Кампанийн гарчиг"), "Хэрэглэгчийн судалгаа");
+  await userEvent.type(screen.getByLabelText("Судалгааны гарчиг"), "Хэрэглэгчийн судалгаа");
   await userEvent.click(next()); // → targeting
   await userEvent.click(next()); // → budget
 }
@@ -139,7 +139,7 @@ describe("New campaign wizard — pricing and payment", () => {
     await userEvent.click(screen.getByRole("button", { name: "Төлөх" }));
     expect(pay).toHaveBeenCalledWith(77);
     expect(await screen.findByText("Төлбөр амжилттай төлөгдлөө")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Аян руу очих" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Судалгаа руу очих" })).toHaveAttribute(
       "href",
       "/campaigns/77",
     );

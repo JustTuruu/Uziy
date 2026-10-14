@@ -185,6 +185,9 @@ rewarded-video-platform/
 ├── docs/
 │   ├── SPEC.md                        ← verbatim original product brief
 │   └── FEATURE_REVIEW.md              ← what is (not) worth building next, and why (2026-10-12)
+│   (viewer_app/PRODUCT.md — product record for the Impeccable design skill: users, purpose, constraints; 2026-10-14.
+│    Impeccable is installed in .claude/ (skills, agents, hooks in settings.local.json) and .github/ — LOCAL ONLY:
+│    every Impeccable file, .impeccable/ and PRODUCT.md are git-ignored (owner, 2026-10-14); never commit them.)
 └── viewer_app/                        ← Flutter viewer app (started this session)
     ├── pubspec.yaml
     └── lib/
@@ -444,6 +447,11 @@ will fail with a `varchar → jsonb` cast error.
 testing, don't rely on the seed users being login-able. (Fix: real BCrypt
 hashes in `V2__seed_dev_data.sql` — small future task.)
 
+**Sample surveys for local testing (2026-10-14)**: `backend/dev/sample_surveys.sql` adds five short survey-only
+campaigns (3–4 questions, every viewer, 500 ₮, paid + ACTIVE) to the LOCAL database —
+`docker exec -i uziy-postgres psql -U uziy -d uziy < backend/dev/sample_surveys.sql`. Idempotent (skips existing titles).
+It is not a Flyway migration on purpose: it must never reach production.
+
 **There is no admin-create endpoint** — to make an admin, run:
 
 ```
@@ -627,11 +635,87 @@ gone — it only ever wrote codes to the server log.
   behaviour per purpose is the sealed `PhoneCheckGoal` (`RegisterGoal` | `PasswordResetGoal`). `OtpInput`,
   `otp_logic.dart` and the resend timer were removed; `otp_widgets.dart` keeps `OtpHeader` / `OtpErrorText`.
 
+### Places: aimags and capital districts (added 2026-10-14)
+
+Registration offers **Улаанбаатар + all 21 aimags** by their official names; **Улаанбаатар requires a district** from
+its 9 (дүүрэг), an aimag takes an optional typed sum. A viewer's `city` must equal a campaign's `targetCity`
+character for character, so the SAME list lives in three places — change all three together:
+`backend common/MongolianRegions.java`, `viewer_app lib/models/regions.dart`, `company_panel lib/regions.ts`.
+- **Backend**: `auth/ViewerLocationRule` (called in `AuthServiceImpl.registerViewer` before the phone check is spent)
+  → 400 'Аймаг эсвэл хотоо жагсаалтаас сонгоно уу' / 'Улаанбаатарт амьдардаг бол дүүргээ сонгоно уу' / 'Дүүргээ
+  жагсаалтаас сонгоно уу'. `CampaignServiceImpl` refuses a `targetCity` that is not `ALL` or a listed city.
+  `V13__mongolian_regions.sql` renamed the old town values (Дархан → Дархан-Уул, Эрдэнэт → Орхон, Чойбалсан →
+  Дорнод, Мөрөн → Хөвсгөл, Өлгий → Баян-Өлгий) in `users.city` and `campaigns.target_city`; 'Бусад' was left as is.
+- **Flutter**: `screens/auth/location_fields.dart` (`LocationFields`, `RegionDropdown`), used by `register_screen.dart`;
+  `districtFor(city, input)` decides what is sent. Changing the city clears the district.
+- **Company panel**: the targeting picker uses `TARGET_CITY_OPTIONS` ('Бүх аймаг, хот', Улаанбаатар, aimags).
+
+### Survey cover images — company side (added 2026-10-14)
+
+Covers are stored by the `media/` package (`CampaignImageService`, table `campaign_images`, V14; served at
+`GET /public/campaigns/{id}/image`; JPG/PNG ≤ 5 MB, re-encoded). The admin edits any cover
+(`/admin/campaigns/{id}/image`). **Companies** edit their OWN survey's cover with `POST|DELETE
+/company/campaigns/{id}/image` (`company/CompanyCampaignImageController` → `CompanyCampaignImageServiceImpl`):
+owner only (`OwnedCampaigns`, 403 otherwise) and **only before approval** — `AWAITING_PAYMENT` / `PENDING`; after that
+409 'Батлагдсан судалгааны зургийг өөрчлөх боломжгүй' (the cover is part of what the admin approves).
+- **UI kit**: the editor is `@uziy/ui` `ImageUploadCard` (+ `coverImageError`): preview, save, remove, `lockedNote` for
+  read-only. Admin's `CampaignImageEditor` and the company's `components/campaign-cover-card.tsx` (`CampaignCoverCard`)
+  are thin wrappers around it — don't fork it.
+- **Company panel**: the cover card sits on the wizard's payment step (the survey exists by then) and on
+  `/campaigns/[id]`; `lib/campaign-status.ts` `canEditCover(status)` mirrors the backend rule. `lib/api.ts` `apiFetch`
+  sends a `FormData` body as multipart; `companyApi.uploadImage/removeImage`, `mediaUrl(path)`.
+
+### Anonymous statistics + consent (added 2026-10-14) — see `docs/DATA_PRODUCTS.md`
+
+For selling aggregate insights later. **Owner decisions**: separate opt-in consent (default no, revocable), smallest
+group **50**. Added on my own judgement (flag to the owner): **minors (< 18) are never counted or asked**.
+- **Consent** (`privacy/`, V15 `users.stats_consent|_at|_version`): `GET|PUT /viewer/consents/statistics {granted}` →
+  `{status: UNASKED|GRANTED|DECLINED, decidedAt, version}`; a consent to an older `CURRENT_VERSION` wording reads as
+  UNASKED. App: `widgets/stats_consent.dart` — `StatsConsentPrompt` (Home, once, adults only) and `StatsConsentTile`
+  (Profile → Бусад switch); `canAskStatsConsent(age)`. Privacy page has a section. Copy needs a lawyer's review.
+- **Statistics** (`insights/`, ADMIN only, `/admin/insights/overview|questions|questions/{id}?gender&ageBand&city|
+  questions/{id}/segments|questions/{id}/export.csv|access-log`). ALL rules live in `StatisticsPrivacyPolicy` +
+  `InsightsRepository.CONSENTING` — never query people without that filter, never return a count/percent for a group
+  that fails `reportable(group, all)`, never include TEXT answers or PII. Every call writes `data_access_log`.
+  `AgeBands` and `AnswerCounter.strings` (analytics) are public for reuse.
+- **Admin panel** `/insights` ("Статистик" in the sidebar): overview, question explorer, access log, rules card
+  (`components/insights/*`); `insightsApi` in `lib/api.ts` (`responseType: "text"` for the CSV).
+
 ### Auth screens
 
+- **Flat auth forms (owner's redesign, finished 2026-10-14)**: login and register sit on the plain background (no
+  `AmbientBackground`, no card), inside `LoginFieldsTheme` (one field look, corners `LoginFieldsTheme.radius`). A label
+  above each field, no placeholders, no leading icons (`PasswordField(showLeadingIcon: false)`, `RegionDropdown` has no
+  icon, `BirthDateTile` none). Titles are `AuthPageTitle`; gender is `GenderSelector` (two-part control as tall as a
+  field, no check mark). Login: brand row with 'Зочноор үзэх' (one line), form, then 'Шинэ хэрэглэгч үү?' + a
+  secondary 'Бүртгүүлэх' button. Register shows the spec §4A `IncentiveBanner` (now flat: faint green wash, coin)
+  under the title. `GenderOptionCard`, `ChoiceCardGroup`, `PhoneNumberSection`, `AuthFooterLink`, `HowItWorksStrip`
+  and `authHeroMetrics` were removed with the redesign.
+  Polish pass (2026-10-14): 'Бүртгүүлэх' is never disabled — tapped before agreeing, it scrolls to the terms tile, which
+  turns red (`TermsAgreementTile.error`) with `kTermsRequired` under it; the tile's box is a flat brand fill. On login
+  the 'uziy' name fades first on a narrow screen with large text so 'Зочноор үзэх' is never cut off.
+  Critique → layout → bolder (2026-10-14, snapshot in `.impeccable/critique/`, score 23/40 before): register opens
+  with `RewardPromise` (`reward_promise.dart`: big coin + '500–700 ₮' per survey) above the spec banner (now body
+  size, no coin of its own); the pinned button is `kContinueLabel` 'Үргэлжлүүлэх' with `kNextStepNote` above it naming
+  the SMS step and its price (`kSmsPriceNote`, shared with the verify page). No city is preselected (`kCityRequired`;
+  district/sum appear after a pick). Every labelled field is a `LabeledField` (label hidden from VoiceOver and put on
+  the field's own node — MergeSemantics around a TextField asserts). One phone error: `AuthValidators.phoneInvalid`.
+  Login = the owner's reference image (2026-10-14, palette unchanged; supersedes the earlier inline-prompt version):
+  `LoginBackdrop` (`login_backdrop.dart`, vector sage swells top-right + paper folds at the bottom, 3–6 % brand green,
+  no taps/semantics); brand row = `UziyLogo` 44 + 'uziy' 26 + `_GuestPill` ('Зочноор үзэх ›', see-through pill);
+  title 'Нэвтрэх' 40 + `kLoginSubtitle`; fields are raised (`LoginFieldsTheme(raised: true)` → `SoftShadowInputBorder`,
+  shadow painted only outside the field); `PhoneField(adorned: true)` = '+976' capsule + hairline + phone glyph,
+  password has the lock glyph; placeholders `kPhoneHint` / `kPasswordHint`; 'Нууц үг мартсан?' right-aligned under the
+  password; 'Нэвтрэх' is `AppButton(raised: true, trailingIcon: AppIcons.next)`; then '— Шинэ хэрэглэгч үү? —' and a
+  secondary 'Бүртгүүлэх'. `AppButton` gained `trailingIcon` (label stays centred) and `raised` (soft offset shadow).
+  Registration keeps flat fields; field corners are 16 everywhere (`LoginFieldsTheme.radius`).
+  The rest of the auth flow follows it (2026-10-14): every auth page title is `AuthPageTitle` (40, optional subtitle);
+  forgot / reset / phone-verify drop `AmbientBackground` for the plain paper, use `AuthStepAppBar` + `AuthBackButton`
+  (44pt see-through round chevron) and raised fields; forgot uses the adorned phone field; main actions are raised
+  (forward steps with the arrow); `OtpHeader`'s glyph sits on a flat sage tile. Visual rules live in
+  `viewer_app/DESIGN.md` ("The Meadow Ledger", rewritten 2026-10-14) — read it before any UI work.
 - **Phone entry (2026-10-14, replaced the 2026-10-12 slotted `BigPhoneField`)**: login, register and
-  forgot-password all use `PhoneField` (`auth_widgets.dart`; register wraps it in `PhoneNumberSection`: heading
-  'Утасны дугаар' + one helper line). It is an ordinary `TextFormField` built exactly like `PasswordField` (same
+  forgot-password all use `PhoneField` (`auth_widgets.dart`; register shows it under a plain `FieldLabel`). It is an ordinary `TextFormField` built exactly like `PasswordField` (same
   `body` font, the theme's input decoration, a quiet `+976` in the leading slot where the password field has its
   lock), so the two fields have the same height, font and border — a widget test checks it. Selection, paste and
   autofill work; `PhoneDigitsFormatter` keeps the 8 national digits and drops a pasted `+976`/`976`. The controller
@@ -837,7 +921,8 @@ the next session can uncomment once the backend exists.
   snack bar. The sheet (also Profile → 'Харагдах горим') picks a mode with `ThemeModeChoices`: three `ThemeModeCard`s
   with a `ThemePreview` miniature of the home screen in that palette (device = diagonal light/dark split); side by
   side, stacked when they would not fit (small phone + large text). The
-  'Үз. Хариул. Урамшуулал ав.' tagline chip was removed at the owner's request. `UziyLogo` (white tile) stays on
+  'Үз. Хариул. Урамшуулал ав.' tagline chip was removed at the owner's request. The title is 'Шинэ судалгаанууд' with no
+  explainer under it; Нүүр, Хэтэвч and Профайл titles all use `textStyles.pageTitle` (26 / w700, smaller than `display`). `UziyLogo` (white tile) stays on
   splash/login.
 - **Wallet card looks like a bank card (2026-10-14)**: `WalletBalanceCard` (`wallet_widgets.dart`) is ID-1 proportioned
   (`aspectRatio` 85.6/53.98, a minimum — large text may grow it) on fixed forest artwork (`AppGradients.walletCard`,
@@ -854,7 +939,9 @@ the next session can uncomment once the backend exists.
   (`WalletHistorySection`): totals (`walletIncome` / `walletSpending` — rejected requests were refunded, so they do
   not count) and every reward (`HistoryRow`, from `GET /viewer/history`) and payout request (`PayoutHistoryRow`: status,
   reject reason, struck-through amount when refunded), merged newest first by `buildWalletHistory` (sealed
-  `WalletEntry` = `RewardEntry` | `PayoutEntry`). The old 'Урамшууллын түүх' link card was removed; Profile's
+  `WalletEntry` = `RewardEntry` | `PayoutEntry`). The rows sit in a box of `kWalletHistoryBoxHeight` (360) that scrolls
+  on its own: `GroupedCard(maxHeight: …)` (shared kit, own `ScrollController` + visible scrollbar; short content keeps
+  its natural height). The old 'Урамшууллын түүх' link card was removed; Profile's
   'Үзсэн видеонуудын түүх' page stays. Regression test:
   `test/screens/wallet/wallet_screen_test.dart`. Reuse `AutoRefresher` for any other screen that waits on an admin.
 - **Finished campaigns leave Home by themselves (2026-10-14)**: Home stays alive under the video/survey routes, so a
@@ -866,6 +953,11 @@ the next session can uncomment once the backend exists.
 - **Video screen copy (2026-10-14)**: the reward line says both steps — 'Видеог бүтэн үзэж, судалгаанд хариулбал
   +700 ₮ хэтэвчинд тань орно' → after the video 'Судалгаанд хариулмагц +700 ₮ хэтэвчинд тань орно'
   (`RewardHintRow`); the locked button reads 'Видео дуусахад судалгаа нээгдэнэ · 12 сек'.
+- **Money animation (2026-10-14)**: `AnimatedMoney` no longer counts every number from 0 on each mount. With a
+  `memoryKey` (`MoneyMemory.balance` on the Home pill, wallet card and profile) it starts from the amount last shown
+  for that key — unchanged ⇒ appears at once (tab switches no longer replay), changed ⇒ an odometer
+  (`OdometerText`) rolls only the digits that differ, rightmost first, up for more money / down for less. Without a
+  key it still starts at 0 when `animateOnMount` (the survey reward sheet). At rest it is one plain `Text`.
 - **Keyboard closes on a tap outside a field (2026-10-14)**: `widgets/dismiss_keyboard_on_tap.dart` wraps the
   whole app once (`app.dart` builder). Do not add per-screen `GestureDetector(onTap: unfocus)` copies; scroll views
   may keep `keyboardDismissBehavior: onDrag` as well.

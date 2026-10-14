@@ -34,7 +34,7 @@ describe("landing sections", () => {
   it("ForCompanies sends advertisers to the company panel", () => {
     render(<ForCompanies companyPanelUrl="https://company.uziy.mn" />);
     expect(
-      screen.getByRole("link", { name: /Кампанит ажил эхлүүлэх/ }),
+      screen.getByRole("link", { name: /Судалгаа эхлүүлэх/ }),
     ).toHaveAttribute("href", "https://company.uziy.mn");
   });
 

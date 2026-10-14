@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CampaignStatus } from "./api";
 import {
+  canEditCover,
   campaignStatusLabel,
   campaignStatusTone,
   isCampaignPaid,
@@ -51,6 +52,16 @@ describe("isCampaignPaid", () => {
     expect(isCampaignPaid("AWAITING_PAYMENT")).toBe(false);
     for (const s of ALL.filter((x) => x !== "AWAITING_PAYMENT")) {
       expect(isCampaignPaid(s)).toBe(true);
+    }
+  });
+});
+
+describe("canEditCover", () => {
+  it("allows the cover before approval only", () => {
+    expect(canEditCover("AWAITING_PAYMENT")).toBe(true);
+    expect(canEditCover("PENDING")).toBe(true);
+    for (const s of ["ACTIVE", "PAUSED", "COMPLETED", "REJECTED"] as const) {
+      expect(canEditCover(s)).toBe(false);
     }
   });
 });

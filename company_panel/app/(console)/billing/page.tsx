@@ -61,7 +61,7 @@ export default function BillingPage() {
     <>
       <PageHeader
         title="Төлбөр"
-        description="Аян тус бүрийн төлбөрөө энд хянана"
+        description="Судалгаа тус бүрийн төлбөрөө энд хянана"
       />
 
       {error && (
@@ -80,7 +80,7 @@ export default function BillingPage() {
           icon={<CreditCard size={16} />}
         />
         <StatCard
-          label="Төлбөр хүлээгдэж буй аян"
+          label="Төлбөр хүлээгдэж буй судалгаа"
           value={loading || error ? "—" : String(awaitingPayment.length)}
           icon={<Hourglass size={16} />}
           hint={
@@ -111,7 +111,7 @@ export default function BillingPage() {
         <div id="awaiting-payment" className="mt-8">
           <Card>
             <CardHeader
-              title="Төлбөр хүлээгдэж буй аян"
+              title="Төлбөр хүлээгдэж буй судалгаа"
               description="Төлбөр төлөгдсөний дараа админ шалгаж баталгаажуулна"
             />
             <CardBody className="p-0">
@@ -168,7 +168,7 @@ export default function BillingPage() {
                 <thead>
                   <tr className="border-b border-[var(--color-divider)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
                     <th className="px-5 py-3 font-semibold">Дугаар</th>
-                    <th className="px-5 py-3 font-semibold">Аян</th>
+                    <th className="px-5 py-3 font-semibold">Судалгаа</th>
                     <th className="px-5 py-3 font-semibold">Огноо</th>
                     <th className="px-5 py-3 font-semibold text-right">Дүн</th>
                     <th className="px-5 py-3 font-semibold text-right">Төлөв</th>

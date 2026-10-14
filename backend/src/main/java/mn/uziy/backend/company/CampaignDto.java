@@ -30,5 +30,6 @@ public record CampaignDto(
         OffsetDateTime createdAt,
         @Nullable Integer targetViewers,
         @Nullable Integer commissionPercent,
-        @Nullable OffsetDateTime paidAt) {
+        @Nullable OffsetDateTime paidAt,
+        @Nullable String thumbnailUrl) {
 }

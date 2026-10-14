@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
+import '../../models/user.dart';
 import '../../widgets/ui.dart';
+import 'login_fields.dart';
 
 // Presentational pieces + pure helpers shared by the login and register
 // screens. This file must NOT import routes/app_router.dart (directly or
@@ -18,6 +20,9 @@ import '../../widgets/ui.dart';
 /// +976 prefix) and the password has at least 6 characters.
 abstract final class AuthValidators {
   static const int phoneLength = 8;
+
+  /// One wording for a wrong phone on every auth screen.
+  static const String phoneInvalid = '8 оронтой дугаараа оруулна уу';
   static const int minPasswordLength = 6;
   static const String passwordTooShort = 'Дор хаяж 6 тэмдэгт';
 
@@ -91,20 +96,6 @@ DateTime birthDatePickerInitial(DateTime? current, DateTime now) {
   }
   return current;
 }
-
-/// Screens shorter than this (iPhone SE, landscape) get the compact login
-/// hero, so the primary button stays above the fold.
-const double kCompactAuthHeight = 700;
-
-/// Logo size, the large hero gaps and whether to drop optional extras (the
-/// how-it-works strip) on the login screen for a screen of [screenHeight]
-/// points.
-({double logoSize, double gap, bool compact}) authHeroMetrics(
-  double screenHeight,
-) =>
-    screenHeight < kCompactAuthHeight
-        ? (logoSize: 56, gap: AppSpacing.xl, compact: true)
-        : (logoSize: 76, gap: AppSpacing.xxxl, compact: false);
 
 // ---------------------------------------------------------------------------
 // Layout
@@ -217,9 +208,15 @@ class PhoneField extends StatelessWidget {
     this.onChanged,
     this.autofocus = false,
     this.autofillHints = defaultAutofillHints,
+    this.helperText,
+    this.adorned = false,
   });
 
   static const String countryCode = '+976';
+
+  /// The adorned field's placeholder.
+  static const String adornedHint = 'Утасны дугаараа оруулна уу';
+  static const double countryDividerHeight = 20;
   static const String defaultHint = '8 оронтой дугаар';
 
   /// The phone number is the account login, so it is offered to password
@@ -241,8 +238,23 @@ class PhoneField extends StatelessWidget {
   final bool autofocus;
   final Iterable<String>? autofillHints;
 
+  /// Text under the field; a single space reserves the error line so a
+  /// message does not push the form down.
+  final String? helperText;
+
+  /// The sign-in look: '+976' on a soft capsule and a phone glyph at the
+  /// right end. Off (registration, reset): plain '+976'.
+  final bool adorned;
+
   @override
   Widget build(BuildContext context) {
+    final code = Text(
+      countryCode,
+      style: context.textStyles.body.copyWith(
+        color:
+            adorned ? context.colors.textPrimary : context.colors.textSecondary,
+      ),
+    );
     return TextFormField(
       controller: controller,
       focusNode: focusNode,
@@ -258,80 +270,60 @@ class PhoneField extends StatelessWidget {
       style: context.textStyles.body,
       decoration: InputDecoration(
         prefixIcon: Padding(
-          padding: const EdgeInsetsDirectional.only(
-            start: AppSpacing.md,
+          padding: EdgeInsetsDirectional.only(
+            // The capsule brings its own inner padding.
+            start: adorned ? AppSpacing.sm : AppSpacing.md,
             end: AppSpacing.sm,
           ),
-          child: Center(
-            widthFactor: 1,
-            child: Text(
-              countryCode,
-              style: context.textStyles.body
-                  .copyWith(color: context.colors.textSecondary),
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (adorned)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.sm,
+                  ),
+                  decoration: BoxDecoration(
+                    color: context.colors.surfaceElevated,
+                    borderRadius: AppRadii.brXs,
+                  ),
+                  child: code,
+                )
+              else
+                code,
+              const SizedBox(width: AppSpacing.md),
+              // Hairline between the fixed code and the typed number.
+              SizedBox(
+                height: countryDividerHeight,
+                child: VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  color: context.colors.borderStrong,
+                ),
+              ),
+            ],
           ),
         ),
         hintText: hintText,
+        helperText: helperText,
+        suffixIcon: adorned
+            ? ExcludeSemantics(
+                child: Icon(
+                  AppIcons.phone,
+                  size: _adornmentIconSize,
+                  color: context.colors.textSecondary,
+                ),
+              )
+            : null,
       ),
       validator: validator,
     );
   }
 }
 
-/// The phone step as one block: a heading, one line saying what the number
-/// is for, then the [PhoneField].
-class PhoneNumberSection extends StatelessWidget {
-  const PhoneNumberSection({
-    super.key,
-    required this.controller,
-    this.validator,
-    this.focusNode,
-    this.textInputAction,
-    this.onFieldSubmitted,
-    this.autofocus = false,
-  });
-
-  static const String title = 'Утасны дугаар';
-  static const String helper =
-      'Дугаарыг зөвхөн баталгаажуулахад ашиглана. Бусад хэрэглэгчдэд '
-      'харагдахгүй.';
-
-  final TextEditingController controller;
-  final FormFieldValidator<String>? validator;
-  final FocusNode? focusNode;
-  final TextInputAction? textInputAction;
-  final ValueChanged<String>? onFieldSubmitted;
-  final bool autofocus;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Semantics(
-          header: true,
-          child: Text(title, style: context.textStyles.headline),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Text(
-          helper,
-          style: context.textStyles.body
-              .copyWith(color: context.colors.textSecondary),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        PhoneField(
-          controller: controller,
-          validator: validator,
-          focusNode: focusNode,
-          textInputAction: textInputAction,
-          onFieldSubmitted: onFieldSubmitted,
-          autofocus: autofocus,
-        ),
-      ],
-    );
-  }
-}
+/// Size of the glyphs inside auth fields (phone, lock, eye).
+const double _adornmentIconSize = 22;
 
 /// Password field with a lock icon and a show/hide toggle.
 class PasswordField extends StatefulWidget {
@@ -339,6 +331,7 @@ class PasswordField extends StatefulWidget {
     super.key,
     required this.controller,
     this.hintText = 'Нууц үг',
+    this.showLeadingIcon = true,
     this.helperText,
     this.validator,
     this.focusNode,
@@ -353,6 +346,7 @@ class PasswordField extends StatefulWidget {
 
   final TextEditingController controller;
   final String hintText;
+  final bool showLeadingIcon;
 
   /// Persistent rule under the field (e.g. the minimum length). Unlike the
   /// hint it stays visible while typing; the error replaces it.
@@ -389,15 +383,19 @@ class _PasswordFieldState extends State<PasswordField> {
       autofillHints: widget.autofillHints,
       style: context.textStyles.body,
       decoration: InputDecoration(
-        prefixIcon: const Icon(Icons.lock_outline_rounded),
+        prefixIcon: widget.showLeadingIcon
+            ? Icon(
+                AppIcons.lock,
+                size: _adornmentIconSize,
+                color: context.colors.textSecondary,
+              )
+            : null,
         hintText: widget.hintText,
         helperText: widget.helperText,
         suffixIcon: Padding(
           padding: const EdgeInsets.only(right: AppSpacing.xs),
           child: AppIconButton(
-            icon: _obscure
-                ? Icons.visibility_off_outlined
-                : Icons.visibility_outlined,
+            icon: _obscure ? AppIcons.passwordHidden : AppIcons.passwordShown,
             semanticLabel:
                 _obscure ? PasswordField.showLabel : PasswordField.hideLabel,
             variant: AppIconButtonVariant.plain,
@@ -420,6 +418,7 @@ class FieldLabel extends StatelessWidget {
     super.key,
     this.optional = false,
     this.excludeSemantics = false,
+    this.focused = false,
   });
 
   /// Suffix shown after an optional field's label.
@@ -433,6 +432,9 @@ class FieldLabel extends StatelessWidget {
   /// Hide the label from screen readers when the control below already
   /// announces the same words (otherwise VoiceOver reads them twice).
   final bool excludeSemantics;
+
+  /// Its field has the cursor: the label takes the brand colour.
+  final bool focused;
 
   @override
   Widget build(BuildContext context) {
@@ -450,12 +452,96 @@ class FieldLabel extends StatelessWidget {
             ),
         ],
       ),
-      style: context.textStyles.label
-          .copyWith(color: context.colors.textSecondary),
+    );
+    final styled = AnimatedDefaultTextStyle(
+      duration: AppMotion.duration(context, AppDurations.fast),
+      curve: AppMotion.standard,
+      // Merged onto the inherited style so the font family and locale
+      // fallbacks carry through.
+      style: DefaultTextStyle.of(context).style.merge(
+            context.textStyles.label.copyWith(
+              color: focused
+                  ? context.colors.primary
+                  : context.colors.textSecondary,
+            ),
+          ),
+      child: label,
     );
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: excludeSemantics ? ExcludeSemantics(child: label) : label,
+      child: excludeSemantics ? ExcludeSemantics(child: styled) : styled,
+    );
+  }
+}
+
+/// A [FieldLabel] above its [child] field, named for screen readers: VoiceOver announces 'Утасны дугаар, text field' instead of a
+/// nameless field (critique 2026-10-14).
+class LabeledField extends StatefulWidget {
+  const LabeledField({
+    super.key,
+    required this.label,
+    required this.child,
+    this.optional = false,
+    this.trailing,
+  });
+
+  final String label;
+  final Widget child;
+  final bool optional;
+
+  /// A small action on the label's line, right-aligned (e.g. 'Нууц үг
+  /// мартсан?' next to 'Нууц үг').
+  final Widget? trailing;
+
+  @override
+  State<LabeledField> createState() => _LabeledFieldState();
+}
+
+class _LabeledFieldState extends State<LabeledField> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = FieldLabel(
+      widget.label,
+      optional: widget.optional,
+      excludeSemantics: true,
+      focused: _focused,
+    );
+    final trailing = widget.trailing;
+    // Not MergeSemantics: merging an editable text node trips a framework
+    // assertion. The visible label is hidden from screen readers and the
+    // same words are put on the field's own node instead.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (trailing == null)
+          label
+        else
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(child: label),
+              const SizedBox(width: AppSpacing.sm),
+              // May take up to two thirds of the line; wraps instead of
+              // overflowing on a narrow screen with large text.
+              Flexible(flex: 2, child: trailing),
+            ],
+          ),
+        // Listens only: tracks whether the field below holds the cursor.
+        Focus(
+          canRequestFocus: false,
+          skipTraversal: true,
+          onFocusChange: (f) => setState(() => _focused = f),
+          child: Semantics(
+            label: widget.optional
+                ? '${widget.label} (${FieldLabel.optionalNote})'
+                : widget.label,
+            child: widget.child,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -527,208 +613,171 @@ class InlineFieldError extends StatelessWidget {
   }
 }
 
-/// Visible [FieldLabel] plus a row of equally wide choice cards (e.g. the
-/// two gender cards), grouped for screen readers under the same [label].
-class ChoiceCardGroup extends StatelessWidget {
-  const ChoiceCardGroup({
-    super.key,
-    required this.label,
-    required this.children,
-    this.spacing = AppSpacing.md,
-  });
+// ---------------------------------------------------------------------------
+// Page title, gender + birth date
+// ---------------------------------------------------------------------------
 
-  final String label;
-  final List<Widget> children;
-  final double spacing;
+/// The big title of every auth page ('Нэвтрэх', 'Бүртгүүлэх', the reset
+/// steps): one size across the flow, announced as a heading, with an
+/// optional quiet subtitle under it.
+class AuthPageTitle extends StatelessWidget {
+  const AuthPageTitle(this.text, {super.key, this.subtitle});
+
+  /// The flow's one big word: larger than the in-app display style.
+  static const double titleSize = 40;
+
+  final String text;
+
+  /// One quiet line under the title, or none.
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
+    final sub = subtitle;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // The group node below carries the label for screen readers.
-        FieldLabel(label, excludeSemantics: true),
         Semantics(
-          container: true,
-          explicitChildNodes: true,
-          label: label,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (var i = 0; i < children.length; i++) ...[
-                if (i > 0) SizedBox(width: spacing),
-                Expanded(child: children[i]),
-              ],
-            ],
+          header: true,
+          child: Text(
+            text,
+            style: context.textStyles.display.copyWith(fontSize: titleSize),
           ),
         ),
+        if (sub != null) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            sub,
+            style: context.textStyles.body.copyWith(
+              color: context.colors.textSecondary,
+              fontWeight: FontWeight.w500,
+              height: 1.4,
+            ),
+          ),
+        ],
       ],
     );
   }
 }
 
-// ---------------------------------------------------------------------------
-// Gender + birth date
-// ---------------------------------------------------------------------------
+/// The bar of the auth steps (reset, verify): transparent, with the
+/// [AuthBackButton] lined up on the page gutter.
+class AuthStepAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const AuthStepAppBar({super.key, required this.onBack});
 
-/// Large selectable card with a medallion icon. The selected card gets a
-/// gold border, a faint gold glow (the gold CTA stays the strongest
-/// element on the page), a gold medallion and a check badge.
-class GenderOptionCard extends StatelessWidget {
-  const GenderOptionCard({
+  final VoidCallback onBack;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      backgroundColor: Colors.transparent,
+      automaticallyImplyLeading: false,
+      leadingWidth: AppLayout.screenPadding + AppLayout.minTapTarget,
+      leading: Padding(
+        padding:
+            const EdgeInsetsDirectional.only(start: AppLayout.screenPadding),
+        child: Center(child: AuthBackButton(onPressed: onBack)),
+      ),
+    );
+  }
+}
+
+/// The back control of the auth steps: a quiet round button in the same
+/// see-through paper and sage line as the sign-in page's guest pill.
+class AuthBackButton extends StatelessWidget {
+  const AuthBackButton({super.key, required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  static const String label = 'Буцах';
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: onPressed,
+      haptic: true,
+      scale: 0.94,
+      semanticLabel: label,
+      excludeSemantics: true,
+      child: Container(
+        width: AppLayout.minTapTarget,
+        height: AppLayout.minTapTarget,
+        decoration: BoxDecoration(
+          color: context.colors.surface.withValues(alpha: 0.6),
+          shape: BoxShape.circle,
+          border: Border.all(color: context.colors.borderStrong),
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          AppIcons.back,
+          size: 20,
+          color: context.colors.textPrimary,
+        ),
+      ),
+    );
+  }
+}
+
+/// Эрэгтэй / Эмэгтэй as one two-part control shaped like the text fields
+/// (same height, corners and border), with no check mark: the filled half
+/// is the answer. Nothing is chosen until the viewer taps; [error] paints
+/// the border red.
+class GenderSelector extends StatelessWidget {
+  const GenderSelector({
     super.key,
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
+    required this.value,
+    required this.onChanged,
     this.error = false,
   });
 
-  static const Key checkBadgeKey = ValueKey('gender-card-check');
+  /// Same height as a themed text field.
+  static const double height = 54;
 
-  /// Kept low on purpose: only the primary CTA glows at full strength.
-  static const double selectedGlowStrength = 0.3;
+  static const Map<Gender, String> labels = {
+    Gender.male: 'Эрэгтэй',
+    Gender.female: 'Эмэгтэй',
+  };
 
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  /// Red border (the field is required and nothing is chosen yet).
+  final Gender? value;
+  final ValueChanged<Gender> onChanged;
   final bool error;
 
   @override
   Widget build(BuildContext context) {
-    final d = AppMotion.duration(context, AppDurations.normal);
-    final Color borderColor = selected
-        ? context.colors.primary
-        : error
-            ? context.colors.danger.withValues(alpha: 0.75)
-            : context.colors.borderStrong;
-
-    // One semantics node carrying button + selected + label + tap, so the
-    // selected state is announced with the option (not on an ancestor).
-    return Semantics(
-      container: true,
-      button: true,
-      selected: selected,
-      inMutuallyExclusiveGroup: true,
-      label: label,
-      onTap: onTap,
-      excludeSemantics: true,
-      child: Pressable(
-        onTap: onTap,
-        haptic: true,
-        scale: 0.96,
-        child: AnimatedContainer(
-          duration: d,
-          curve: AppMotion.standard,
-          constraints: const BoxConstraints(minHeight: 108),
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.lg,
-          ),
-          decoration: BoxDecoration(
-            color: selected
-                ? Color.alphaBlend(
-                    context.colors.primary.withValues(alpha: 0.10),
-                    context.colors.surface,
-                  )
-                : context.colors.surface,
-            borderRadius: AppRadii.brLg,
-            border: Border.all(color: borderColor, width: selected ? 1.5 : 1),
-            boxShadow: selected
-                ? AppShadows.glow(
-                    context.colors.primary,
-                    strength: selectedGlowStrength,
-                    blur: 16,
-                    offset: const Offset(0, 4),
-                  )
-                : [],
-          ),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    AnimatedContainer(
-                      duration: d,
-                      curve: AppMotion.standard,
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: selected
-                            ? context.gradients.gold
-                            : LinearGradient(
-                                colors: [
-                                  context.colors.surfaceElevated,
-                                  context.colors.surfaceElevated,
-                                ],
-                              ),
-                        border: Border.all(
-                          color: selected
-                              ? Colors.white.withValues(alpha: 0.28)
-                              : context.colors.border,
-                        ),
-                      ),
-                      alignment: Alignment.center,
-                      child: Icon(
-                        icon,
-                        size: 24,
-                        color: selected
-                            ? context.colors.onPrimary
-                            : context.colors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    AnimatedDefaultTextStyle(
-                      duration: d,
-                      style: context.textStyles.titleSmall.copyWith(
-                        color: selected
-                            ? context.colors.textPrimary
-                            : context.colors.textSecondary,
-                      ),
-                      child: Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Positioned(
-                top: -8,
-                right: -2,
-                child: AnimatedScale(
-                  key: checkBadgeKey,
-                  scale: selected ? 1 : 0,
-                  duration: d,
-                  curve: selected ? AppMotion.emphasized : AppMotion.exit,
-                  child: Container(
-                    width: 22,
-                    height: 22,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: context.gradients.gold,
-                    ),
-                    alignment: Alignment.center,
-                    child: Icon(
-                      Icons.check_rounded,
-                      size: 15,
-                      color: context.colors.onPrimary,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+    final current = value;
+    final textStyle = context.textStyles.body;
+    return SegmentedButton<Gender>(
+      segments: [
+        for (final e in labels.entries)
+          ButtonSegment(value: e.key, label: Text(e.value)),
+      ],
+      emptySelectionAllowed: true,
+      showSelectedIcon: false,
+      selected: {if (current != null) current},
+      onSelectionChanged: (values) {
+        if (values.isEmpty || values.first == current) return;
+        HapticFeedback.selectionClick();
+        onChanged(values.first);
+      },
+      style: ButtonStyle(
+        // SegmentedButton ignores minimumSize for its height; it is the font
+        // size plus the vertical padding, so pad up to [height].
+        padding: WidgetStatePropertyAll(EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: (height - textStyle.fontSize!) / 2,
+        )),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        textStyle: WidgetStatePropertyAll(textStyle),
+        shape: const WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: LoginFieldsTheme.radius),
         ),
+        side: WidgetStatePropertyAll(BorderSide(
+          color: error ? context.colors.danger : context.colors.borderStrong,
+        )),
       ),
     );
   }
@@ -758,15 +807,10 @@ class BirthDateTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final v = value;
     final text = v == null ? placeholder : formatBirthDate(v);
-    final Color iconColor = error
-        ? context.colors.danger
-        : v != null
-            ? context.colors.primary
-            : context.colors.textSecondary;
 
-    // Geometry mirrors a themed TextFormField with a prefixIcon: 54pt tall,
-    // a 48pt icon slot, then the text after a 4pt gap, so the tile lines up
-    // with the text fields and dropdown above and below it.
+    // Geometry mirrors a themed TextFormField without a prefix icon: 54pt
+    // tall, text inset like the field text, so the tile lines up with the
+    // text fields and dropdowns above and below it.
     return Pressable(
       onTap: onTap,
       haptic: true,
@@ -777,13 +821,14 @@ class BirthDateTile extends StatelessWidget {
         duration: AppMotion.duration(context, AppDurations.fast),
         constraints: const BoxConstraints(minHeight: 54),
         padding: const EdgeInsetsDirectional.only(
+          start: AppSpacing.lg,
           end: AppSpacing.lg,
           top: AppSpacing.md,
           bottom: AppSpacing.md,
         ),
         decoration: BoxDecoration(
           color: context.colors.surface,
-          borderRadius: AppRadii.brMd,
+          borderRadius: LoginFieldsTheme.radius,
           border: Border.all(
             color: error
                 ? context.colors.danger.withValues(alpha: 0.75)
@@ -792,11 +837,6 @@ class BirthDateTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            SizedBox(
-              width: 48,
-              child: Icon(Icons.cake_outlined, size: 24, color: iconColor),
-            ),
-            const SizedBox(width: AppSpacing.xs),
             Expanded(
               child: Text(
                 text,
@@ -821,7 +861,8 @@ class BirthDateTile extends StatelessWidget {
               Icon(
                 Icons.calendar_month_rounded,
                 size: 20,
-                color: context.colors.textTertiary,
+                color:
+                    error ? context.colors.danger : context.colors.textTertiary,
               ),
           ],
         ),
@@ -831,7 +872,7 @@ class BirthDateTile extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Terms + footer link
+// Terms
 // ---------------------------------------------------------------------------
 
 /// "I agree to the Terms and Privacy Policy" row. Tapping anywhere outside
@@ -843,6 +884,7 @@ class TermsAgreementTile extends StatefulWidget {
     required this.onChanged,
     required this.onTapTerms,
     required this.onTapPrivacy,
+    this.error = false,
   });
 
   static const String termsLabel = 'Үйлчилгээний нөхцөл';
@@ -852,6 +894,9 @@ class TermsAgreementTile extends StatefulWidget {
   final ValueChanged<bool> onChanged;
   final VoidCallback onTapTerms;
   final VoidCallback onTapPrivacy;
+
+  /// Submit was tried without agreeing: the frame and the box turn red.
+  final bool error;
 
   @override
   State<TermsAgreementTile> createState() => _TermsAgreementTileState();
@@ -901,11 +946,13 @@ class _TermsAgreementTileState extends State<TermsAgreementTile> {
                   context.colors.surface,
                 )
               : context.colors.surface,
-          borderRadius: AppRadii.brMd,
+          borderRadius: LoginFieldsTheme.radius,
           border: Border.all(
             color: checked
                 ? context.colors.primary.withValues(alpha: 0.45)
-                : context.colors.border,
+                : widget.error
+                    ? context.colors.danger
+                    : context.colors.borderStrong,
           ),
         ),
         child: Row(
@@ -922,13 +969,16 @@ class _TermsAgreementTileState extends State<TermsAgreementTile> {
                 height: 24,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(7),
-                  gradient: checked ? context.gradients.gold : null,
-                  // No glow: the gold fill is enough, and glow is reserved
-                  // for the CTA and reward elements.
+                  // Flat brand fill, like the rest of the form (no gradient).
+                  color: checked ? context.colors.primary : null,
                   border: checked
                       ? null
                       : Border.all(
-                          color: context.colors.textSecondary, width: 1.5),
+                          color: widget.error
+                              ? context.colors.danger
+                              : context.colors.textSecondary,
+                          width: 1.5,
+                        ),
                 ),
                 alignment: Alignment.center,
                 child: AnimatedScale(
@@ -961,7 +1011,7 @@ class _TermsAgreementTileState extends State<TermsAgreementTile> {
                       style: linkStyle,
                       recognizer: _privacyTap,
                     ),
-                    const TextSpan(text: '-той танилцаж, зөвшөөрч байна.'),
+                    const TextSpan(text: 'той танилцаж, зөвшөөрч байна.'),
                   ],
                 ),
               ),
@@ -969,118 +1019,6 @@ class _TermsAgreementTileState extends State<TermsAgreementTile> {
           ],
         ),
       ),
-    );
-  }
-}
-
-/// Centered "prompt + gold action" link with a full 44pt tap target,
-/// e.g. 'Шинээр бүртгүүлэх үү? Бүртгүүлэх'.
-class AuthFooterLink extends StatelessWidget {
-  const AuthFooterLink({
-    super.key,
-    required this.prompt,
-    required this.action,
-    required this.onTap,
-  });
-
-  final String prompt;
-  final String action;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Pressable(
-        onTap: onTap,
-        haptic: true,
-        scale: 0.96,
-        semanticLabel: '$prompt $action',
-        excludeSemantics: true,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: AppLayout.minTapTarget),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.sm,
-            ),
-            child: Center(
-              widthFactor: 1,
-              heightFactor: 1,
-              child: Text.rich(
-                TextSpan(
-                  style: context.textStyles.body
-                      .copyWith(color: context.colors.textSecondary),
-                  children: [
-                    TextSpan(text: '$prompt '),
-                    TextSpan(
-                      text: action,
-                      style: TextStyle(
-                        color: context.colors.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// How it works
-// ---------------------------------------------------------------------------
-
-/// The three steps of the product in one row of icon + label, shown under the
-/// login form so a new visitor sees what signing in is for.
-class HowItWorksStrip extends StatelessWidget {
-  const HowItWorksStrip({super.key});
-
-  static List<({IconData icon, String label})> steps = [
-    (icon: AppIcons.watched, label: 'Видео үз'),
-    (icon: AppIcons.answer, label: 'Асуултад хариул'),
-    (icon: AppIcons.reward, label: 'Урамшуулал ав'),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final step in steps)
-          Expanded(
-            child: Column(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: context.colors.primary.withValues(alpha: 0.10),
-                    border: Border.all(
-                      color: context.colors.primary.withValues(alpha: 0.22),
-                    ),
-                  ),
-                  alignment: Alignment.center,
-                  child:
-                      Icon(step.icon, size: 20, color: context.colors.primary),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  step.label,
-                  textAlign: TextAlign.center,
-                  style: context.textStyles.caption.copyWith(
-                    color: context.colors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
     );
   }
 }

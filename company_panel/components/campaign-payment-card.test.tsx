@@ -80,14 +80,14 @@ describe("<CampaignPaymentCard>", () => {
     expect(pay).toHaveBeenCalledWith(42);
     expect(await screen.findByText("Төлбөр амжилттай төлөгдлөө")).toBeInTheDocument();
     expect(
-      screen.getByText("Админ шалгаж баталгаажуулсны дараа аян идэвхжинэ."),
+      screen.getByText("Админ шалгаж баталгаажуулсны дараа судалгаа идэвхжинэ."),
     ).toBeInTheDocument();
     expect(screen.getByText(/UZ-20260928-42/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Аян руу очих" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Судалгаа руу очих" })).toHaveAttribute(
       "href",
       "/campaigns/42",
     );
-    expect(screen.getByRole("link", { name: "Бүх аян" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Бүх судалгаа" })).toHaveAttribute(
       "href",
       "/campaigns",
     );
@@ -99,7 +99,7 @@ describe("<CampaignPaymentCard>", () => {
     render(<CampaignPaymentCard campaign={campaign()} />);
     await userEvent.click(payButton());
     expect(await screen.findByText("Төлбөр амжилттай төлөгдлөө")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Аян руу очих" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Судалгаа руу очих" })).not.toBeInTheDocument();
   });
 
   it("disables the button while the payment is in flight (no double charge)", async () => {
@@ -133,9 +133,9 @@ describe("<CampaignPaymentCard>", () => {
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Төлбөрийн систем хараахан холбогдоогүй байна");
-    expect(alert).toHaveTextContent(/Аян хадгалагдсан тул дараа нь/);
-    expect(alert).toHaveTextContent(/аяны хуудаснаас/);
-    expect(screen.getByRole("link", { name: "аяны хуудаснаас" })).toHaveAttribute(
+    expect(alert).toHaveTextContent(/Судалгаа хадгалагдсан тул дараа нь/);
+    expect(alert).toHaveTextContent(/судалгааны хуудаснаас/);
+    expect(screen.getByRole("link", { name: "судалгааны хуудаснаас" })).toHaveAttribute(
       "href",
       "/campaigns/42",
     );
@@ -155,7 +155,7 @@ describe("<CampaignPaymentCard>", () => {
     await userEvent.click(payButton());
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Төлбөр төлөхөд алдаа гарлаа");
-    expect(alert).not.toHaveTextContent(/Аян хадгалагдсан/);
+    expect(alert).not.toHaveTextContent(/Судалгаа хадгалагдсан/);
   });
 
   it("sends the user to login when the session has expired", async () => {

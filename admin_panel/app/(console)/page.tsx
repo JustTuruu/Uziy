@@ -112,7 +112,7 @@ export default function AdminDashboard() {
               href="/pricing"
               className="hover:text-[var(--color-text-primary)] hover:underline"
             >
-              Аяны төсвөөс · тохируулах
+              Судалгааны төсвөөс · тохируулах
             </Link>
           }
         />
@@ -120,7 +120,7 @@ export default function AdminDashboard() {
           label="Хүлээгдэж буй"
           value={formatNumber(stats.pendingCampaigns + stats.pendingPayouts)}
           icon={<UserPlus size={16} />}
-          hint={`${stats.pendingCampaigns} кампани · ${stats.pendingPayouts} татах`}
+          hint={`${stats.pendingCampaigns} судалгаа · ${stats.pendingPayouts} татах`}
         />
       </div>
 
@@ -174,7 +174,7 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader
-            title="Хүлээж буй кампанийн суртчилгаа"
+            title="Хүлээгдэж буй судалгаа"
             description="Видео контент, зорилтот тохиргоог шалгах"
             action={
               <Link
@@ -188,7 +188,7 @@ export default function AdminDashboard() {
           <CardBody className="space-y-3">
             {pendingCampaigns.length === 0 && (
               <div className="text-sm text-[var(--color-text-muted)]">
-                Хүлээгдэж буй суртчилгаа байхгүй.
+                Хүлээгдэж буй судалгаа байхгүй.
               </div>
             )}
             {pendingCampaigns.slice(0, 4).map((c) => (

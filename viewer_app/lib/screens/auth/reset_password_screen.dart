@@ -7,6 +7,7 @@ import '../../services/api_error.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/ui.dart';
 import 'auth_widgets.dart';
+import 'login_fields.dart';
 import 'otp_widgets.dart';
 
 const String kResetTitle = 'Шинэ нууц үг';
@@ -80,23 +81,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AmbientBackground(
-      variant: AmbientVariant.gold,
+    // The same paper, fields and back control as the sign-in page.
+    return LoginFieldsTheme(
+      raised: true,
       child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          automaticallyImplyLeading: false,
-          leading: Center(
-            child: AppIconButton(
-              icon: Icons.arrow_back_ios_new_rounded,
-              semanticLabel: 'Буцах',
-              size: 40,
-              iconSize: 18,
-              onPressed: () => context.pop(),
-            ),
-          ),
-        ),
+        backgroundColor: context.colors.background,
+        appBar: AuthStepAppBar(onBack: () => context.pop()),
         body: SafeArea(
           child: AuthScrollShell(
             padding: const EdgeInsets.fromLTRB(
@@ -116,13 +106,16 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     subtitle: kResetSubtitle,
                   ),
                   const SizedBox(height: AppSpacing.xxxl),
-                  PasswordField(
-                    controller: _password,
-                    hintText: 'Шинэ нууц үг',
-                    textInputAction: TextInputAction.done,
-                    autofillHints: const [AutofillHints.newPassword],
-                    onFieldSubmitted: (_) => _submit(),
-                    validator: AuthValidators.password,
+                  LabeledField(
+                    label: 'Шинэ нууц үг',
+                    child: PasswordField(
+                      controller: _password,
+                      hintText: 'Нууц үгээ оруулна уу',
+                      textInputAction: TextInputAction.done,
+                      autofillHints: const [AutofillHints.newPassword],
+                      onFieldSubmitted: (_) => _submit(),
+                      validator: AuthValidators.password,
+                    ),
                   ),
                   OtpErrorText(message: _error),
                   const SizedBox(height: AppSpacing.xxl),
@@ -134,6 +127,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   else
                     AppButton(
                       label: kResetSubmitLabel,
+                      raised: true,
                       loading: _loading,
                       haptic: true,
                       onPressed: _submit,

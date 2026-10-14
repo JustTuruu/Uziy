@@ -24,12 +24,16 @@ class Campaign {
     this.hasVideo = true,
   });
 
-  factory Campaign.fromJson(Map<String, dynamic> json) {
+  factory Campaign.fromJson(Map<String, dynamic> json, {String? mediaBaseUrl}) {
+    final thumbnail = json['thumbnailUrl'] as String?;
     return Campaign(
       id: (json['id'] as num).toInt(),
       companyName: json['companyName'] as String? ?? '',
       videoUrl: json['videoUrl'] as String? ?? '',
-      thumbnailUrl: json['thumbnailUrl'] as String?,
+      thumbnailUrl:
+          thumbnail == null || thumbnail.isEmpty || mediaBaseUrl == null
+              ? thumbnail
+              : Uri.parse(mediaBaseUrl).resolve(thumbnail).toString(),
       title: json['title'] as String? ?? '',
       durationSeconds: (json['durationSeconds'] as num?)?.toInt() ?? 30,
       rewardPerUser: (json['rewardPerUser'] as num).toDouble(),

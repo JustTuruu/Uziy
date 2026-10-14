@@ -73,6 +73,8 @@ class AppTypography {
       AppTextStyles.display.copyWith(color: colors.textPrimary);
   TextStyle get displaySmall =>
       AppTextStyles.displaySmall.copyWith(color: colors.textPrimary);
+  TextStyle get pageTitle =>
+      AppTextStyles.pageTitle.copyWith(color: colors.textPrimary);
   TextStyle get headline =>
       AppTextStyles.headline.copyWith(color: colors.textPrimary);
   TextStyle get title =>

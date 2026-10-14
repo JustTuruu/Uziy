@@ -79,7 +79,7 @@ export function CampaignPaymentCard({
             Төлбөр амжилттай төлөгдлөө
           </div>
           <div className="max-w-md text-sm text-[var(--color-text-secondary)]">
-            Админ шалгаж баталгаажуулсны дараа аян идэвхжинэ.
+            Админ шалгаж баталгаажуулсны дараа судалгаа идэвхжинэ.
           </div>
           {payment && (
             <div className="font-mono text-xs text-[var(--color-text-muted)]">
@@ -89,10 +89,10 @@ export function CampaignPaymentCard({
           {variant === "wizard" && (
             <div className="mt-2 flex flex-wrap justify-center gap-2">
               <Link href={`/campaigns/${campaign.id}`}>
-                <Button>Аян руу очих</Button>
+                <Button>Судалгаа руу очих</Button>
               </Link>
               <Link href="/campaigns">
-                <Button variant="secondary">Бүх аян</Button>
+                <Button variant="secondary">Бүх судалгаа</Button>
               </Link>
             </div>
           )}
@@ -107,11 +107,11 @@ export function CampaignPaymentCard({
     <Card>
       <CardHeader
         title="Төлбөр"
-        description="Аян тус бүрийн төлбөрийг тусад нь төлнө — данс цэнэглэх шаардлагагүй"
+        description="Судалгаа тус бүрийн төлбөрийг тусад нь төлнө — данс цэнэглэх шаардлагагүй"
       />
       <CardBody className="space-y-5">
         <div>
-          <div className="text-xs text-[var(--color-text-secondary)]">Аян</div>
+          <div className="text-xs text-[var(--color-text-secondary)]">Судалгаа</div>
           <div className="mt-0.5 font-semibold text-[var(--color-text-primary)]">
             {campaign.title}
           </div>
@@ -158,12 +158,12 @@ export function CampaignPaymentCard({
             </div>
             {variant === "wizard" && (
               <div className="pl-6 text-[var(--color-text-secondary)]">
-                Аян хадгалагдсан тул дараа нь{" "}
+                Судалгаа хадгалагдсан тул дараа нь{" "}
                 <Link
                   href={`/campaigns/${campaign.id}`}
                   className="font-semibold text-[var(--color-text-primary)] underline"
                 >
-                  аяны хуудаснаас
+                  судалгааны хуудаснаас
                 </Link>{" "}
                 төлж болно.
               </div>

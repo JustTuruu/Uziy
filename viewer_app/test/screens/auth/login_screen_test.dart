@@ -29,9 +29,11 @@ const _loginOk = FakeReply(200, {
 Future<void> _pump(
   WidgetTester tester, {
   double height = 844,
+  double width = 390,
+  double textScale = 1,
   String? next,
 }) async {
-  tester.view.physicalSize = Size(390, height) * 3;
+  tester.view.physicalSize = Size(width, height) * 3;
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
   final router = GoRouter(
@@ -55,7 +57,8 @@ Future<void> _pump(
       routerConfig: router,
       // The falling coins loop forever; frozen coins let pumpAndSettle end.
       builder: (context, app) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(disableAnimations: true),
+        data: MediaQuery.of(context).copyWith(
+            disableAnimations: true, textScaler: TextScaler.linear(textScale)),
         child: app!,
       ),
     ),
@@ -86,39 +89,80 @@ void main() {
     ApiService.instance.setAuthToken(null);
   });
 
-  testWidgets('shows the welcome, both fields and the card around them',
+  testWidgets('labels above, short placeholders and adornments inside',
       (tester) async {
     await _pump(tester);
 
-    expect(find.text('Тавтай морил'), findsOneWidget);
+    expect(find.text('Утасны дугаар'), findsOneWidget);
+    expect(find.text('Нууц үг'), findsOneWidget);
+    expect(find.text(kPhoneHint), findsOneWidget);
+    expect(find.text(kPasswordHint), findsOneWidget);
+    expect(find.text(kLoginSubtitle), findsOneWidget);
+    expect(find.byIcon(AppIcons.phone), findsOneWidget);
+    expect(find.byIcon(AppIcons.lock), findsOneWidget);
     expect(find.text('Нэвтрэх'), findsNWidgets(2)); // title + button
-    expect(find.byType(PhoneField), findsOneWidget);
-    expect(find.byType(PasswordField), findsOneWidget);
-    expect(
-      find.ancestor(
-        of: find.byType(PasswordField),
-        matching: find.byType(AppCard),
-      ),
-      findsOneWidget,
-    );
   });
 
-  testWidgets('a tall screen shows the three-step strip', (tester) async {
+  testWidgets('small screen with large text stays scrollable without overflow',
+      (tester) async {
+    await _pump(tester, width: 320, height: 568, textScale: 1.5);
+    expect(tester.takeException(), isNull);
+    await tester.ensureVisible(find.widgetWithText(AppButton, 'Бүртгүүлэх'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('phone entry filters pasted text and advances to password',
+      (tester) async {
     await _pump(tester);
-
-    expect(find.byType(HowItWorksStrip), findsOneWidget);
-    for (final step in HowItWorksStrip.steps) {
-      expect(find.text(step.label), findsOneWidget);
-    }
+    final phone = find.descendant(
+        of: find.byType(PhoneField), matching: find.byType(TextField));
+    await tester.enterText(phone, '8811 2233abc99');
+    expect(tester.widget<TextField>(phone).controller!.text, '88112233');
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
+    final password = tester.widget<TextField>(find.descendant(
+        of: find.byType(PasswordField), matching: find.byType(TextField)));
+    expect(password.focusNode!.hasFocus, isTrue);
   });
 
-  testWidgets('a short screen drops the strip so the form stays in view',
+  testWidgets('one raised main action; registration is the quiet second',
+      (tester) async {
+    await _pump(tester);
+    expect(find.text('Зочноор үзэх'), findsOneWidget);
+    expect(find.text('Шинэ хэрэглэгч үү?'), findsOneWidget);
+    final login =
+        tester.widget<AppButton>(find.widgetWithText(AppButton, 'Нэвтрэх'));
+    final register =
+        tester.widget<AppButton>(find.widgetWithText(AppButton, 'Бүртгүүлэх'));
+    expect(login.raised, isTrue);
+    expect(login.trailingIcon, AppIcons.next);
+    expect(register.variant, AppButtonVariant.secondary);
+    expect(register.raised, isFalse);
+  });
+
+  testWidgets('a short screen keeps the whole form without overflow',
       (tester) async {
     await _pump(tester, height: 600);
 
-    expect(find.byType(HowItWorksStrip), findsNothing);
     expect(tester.takeException(), isNull);
     expect(find.byType(PasswordField), findsOneWidget);
+  });
+
+  testWidgets('the guest pill is a 44pt target and never cut short',
+      (tester) async {
+    await _pump(tester);
+    final text = tester.widget<Text>(find.text('Зочноор үзэх'));
+    expect(text.overflow, isNot(TextOverflow.ellipsis));
+    expect(
+      tester
+          .getSize(find.ancestor(
+            of: find.text('Зочноор үзэх'),
+            matching: find.byType(Pressable),
+          ))
+          .height,
+      greaterThanOrEqualTo(AppLayout.minTapTarget),
+    );
   });
 
   testWidgets('empty fields are refused before any request', (tester) async {
@@ -128,7 +172,7 @@ void main() {
     await tester.tap(find.widgetWithText(AppButton, 'Нэвтрэх'));
     await tester.pump();
 
-    expect(find.text('Утасны дугаараа шалгана уу'), findsOneWidget);
+    expect(find.text(AuthValidators.phoneInvalid), findsOneWidget);
     expect(find.text('Дор хаяж 6 тэмдэгт'), findsOneWidget);
     expect(api.calls, isEmpty);
   });
@@ -181,28 +225,28 @@ void main() {
       (tester) async {
     await _pump(tester, next: '/video/5');
 
-    await tester.ensureVisible(find.byType(AuthFooterLink));
-    await tester.tap(find.byType(AuthFooterLink));
+    await tester.ensureVisible(find.widgetWithText(AppButton, 'Бүртгүүлэх'));
+    await tester.tap(find.widgetWithText(AppButton, 'Бүртгүүлэх'));
     await tester.pumpAndSettle();
 
     expect(find.text('register-page next=/video/5'), findsOneWidget);
   });
 
-  group('authHeroMetrics', () {
-    test('a tall screen gets the big logo and room for extras', () {
-      final m = authHeroMetrics(844);
-      expect(m.logoSize, 76);
-      expect(m.compact, isFalse);
-    });
+  testWidgets('the phone field keeps a line for its error', (tester) async {
+    await _pump(tester);
+    // The phone error appears in this reserved line instead of pushing the
+    // password field down; the password's own error may move the link.
+    expect(tester.widget<PhoneField>(find.byType(PhoneField)).helperText,
+        kReservedLine);
+  });
 
-    test('a short screen gets the small logo and drops extras', () {
-      final m = authHeroMetrics(kCompactAuthHeight - 1);
-      expect(m.logoSize, 56);
-      expect(m.compact, isTrue);
-    });
-
-    test('exactly at the threshold counts as tall', () {
-      expect(authHeroMetrics(kCompactAuthHeight).compact, isFalse);
-    });
+  testWidgets('forgot-password sits right-aligned under the password field',
+      (tester) async {
+    await _pump(tester);
+    final link = find.text('Нууц үг мартсан?');
+    final field = find.byType(PasswordField);
+    expect(tester.getTopLeft(link).dy,
+        greaterThan(tester.getBottomLeft(field).dy - 1));
+    expect(tester.getCenter(link).dx, greaterThan(tester.getCenter(field).dx));
   });
 }

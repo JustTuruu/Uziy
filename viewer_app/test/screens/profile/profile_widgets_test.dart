@@ -61,12 +61,12 @@ void _setSurface(WidgetTester tester, Size size) {
 
 void main() {
   group('ProfileTitle', () {
-    testWidgets('matches the other tab titles: display style plus subtitle',
+    testWidgets('matches the other tab titles: page-title style plus subtitle',
         (tester) async {
       await _pump(tester, const ProfileTitle());
 
       final title = tester.widget<Text>(find.text(ProfileTitle.title));
-      expect(title.style, AppTextStyles.display);
+      expect(title.style, AppTextStyles.pageTitle);
       final subtitle = tester.widget<Text>(find.text(ProfileTitle.subtitle));
       expect(subtitle.style, AppTextStyles.bodySmall);
     });

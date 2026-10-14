@@ -122,7 +122,10 @@ export async function apiFetch<T>(path: string, opts: RequestOptions = {}): Prom
   const url = `${API_BASE_URL}${path}`;
   const headers: Record<string, string> = {};
 
-  if (opts.body !== undefined) headers["Content-Type"] = "application/json";
+  // A file upload: the browser writes the multipart boundary itself.
+  const multipart = opts.body instanceof FormData;
+  if (opts.body !== undefined && !multipart)
+    headers["Content-Type"] = "application/json";
 
   if (!opts.anonymous) {
     const token = auth.getToken();
@@ -134,7 +137,11 @@ export async function apiFetch<T>(path: string, opts: RequestOptions = {}): Prom
     res = await fetch(url, {
       method: opts.method ?? "GET",
       headers,
-      body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+      body: multipart
+        ? (opts.body as FormData)
+        : opts.body === undefined
+          ? undefined
+          : JSON.stringify(opts.body),
       credentials: "omit",
     });
   } catch {
@@ -214,6 +221,8 @@ export interface Campaign {
   paidAt: string | null;
   status: CampaignStatus;
   createdAt: string;
+  /** Cover image path on the API (see `mediaUrl`); null without one. */
+  thumbnailUrl?: string | null;
 }
 
 /** RATING is the 3-point Муу / Дунд / Сайн mood slider; its options are fixed by the backend. */
@@ -290,7 +299,25 @@ export const companyApi = {
     }),
   /** The caller's campaign payments, newest first. */
   payments: () => apiFetch<Payment[]>("/company/payments"),
+  /** Sets the cover; only before approval (AWAITING_PAYMENT / PENDING), else 409. */
+  uploadImage: (id: number, file: File) => {
+    const body = new FormData();
+    body.append("file", file);
+    return apiFetch<{ thumbnailUrl: string }>(
+      `/company/campaigns/${id}/image`,
+      { method: "POST", body },
+    );
+  },
+  removeImage: (id: number) =>
+    apiFetch<{ thumbnailUrl: null }>(`/company/campaigns/${id}/image`, {
+      method: "DELETE",
+    }),
 };
+
+/** A media path from the API (e.g. a cover) as an absolute URL; full URLs pass through. */
+export function mediaUrl(path: string): string {
+  return new URL(path, API_BASE_URL).toString();
+}
 // --- Platform settings (public read; admin write) --------------------------
 
 export interface PlatformSettings {

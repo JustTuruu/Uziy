@@ -22,6 +22,13 @@ void main() {
     expect(theme.colorScheme.onPrimary, AppColors.onPrimary);
   });
 
+  test('tab page titles are smaller and lighter than display', () {
+    expect(AppTextStyles.pageTitle.fontSize, 26);
+    expect(AppTextStyles.pageTitle.fontSize,
+        lessThan(AppTextStyles.display.fontSize!));
+    expect(AppTextStyles.pageTitle.fontWeight, FontWeight.w700);
+  });
+
   test('dividers are subtle, never white', () {
     expect(theme.dividerTheme.color, AppColors.divider);
     expect(theme.dividerTheme.thickness, 1);

@@ -83,7 +83,7 @@ describe("Admin console layout", () => {
     expect(
       await screen.findByRole("link", { name: /Мөнгө татах\s*3/ }),
     ).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Clients\s*5/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Судалгаа\s*5/ })).toBeTruthy();
     expect(screen.getByRole("img", { name: "8 хүлээгдэж буй" })).toBeTruthy();
   });
 
