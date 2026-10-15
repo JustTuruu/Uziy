@@ -714,6 +714,9 @@ group **50**. Added on my own judgement (flag to the owner): **minors (< 18) are
   (44pt see-through round chevron) and raised fields; forgot uses the adorned phone field; main actions are raised
   (forward steps with the arrow); `OtpHeader`'s glyph sits on a flat sage tile. Visual rules live in
   `viewer_app/DESIGN.md` ("The Meadow Ledger", rewritten 2026-10-14) — read it before any UI work.
+- **Coin (owner, 2026-10-14)**: `CoinIcon` is no longer the lit gold '₮' coin — it is the Uziy mark (`logo_mark.png`)
+  on a flat disc of `context.colors.primary`, mark in `onPrimary`, inner ring from 20px. One widget, so every screen
+  (feed, video, survey, wallet, profile, register, reward chip) changed together.
 - **Phone entry (2026-10-14, replaced the 2026-10-12 slotted `BigPhoneField`)**: login, register and
   forgot-password all use `PhoneField` (`auth_widgets.dart`; register shows it under a plain `FieldLabel`). It is an ordinary `TextFormField` built exactly like `PasswordField` (same
   `body` font, the theme's input decoration, a quiet `+976` in the leading slot where the password field has its

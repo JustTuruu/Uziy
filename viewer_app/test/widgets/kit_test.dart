@@ -100,6 +100,42 @@ void main() {
     });
   });
 
+  group('CoinIcon', () {
+    testWidgets('the Uziy mark on a flat brand-green disc', (tester) async {
+      await pumpKit(tester, const CoinIcon(size: 40));
+      final disc = tester
+          .widget<DecoratedBox>(_in<DecoratedBox>(find.byType(CoinIcon)).first)
+          .decoration as BoxDecoration;
+      final light = AppTheme.light().colorScheme;
+      expect(disc.color, light.primary);
+      expect(disc.gradient, isNull, reason: 'flat, no lit gold');
+      expect(disc.boxShadow, isNull);
+      final mark = tester.widget<Image>(_in<Image>(find.byType(CoinIcon)));
+      expect((mark.image as AssetImage).assetName, CoinIcon.markAssetPath);
+      expect(mark.color, light.onPrimary);
+      expect(mark.width, 40 * CoinIcon.markScale);
+    });
+
+    testWidgets('small coins skip the inner ring', (tester) async {
+      CustomPaint paintOf() => tester
+          .widget<CustomPaint>(_in<CustomPaint>(find.byType(CoinIcon)).first);
+      await pumpKit(tester, const CoinIcon(size: 16));
+      expect(paintOf().painter, isNull);
+      await pumpKit(tester, const CoinIcon(size: 30));
+      expect(paintOf().painter, isNotNull);
+    });
+
+    testWidgets('is decorative for screen readers', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await pumpKit(tester, const CoinIcon(size: 40));
+      expect(
+        _in<ExcludeSemantics>(find.byType(CoinIcon)),
+        findsWidgets,
+      );
+      semantics.dispose();
+    });
+  });
+
   group('AppButton', () {
     testWidgets('trailing icon sits at the right edge, label stays centred',
         (tester) async {

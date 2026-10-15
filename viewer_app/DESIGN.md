@@ -9,7 +9,6 @@ colors:
   forest: "#145C45"
   forest-deep: "#104C39"
   on-forest: "#FFFFFF"
-  coin-gold: "#E0B558"
   coin-gold-light: "#F2D48A"
   coin-ink: "#775521"
   ink: "#192D25"
@@ -150,9 +149,9 @@ components:
 
 **Creative North Star: "The Meadow Ledger"**
 
-Uziy is a small ledger kept on good paper: a warm, almost-white sheet (meadow paper), entries in deep forest ink, and the only precious metal on the page is the coin. The viewer comes here in short idle moments to earn a few hundred tögrög, so every screen reads like a calm, exact account of what they can earn, what they earned and what happens next. Trust comes from precision — exact amounts, aligned columns, honest states — not from decoration.
+Uziy is a small ledger kept on good paper: a warm, almost-white sheet (meadow paper), entries in deep forest ink, and the coin is the Uziy mark struck on a green disc. The viewer comes here in short idle moments to earn a few hundred tögrög, so every screen reads like a calm, exact account of what they can earn, what they earned and what happens next. Trust comes from precision — exact amounts, aligned columns, honest states — not from decoration.
 
-The world is quiet and flat by default. Colour is spent on two things only: the forest green that marks the one action to take, and the gold of the coin that marks money. Everything else is paper, sage hairlines and ink. Depth appears only where a hand will land (the main button, the fields being filled), and the sign-in page alone carries faint sage paper folds in its background, like a watermark on the first sheet.
+The world is quiet and flat by default. Colour is spent on two things only: the forest green that marks the one action to take, and the soft gold of the reward chip that marks money. Everything else is paper, sage hairlines and ink. Depth appears only where a hand will land (the main button, the fields being filled), and the sign-in page alone carries faint sage paper folds in its background, like a watermark on the first sheet.
 
 **Key Characteristics:**
 - Meadow paper background, white sheets, sage hairlines; forest green for action, gold only for money.
@@ -170,7 +169,7 @@ A green-and-paper palette with a single precious accent: forest for doing, gold 
 - **Forest Deep** (#104C39): pressed / emphasised forest and the dark end of the wallet card.
 
 ### Secondary
-- **Coin Gold** (#E0B558) with **Coin Gold Light** (#F2D48A) and **Coin Ink** (#775521): drawn only inside the coin artwork and reward chips. Gold never colours buttons, text blocks or backgrounds.
+- **Coin Gold Light** (#F2D48A) with **Coin Ink** (#775521): the reward chip's flat fill and its amount. Gold never colours buttons, text blocks or backgrounds.
 
 ### Neutral
 - **Meadow Paper** (#F5F7F3): every screen's background.
@@ -184,7 +183,7 @@ Semantic: **Success** (#12633D), **Warning** (#805109), **Danger** (#BD3934) for
 
 **The Two Colours Of Meaning Rule.** Forest means "act here", gold means "money". If something is neither an action nor money, it is paper, sage or ink.
 
-**The Plain Fill Rule.** Buttons, chips and cards are flat fills. Gradients are reserved for fixed artwork (the coin, the green wallet card); never on controls or text.
+**The Plain Fill Rule.** Buttons, chips and cards are flat fills. Gradients are reserved for fixed artwork (the green wallet card); never on controls, coins or text.
 
 ## Typography
 
@@ -254,13 +253,13 @@ Gently rounded throughout. Inputs, buttons and field-like tiles share one corner
 - Fixed bottom bar, three tabs, icon with its label underneath; the active tab uses the filled icon in the action colour. No tab animation.
 
 ### Signature: The Coin and the Wallet Card
-The coin is drawn artwork (gold disc with an engraved ₮), the only gold object in the system. The wallet card is a bank-card-proportioned forest sheet with white ink — the one fixed dark surface in light mode.
+The coin (`CoinIcon`) is the Uziy mark (`assets/logo_mark.png`) tinted in the on-action colour on a flat disc of the action colour, with a thin inner ring from 20px up — forest + white in light, mint + dark green in dark (owner, 2026-10-14: the lit gold ₮ coin did not belong to the flat green UI). It sits inside the gold reward chip and beside amounts. The wallet card is a bank-card-proportioned forest sheet with white ink — the one fixed dark surface in light mode.
 
 ## Do's and Don'ts
 
 ### Do:
 - **Do** keep one primary (forest) action per screen and make it the only raised element.
-- **Do** show money with the money styles and the coin; nothing else gets gold.
+- **Do** show money with the money styles, the coin and the gold reward chip; nothing else gets gold.
 - **Do** put a visible label above every field and keep placeholders as short hints.
 - **Do** read colours from the theme (`context.colors`) so light and dark both work; check text contrast stays AA in both.
 - **Do** honour reduce-motion: transitions of 150–250ms, none when reduced.

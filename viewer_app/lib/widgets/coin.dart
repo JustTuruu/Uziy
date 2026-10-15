@@ -5,125 +5,77 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
 
-/// Custom-painted gold coin — the app's motif ("Uziy" / зоос = coin).
+/// The app's coin ("Uziy" / зоос = coin): the Uziy mark struck on a flat
+/// brand-green disc, with a thin inner ring at readable sizes.
 ///
-/// Gold rim + radial-lit face + engraved inner ring + specular highlight.
-/// At [size] >= 20 a small '₮' glyph is engraved in the center.
-/// Decorative: no semantics.
+/// Flat on purpose (owner, 2026-10-14: the old lit gold coin with a '₮' did
+/// not belong to the calm green UI). The disc is the action colour of the
+/// theme, the mark is the colour that sits on it, so it works in light and
+/// dark. Decorative: no semantics.
 class CoinIcon extends StatelessWidget {
   const CoinIcon({super.key, this.size = 18});
 
   final double size;
 
+  /// Below this the inner ring is left out (it would only blur the mark).
+  static const double ringMinSize = 20;
+
+  /// Share of the diameter the mark takes.
+  static const double markScale = 0.52;
+
+  static const String markAssetPath = 'assets/logo_mark.png';
+
   @override
   Widget build(BuildContext context) {
-    return SizedBox.square(
-      dimension: size,
-      child: CustomPaint(painter: _CoinPainter(showGlyph: size >= 20)),
+    final disc = context.colors.primary;
+    final ink = context.colors.onPrimary;
+    return ExcludeSemantics(
+      child: SizedBox.square(
+        dimension: size,
+        child: DecoratedBox(
+          decoration: BoxDecoration(color: disc, shape: BoxShape.circle),
+          child: CustomPaint(
+            painter: size >= ringMinSize ? _CoinRingPainter(ink) : null,
+            child: Center(
+              child: Image.asset(
+                markAssetPath,
+                width: size * markScale,
+                height: size * markScale,
+                fit: BoxFit.contain,
+                color: ink,
+                // Never fails the coin: a missing asset leaves the plain
+                // disc rather than an error box.
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
 
-class _CoinPainter extends CustomPainter {
-  _CoinPainter({required this.showGlyph});
+/// The coin's thin inner ring, like the edge of a struck coin.
+class _CoinRingPainter extends CustomPainter {
+  const _CoinRingPainter(this.color);
 
-  final bool showGlyph;
+  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
     final r = size.shortestSide / 2;
-    if (r <= 0) return;
-    final c = size.center(Offset.zero);
-
-    // Contact shadow so the coin separates from gold backgrounds.
     canvas.drawCircle(
-      c + Offset(0, r * 0.10),
-      r * 0.96,
-      Paint()
-        ..color = Colors.black.withValues(alpha: 0.28)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, r * 0.14),
-    );
-
-    // Rim.
-    final outer = Rect.fromCircle(center: c, radius: r);
-    canvas.drawCircle(
-      c,
-      r,
-      Paint()
-        ..shader = const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFFFEAB5),
-            Color(0xFFE0B558),
-            AppColors.primaryInk,
-          ],
-          stops: [0.0, 0.6, 1.0],
-        ).createShader(outer),
-    );
-
-    // Face.
-    final faceR = r * 0.84;
-    canvas.drawCircle(
-      c,
-      faceR,
-      Paint()
-        ..shader = const RadialGradient(
-          center: Alignment(-0.35, -0.45),
-          radius: 1.05,
-          colors: [
-            Color(0xFFFFEAB5),
-            Color(0xFFF2D48A),
-            Color(0xFFE0B558),
-          ],
-          stops: [0.0, 0.55, 1.0],
-        ).createShader(Rect.fromCircle(center: c, radius: faceR)),
-    );
-
-    // Engraved inner ring.
-    canvas.drawCircle(
-      c,
-      r * 0.64,
+      size.center(Offset.zero),
+      r * 0.80,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = math.max(0.7, r * 0.07)
-        ..color = AppColors.primaryInk.withValues(alpha: 0.32),
+        ..strokeWidth = math.max(1, r * 0.06)
+        ..color = color.withValues(alpha: 0.35),
     );
-
-    // Specular highlight arc (top-left).
-    canvas.drawArc(
-      Rect.fromCircle(center: c, radius: r * 0.74),
-      math.pi * 1.05,
-      math.pi * 0.42,
-      false,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round
-        ..strokeWidth = math.max(0.8, r * 0.09)
-        ..color = Colors.white.withValues(alpha: 0.55),
-    );
-
-    if (showGlyph) {
-      // Draw the currency mark as geometry so it is crisp at small sizes
-      // and independent of system font coverage for the tugrik glyph.
-      final mark = Paint()
-        ..color = AppColors.primaryInk
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = math.max(1, r * 0.095)
-        ..strokeCap = StrokeCap.round;
-      canvas.drawLine(c + Offset(-r * 0.27, -r * 0.32),
-          c + Offset(r * 0.27, -r * 0.32), mark);
-      canvas.drawLine(c + Offset(0, -r * 0.32), c + Offset(0, r * 0.35), mark);
-      canvas.drawLine(c + Offset(-r * 0.20, r * 0.04),
-          c + Offset(r * 0.20, -r * 0.12), mark);
-      canvas.drawLine(c + Offset(-r * 0.20, r * 0.23),
-          c + Offset(r * 0.20, r * 0.07), mark);
-    }
   }
 
   @override
-  bool shouldRepaint(_CoinPainter oldDelegate) =>
-      oldDelegate.showGlyph != showGlyph;
+  bool shouldRepaint(_CoinRingPainter old) => old.color != color;
 }
 
 enum RewardChipSize { small, medium, large }
