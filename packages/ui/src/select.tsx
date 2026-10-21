@@ -113,7 +113,7 @@ export function Select({
       {label && (
         <div
           id={labelId}
-          className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]"
+          className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]"
         >
           {label}
         </div>
@@ -177,7 +177,7 @@ export function Select({
                 onMouseEnter={() => setActiveIndex(index)}
                 onClick={() => choose(index)}
                 className={cn(
-                  "flex cursor-pointer items-center justify-between gap-6 rounded-lg px-3 py-2 text-[13px]",
+                  "flex cursor-pointer items-center justify-between gap-6 rounded-lg px-3 py-2 text-ui",
                   index === activeIndex &&
                     "bg-[var(--color-surface-hover)]",
                   selected

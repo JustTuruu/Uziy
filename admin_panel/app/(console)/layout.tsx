@@ -113,7 +113,7 @@ export default function AdminLayout({
           pathname={pathname}
           right={
             <>
-              <span className="hidden items-center gap-1.5 rounded-full border border-[var(--color-divider)] bg-[var(--color-surface)] px-2.5 py-1 text-[11px] font-medium text-[var(--color-text-secondary)] sm:inline-flex">
+              <span className="hidden items-center gap-1.5 rounded-full border border-[var(--color-divider)] bg-[var(--color-surface)] px-2.5 py-1 text-2xs font-medium text-[var(--color-text-secondary)] sm:inline-flex">
                 <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-success)] shadow-[0_0_6px_var(--color-success)]" />
                 Систем хэвийн
               </span>
@@ -125,7 +125,7 @@ export default function AdminLayout({
               >
                 <Bell size={15} />
                 {pending > 0 && (
-                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-primary)] px-1 text-[9px] font-bold text-[var(--color-on-primary)]">
+                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-primary)] px-1 text-4xs font-bold text-[var(--color-on-primary)]">
                     {pending}
                   </span>
                 )}

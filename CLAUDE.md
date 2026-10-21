@@ -130,6 +130,12 @@ asked, say so and propose the compliant way instead of silently bending it.
    uses `--color-on-primary` / `--color-on-success` / `--color-on-danger` (never a hex); the sidebar uses
    `--color-sidebar`, floating menus `--shadow-popover`. `admin_panel/app/theme.test.ts` checks WCAG AA for the
    light palette and that the shared dark defaults did not move.
+   **Admin type (owner, 2026-10-21: softer, a bit larger)**: the font is **Rubik** (`next/font/google` in
+   `admin_panel/app/layout.tsx`, self-hosted, subsets latin/latin-ext/cyrillic/cyrillic-ext — Ө/Ү and ₮ need the
+   -ext ones; it has tabular figures). Small sizes are tokens in `theme.css` — `text-4xs` 9 / `text-3xs` 10 /
+   `text-2xs` 11 / `text-ui` 13px (company keeps these); admin raises them and Tailwind's `--text-xs`/`--text-sm` by
+   1px. Never write `text-[11px]`-style sizes in the kit; use the tokens. A new size step must also be added to
+   `EXTRA_TEXT_SIZES` in `packages/ui/src/cn.ts`, or tailwind-merge takes it for a colour and drops it.
 4. **Whole-number inputs** use `NumericInput`; never `type="number"` +
    `Number(value)`.
 5. The company panel shows the **company's own name** (sidebar subtitle,

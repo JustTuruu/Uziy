@@ -16,7 +16,7 @@ export function PageHeader({
           {title}
         </h1>
         {description && (
-          <p className="mt-1 text-[13px] text-[var(--color-text-secondary)]">
+          <p className="mt-1 text-ui text-[var(--color-text-secondary)]">
             {description}
           </p>
         )}

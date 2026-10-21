@@ -48,7 +48,7 @@ export function Sidebar({ brand, subtitle, items, footer }: Props) {
           <span className="text-[15px] font-bold tracking-tight text-[var(--color-text-primary)]">
             {brand}
           </span>
-          <span className="truncate rounded border border-[var(--color-border-strong)] px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
+          <span className="truncate rounded border border-[var(--color-border-strong)] px-1.5 py-px text-3xs font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
             {subtitle}
           </span>
         </div>
@@ -62,7 +62,7 @@ export function Sidebar({ brand, subtitle, items, footer }: Props) {
               {item.section && (
                 <div
                   className={cn(
-                    "px-2.5 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]",
+                    "px-2.5 pb-1.5 text-3xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]",
                     i === 0 ? "pt-0" : "pt-5",
                   )}
                 >
@@ -73,7 +73,7 @@ export function Sidebar({ brand, subtitle, items, footer }: Props) {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "group relative mb-0.5 flex items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-[13px] transition-colors",
+                  "group relative mb-0.5 flex items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-ui transition-colors",
                   active
                     ? "bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)]"
                     : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-elevated)]/60 hover:text-[var(--color-text-primary)]",
@@ -98,7 +98,7 @@ export function Sidebar({ brand, subtitle, items, footer }: Props) {
                   </span>
                 </span>
                 {item.badge !== undefined && item.badge > 0 && (
-                  <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--color-primary)_16%,transparent)] px-1.5 text-[10px] font-bold tabular-nums text-[var(--color-primary)]">
+                  <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--color-primary)_16%,transparent)] px-1.5 text-3xs font-bold tabular-nums text-[var(--color-primary)]">
                     {item.badge}
                   </span>
                 )}
@@ -133,7 +133,7 @@ export function Topbar({
     <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-4 border-b border-[var(--color-divider)] bg-[color-mix(in_oklab,var(--color-background)_80%,transparent)] px-8 backdrop-blur-md">
       <nav
         aria-label="Breadcrumb"
-        className="flex items-center gap-2 text-[13px] text-[var(--color-text-muted)]"
+        className="flex items-center gap-2 text-ui text-[var(--color-text-muted)]"
       >
         <span>Uziy</span>
         <span aria-hidden>/</span>
@@ -187,14 +187,14 @@ export function SidebarUser({
   return (
     <div className="flex items-center justify-between gap-2 rounded-lg p-1.5">
       <div className="flex min-w-0 items-center gap-2.5">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-primary-deep)] text-[11px] font-bold text-[var(--color-on-primary)]">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-primary-deep)] text-2xs font-bold text-[var(--color-on-primary)]">
           {initials}
         </div>
         <div className="min-w-0">
           <div className="truncate text-xs font-semibold text-[var(--color-text-primary)]">
             {name}
           </div>
-          <div className="truncate text-[11px] text-[var(--color-text-muted)]">
+          <div className="truncate text-2xs text-[var(--color-text-muted)]">
             {detail}
           </div>
         </div>

@@ -38,7 +38,7 @@ export function CardHeader({
       )}
     >
       <div>
-        <div className="text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">
+        <div className="text-ui font-semibold tracking-tight text-[var(--color-text-primary)]">
           {title}
         </div>
         {description && (

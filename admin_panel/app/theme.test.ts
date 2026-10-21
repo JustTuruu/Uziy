@@ -36,6 +36,30 @@ function contrast(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
+/** Tailwind's own theme tokens (not in theme.css) the admin may override. */
+const TAILWIND_TOKENS = ["--text-xs", "--text-sm"];
+
+/** Tailwind's defaults for those, in rem. */
+const TAILWIND_TEXT: Record<string, number> = {
+  "--text-xs": 0.75,
+  "--text-sm": 0.875,
+};
+
+/** The UI type scale from smallest to largest. */
+const TEXT_SCALE = [
+  "--text-4xs",
+  "--text-3xs",
+  "--text-2xs",
+  "--text-xs",
+  "--text-ui",
+  "--text-sm",
+];
+
+const rem = (value: string) => {
+  expect(value).toMatch(/^[\d.]+rem$/);
+  return parseFloat(value);
+};
+
 /** WCAG AA for normal-size text. */
 const AA = 4.5;
 
@@ -52,8 +76,10 @@ describe("admin light palette", () => {
     expect(color("sidebar")).toBe("#ffffff");
   });
 
-  it("only overrides tokens the shared theme defines (no typos)", () => {
-    const unknown = Object.keys(admin).filter((k) => !(k in shared));
+  it("only overrides tokens the shared theme (or Tailwind) defines", () => {
+    const unknown = Object.keys(admin).filter(
+      (k) => !(k in shared) && !TAILWIND_TOKENS.includes(k),
+    );
     expect(unknown).toEqual([]);
   });
 
@@ -82,7 +108,46 @@ describe("admin light palette", () => {
   });
 });
 
+describe("admin type", () => {
+  const sharedSize = (token: string) =>
+    token in shared ? rem(shared[token]) : TAILWIND_TEXT[token];
+
+  it.each(TEXT_SCALE)("%s is larger than the shared default", (token) => {
+    expect(rem(admin[token])).toBeGreaterThan(sharedSize(token));
+  });
+
+  it("keeps the scale in order and nothing under 10px", () => {
+    const sizes = TEXT_SCALE.map((t) => rem(admin[t]));
+    expect([...sizes].sort((a, b) => a - b)).toEqual(sizes);
+    expect(new Set(sizes).size).toBe(sizes.length);
+    expect(sizes[0] * 16).toBeGreaterThanOrEqual(10);
+  });
+
+  it("uses Rubik first, with system fallbacks", () => {
+    expect(admin["--font-sans"]).toMatch(/^var\(--font-rubik\),/);
+    expect(admin["--font-sans"]).toContain("sans-serif");
+  });
+
+  it("loads the Rubik subsets Mongolian text and ₮ need", () => {
+    const layout = readFileSync(path.join(__dirname, "layout.tsx"), "utf8");
+    expect(layout).toMatch(/Rubik\(\{/);
+    expect(layout).toContain('variable: "--font-rubik"');
+    // Ө / Ү live in cyrillic-ext, the ₮ sign in latin-ext.
+    for (const subset of ["cyrillic", "cyrillic-ext", "latin", "latin-ext"]) {
+      expect(layout).toContain(`"${subset}"`);
+    }
+  });
+});
+
 describe("shared dark defaults (company panel) are unchanged", () => {
+  it("keeps the small type sizes the components had in px", () => {
+    expect(shared["--text-4xs"]).toBe("0.5625rem"); // 9px
+    expect(shared["--text-3xs"]).toBe("0.625rem"); // 10px
+    expect(shared["--text-2xs"]).toBe("0.6875rem"); // 11px
+    expect(shared["--text-ui"]).toBe("0.8125rem"); // 13px
+    expect(shared["--font-sans"]).toMatch(/^"Inter",/);
+  });
+
   it("keeps the dark ink on gold / green fills it always had", () => {
     expect(shared["--color-on-primary"]).toBe("#14110a");
     expect(shared["--color-on-success"]).toBe("#04120c");
