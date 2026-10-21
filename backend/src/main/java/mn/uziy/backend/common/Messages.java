@@ -7,6 +7,8 @@ package mn.uziy.backend.common;
 public final class Messages {
 
     public static final String USER_NOT_FOUND = "Хэрэглэгч олдсонгүй";
+    /** A name is set once (registration, or once afterwards for older accounts); it is not edited here. */
+    public static final String NAME_ALREADY_SET = "Овог, нэр аль хэдийн бүртгэгдсэн байна";
     /** Company and admin side. */
     public static final String CAMPAIGN_NOT_FOUND = "Судалгаа олдсонгүй";
     /** Viewer side: also used when the viewer is outside the audience, so targeting cannot be probed. */

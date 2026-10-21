@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:viewer_app/screens/wallet/add_name_sheet.dart';
 import 'package:viewer_app/screens/wallet/wallet_logic.dart';
 import 'package:viewer_app/screens/wallet/wallet_screen.dart';
 import 'package:viewer_app/screens/wallet/wallet_widgets.dart';
@@ -198,6 +199,49 @@ void main() {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pumpAndSettle();
     expect(backend.loads, 2);
+    await _close(tester);
+  });
+
+  testWidgets(
+      'an account without a name adds it from the card and the card shows it',
+      (tester) async {
+    var named = false;
+    final api = FakeApi.install((call) => switch (call.path) {
+          '/viewer/me' => FakeReply(200, {
+              ..._me(balance: 900, verified: false),
+              if (named) 'lastName': 'Бат',
+              if (named) 'firstName': 'Сараа',
+            }),
+          '/viewer/me/name' => () {
+              named = true;
+              return FakeReply(200, {
+                ..._me(balance: 900, verified: false),
+                'lastName': 'Бат',
+                'firstName': 'Сараа',
+              });
+            }(),
+          '/viewer/payouts' => const FakeReply(200, []),
+          '/viewer/history' => const FakeReply(200, []),
+          _ => const FakeReply(404),
+        });
+    await _pumpWallet(tester);
+
+    expect(find.byType(AddNameChip), findsOneWidget);
+    await tester.tap(find.byType(AddNameChip));
+    await tester.pumpAndSettle();
+
+    final fields = find.descendant(
+        of: find.byType(AddNameSheet), matching: find.byType(TextField));
+    await tester.enterText(fields.at(0), 'Бат');
+    await tester.enterText(fields.at(1), 'Сараа');
+    await tester.tap(find.text(kAddNameSave));
+    await tester.pumpAndSettle();
+
+    expect(api.callsTo('/viewer/me/name').single.body,
+        {'lastName': 'Бат', 'firstName': 'Сараа'});
+    expect(find.text('САРАА БАТ'), findsOneWidget);
+    expect(find.byType(AddNameChip), findsNothing);
+    expect(find.text(kAddNameSaved), findsOneWidget);
     await _close(tester);
   });
 }

@@ -19,7 +19,7 @@ import 'feed_logic.dart';
 import 'feed_widgets.dart';
 import 'guest_gate_sheet.dart';
 
-/// Home tab: greeting + balance, earning-potential hero, kind filter and the
+/// Home tab: wordmark + balance, earning-potential hero, kind filter and the
 /// targeted campaign feed.
 ///
 /// Stays current without pull-to-refresh: a campaign the viewer finishes
@@ -209,7 +209,6 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                     padding: pad(top: AppSpacing.md),
                     sliver: SliverToBoxAdapter(
                       child: FeedHeader(
-                        now: DateTime.now(),
                         balance: _me?.balance,
                         guest: _guest,
                         // The guest pill is plain 'Нэвтрэх': straight to login.

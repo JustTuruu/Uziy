@@ -276,4 +276,34 @@ void main() {
       expect(c.granted, isFalse);
     });
   });
+
+  group('setName', () {
+    test('PUTs the trimmed name and reads the profile back', () async {
+      final api = FakeApi.install((_) => const FakeReply(200, {
+            'id': 1,
+            'phoneNumber': '88112233',
+            'role': 'VIEWER',
+            'balance': 0,
+            'isVerified': false,
+            'lastName': 'Бат',
+            'firstName': 'Сараа',
+          }));
+      final me = await svc.setName(lastName: ' Бат ', firstName: 'Сараа ');
+
+      final call = api.callsTo('/viewer/me/name').single;
+      expect(call.method, 'PUT');
+      expect(call.body, {'lastName': 'Бат', 'firstName': 'Сараа'});
+      expect(me.lastName, 'Бат');
+      expect(me.firstName, 'Сараа');
+    });
+
+    test('a name already set comes back as the backend message', () async {
+      FakeApi.install((_) => const FakeReply(
+          409, {'message': 'Овог, нэр аль хэдийн бүртгэгдсэн байна'}));
+      final e =
+          await _catch(() => svc.setName(lastName: 'Өөр', firstName: 'Хүн'));
+      expect(e.statusCode, 409);
+      expect(e.message, 'Овог, нэр аль хэдийн бүртгэгдсэн байна');
+    });
+  });
 }

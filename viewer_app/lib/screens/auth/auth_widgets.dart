@@ -410,6 +410,63 @@ class _PasswordFieldState extends State<PasswordField> {
   }
 }
 
+/// Овог and Нэр as two labelled fields with the registration rules. Shared by
+/// the register form and the wallet's "add your name" sheet, so both ask for
+/// the name the same way.
+class PersonNameFields extends StatelessWidget {
+  const PersonNameFields({
+    super.key,
+    required this.lastName,
+    required this.firstName,
+    this.onDone,
+  });
+
+  static const String lastNameLabel = 'Овог';
+  static const String firstNameLabel = 'Нэр';
+
+  final TextEditingController lastName;
+  final TextEditingController firstName;
+
+  /// Called when the keyboard's done key is pressed in the second field.
+  final VoidCallback? onDone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        LabeledField(
+          label: lastNameLabel,
+          child: TextFormField(
+            controller: lastName,
+            textCapitalization: TextCapitalization.words,
+            textInputAction: TextInputAction.next,
+            autofillHints: const [AutofillHints.familyName],
+            style: context.textStyles.body,
+            decoration: const InputDecoration(),
+            validator: AuthValidators.lastName,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        LabeledField(
+          label: firstNameLabel,
+          child: TextFormField(
+            controller: firstName,
+            textCapitalization: TextCapitalization.words,
+            textInputAction: TextInputAction.done,
+            autofillHints: const [AutofillHints.givenName],
+            style: context.textStyles.body,
+            decoration: const InputDecoration(),
+            validator: AuthValidators.firstName,
+            onFieldSubmitted: onDone == null ? null : (_) => onDone!(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// Label above a form control. Every control on the register form has one,
 /// so the page reads the same way from top to bottom.
 class FieldLabel extends StatelessWidget {

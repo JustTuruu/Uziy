@@ -17,11 +17,11 @@ const String kStatsConsentBody =
     'тодорхойлох мэдээлэлгүйгээр, дор хаяж 50 хүний хариулттай нэгтгэж, '
     'зөвхөн хувь хэлбэрээр статистик гаргана. Ийм нэгтгэсэн тайланг '
     'байгууллагуудад хүргэж болно. Чөлөөт бичсэн хариулт ордоггүй. '
-    'Хүссэн үедээ Профайл хэсгээс цуцална.';
+    'Хүссэн үедээ Профайл → Нууцлалын бодлого хэсгээс цуцална.';
 const String kStatsConsentYes = 'Зөвшөөрөх';
 const String kStatsConsentNo = 'Үгүй';
 const String kStatsConsentThanks =
-    'Баярлалаа! Тохиргоог Профайлаас өөрчилж болно.';
+    'Баярлалаа! Профайл → Нууцлалын бодлого хэсгээс өөрчилж болно.';
 const String kStatsConsentTileLabel = 'Нэргүй статистикт оролцох';
 const String kStatsConsentOn = 'Зөвшөөрсөн';
 const String kStatsConsentOff = 'Зөвшөөрөөгүй';
@@ -156,7 +156,8 @@ class _StatsConsentPromptState extends State<StatsConsentPrompt> {
   }
 }
 
-/// Profile row with a switch: give or withdraw the consent at any time.
+/// Row with a switch: give or withdraw the consent at any time. Shown on the
+/// privacy page, under the statistics section.
 /// Hidden until the current state is known, so it never shows a wrong one.
 class StatsConsentTile extends StatefulWidget {
   const StatsConsentTile({

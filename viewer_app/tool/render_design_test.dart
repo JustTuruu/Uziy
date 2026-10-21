@@ -80,10 +80,7 @@ void main() {
       );
   Map<String, Widget> screens(BuildContext context) => {
         'home': page([
-          FeedHeader(
-              now: DateTime(2026, 10, 13, 10),
-              balance: 12400,
-              onBalanceTap: () {}),
+          FeedHeader(balance: 12400, onBalanceTap: () {}),
           const SizedBox(height: 20),
           EarningsHeroCard(summary: summarizeFeed(campaigns)),
           const SizedBox(height: 24),

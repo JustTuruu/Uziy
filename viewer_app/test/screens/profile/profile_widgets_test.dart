@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:viewer_app/widgets/stats_consent.dart';
 import 'package:viewer_app/models/user.dart';
 import 'package:viewer_app/screens/profile/profile_logic.dart';
 import 'package:viewer_app/screens/profile/profile_widgets.dart';
@@ -393,6 +394,10 @@ void main() {
       expect(find.text('Үзсэн видеонуудын түүх'), findsOneWidget);
       expect(find.text('Нууцлалын бодлого'), findsOneWidget);
       expect(find.byType(StatusBanner), findsNothing);
+      // Owner, 2026-10-21: the statistics switch is off the profile list
+      // (it lives on the privacy page), even for an adult.
+      expect(find.byType(StatsConsentTile), findsNothing);
+      expect(find.text(kStatsConsentTileLabel), findsNothing);
     });
 
     testWidgets('balance tile forwards to onBalanceTap', (tester) async {

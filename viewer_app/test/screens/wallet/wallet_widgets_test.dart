@@ -775,4 +775,50 @@ void main() {
       expect(icon.color, AppColors.textTertiary);
     });
   });
+
+  group('WalletBalanceCard name line', () {
+    testWidgets('no name: an add-name chip that calls back', (tester) async {
+      var taps = 0;
+      await pumpWallet(
+        tester,
+        WalletBalanceCard(balance: 0, verified: false, onAddName: () => taps++),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(AddNameChip), findsOneWidget);
+      await tester.tap(find.byType(AddNameChip));
+      expect(taps, 1);
+    });
+
+    testWidgets('a name replaces the chip', (tester) async {
+      await pumpWallet(
+        tester,
+        WalletBalanceCard(
+          balance: 0,
+          verified: false,
+          holderName: 'САРАА БАТ',
+          onAddName: () {},
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('САРАА БАТ'), findsOneWidget);
+      expect(find.byType(AddNameChip), findsNothing);
+    });
+
+    testWidgets('without a callback nothing is offered', (tester) async {
+      await pumpWallet(
+          tester, const WalletBalanceCard(balance: 0, verified: false));
+      await tester.pumpAndSettle();
+      expect(find.byType(AddNameChip), findsNothing);
+    });
+
+    testWidgets('the chip is a 44pt target', (tester) async {
+      await pumpWallet(
+        tester,
+        WalletBalanceCard(balance: 0, verified: false, onAddName: () {}),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.getSize(find.byType(AddNameChip)).height,
+          greaterThanOrEqualTo(AppLayout.minTapTarget));
+    });
+  });
 }

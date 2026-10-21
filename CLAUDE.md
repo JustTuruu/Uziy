@@ -124,17 +124,21 @@ asked, say so and propose the compliant way instead of silently bending it.
    (or another `useSyncExternalStore` hook), **never** `auth.getUser()` during
    render (hydration mismatch) and **never** `setState` synchronously inside
    `useEffect` (ESLint `react-hooks/set-state-in-effect`).
-   **Admin panel is light (owner, 2026-10-21)**: `admin_panel/app/globals.css` overrides the token VALUES in an
-   unlayered `:root` (white page/surfaces/sidebar, deep amber `--color-primary` #975b06 with white text on it,
-   darker success/danger/warning/accent); the company panel keeps the dark defaults. Text on a filled control
+   **Both panels are light (owner, 2026-10-21; company followed admin the same day)**: the shared
+   `packages/ui/src/theme-light.css` (imported by each app's `globals.css` AFTER `theme.css`) overrides the token
+   VALUES in an unlayered `:root` (white page/surfaces/sidebar, deep amber `--color-primary` #975b06 with white text
+   on it, darker success/danger/warning/accent). `theme.css` still holds the dark defaults (nothing uses them now). Text on a filled control
    uses `--color-on-primary` / `--color-on-success` / `--color-on-danger` (never a hex); the sidebar uses
-   `--color-sidebar`, floating menus `--shadow-popover`. `admin_panel/app/theme.test.ts` checks WCAG AA for the
-   light palette and that the shared dark defaults did not move.
-   **Admin type (owner, 2026-10-21: softer, a bit larger)**: the font is **Rubik** (`next/font/google` in
-   `admin_panel/app/layout.tsx`, self-hosted, subsets latin/latin-ext/cyrillic/cyrillic-ext — Ө/Ү and ₮ need the
-   -ext ones; it has tabular figures). Small sizes are tokens in `theme.css` — `text-4xs` 9 / `text-3xs` 10 /
-   `text-2xs` 11 / `text-ui` 13px (company keeps these); admin raises them and Tailwind's `--text-xs`/`--text-sm` by
-   1px. Never write `text-[11px]`-style sizes in the kit; use the tokens. A new size step must also be added to
+   `--color-sidebar`, floating menus `--shadow-popover`. `packages/ui/src/theme-light.test.ts` checks WCAG AA for the
+   light palette, the type scale and that the dark defaults did not move; each app's `app/theme.test.ts` checks it
+   imports the light theme and the shared font. Overlays on fixed dark artwork (campaign thumbnails) use fixed white
+   ink (`text-white`) and put badges on `--color-surface`.
+   **Console type (owner, 2026-10-21: softer, a bit larger)**: the font is **Rubik**, defined once in
+   `packages/ui/src/fonts.ts` (`consoleFont`, exported as `@uziy/ui/fonts`, a Next "font definitions file";
+   self-hosted, subsets latin/latin-ext/cyrillic/cyrillic-ext — Ө/Ү and ₮ need the -ext ones; tabular figures); both
+   layouts put `consoleFont.variable` on `<html>`. Never call `next/font/google` in an app. Small sizes are tokens in `theme.css` — `text-4xs` 9 / `text-3xs` 10 /
+   `text-2xs` 11 / `text-ui` 13px (the dark defaults); `theme-light.css` raises them and Tailwind's
+   `--text-xs`/`--text-sm` by 1px. Never write `text-[11px]`-style sizes in the kit; use the tokens. A new size step must also be added to
    `EXTRA_TEXT_SIZES` in `packages/ui/src/cn.ts`, or tailwind-merge takes it for a colour and drops it.
 4. **Whole-number inputs** use `NumericInput`; never `type="number"` +
    `Number(value)`.
@@ -694,7 +698,8 @@ group **50**. Added on my own judgement (flag to the owner): **minors (< 18) are
 - **Consent** (`privacy/`, V15 `users.stats_consent|_at|_version`): `GET|PUT /viewer/consents/statistics {granted}` →
   `{status: UNASKED|GRANTED|DECLINED, decidedAt, version}`; a consent to an older `CURRENT_VERSION` wording reads as
   UNASKED. App: `widgets/stats_consent.dart` — `StatsConsentPrompt` (Home, once, adults only) and `StatsConsentTile`
-  (Profile → Бусад switch); `canAskStatsConsent(age)`. Privacy page has a section. Copy needs a lawyer's review.
+  (the withdraw switch: since 2026-10-21 on Profile → Нууцлалын бодлого, under the statistics section — owner took it
+  off the Profile list; it must stay somewhere, the consent is revocable); `canAskStatsConsent(age)`. Privacy page has a section. Copy needs a lawyer's review.
 - **Statistics** (`insights/`, ADMIN only, `/admin/insights/overview|questions|questions/{id}?gender&ageBand&city|
   questions/{id}/segments|questions/{id}/export.csv|access-log`). ALL rules live in `StatisticsPrivacyPolicy` +
   `InsightsRepository.CONSENTING` — never query people without that filter, never return a count/percent for a group
@@ -900,7 +905,13 @@ Gold balance card + fake transaction history (rewards + one payout). Tap
   `AuthValidators.lastName/firstName`), `users.last_name/first_name` (V11, null for older accounts and companies),
   returned in `Me`. The wallet card prints `walletCardName`: НЭР ОВОГ in capitals, **only the registered name**
   (owner, 2026-10-21) — an older account without one shows no name; a payout's `accountName` is never used
-  (`cardHolderName` was removed).
+  (`cardHolderName` was removed). **Older accounts add their name once (2026-10-21)**: the card shows `AddNameChip`
+  ('Нэрээ нэмэх') when there is no name → `AddNameSheet` (`screens/wallet/add_name_sheet.dart`, the shared
+  `PersonNameFields` from `auth_widgets.dart`, same rules as registration) → `ViewerService.setName` →
+  `PUT /viewer/me/name {lastName, firstName}` → `Me`. Backend `viewer/ViewerNameController` →
+  `ViewerNameServiceImpl` → `UserRepository.trySetNameOnce` (one conditional UPDATE: only a VIEWER whose BOTH names
+  are null), 409 `Messages.NAME_ALREADY_SET` otherwise, event `ViewerNameSet` (audit). Set-once on purpose: the
+  name takes part in the payout check, so it is never edited from the app.
 - **Reduce-motion and `AnimatedSize`**: an `AnimatedSize` whose duration follows `AppMotion.duration` (zero under
   reduce-motion) throws; use `ReducibleAnimatedSize` (`widgets/`) instead. The admin approves after checking the account is in the viewer's own name and
   flips `is_verified = TRUE`.
@@ -950,7 +961,9 @@ the next session can uncomment once the backend exists.
   snack bar. The sheet (also Profile → 'Харагдах горим') picks a mode with `ThemeModeChoices`: three `ThemeModeCard`s
   with a `ThemePreview` miniature of the home screen in that palette (device = diagonal light/dark split); side by
   side, stacked when they would not fit (small phone + large text). The
-  'Үз. Хариул. Урамшуулал ав.' tagline chip was removed at the owner's request. The title is 'Шинэ судалгаанууд' with no
+  'Үз. Хариул. Урамшуулал ав.' tagline chip was removed at the owner's request, and so was the time-of-day greeting
+  ('Өглөөний / Өдрийн / Оройн мэнд', 2026-10-21; `DayPart`/`greetingFor` deleted): the balance pill now sits in the top
+  row between the wordmark and `ThemeModeButton`. The title is 'Шинэ судалгаанууд' with no
   explainer under it; Нүүр, Хэтэвч and Профайл titles all use `textStyles.pageTitle` (26 / w700, smaller than `display`). `UziyLogo` (white tile) stays on
   splash/login.
 - **Wallet card looks like a bank card (2026-10-14)**: `WalletBalanceCard` (`wallet_widgets.dart`) is ID-1 proportioned

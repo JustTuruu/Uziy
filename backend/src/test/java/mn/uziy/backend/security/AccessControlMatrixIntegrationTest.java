@@ -55,6 +55,7 @@ class AccessControlMatrixIntegrationTest extends AbstractApiIntegrationTest {
                 ep(HttpMethod.POST, "/company/campaigns/" + campaign + "/pay", "COMPANY"),
                 ep(HttpMethod.DELETE, "/company/campaigns/" + campaign + "/image", "COMPANY"),
                 ep(HttpMethod.GET, "/viewer/consents/statistics", "VIEWER"),
+                ep(HttpMethod.PUT, "/viewer/me/name", "VIEWER"),
                 ep(HttpMethod.GET, "/admin/insights/overview", "ADMIN"),
                 ep(HttpMethod.GET, "/admin/insights/questions", "ADMIN"),
                 ep(HttpMethod.GET, "/admin/insights/access-log", "ADMIN"),

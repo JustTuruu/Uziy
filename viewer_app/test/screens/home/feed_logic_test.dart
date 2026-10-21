@@ -209,29 +209,6 @@ void main() {
     });
   });
 
-  group('greeting', () {
-    DayPart at(int h, [int m = 0]) => dayPartOf(DateTime(2026, 9, 28, h, m));
-
-    test('day-part boundaries', () {
-      expect(at(0), DayPart.night);
-      expect(at(4, 59), DayPart.night);
-      expect(at(5), DayPart.morning);
-      expect(at(11, 59), DayPart.morning);
-      expect(at(12), DayPart.afternoon);
-      expect(at(17, 59), DayPart.afternoon);
-      expect(at(18), DayPart.evening);
-      expect(at(22, 59), DayPart.evening);
-      expect(at(23), DayPart.night);
-    });
-
-    test('Mongolian greetings', () {
-      expect(greetingFor(DayPart.morning), 'Өглөөний мэнд');
-      expect(greetingFor(DayPart.afternoon), 'Өдрийн мэнд');
-      expect(greetingFor(DayPart.evening), 'Оройн мэнд');
-      expect(greetingFor(DayPart.night), 'Сайн байна уу');
-    });
-  });
-
   group('card copy', () {
     test('CTA label', () {
       expect(campaignCtaLabel(_c()), 'Үзэх');

@@ -28,11 +28,16 @@ class WalletBalanceCard extends StatelessWidget {
     required this.verified,
     this.phoneNumber,
     this.holderName,
+    this.onAddName,
     this.progress,
   });
 
   final num balance;
   final bool verified;
+
+  /// Shown on the card in place of the name when [holderName] is null: an
+  /// account from before names were asked can add one. Null hides it.
+  final VoidCallback? onAddName;
 
   /// Printed above the number like a bank card's holder name: the name given
   /// at registration (`walletCardName`); nothing is shown when null.
@@ -67,6 +72,7 @@ class WalletBalanceCard extends StatelessWidget {
               verified: verified,
               cardNumber: maskedCardNumber(phoneNumber),
               holderName: holderName,
+              onAddName: onAddName,
             ),
           ),
         ),
@@ -89,12 +95,14 @@ class _CardFace extends StatelessWidget {
     required this.verified,
     required this.cardNumber,
     this.holderName,
+    this.onAddName,
   });
 
   final num balance;
   final bool verified;
   final String cardNumber;
   final String? holderName;
+  final VoidCallback? onAddName;
 
   static const Color _ink = Colors.white;
 
@@ -200,6 +208,9 @@ class _CardFace extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 2),
+                ] else if (onAddName case final add?) ...[
+                  AddNameChip(onTap: add),
+                  const SizedBox(height: AppSpacing.xs),
                 ],
                 Row(
                   children: [
@@ -227,6 +238,61 @@ class _CardFace extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// '+ Нэрээ нэмэх' where the holder name goes, for an account without one:
+/// a see-through white pill on the card's fixed forest artwork.
+class AddNameChip extends StatelessWidget {
+  const AddNameChip({super.key, required this.onTap});
+
+  final VoidCallback onTap;
+
+  static const String label = 'Нэрээ нэмэх';
+  static const Color _ink = Colors.white;
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: onTap,
+      haptic: true,
+      scale: 0.96,
+      semanticLabel: label,
+      excludeSemantics: true,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: AppLayout.minTapTarget),
+        alignment: Alignment.centerLeft,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.xs + 2,
+          ),
+          decoration: BoxDecoration(
+            color: _ink.withValues(alpha: 0.12),
+            borderRadius: AppRadii.brPill,
+            border: Border.all(color: _ink.withValues(alpha: 0.45)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.add_rounded, size: 16, color: _ink),
+              const SizedBox(width: AppSpacing.xs),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.textStyles.label.copyWith(
+                    color: _ink,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

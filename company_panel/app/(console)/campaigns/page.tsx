@@ -85,10 +85,12 @@ export default function CampaignsPage() {
                     ) : (
                       <ClipboardList size={48} className="text-white/70" />
                     )}
-                    <div className="absolute left-3 top-3">
+                    {/* The artwork is dark in every theme: the badge gets the
+                        panel's own surface behind it, the chip fixed white ink. */}
+                    <div className="absolute left-3 top-3 rounded-md bg-[var(--color-surface)]">
                       <CampaignStatusBadge status={c.status} />
                     </div>
-                    <div className="absolute right-3 top-3 rounded-md bg-black/55 px-2 py-1 text-xs font-semibold">
+                    <div className="absolute right-3 top-3 rounded-md bg-black/55 px-2 py-1 text-xs font-semibold text-white">
                       {c.hasVideo ? `${c.durationSeconds}s` : "Судалгаа"}
                     </div>
                   </div>
@@ -133,7 +135,7 @@ export default function CampaignsPage() {
                             {formatTugrik(c.totalBudget)}
                           </div>
                         </div>
-                        <span className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3 text-xs font-semibold text-black group-hover:bg-[var(--color-primary-dark)]">
+                        <span className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3 text-xs font-semibold text-[var(--color-on-primary)] group-hover:bg-[var(--color-primary-dark)]">
                           <CreditCard size={14} /> Төлөх
                         </span>
                       </div>

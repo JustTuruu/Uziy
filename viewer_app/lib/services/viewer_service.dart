@@ -38,6 +38,26 @@ class ViewerService {
     }
   }
 
+  /// PUT /viewer/me/name — an account made before names were asked adds its
+  /// овог + нэр, once (409 'Овог, нэр аль хэдийн бүртгэгдсэн байна' after).
+  /// Returns the updated profile.
+  Future<AppUser> setName({
+    required String lastName,
+    required String firstName,
+  }) async {
+    const fallback = 'Нэрийг хадгалж чадсангүй';
+    try {
+      final r = await _dio.put<Map<String, dynamic>>(
+        '/viewer/me/name',
+        data: {'lastName': lastName.trim(), 'firstName': firstName.trim()},
+      );
+      _check(r, fallback);
+      return AppUser.fromJson(r.data!);
+    } on DioException catch (e) {
+      throw _map(e, fallback);
+    }
+  }
+
   /// GET /viewer/feed — targeted campaigns the user hasn't watched.
   Future<List<Campaign>> feed() async {
     try {

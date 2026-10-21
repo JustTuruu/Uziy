@@ -131,7 +131,7 @@ export default function BillingPage() {
                       <td className="px-5 py-3 text-right">
                         <Link
                           href={`/campaigns/${c.id}`}
-                          className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3 text-xs font-semibold text-black hover:bg-[var(--color-primary-dark)]"
+                          className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3 text-xs font-semibold text-[var(--color-on-primary)] hover:bg-[var(--color-primary-dark)]"
                         >
                           <CreditCard size={14} /> Төлөх
                         </Link>

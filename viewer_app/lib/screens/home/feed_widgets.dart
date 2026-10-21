@@ -17,19 +17,15 @@ import 'feed_logic.dart';
 // Header
 // ---------------------------------------------------------------------------
 
-/// Brand row (wordmark + appearance button), greeting line + balance pill,
-/// then the video and survey title.
+/// One top row — wordmark, balance pill, appearance button — then the video
+/// and survey title. (No time-of-day greeting: owner, 2026-10-21.)
 class FeedHeader extends StatelessWidget {
   const FeedHeader({
     super.key,
-    required this.now,
     required this.balance,
     required this.onBalanceTap,
     this.guest = false,
   });
-
-  /// Drives the greeting ('Өглөөний мэнд', ...). Injected for tests.
-  final DateTime now;
 
   /// Null while the profile is loading (the pill shows a placeholder).
   final double? balance;
@@ -41,67 +37,32 @@ class FeedHeader extends StatelessWidget {
 
   static const String title = 'Видео & судалгаа';
 
-  /// Share of the header width the balance pill may use.
-  static const double pillMaxWidthFactor = 0.62;
-
-  static IconData iconFor(DayPart part) => switch (part) {
-        DayPart.morning => Icons.wb_twilight_rounded,
-        DayPart.afternoon => Icons.wb_sunny_rounded,
-        DayPart.evening => Icons.nights_stay_rounded,
-        DayPart.night => Icons.bedtime_rounded,
-      };
-
   @override
   Widget build(BuildContext context) {
-    final part = dayPartOf(now);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Row(
+        Row(
           children: [
-            UziyWordmark(),
-            Spacer(),
-            ThemeModeButton(),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        LayoutBuilder(
-          builder: (context, box) => Row(
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    Icon(iconFor(part),
-                        size: 16, color: context.colors.primary),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        greetingFor(part),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: context.textStyles.label
-                            .copyWith(color: context.colors.textSecondary),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              // The pill may take most of the row; a huge balance scales
-              // down inside it instead of pushing the row off screen.
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: box.maxWidth * pillMaxWidthFactor,
-                ),
+            const UziyWordmark(),
+            const SizedBox(width: AppSpacing.md),
+            // The pill takes whatever the wordmark and the button leave; a
+            // huge balance scales down inside it instead of pushing the row
+            // off screen.
+            Expanded(
+              child: Align(
+                alignment: AlignmentDirectional.centerEnd,
                 child: guest
                     ? GuestSignInPill(onTap: onBalanceTap)
                     : BalancePill(balance: balance, onTap: onBalanceTap),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            const ThemeModeButton(),
+          ],
         ),
-        const SizedBox(height: AppSpacing.lg),
+        const SizedBox(height: AppSpacing.xl),
         Semantics(
           header: true,
           child: Text(title, style: context.textStyles.pageTitle),

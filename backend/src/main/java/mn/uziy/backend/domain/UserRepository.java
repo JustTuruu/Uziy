@@ -22,6 +22,17 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
      * Atomically takes {@code amount} from the balance, only if that much is there. Returns 1 when it
      * did, 0 when the balance was too small — so two parallel withdrawals can never spend the same money.
      */
+    /**
+     * Gives a name to an account made before registration asked for one, once: only while BOTH names are still
+     * empty and only for {@code role}. One conditional UPDATE, so two racing requests cannot both write. 0 = not
+     * changed (the names were already set, or the user is not of that role).
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE UserEntity u SET u.lastName = :lastName, u.firstName = :firstName "
+            + "WHERE u.id = :id AND u.role = :role AND u.lastName IS NULL AND u.firstName IS NULL")
+    int trySetNameOnce(@Param("id") long id, @Param("role") Role role, @Param("lastName") String lastName,
+                       @Param("firstName") String firstName);
+
     @Modifying(flushAutomatically = true)
     @Query("UPDATE UserEntity u SET u.balance = u.balance - :amount WHERE u.id = :id AND u.balance >= :amount")
     int tryDeductBalance(@Param("id") long id, @Param("amount") double amount);

@@ -1,12 +1,22 @@
 import 'package:flutter/material.dart';
 
+import '../../widgets/stats_consent.dart';
 import '../../widgets/ui.dart';
 import 'privacy_content.dart';
 import 'profile_page_shell.dart';
 
 /// Privacy-policy page: an intro banner followed by titled sections.
+///
+/// The anonymous-statistics switch lives here, under its own section (owner,
+/// 2026-10-21: off the Profile list). The consent must stay revocable, and
+/// this is the place the Home prompt and the policy point to.
 class PrivacyScreen extends StatelessWidget {
-  const PrivacyScreen({super.key});
+  const PrivacyScreen({
+    super.key,
+    this.statsApi = const ViewerStatisticsConsentApi(),
+  });
+
+  final StatisticsConsentApi statsApi;
 
   @override
   Widget build(BuildContext context) {
@@ -17,6 +27,10 @@ class PrivacyScreen extends StatelessWidget {
         for (final section in kPrivacySections) ...[
           const SizedBox(height: AppSpacing.xxl),
           PolicySectionView(section: section),
+          if (section.heading == kStatsSectionHeading) ...[
+            const SizedBox(height: AppSpacing.md),
+            GroupedCard(children: [StatsConsentTile(api: statsApi)]),
+          ],
         ],
       ],
     );

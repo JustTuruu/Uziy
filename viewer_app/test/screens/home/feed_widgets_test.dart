@@ -326,7 +326,6 @@ void main() {
       await _pump(
         tester,
         FeedHeader(
-          now: DateTime(2026, 9, 28, 8),
           balance: null,
           guest: true,
           onBalanceTap: () => taps++,
@@ -340,20 +339,30 @@ void main() {
       expect(taps, 1);
     });
 
-    testWidgets('header greets by time of day and shows the title',
+    testWidgets('header: one top row and the title, no greeting',
         (tester) async {
       var taps = 0;
       await _pump(
         tester,
         FeedHeader(
-          now: DateTime(2026, 9, 28, 8),
           balance: 700,
           onBalanceTap: () => taps++,
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Өглөөний мэнд'), findsOneWidget);
+      // Owner, 2026-10-21: no 'Өглөөний / Өдрийн / Оройн мэнд' line.
+      expect(find.textContaining('мэнд'), findsNothing);
+      expect(find.text('Сайн байна уу'), findsNothing);
       expect(find.text('Видео & судалгаа'), findsOneWidget);
+      // Wordmark, balance and the appearance button share the top row.
+      final top = tester.getCenter(find.byType(UziyWordmark)).dy;
+      expect(tester.getCenter(find.byType(BalancePill)).dy, closeTo(top, 1));
+      expect(
+          tester.getCenter(find.byType(ThemeModeButton)).dy, closeTo(top, 1));
+      expect(
+        tester.getTopRight(find.byType(BalancePill)).dx,
+        lessThan(tester.getTopLeft(find.byType(ThemeModeButton)).dx),
+      );
       expect(
         tester.widget<Text>(find.text('Видео & судалгаа')).style?.fontSize,
         AppTextStyles.pageTitle.fontSize,
@@ -376,7 +385,6 @@ void main() {
       await _pump(
         tester,
         FeedHeader(
-          now: DateTime(2026, 9, 28, 20),
           balance: 1234567,
           onBalanceTap: () {},
         ),
@@ -384,7 +392,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
-      expect(find.text('Оройн мэнд'), findsOneWidget);
+      expect(find.byType(BalancePill), findsOneWidget);
     });
   });
 

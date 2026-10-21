@@ -11,6 +11,7 @@ import '../../services/auth_service.dart';
 import '../../services/auto_refresher.dart';
 import '../../services/viewer_service.dart';
 import '../../widgets/ui.dart';
+import 'add_name_sheet.dart';
 import 'wallet_logic.dart';
 import 'wallet_widgets.dart';
 
@@ -123,6 +124,22 @@ class _WalletScreenState extends State<WalletScreen> {
     if (mounted) await _refresher.refresh();
   }
 
+  /// An account from before names were asked adds its овог + нэр, once.
+  Future<void> _addName() async {
+    final saved = await showAddNameSheet(
+      context,
+      onSave: (lastName, firstName) async {
+        final me = await ViewerService.instance
+            .setName(lastName: lastName, firstName: firstName);
+        if (mounted) setState(() => _me = me);
+      },
+    );
+    if (saved == true && mounted) {
+      ScaffoldMessenger.maybeOf(context)
+          ?.showSnackBar(const SnackBar(content: Text(kAddNameSaved)));
+    }
+  }
+
   /// Retry from the error banner: clear the error (so the skeleton shows
   /// again while nothing is loaded yet) and reload.
   void _retry() {
@@ -201,6 +218,8 @@ class _WalletScreenState extends State<WalletScreen> {
 
   List<Widget> _balanceSection(AppUser me) {
     final canPayout = canRequestPayout(me.balance);
+    final holderName =
+        walletCardName(lastName: me.lastName, firstName: me.firstName);
     return [
       FadeSlideIn(
         index: 1,
@@ -208,10 +227,8 @@ class _WalletScreenState extends State<WalletScreen> {
           balance: me.balance,
           verified: me.isVerified,
           phoneNumber: me.phoneNumber,
-          holderName: walletCardName(
-            lastName: me.lastName,
-            firstName: me.firstName,
-          ),
+          holderName: holderName,
+          onAddName: holderName == null ? _addName : null,
           progress: payoutProgress(me.balance),
         ),
       ),

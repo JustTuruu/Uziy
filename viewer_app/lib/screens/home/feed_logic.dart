@@ -120,27 +120,6 @@ bool shouldShowFilter(FeedSummary s) => s.hasBothKinds;
 FeedFilter effectiveFilter(FeedFilter selected, FeedSummary s) =>
     shouldShowFilter(s) ? selected : FeedFilter.all;
 
-/// Coarse time of day for the header greeting.
-enum DayPart { morning, afternoon, evening, night }
-
-/// 05:00-11:59 morning, 12:00-17:59 afternoon, 18:00-22:59 evening,
-/// otherwise night.
-DayPart dayPartOf(DateTime time) {
-  final h = time.hour;
-  if (h >= 5 && h < 12) return DayPart.morning;
-  if (h >= 12 && h < 18) return DayPart.afternoon;
-  if (h >= 18 && h < 23) return DayPart.evening;
-  return DayPart.night;
-}
-
-/// Polite greeting for the header.
-String greetingFor(DayPart part) => switch (part) {
-      DayPart.morning => 'Өглөөний мэнд',
-      DayPart.afternoon => 'Өдрийн мэнд',
-      DayPart.evening => 'Оройн мэнд',
-      DayPart.night => 'Сайн байна уу',
-    };
-
 /// Card call-to-action: watch a video, or fill in a survey.
 String campaignCtaLabel(Campaign c) => c.hasVideo ? 'Үзэх' : 'Бөглөх';
 

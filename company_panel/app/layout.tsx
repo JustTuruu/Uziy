@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { consoleFont } from "@uziy/ui/fonts";
 import "./globals.css";
 
 // Base URL for resolving relative asset paths in Open Graph / Twitter cards.
@@ -33,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="mn" className="h-full antialiased">
+    <html lang="mn" className={`${consoleFont.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

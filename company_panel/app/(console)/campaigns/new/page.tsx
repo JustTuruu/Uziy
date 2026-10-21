@@ -862,9 +862,9 @@ function Stepper({
               className={cn(
                 "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-bold",
                 done &&
-                  "border-[var(--color-success)] bg-[var(--color-success)] text-black",
+                  "border-[var(--color-success)] bg-[var(--color-success)] text-[var(--color-on-success)]",
                 active &&
-                  "border-[var(--color-primary)] bg-[var(--color-primary)] text-black",
+                  "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-on-primary)]",
                 !done &&
                   !active &&
                   "border-[var(--color-divider)] text-[var(--color-text-muted)]",

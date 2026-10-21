@@ -314,30 +314,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: _FormSection(
                         title: 'Таны тухай',
                         children: [
-                          LabeledField(
-                            label: 'Овог',
-                            child: TextFormField(
-                              controller: _lastNameCtrl,
-                              textCapitalization: TextCapitalization.words,
-                              textInputAction: TextInputAction.next,
-                              autofillHints: const [AutofillHints.familyName],
-                              style: context.textStyles.body,
-                              decoration: const InputDecoration(),
-                              validator: AuthValidators.lastName,
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          LabeledField(
-                            label: 'Нэр',
-                            child: TextFormField(
-                              controller: _firstNameCtrl,
-                              textCapitalization: TextCapitalization.words,
-                              textInputAction: TextInputAction.done,
-                              autofillHints: const [AutofillHints.givenName],
-                              style: context.textStyles.body,
-                              decoration: const InputDecoration(),
-                              validator: AuthValidators.firstName,
-                            ),
+                          PersonNameFields(
+                            lastName: _lastNameCtrl,
+                            firstName: _firstNameCtrl,
                           ),
                           const SizedBox(height: AppSpacing.lg),
                           const FieldLabel('Хүйс'),

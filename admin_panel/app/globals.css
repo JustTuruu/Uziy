@@ -1,65 +1,7 @@
 @import "tailwindcss";
 @import "../../packages/ui/src/theme.css";
+/* White console look + Rubik sizes, shared with the company panel. */
+@import "../../packages/ui/src/theme-light.css";
 
 /* Tailwind must scan the shared components for class names. */
 @source "../../packages/ui/src";
-
-/* Admin panel: plain white (owner, 2026-10-21). Only the token VALUES change;
-   every shared component reads these variables, so nothing is forked. The
-   company panel keeps the dark defaults from theme.css.
-   Unlayered :root beats Tailwind's @layer theme, whatever the import order.
-   Text colours meet WCAG AA on white and on the elevated grey — app/theme.test.ts
-   checks it. */
-:root {
-  color-scheme: light;
-
-  --color-background: #ffffff;
-  --color-surface: #ffffff;
-  --color-surface-elevated: #f6f7f9;
-  --color-surface-hover: #f1f3f6;
-  --color-sidebar: #ffffff;
-
-  /* The brand gold, deepened so it reads as text on white; fills carry white. */
-  --color-primary: #975b06;
-  --color-primary-dark: #854d0e;
-  --color-primary-deep: #854d0e;
-  --color-on-primary: #ffffff;
-
-  --color-accent: #2563eb;
-  --color-success: #15803d;
-  --color-on-success: #ffffff;
-  --color-danger: #cf2222;
-  --color-on-danger: #ffffff;
-  --color-warning: #b45309;
-
-  --color-text-primary: #0f172a;
-  --color-text-secondary: #475569;
-  --color-text-muted: #5b6474;
-
-  --color-divider: #e5e7eb;
-  --color-border-strong: #d1d5db;
-
-  /* Type (owner, 2026-10-21): the soft Rubik face (loaded in layout.tsx) and
-     every small UI size one pixel larger than the shared defaults. */
-  --font-sans: var(--font-rubik), ui-sans-serif, system-ui, -apple-system,
-    "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-  --text-4xs: 0.625rem; /* 10px */
-  --text-3xs: 0.6875rem; /* 11px */
-  --text-2xs: 0.75rem; /* 12px */
-  --text-xs: 0.8125rem; /* 13px */
-  --text-ui: 0.875rem; /* 14px */
-  --text-sm: 0.9375rem; /* 15px */
-
-  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.06), 0 0 0 1px rgb(15 23 42 / 0.02);
-  --shadow-popover: 0 12px 32px rgb(15 23 42 / 0.12),
-    0 2px 6px rgb(15 23 42 / 0.06);
-}
-
-/* No ambient glow: a plain white page. Rubik needs no tightening (the shared
-   negative tracking suits Inter) and has no Inter stylistic sets; keep only
-   tabular figures so amounts line up. */
-body {
-  background-image: none;
-  letter-spacing: normal;
-  font-feature-settings: "tnum";
-}

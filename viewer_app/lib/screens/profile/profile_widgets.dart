@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import '../../models/user.dart';
 import '../../widgets/ui.dart';
 import '../../widgets/appearance_settings.dart';
-import '../../widgets/stats_consent.dart';
 import 'profile_logic.dart';
 
 // Presentational pieces of the profile tab. Nothing here imports the router:
@@ -943,7 +942,6 @@ class ProfileBody extends StatelessWidget {
               GroupedCard(
                 children: [
                   const AppearanceSettings(),
-                  if (canAskStatsConsent(user?.age)) const StatsConsentTile(),
                   InfoRow(
                     icon: AppIcons.history,
                     iconColor: context.colors.accent,
