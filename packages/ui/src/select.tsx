@@ -162,7 +162,7 @@ export function Select({
           role="listbox"
           aria-labelledby={label ? labelId : undefined}
           aria-label={label ? undefined : rest["aria-label"]}
-          className="absolute left-0 z-30 mt-1.5 max-h-64 w-max min-w-full max-w-[min(28rem,90vw)] overflow-auto rounded-xl border border-[var(--color-border-strong)] bg-[var(--color-surface-elevated)] p-1 shadow-[0_16px_40px_rgb(0_0_0/0.55)]"
+          className="absolute left-0 z-30 mt-1.5 max-h-64 w-max min-w-full max-w-[min(28rem,90vw)] overflow-auto rounded-xl border border-[var(--color-border-strong)] bg-[var(--color-surface-elevated)] p-1 shadow-[var(--shadow-popover)]"
         >
           {options.map((option, index) => {
             const selected = index === selectedIndex;

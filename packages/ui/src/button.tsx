@@ -23,15 +23,15 @@ interface LinkProps
 
 const variants: Record<Variant, string> = {
   primary:
-    "bg-[var(--color-primary)] text-[#14110a] shadow-[0_1px_0_rgb(255_255_255/0.35)_inset,0_1px_2px_rgb(0_0_0/0.4)] hover:bg-[var(--color-primary-dark)] disabled:bg-[var(--color-surface-elevated)] disabled:text-[var(--color-text-muted)]",
+    "bg-[var(--color-primary)] text-[var(--color-on-primary)] shadow-[0_1px_0_rgb(255_255_255/0.35)_inset,0_1px_2px_rgb(0_0_0/0.4)] hover:bg-[var(--color-primary-dark)] disabled:bg-[var(--color-surface-elevated)] disabled:text-[var(--color-text-muted)]",
   secondary:
     "bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border-strong)]",
   ghost:
     "bg-transparent text-[var(--color-text-primary)] hover:bg-[var(--color-surface-elevated)]",
   danger:
-    "bg-[var(--color-danger)] text-white hover:brightness-110 disabled:opacity-40",
+    "bg-[var(--color-danger)] text-[var(--color-on-danger)] hover:brightness-110 disabled:opacity-40",
   success:
-    "bg-[var(--color-success)] text-[#04120c] hover:brightness-110 disabled:opacity-40",
+    "bg-[var(--color-success)] text-[var(--color-on-success)] hover:brightness-110 disabled:opacity-40",
 };
 
 const sizes: Record<Size, string> = {

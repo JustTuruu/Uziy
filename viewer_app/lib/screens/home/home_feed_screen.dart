@@ -277,7 +277,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                         child: Center(
                           child: EmptyState(
                             icon: Icons.video_library_outlined,
-                            title: 'Одоогоор видео алга байна',
+                            title: 'Одоогоор судалгаа алга байна',
                             message: 'Дараа дахин шалгаарай. Шинэ видео, '
                                 'судалгаа нэмэгдэхэд энд харагдана.',
                             action: AppButton(
@@ -304,14 +304,14 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                       ),
                     ),
                     SliverPadding(
-                      padding: pad(top: AppSpacing.xxl),
+                      padding: pad(top: AppSpacing.xl),
                       sliver: SliverToBoxAdapter(
                         child: Row(
                           children: [
                             Expanded(
-                                child: Text('Танд зориулсан',
+                                child: Text('Шинээр нэмэгдсэн',
                                     style: context.textStyles.title)),
-                            Text('${visible.length} боломж',
+                            Text('${visible.length}',
                                 style: context.textStyles.caption),
                           ],
                         ),
@@ -320,7 +320,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                     if (showFilter)
                       SliverPadding(
                         key: const ValueKey('feed-filter'),
-                        padding: pad(top: AppSpacing.xl),
+                        padding: pad(top: AppSpacing.md),
                         sliver: SliverToBoxAdapter(
                           child: FadeSlideIn(
                             index: 1,

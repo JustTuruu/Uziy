@@ -33,7 +33,7 @@ export function Sidebar({ brand, subtitle, items, footer }: Props) {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col border-r border-[var(--color-divider)] bg-[color-mix(in_oklab,var(--color-surface)_92%,black)]">
+    <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col border-r border-[var(--color-divider)] bg-[var(--color-sidebar)]">
       <div className="flex h-14 items-center gap-2.5 border-b border-[var(--color-divider)] px-4">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white shadow-[0_0_0_1px_rgb(255_255_255/0.08)]">
           <Image
@@ -187,7 +187,7 @@ export function SidebarUser({
   return (
     <div className="flex items-center justify-between gap-2 rounded-lg p-1.5">
       <div className="flex min-w-0 items-center gap-2.5">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#b8860b] text-[11px] font-bold text-[#14110a]">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-primary-deep)] text-[11px] font-bold text-[var(--color-on-primary)]">
           {initials}
         </div>
         <div className="min-w-0">

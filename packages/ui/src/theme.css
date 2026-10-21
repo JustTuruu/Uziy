@@ -7,8 +7,17 @@
   --color-surface: #111317;
   --color-surface-elevated: #181b21;
   --color-surface-hover: #1d2128;
+  /* The fixed left sidebar: a shade darker than the page on the dark theme. */
+  --color-sidebar: color-mix(in oklab, var(--color-surface) 92%, black);
   --color-primary: #f5c518;
   --color-primary-dark: #d9ac0a;
+  /* End of the gold gradient on avatars. */
+  --color-primary-deep: #b8860b;
+  /* Text/icons drawn ON a filled primary / success / danger surface. A panel
+     that changes those fills (admin's light theme) changes these with them. */
+  --color-on-primary: #14110a;
+  --color-on-success: #04120c;
+  --color-on-danger: #ffffff;
   --color-accent: #5b9dff;
   --color-success: #34d399;
   --color-danger: #f87171;
@@ -20,6 +29,8 @@
   --color-border-strong: #2d323d;
   --shadow-card: 0 1px 0 rgb(255 255 255 / 0.03) inset,
     0 1px 2px rgb(0 0 0 / 0.4);
+  /* Floating menus (Select's listbox). */
+  --shadow-popover: 0 16px 40px rgb(0 0 0 / 0.55);
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system,
     "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Monaco, "Cascadia Mono",
@@ -95,7 +106,7 @@ td {
 
 ::selection {
   background: var(--color-primary);
-  color: #000;
+  color: var(--color-on-primary);
 }
 
 /* Scrollbar */

@@ -41,7 +41,7 @@ export function SegmentedControl<T extends string>({
             className={cn(
               "rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
               selected
-                ? "bg-[var(--color-primary)] text-[#14110a]"
+                ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]"
                 : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]",
             )}
           >

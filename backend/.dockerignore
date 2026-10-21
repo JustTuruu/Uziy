@@ -1,0 +1,11 @@
+# Only gradle files + src go into the image. Never bake local secrets (.env) in.
+build
+bin
+.gradle
+.env
+.env.*
+dev
+pgadmin
+HELP.md
+*.iml
+.idea

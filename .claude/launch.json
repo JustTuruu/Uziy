@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "admin-panel",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["-C", "admin_panel", "dev"],
+      "port": 3001
+    }
+  ]
+}

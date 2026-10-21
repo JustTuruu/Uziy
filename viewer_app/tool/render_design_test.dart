@@ -84,7 +84,7 @@ void main() {
           const SizedBox(height: 20),
           EarningsHeroCard(summary: summarizeFeed(campaigns)),
           const SizedBox(height: 24),
-          const SectionHeader(title: 'Танд зориулсан'),
+          const SectionHeader(title: 'Шинээр нэмэгдсэн'),
           const SizedBox(height: 16),
           FeedFilterBar(value: FeedFilter.all, onChanged: (_) {}),
           const SizedBox(height: 16),

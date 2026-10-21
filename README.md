@@ -299,6 +299,33 @@ uziy/
 
 Verify with `flutter doctor` and `docker info`.
 
+### Run everything with Docker (one command)
+
+Postgres, the backend and both consoles, from the repo root:
+
+```bash
+docker compose up -d --build     # first build takes a few minutes
+```
+
+| Service | URL |
+|---|---|
+| Company console | http://localhost:3000 |
+| Super Admin console | http://localhost:3001 |
+| Backend API | http://localhost:8080 |
+| pgAdmin | http://localhost:5050 |
+
+```bash
+docker compose logs -f backend   # backend log (prints the dev "simulated SMS" curl)
+docker compose up -d --build     # after pulling or editing code: rebuild what changed
+docker compose down              # stop everything; the database is kept
+```
+
+Local secrets (`PHONE_VERIFICATION_PROVIDER`, `VERIFY_MN_API_KEY`, …) come from
+`backend/.env` when it exists (see `backend/.env.example`). The images are
+production builds, so code changes need `--build`; for hot reload use the
+three-terminal setup below (stop the Docker copy first with
+`docker compose stop backend admin company`, or the ports clash).
+
 ### Run the whole stack in three terminals
 
 **Terminal 1 — Backend + Postgres**

@@ -124,6 +124,12 @@ asked, say so and propose the compliant way instead of silently bending it.
    (or another `useSyncExternalStore` hook), **never** `auth.getUser()` during
    render (hydration mismatch) and **never** `setState` synchronously inside
    `useEffect` (ESLint `react-hooks/set-state-in-effect`).
+   **Admin panel is light (owner, 2026-10-21)**: `admin_panel/app/globals.css` overrides the token VALUES in an
+   unlayered `:root` (white page/surfaces/sidebar, deep amber `--color-primary` #975b06 with white text on it,
+   darker success/danger/warning/accent); the company panel keeps the dark defaults. Text on a filled control
+   uses `--color-on-primary` / `--color-on-success` / `--color-on-danger` (never a hex); the sidebar uses
+   `--color-sidebar`, floating menus `--shadow-popover`. `admin_panel/app/theme.test.ts` checks WCAG AA for the
+   light palette and that the shared dark defaults did not move.
 4. **Whole-number inputs** use `NumericInput`; never `type="number"` +
    `Number(value)`.
 5. The company panel shows the **company's own name** (sidebar subtitle,
@@ -426,6 +432,16 @@ cd backend
 docker compose up -d postgres
 ./gradlew bootRun     # migrations + dev seed run automatically
 ```
+
+**Or the whole stack in Docker (2026-10-21)** — from the repo root: `docker compose up -d --build` starts
+postgres + pgAdmin (included from `backend/docker-compose.yml`), the backend (`backend/Dockerfile`, :8080, healthcheck
+on `/actuator/health`) and both panels (one shared `docker/next-panel.Dockerfile`, build arg `APP`; company :3000,
+admin :3001; `NEXT_PUBLIC_API_BASE_URL` is baked at build time, default `http://localhost:8080`, override with
+`API_BASE_URL=… docker compose build`). The backend container reads `backend/.env` if present; `DB_URL` etc. are set by
+compose. Both compose files are project **`uziy`**; the DB volumes are pinned to their old names
+(`backend_uziy_pgdata`, `backend_uziy_pgadmin`) so existing data was kept. Images are production builds: code changes
+need `--build`; for hot reload stop the Docker services and use `bootRun` / `pnpm dev`. `.dockerignore` files keep
+`.env` and `node_modules` out of the images. Landing and the Flutter app are not in the stack.
 
 **Proven working end-to-end (smoke tests done this session):**
 

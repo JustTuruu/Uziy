@@ -125,7 +125,7 @@ export default function AdminLayout({
               >
                 <Bell size={15} />
                 {pending > 0 && (
-                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-primary)] px-1 text-[9px] font-bold text-[#14110a]">
+                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-primary)] px-1 text-[9px] font-bold text-[var(--color-on-primary)]">
                     {pending}
                   </span>
                 )}

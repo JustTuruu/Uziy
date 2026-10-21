@@ -1,0 +1,79 @@
+# Whole local stack in one command, from the repo root:
+#
+#   docker compose up -d --build     # build + start (first build takes a few minutes)
+#   docker compose logs -f backend   # backend log (prints the dev SMS curl)
+#   docker compose down              # stop (data is kept)
+#
+#   company panel  http://localhost:3000
+#   admin panel    http://localhost:3001
+#   backend API    http://localhost:8080
+#   pgAdmin        http://localhost:5050
+#
+# Local secrets (VERIFY_MN_API_KEY, PHONE_VERIFICATION_PROVIDER, ...) are read from
+# backend/.env when it exists; see backend/.env.example. This stack is for local
+# development only — it uses the dev database password and dev JWT secret.
+name: uziy
+
+include:
+  - backend/docker-compose.yml # postgres + pgadmin
+
+x-panel: &panel
+  restart: unless-stopped
+  depends_on:
+    backend:
+      # A panel that answers can log in straight away.
+      condition: service_healthy
+
+services:
+  backend:
+    build: ./backend
+    container_name: uziy-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - path: backend/.env
+        required: false
+    environment:
+      # Inside the compose network the database is the "postgres" service. These
+      # win over anything in backend/.env.
+      DB_URL: jdbc:postgresql://postgres:5432/uziy
+      DB_USER: uziy
+      DB_PASSWORD: uziy_dev
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  company:
+    <<: *panel
+    build:
+      context: .
+      dockerfile: docker/next-panel.Dockerfile
+      args:
+        APP: company_panel
+        NEXT_PUBLIC_API_BASE_URL: ${API_BASE_URL:-http://localhost:8080}
+    container_name: uziy-company
+    environment:
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+
+  admin:
+    <<: *panel
+    build:
+      context: .
+      dockerfile: docker/next-panel.Dockerfile
+      args:
+        APP: admin_panel
+        NEXT_PUBLIC_API_BASE_URL: ${API_BASE_URL:-http://localhost:8080}
+    container_name: uziy-admin
+    environment:
+      PORT: "3001"
+    ports:
+      - "3001:3001"

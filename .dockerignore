@@ -1,0 +1,20 @@
+# Build context for the Next.js panel images (docker/next-panel.Dockerfile).
+# Only the pnpm workspace manifests, packages/ui and the two panels are needed.
+.git
+.claude
+.impeccable
+backend
+viewer_app
+docs
+brand
+landing/*
+!landing/package.json
+**/node_modules
+**/.next
+**/.turbo
+**/coverage
+**/*.tsbuildinfo
+**/.env
+**/.env.*
+!**/.env.example
+**/.DS_Store

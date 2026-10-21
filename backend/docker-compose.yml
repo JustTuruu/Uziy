@@ -1,3 +1,8 @@
+# Database (+ pgAdmin) for local development. The root docker-compose.yml includes
+# this file and adds the backend and both panels; `cd backend && docker compose up -d
+# postgres` still starts just the database. Both files are the same project ("uziy").
+name: uziy
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -37,6 +42,10 @@ services:
       - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
       - uziy_pgadmin:/var/lib/pgadmin
 
+# Pinned names: the data created before 2026-10-21 (when this was project "backend")
+# lives in these volumes, so it survives whichever compose file starts the database.
 volumes:
   uziy_pgdata:
+    name: backend_uziy_pgdata
   uziy_pgadmin:
+    name: backend_uziy_pgadmin

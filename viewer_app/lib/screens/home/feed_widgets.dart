@@ -18,7 +18,7 @@ import 'feed_logic.dart';
 // ---------------------------------------------------------------------------
 
 /// Brand row (wordmark + appearance button), greeting line + balance pill,
-/// then the big 'Шинэ судалгаанууд' title.
+/// then the video and survey title.
 class FeedHeader extends StatelessWidget {
   const FeedHeader({
     super.key,
@@ -39,7 +39,7 @@ class FeedHeader extends StatelessWidget {
   /// ([onBalanceTap] then opens sign-in).
   final bool guest;
 
-  static const String title = 'Шинэ судалгаанууд';
+  static const String title = 'Видео & судалгаа';
 
   /// Share of the header width the balance pill may use.
   static const double pillMaxWidthFactor = 0.62;
@@ -65,7 +65,7 @@ class FeedHeader extends StatelessWidget {
             ThemeModeButton(),
           ],
         ),
-        const SizedBox(height: AppSpacing.xxl),
+        const SizedBox(height: AppSpacing.lg),
         LayoutBuilder(
           builder: (context, box) => Row(
             children: [
@@ -238,7 +238,7 @@ class BalancePill extends StatelessWidget {
 // Earning-potential hero
 // ---------------------------------------------------------------------------
 
-/// Gold hero card: what the whole current feed is worth, counted up, with
+/// Compact earnings overview with a counted-up total and
 /// '2 видео · 1 судалгаа' underneath and a decorative coin stack.
 class EarningsHeroCard extends StatelessWidget {
   const EarningsHeroCard({super.key, required this.summary});
@@ -269,9 +269,16 @@ class EarningsHeroCard extends StatelessWidget {
     return MergeSemantics(
       child: AppCard(
         padding: EdgeInsets.zero,
-        gradient: context.gradients.goldSoft,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            context.colors.primary,
+            context.colors.primary.withValues(alpha: 0.88)
+          ],
+        ),
         radius: AppRadii.xl,
-        borderColor: context.colors.border,
+        borderColor: Colors.transparent,
         child: LayoutBuilder(
           builder: (context, constraints) {
             final showCoins = showsCoins(
@@ -291,20 +298,23 @@ class EarningsHeroCard extends StatelessWidget {
                           children: [
                             Text(label,
                                 style: context.textStyles.label
-                                    .copyWith(color: context.colors.primary)),
-                            const SizedBox(height: 12),
+                                    .copyWith(color: context.colors.onPrimary)),
+                            const SizedBox(height: 6),
                             FittedBox(
                               fit: BoxFit.scaleDown,
                               child: AnimatedMoney(
                                 value: summary.totalReward,
-                                style: context.textStyles.moneyLarge
-                                    .copyWith(color: context.colors.primary),
+                                style: context.textStyles.moneyLarge.copyWith(
+                                    color: context.colors.onPrimary,
+                                    fontSize: 32),
                               ),
                             ),
                             if (caption.isNotEmpty) ...[
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 8),
                               Text(caption,
-                                  style: context.textStyles.bodySmall),
+                                  style: context.textStyles.caption.copyWith(
+                                      color: context.colors.onPrimary
+                                          .withValues(alpha: 0.8))),
                             ],
                           ],
                         ),
@@ -349,7 +359,7 @@ class _CoinStack extends StatelessWidget {
 // Filter
 // ---------------------------------------------------------------------------
 
-/// 'Бүгд / Видео / Судалгаа' segmented control with a sliding gold pill.
+/// 'Бүгд / Видео / Судалгаа' segmented control with a sliding accent pill.
 /// Each segment is a full-height (48) tap target; changing the selection
 /// plays a selection haptic.
 class FeedFilterBar extends StatelessWidget {
@@ -374,9 +384,8 @@ class FeedFilterBar extends StatelessWidget {
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: context.colors.surface,
+        color: context.colors.surfaceElevated,
         borderRadius: AppRadii.brMd,
-        border: Border.all(color: context.colors.border),
       ),
       child: Stack(
         fit: StackFit.expand,
@@ -394,12 +403,6 @@ class FeedFilterBar extends StatelessWidget {
                   decoration: BoxDecoration(
                     gradient: context.gradients.gold,
                     borderRadius: AppRadii.brSm,
-                    boxShadow: AppShadows.glow(
-                      context.colors.primary,
-                      strength: 0.45,
-                      blur: 12,
-                      offset: const Offset(0, 3),
-                    ),
                   ),
                 ),
               ),
@@ -502,21 +505,22 @@ class CampaignCard extends StatelessWidget {
       semanticLabel: campaignSemanticLabel(c),
       excludeSemantics: true,
       child: AppCard(
-        padding: const EdgeInsets.all(10),
-        radius: 24,
+        padding: EdgeInsets.zero,
+        radius: 20,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(20)),
               child: AspectRatio(
                 aspectRatio: 16 / 9,
                 child: _CardArt(campaign: c),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(6, 16, 6, 6),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -540,22 +544,11 @@ class CampaignCard extends StatelessWidget {
                   ],
                   CardTitle(title: c.title),
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Divider(height: 1, color: context.colors.border),
                   ),
                   LayoutBuilder(builder: (context, constraints) {
-                    final reward = Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('Урамшуулал',
-                            style: context.textStyles.caption.copyWith(
-                              color: context.colors.textSecondary,
-                            )),
-                        const SizedBox(height: 6),
-                        RewardChip(amount: c.rewardPerUser),
-                      ],
-                    );
+                    final reward = RewardChip(amount: c.rewardPerUser);
                     final action = _CardCta(label: campaignCtaLabel(c));
                     if (constraints.maxWidth < 260 ||
                         MediaQuery.textScalerOf(context).scale(14) > 21) {
@@ -565,7 +558,9 @@ class CampaignCard extends StatelessWidget {
                       );
                     }
                     return Row(children: [
-                      Expanded(child: reward),
+                      Expanded(
+                          child: Align(
+                              alignment: Alignment.centerLeft, child: reward)),
                       const SizedBox(width: 12),
                       action,
                     ]);
@@ -820,21 +815,21 @@ class CampaignCardSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      radius: 24,
-      padding: const EdgeInsets.all(10),
+      radius: 20,
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             child: AspectRatio(
               aspectRatio: 16 / 9,
               child: ColoredBox(color: context.colors.surfaceElevated),
             ),
           ),
           const Padding(
-            padding: EdgeInsets.fromLTRB(6, 16, 6, 6),
+            padding: EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,

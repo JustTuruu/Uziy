@@ -353,9 +353,9 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Өглөөний мэнд'), findsOneWidget);
-      expect(find.text('Шинэ судалгаанууд'), findsOneWidget);
+      expect(find.text('Видео & судалгаа'), findsOneWidget);
       expect(
-        tester.widget<Text>(find.text('Шинэ судалгаанууд')).style?.fontSize,
+        tester.widget<Text>(find.text('Видео & судалгаа')).style?.fontSize,
         AppTextStyles.pageTitle.fontSize,
         reason: 'the home title uses the smaller tab-title size',
       );
