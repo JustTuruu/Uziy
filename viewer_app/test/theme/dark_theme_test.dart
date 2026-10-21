@@ -27,6 +27,24 @@ Future<T> _under<T>(
   return result;
 }
 
+/// Largest channel minus smallest: a grey with a hint of temperature is fine
+/// (≤ 12/255), a visible tint is not. The old forest greys reached 21/255.
+const double _maxNeutralChroma = 12 / 255;
+
+/// How far green may rise above red and blue in a neutral.
+const double _maxGreenLead = 2 / 255;
+
+double _chroma(Color c) {
+  final channels = [c.r, c.g, c.b];
+  return channels.reduce((a, b) => a > b ? a : b) -
+      channels.reduce((a, b) => a < b ? a : b);
+}
+
+double _greenLead(Color c) => c.g - (c.r > c.b ? c.r : c.b);
+
+/// The old mint (#9ADBB5) was 0.47 — loud on a big fill at night.
+const double _maxAccentSaturation = 0.36;
+
 void main() {
   const dark = AppPalette(true);
   const light = AppPalette(false);
@@ -84,6 +102,46 @@ void main() {
       for (final c in [dark.background, dark.surface, dark.surfaceElevated]) {
         expect(c.computeLuminance(), lessThan(0.05));
       }
+    });
+  });
+
+  // Owner, 2026-10-21: the green-tinted dark mode was tiring to look at.
+  group('dark palette: neutral, with green only as a quiet accent', () {
+    double saturation(Color c) => HSLColor.fromColor(c).saturation;
+
+    test('backgrounds, surfaces, greys and lines carry no colour tint', () {
+      final neutrals = {
+        'background': dark.background,
+        'backgroundDeep': dark.backgroundDeep,
+        'surface': dark.surface,
+        'surfaceElevated': dark.surfaceElevated,
+        'surfaceHighlight': dark.surfaceHighlight,
+        'textPrimary': dark.textPrimary,
+        'textSecondary': dark.textSecondary,
+        'textTertiary': dark.textTertiary,
+        'divider': dark.divider,
+        'border': dark.border,
+        'borderStrong': dark.borderStrong,
+        'handle': dark.handle,
+      };
+      for (final e in neutrals.entries) {
+        expect(_chroma(e.value), lessThanOrEqualTo(_maxNeutralChroma),
+            reason: '${e.key} ${e.value} looks tinted');
+        expect(_greenLead(e.value), lessThanOrEqualTo(_maxGreenLead),
+            reason: '${e.key} ${e.value} leans green');
+      }
+    });
+
+    test('the action colour is a soft sage, not a bright mint', () {
+      for (final c in [dark.primaryLight, dark.primary, dark.primaryDeep]) {
+        expect(saturation(c), lessThanOrEqualTo(_maxAccentSaturation),
+            reason: '$c is too saturated for large dark-mode fills');
+      }
+    });
+
+    test('the ink on the action colour is AA on every action shade', () {
+      expect(_contrast(dark.onPrimary, dark.primaryDark),
+          greaterThanOrEqualTo(4.5));
     });
   });
 

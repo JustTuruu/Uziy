@@ -2,52 +2,57 @@ import 'package:flutter/material.dart';
 import 'app_theme.dart';
 
 /// Scoped semantic colors. Never depends on mutable global theme state.
+///
+/// Dark appearance (owner, 2026-10-21: the green-tinted "forest night" was
+/// tiring): neutral graphite backgrounds, surfaces and greys, off-white text,
+/// and the brand green only as a quiet sage accent — never a tint over
+/// everything. All text colours stay WCAG AA (test/theme/dark_theme_test.dart).
 class AppPalette {
   const AppPalette(this.isDark);
   final bool isDark;
   Color get background =>
-      isDark ? const Color(0xFF0E1713) : AppColors.background;
+      isDark ? const Color(0xFF121417) : AppColors.background;
   Color get backgroundDeep =>
-      isDark ? const Color(0xFF101F1B) : AppColors.backgroundDeep;
-  Color get surface => isDark ? const Color(0xFF18251E) : AppColors.surface;
+      isDark ? const Color(0xFF0E1012) : AppColors.backgroundDeep;
+  Color get surface => isDark ? const Color(0xFF1B1E21) : AppColors.surface;
   Color get surfaceElevated =>
-      isDark ? const Color(0xFF223229) : AppColors.surfaceElevated;
+      isDark ? const Color(0xFF24282C) : AppColors.surfaceElevated;
   Color get surfaceHighlight =>
-      isDark ? const Color(0xFF2C3D32) : AppColors.surfaceHighlight;
-  Color get primary => isDark ? const Color(0xFF9ADBB5) : AppColors.primary;
+      isDark ? const Color(0xFF2E3237) : AppColors.surfaceHighlight;
+  Color get primary => isDark ? const Color(0xFF8DC4A3) : AppColors.primary;
   Color get primaryLight =>
-      isDark ? const Color(0xFFB9E9CA) : AppColors.primaryLight;
+      isDark ? const Color(0xFFA5D2B7) : AppColors.primaryLight;
   Color get primaryDark =>
-      isDark ? const Color(0xFF80CAA0) : AppColors.primaryDark;
+      isDark ? const Color(0xFF7AB693) : AppColors.primaryDark;
   Color get primaryDeep =>
-      isDark ? const Color(0xFF80CAA0) : AppColors.primaryDeep;
+      isDark ? const Color(0xFF7AB693) : AppColors.primaryDeep;
   Color get primaryInk =>
       isDark ? const Color(0xFF775521) : AppColors.primaryInk;
-  Color get onPrimary => isDark ? const Color(0xFF10291C) : AppColors.onPrimary;
+  Color get onPrimary => isDark ? const Color(0xFF0F2418) : AppColors.onPrimary;
   Color get accent => isDark ? const Color(0xFF8EC7F0) : AppColors.accent;
   Color get accentLight =>
       isDark ? const Color(0xFFA6D2F2) : AppColors.accentLight;
   Color get violet => isDark ? const Color(0xFFCBB4ED) : AppColors.violet;
-  Color get success => isDark ? const Color(0xFF93D6AD) : AppColors.success;
+  Color get success => isDark ? const Color(0xFF8CCBA6) : AppColors.success;
   Color get successLight =>
-      isDark ? const Color(0xFFABE5BF) : AppColors.successLight;
+      isDark ? const Color(0xFFA6D8BA) : AppColors.successLight;
   Color get successDeep =>
-      isDark ? const Color(0xFF8CCDA4) : AppColors.successDeep;
+      isDark ? const Color(0xFF7CBD97) : AppColors.successDeep;
   Color get warning => isDark ? const Color(0xFFF0CE88) : AppColors.warning;
   Color get danger => isDark ? const Color(0xFFFFA9A3) : AppColors.danger;
   Color get dangerLight =>
       isDark ? const Color(0xFFFFBCB7) : AppColors.dangerLight;
   Color get textPrimary =>
-      isDark ? const Color(0xFFF0F5EE) : AppColors.textPrimary;
+      isDark ? const Color(0xFFECEEF0) : AppColors.textPrimary;
   Color get textSecondary =>
-      isDark ? const Color(0xFFB4C4B8) : AppColors.textSecondary;
+      isDark ? const Color(0xFFB7BABF) : AppColors.textSecondary;
   Color get textTertiary =>
-      isDark ? const Color(0xFFAABCAE) : AppColors.textTertiary;
-  Color get divider => isDark ? const Color(0xFF35463A) : AppColors.divider;
-  Color get border => isDark ? const Color(0xFF304136) : AppColors.border;
+      isDark ? const Color(0xFFA6AAB0) : AppColors.textTertiary;
+  Color get divider => isDark ? const Color(0xFF33383D) : AppColors.divider;
+  Color get border => isDark ? const Color(0xFF2F3338) : AppColors.border;
   Color get borderStrong =>
-      isDark ? const Color(0xFF526657) : AppColors.borderStrong;
-  Color get handle => isDark ? const Color(0xFF687D6E) : AppColors.handle;
+      isDark ? const Color(0xFF4F5459) : AppColors.borderStrong;
+  Color get handle => isDark ? const Color(0xFF6C7076) : AppColors.handle;
   Color get scrim => isDark ? const Color(0x99000000) : AppColors.scrim;
 
   /// Peak of the skeleton shimmer: a faint light sweep on dark surfaces, a
@@ -109,7 +114,7 @@ class AppGradientPalette {
       colors: [colors.primaryLight, colors.primary, colors.primaryDeep],
       stops: const [0, .45, 1]);
   LinearGradient get goldSoft => colors.isDark
-      ? const LinearGradient(colors: [Color(0xFF233D2D), Color(0xFF1B3024)])
+      ? const LinearGradient(colors: [Color(0xFF1F2A25), Color(0xFF1A221F)])
       : AppGradients.goldSoft;
   LinearGradient get surface =>
       LinearGradient(colors: [colors.surfaceElevated, colors.surface]);

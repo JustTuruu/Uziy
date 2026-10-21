@@ -101,7 +101,7 @@ Color moodTintAt(double t, {bool dark = false}) => _acrossMoods(
       t,
       dark ? const Color(0xFFFFB2A5) : MoodColors.bad,
       dark ? const Color(0xFFF0CE88) : MoodColors.mid,
-      dark ? const Color(0xFF9ADBB5) : MoodColors.good,
+      dark ? const AppPalette(true).primary : MoodColors.good,
       (a, b, p) => Color.lerp(a, b, p)!,
     );
 

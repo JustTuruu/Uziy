@@ -158,7 +158,9 @@ void main() {
     await _close(tester);
   });
 
-  testWidgets('the card shows the name from the payout request',
+  // Owner, 2026-10-21: the card prints only the registered name — never the
+  // account holder typed on a payout, which can be someone else's.
+  testWidgets('without a registered name the card shows no payout name',
       (tester) async {
     FakeApi.install((call) => switch (call.path) {
           '/viewer/me' => FakeReply(200, _me(balance: 5000, verified: true)),
@@ -170,7 +172,8 @@ void main() {
         });
     await _pumpWallet(tester);
 
-    expect(find.text('БОЛД ЭРДЭНЭ'), findsOneWidget);
+    expect(find.text('БОЛД ЭРДЭНЭ'), findsNothing);
+    expect(find.byType(WalletBalanceCard), findsOneWidget);
     await _close(tester);
   });
 

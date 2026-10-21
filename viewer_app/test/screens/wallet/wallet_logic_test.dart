@@ -50,6 +50,17 @@ void main() {
           ['r2', 'p7', 'r1']);
     });
 
+    test('moneyFlowOf: rewards come in, payouts go out, refunds come back', () {
+      expect(moneyFlowOf(RewardEntry(_reward(1, DateTime(2026)))),
+          MoneyFlow.incoming);
+      expect(moneyFlowOf(PayoutEntry(_payout(1, PayoutStatus.pending))),
+          MoneyFlow.outgoing);
+      expect(moneyFlowOf(PayoutEntry(_payout(2, PayoutStatus.approved))),
+          MoneyFlow.outgoing);
+      expect(moneyFlowOf(PayoutEntry(_payout(3, PayoutStatus.rejected))),
+          MoneyFlow.returned);
+    });
+
     test('income sums the rewards', () {
       expect(walletIncome(const []), 0);
       expect(
@@ -305,82 +316,20 @@ void main() {
   });
 
   group('walletCardName', () {
-    final paid = PayoutRequest(
-      id: 1,
-      amount: 2000,
-      bank: 'Khan Bank',
-      status: PayoutStatus.approved,
-      requestedAt: DateTime(2026, 10, 14),
-      accountName: 'GGGG',
-    );
-
-    /// Regression (2026-10-14): the card showed a test account name ('GGGG')
-    /// typed on a payout; the registered name now wins.
-    test('the registered name wins, given name first, in capitals', () {
+    test('the registered name, given name first, in capitals', () {
       expect(
-        walletCardName(
-            lastName: 'Оюун-Эрдэнэ', firstName: 'Төрболд', payouts: [paid]),
+        walletCardName(lastName: 'Оюун-Эрдэнэ', firstName: 'Төрболд'),
         'ТӨРБОЛД ОЮУН-ЭРДЭНЭ',
       );
+      expect(walletCardName(firstName: '  Сараа '), 'САРАА');
     });
 
-    test('an account from before names were asked falls back to the payout',
-        () {
-      expect(walletCardName(payouts: [paid]), 'GGGG');
-      expect(walletCardName(lastName: ' ', firstName: '', payouts: [paid]),
-          'GGGG');
-    });
-
-    test('nothing at all gives no name', () {
-      expect(walletCardName(payouts: const []), isNull);
-    });
-  });
-
-  group('cardHolderName', () {
-    PayoutRequest req(PayoutStatus status, String? name, int day) =>
-        PayoutRequest(
-          id: day,
-          amount: 2000,
-          bank: 'Khan Bank',
-          status: status,
-          requestedAt: DateTime(2026, 10, day),
-          accountName: name,
-        );
-
-    test('none before any payout', () {
-      expect(cardHolderName(const []), isNull);
-    });
-
-    test("the newest usable request's name, in capitals", () {
-      expect(
-        cardHolderName([
-          req(PayoutStatus.approved, 'Болд Эрдэнэ', 1),
-          req(PayoutStatus.pending, 'Болд Эрдэнэбат', 5),
-        ]),
-        'БОЛД ЭРДЭНЭБАТ',
-      );
-    });
-
-    test('a rejected request never names the card', () {
-      expect(
-        cardHolderName([
-          req(PayoutStatus.approved, 'Болд', 1),
-          req(PayoutStatus.rejected, 'Өөр хүн', 9),
-        ]),
-        'БОЛД',
-      );
-      expect(
-          cardHolderName([req(PayoutStatus.rejected, 'Өөр хүн', 9)]), isNull);
-    });
-
-    test('requests without a name are skipped', () {
-      expect(
-        cardHolderName([
-          req(PayoutStatus.approved, 'Сараа', 1),
-          req(PayoutStatus.pending, null, 3),
-        ]),
-        'САРАА',
-      );
+    /// Owner, 2026-10-21: only the name given at registration — an account
+    /// from before names were asked shows no name rather than a payout's
+    /// account holder (which once printed a test name, 'GGGG').
+    test('no registered name means no name on the card', () {
+      expect(walletCardName(), isNull);
+      expect(walletCardName(lastName: ' ', firstName: ''), isNull);
     });
   });
 

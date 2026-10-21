@@ -223,7 +223,9 @@ class _BrandRow extends StatelessWidget {
         const SizedBox(width: AppSpacing.md),
         // The name gives way first: on a narrow screen with large text the
         // guest pill must stay readable, the logo already says who we are.
-        Flexible(
+        // Expanded, not Flexible: a loose name would leave its unused share
+        // at the end of the row and pull the pill off the right edge.
+        Expanded(
           child: Text(
             'uziy',
             maxLines: 1,
@@ -303,19 +305,29 @@ class _GuestPill extends StatelessWidget {
   }
 }
 
-/// A caption between two hairlines ('— Шинэ хэрэглэгч үү? —').
+/// A caption between two hairlines ('— Шинэ хэрэглэгч үү? —'), centred on
+/// the page: the caption takes its own width and the two lines share the
+/// rest equally. (A loose `Flexible` caption left its unused share at the end
+/// of the row, so the right line came up short and the words sat off-centre.)
 class _OrDivider extends StatelessWidget {
   const _OrDivider(this.text);
 
   final String text;
 
+  /// Widest the caption may get before it wraps, as a share of the screen,
+  /// so the hairlines never vanish even with large text.
+  static const double maxTextFraction = 0.6;
+
   @override
   Widget build(BuildContext context) {
+    // No LayoutBuilder: the page sits in SliverFillRemaining, which asks for
+    // intrinsic sizes; the screen width is enough for a cap.
+    final maxText = MediaQuery.sizeOf(context).width * maxTextFraction;
     return Row(
       children: [
         Expanded(child: Divider(color: context.colors.border)),
-        Flexible(
-          flex: 3,
+        ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxText),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             child: Text(

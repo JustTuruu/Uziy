@@ -6,7 +6,6 @@ import 'package:viewer_app/screens/auth/auth_widgets.dart';
 import 'package:viewer_app/screens/auth/register_screen.dart';
 import 'package:viewer_app/models/regions.dart';
 import 'package:viewer_app/screens/auth/location_fields.dart';
-import 'package:viewer_app/screens/auth/reward_promise.dart';
 import 'package:viewer_app/widgets/incentive_banner.dart';
 import 'package:viewer_app/widgets/ui.dart';
 
@@ -136,12 +135,17 @@ void main() {
     expect(find.widgetWithText(AppButton, kContinueLabel), findsOneWidget);
   });
 
-  testWidgets('opens with what one survey pays, above the spec note',
+  // Owner, 2026-10-21: the page promises no reward amount ('Нэг
+  // судалгаанаас 500–700 ₮' was removed); the spec note follows the title.
+  testWidgets('states no reward amount; the spec note comes right after',
       (tester) async {
     await _pump(tester);
-    expect(find.text(kRewardRangeLabel), findsOneWidget);
+    expect(find.textContaining('Нэг судалгаанаас'), findsNothing);
+    expect(find.textContaining('500'), findsNothing);
+    expect(find.textContaining('700'), findsNothing);
+    expect(find.byType(CoinIcon), findsNothing);
     expect(
-      tester.getTopLeft(find.byType(RewardPromise)).dy,
+      tester.getTopLeft(find.byType(AuthPageTitle)).dy,
       lessThan(tester.getTopLeft(find.byType(IncentiveBanner)).dy),
     );
   });

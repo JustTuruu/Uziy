@@ -249,4 +249,53 @@ void main() {
         greaterThan(tester.getBottomLeft(field).dy - 1));
     expect(tester.getCenter(link).dx, greaterThan(tester.getCenter(field).dx));
   });
+
+  // The test font draws every glyph a full em wide, so on a phone the words
+  // already fill their share; the wide screen (content capped, short words)
+  // is where a loose Flexible left a gap — keep it in the list.
+  const sizes = [(390.0, 1.0), (320.0, 1.3), (800.0, 1.0)];
+
+  group('centred and aligned', () {
+    for (final (w, scale) in sizes) {
+      testWidgets(
+          "'Шинэ хэрэглэгч үү?' sits mid-page between equal lines "
+          '(${w.toInt()}pt, ${scale}x)', (tester) async {
+        await _pump(tester, width: w, textScale: scale);
+        final caption = tester.getRect(find.text('Шинэ хэрэглэгч үү?'));
+        final row = find
+            .ancestor(
+                of: find.text('Шинэ хэрэглэгч үү?'), matching: find.byType(Row))
+            .first;
+        final lines = find.descendant(of: row, matching: find.byType(Divider));
+        expect(lines, findsNWidgets(2));
+        final left = tester.getRect(lines.at(0));
+        final right = tester.getRect(lines.at(1));
+        final button =
+            tester.getRect(find.widgetWithText(AppButton, 'Нэвтрэх'));
+
+        expect(left.width, closeTo(right.width, 0.5), reason: 'equal lines');
+        expect(left.left, closeTo(button.left, 0.5));
+        expect(right.right, closeTo(button.right, 0.5),
+            reason: 'the right line reaches the edge of the form');
+        expect(caption.center.dx, closeTo(button.center.dx, 0.5),
+            reason: 'the words are centred on the page');
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets('the guest pill ends on the right edge of the form',
+        (tester) async {
+      for (final (w, scale) in sizes) {
+        await _pump(tester, width: w, textScale: scale);
+        final pill = tester.getRect(find.ancestor(
+          of: find.text('Зочноор үзэх'),
+          matching: find.byType(Pressable),
+        ));
+        final button =
+            tester.getRect(find.widgetWithText(AppButton, 'Нэвтрэх'));
+        expect(pill.right, closeTo(button.right, 0.5),
+            reason: '${w}pt at ${scale}x');
+      }
+    });
+  });
 }

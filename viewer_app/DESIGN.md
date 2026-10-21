@@ -157,7 +157,7 @@ The world is quiet and flat by default. Colour is spent on two things only: the 
 - Meadow paper background, white sheets, sage hairlines; forest green for action, gold only for money.
 - One confident primary action per screen; everything else steps back.
 - System font (SF Pro on iPhone) with tabular figures for every amount.
-- Light and dark appearance are both first-class; dark is forest night with a mint action colour.
+- Light and dark appearance are both first-class; dark is neutral graphite with a soft sage action colour (owner, 2026-10-21: the green-tinted forest night was tiring).
 - Plain fills over gradients: the owner's rule, "plain fills read as hand-made".
 
 ## Colors
@@ -177,7 +177,7 @@ A green-and-paper palette with a single precious accent: forest for doing, gold 
 - **Sage Wash** (#EDF2EC) / **Sage Highlight** (#E1E9E1): secondary buttons, icon tiles, the '+976' capsule, quiet tinted panels.
 - **Ink** (#192D25): titles and body text. **Ink Soft** (#53675C): labels, subtitles, secondary text. **Ink Quiet** (#5D7063): hints and placeholders (still ≥ 4.5:1 on paper).
 - **Sage Hairline** (#E0E7DD), **Sage Line** (#C4D1C3), **Divider** (#DBE4DA): borders — hairline for cards, line for inputs and secondary buttons.
-- **Night Paper / Night Sheet / Night Mint** (#0E1713 / #18251E / #9ADBB5): the dark appearance's background, surfaces and action colour (text on mint is dark green).
+- **Night Paper / Night Sheet / Night Sage** (#121417 / #1B1E21 / #8DC4A3): the dark appearance's background, surfaces and action colour (text on sage is dark green #0F2418). Dark backgrounds, surfaces, greys and lines are neutral — no green tint (`dark_theme_test` checks chroma ≤ 12/255 and that green never leads); green appears only as the sage accent.
 
 Semantic: **Success** (#12633D), **Warning** (#805109), **Danger** (#BD3934) for statuses and errors only.
 
@@ -253,7 +253,7 @@ Gently rounded throughout. Inputs, buttons and field-like tiles share one corner
 - Fixed bottom bar, three tabs, icon with its label underneath; the active tab uses the filled icon in the action colour. No tab animation.
 
 ### Signature: The Coin and the Wallet Card
-The coin (`CoinIcon`) is the Uziy mark (`assets/logo_mark.png`) tinted in the on-action colour on a flat disc of the action colour, with a thin inner ring from 20px up — forest + white in light, mint + dark green in dark (owner, 2026-10-14: the lit gold ₮ coin did not belong to the flat green UI). It sits inside the gold reward chip and beside amounts. The wallet card is a bank-card-proportioned forest sheet with white ink — the one fixed dark surface in light mode.
+The coin (`CoinIcon`) is the Uziy mark (`assets/logo_mark.png`) tinted in the on-action colour on a flat disc of the action colour, with a thin inner ring from 20px up — forest + white in light, sage + dark green in dark (owner, 2026-10-14: the lit gold ₮ coin did not belong to the flat green UI). It sits inside the gold reward chip and beside amounts. The wallet card is a bank-card-proportioned forest sheet with white ink — the one fixed dark surface in light mode.
 
 ## Do's and Don'ts
 

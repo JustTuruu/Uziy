@@ -34,8 +34,8 @@ class WalletBalanceCard extends StatelessWidget {
   final num balance;
   final bool verified;
 
-  /// Printed above the number like a bank card's holder name; nothing is
-  /// shown when null (see `cardHolderName`).
+  /// Printed above the number like a bank card's holder name: the name given
+  /// at registration (`walletCardName`); nothing is shown when null.
   final String? holderName;
 
   /// Shown masked ('•••• 9911') where a bank card prints its number.
@@ -1186,8 +1186,12 @@ class WalletHistorySection extends StatelessWidget {
             children: [
               for (final e in entries)
                 switch (e) {
-                  RewardEntry(:final reward) =>
-                    HistoryRow(item: reward, now: now),
+                  RewardEntry(:final reward) => HistoryRow(
+                      item: reward,
+                      now: now,
+                      icon: MoneyFlow.incoming.icon,
+                      iconColor: MoneyFlow.incoming.colorIn(context.colors),
+                    ),
                   PayoutEntry(:final payout) =>
                     PayoutHistoryRow(payout: payout, now: now),
                 },
@@ -1199,8 +1203,53 @@ class WalletHistorySection extends StatelessWidget {
   }
 }
 
-/// 'Нийт орлого +12,600 ₮' on the left, 'Нийт зарлага -5,000 ₮' on the
-/// right, split by a hairline — money in and money out read as two sides.
+/// Pattern: lookup table — the ONE place a [MoneyFlow] gets its glyph and
+/// colour, so the totals and every history row speak the same language:
+/// green ↙ money in, red ↗ money out, grey ↶ a payout that came back.
+extension MoneyFlowLook on MoneyFlow {
+  IconData get icon => switch (this) {
+        MoneyFlow.incoming => AppIcons.moneyIn,
+        MoneyFlow.outgoing => AppIcons.moneyOut,
+        MoneyFlow.returned => AppIcons.payoutReturned,
+      };
+
+  Color colorIn(AppPalette colors) => switch (this) {
+        MoneyFlow.incoming => colors.success,
+        MoneyFlow.outgoing => colors.danger,
+        MoneyFlow.returned => colors.textTertiary,
+      };
+}
+
+/// Round tile with the flow's arrow on a faint wash of its colour.
+class MoneyFlowBadge extends StatelessWidget {
+  const MoneyFlowBadge({super.key, required this.flow});
+
+  final MoneyFlow flow;
+
+  static const double size = 40;
+  static const double iconSize = 22;
+
+  /// Strength of the colour wash behind the arrow.
+  static const double washOpacity = 0.14;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = flow.colorIn(context.colors);
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color.withValues(alpha: washOpacity),
+      ),
+      alignment: Alignment.center,
+      child: Icon(flow.icon, size: iconSize, color: color),
+    );
+  }
+}
+
+/// Total income and total spending as two cards side by side, each led by its
+/// [MoneyFlowBadge] so in and out read at a glance.
 class WalletTotalsCard extends StatelessWidget {
   const WalletTotalsCard({
     super.key,
@@ -1212,94 +1261,78 @@ class WalletTotalsCard extends StatelessWidget {
   final double spending;
 
   @override
-  Widget build(BuildContext context) => AppCard(
-        child: IntrinsicHeight(
-          child: Row(
-            children: [
-              Expanded(
-                child: _Total(
-                  label: kWalletIncomeLabel,
-                  value: formatTugrik(income, withSign: true),
-                  icon: AppIcons.moneyIn,
-                  color: context.colors.success,
-                ),
+  Widget build(BuildContext context) => IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: WalletTotalTile(
+                flow: MoneyFlow.incoming,
+                label: kWalletIncomeLabel,
+                value: formatTugrik(income, withSign: true),
+                valueColor: context.colors.success,
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                child: VerticalDivider(
-                  width: 1,
-                  thickness: 1,
-                  color: context.colors.border,
-                ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: WalletTotalTile(
+                flow: MoneyFlow.outgoing,
+                label: kWalletSpendingLabel,
+                value: formatTugrik(-spending),
+                valueColor: context.colors.textPrimary,
               ),
-              Expanded(
-                child: _Total(
-                  label: kWalletSpendingLabel,
-                  value: formatTugrik(-spending),
-                  icon: AppIcons.moneyOut,
-                  color: context.colors.textPrimary,
-                  alignEnd: true,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
 }
 
-class _Total extends StatelessWidget {
-  const _Total({
+/// One total: the flow badge, its label and the amount.
+class WalletTotalTile extends StatelessWidget {
+  const WalletTotalTile({
+    super.key,
+    required this.flow,
     required this.label,
     required this.value,
-    required this.icon,
-    required this.color,
-    this.alignEnd = false,
+    required this.valueColor,
   });
 
+  final MoneyFlow flow;
   final String label;
   final String value;
-  final IconData icon;
-  final Color color;
-
-  /// Right-align the whole column (the money going out).
-  final bool alignEnd;
+  final Color valueColor;
 
   @override
   Widget build(BuildContext context) => Semantics(
+        container: true,
         label: '$label: $value',
         excludeSemantics: true,
-        child: Column(
-          crossAxisAlignment:
-              alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 14, color: color),
-                const SizedBox(width: AppSpacing.xs),
-                Flexible(
-                  child: Text(
-                    label,
-                    style: context.textStyles.caption,
-                    overflow: TextOverflow.ellipsis,
+        child: AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              MoneyFlowBadge(flow: flow),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                label,
+                style: context.textStyles.caption,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  style: context.textStyles.title.copyWith(
+                    color: valueColor,
+                    fontFeatures: AppTextStyles.tabular,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 2),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment:
-                  alignEnd ? Alignment.centerRight : Alignment.centerLeft,
-              child: Text(
-                value,
-                style: context.textStyles.title.copyWith(
-                  color: color,
-                  fontFeatures: AppTextStyles.tabular,
-                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
 }
@@ -1318,13 +1351,10 @@ class PayoutHistoryRow extends StatelessWidget {
     final time = payout.decidedAt ?? payout.requestedAt;
     final when = '${historyDayLabel(time, now)} · ${historyTimeLabel(time)}';
     final reason = payout.rejectReason;
+    final flow = moneyFlowOf(PayoutEntry(payout));
     return InfoRow(
-      icon: rejected ? AppIcons.payoutReturned : AppIcons.payout,
-      iconColor: switch (payout.status) {
-        PayoutStatus.pending => context.colors.warning,
-        PayoutStatus.approved => context.colors.primary,
-        PayoutStatus.rejected => context.colors.textTertiary,
-      },
+      icon: flow.icon,
+      iconColor: flow.colorIn(context.colors),
       label: payoutEntryTitle(payout),
       subtitle: [
         payoutEntryStatus(payout),

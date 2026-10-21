@@ -717,8 +717,8 @@ group **50**. Added on my own judgement (flag to the owner): **minors (< 18) are
   turns red (`TermsAgreementTile.error`) with `kTermsRequired` under it; the tile's box is a flat brand fill. On login
   the 'uziy' name fades first on a narrow screen with large text so 'Зочноор үзэх' is never cut off.
   Critique → layout → bolder (2026-10-14, snapshot in `.impeccable/critique/`, score 23/40 before): register opens
-  with `RewardPromise` (`reward_promise.dart`: big coin + '500–700 ₮' per survey) above the spec banner (now body
-  size, no coin of its own); the pinned button is `kContinueLabel` 'Үргэлжлүүлэх' with `kNextStepNote` above it naming
+  with the spec banner right under the title (body size, no coin; the '500–700 ₮ per survey' `RewardPromise` was
+  removed at the owner's request, 2026-10-21); the pinned button is `kContinueLabel` 'Үргэлжлүүлэх' with `kNextStepNote` above it naming
   the SMS step and its price (`kSmsPriceNote`, shared with the verify page). No city is preselected (`kCityRequired`;
   district/sum appear after a pick). Every labelled field is a `LabeledField` (label hidden from VoiceOver and put on
   the field's own node — MergeSemantics around a TextField asserts). One phone error: `AuthValidators.phoneInvalid`.
@@ -898,8 +898,9 @@ Gold balance card + fake transaction history (rewards + one payout). Tap
   note show only while `isBeforeFirstPayout` — unverified and no waiting/paid request (a rejected one keeps it). Names (2026-10-14): registration asks овог (`lastName`) and нэр (`firstName`)
   separately — `RegisterViewerReq` (letters, spaces, hyphens, apostrophes; max 60; same rule as the app's
   `AuthValidators.lastName/firstName`), `users.last_name/first_name` (V11, null for older accounts and companies),
-  returned in `Me`. The wallet card prints `walletCardName`: НЭР ОВОГ in capitals; older accounts fall back to
-  `cardHolderName` (the newest non-rejected payout's `accountName`).
+  returned in `Me`. The wallet card prints `walletCardName`: НЭР ОВОГ in capitals, **only the registered name**
+  (owner, 2026-10-21) — an older account without one shows no name; a payout's `accountName` is never used
+  (`cardHolderName` was removed).
 - **Reduce-motion and `AnimatedSize`**: an `AnimatedSize` whose duration follows `AppMotion.duration` (zero under
   reduce-motion) throws; use `ReducibleAnimatedSize` (`widgets/`) instead. The admin approves after checking the account is in the viewer's own name and
   flips `is_verified = TRUE`.
@@ -931,7 +932,10 @@ the next session can uncomment once the backend exists.
   something take a REQUIRED `AppPalette` (`walletErrorSnackBar`, `StatusBanner.colorFor`,
   …) so a light default cannot sneak into dark mode. White/black overlays are only for
   surfaces that are dark in both modes (video, campaign art, the green wallet card). Dark-palette text keeps
-  WCAG AA — `test/theme/dark_theme_test.dart` checks it.
+  WCAG AA — `test/theme/dark_theme_test.dart` checks it. **Dark is neutral graphite (owner, 2026-10-21)**: the
+  old green-tinted "forest night" was tiring; dark backgrounds/surfaces/greys/lines carry no tint (the test fails if
+  a neutral's chroma > 12/255 or green leads) and the action colour is a soft sage `#8DC4A3` (saturation ≤ 0.36).
+  The mood slider's dark colours read `AppPalette(true)` instead of copying hex values.
 - **Bank logos on the payout form (2026-10-14)**: `wallet_logic.dart` `kBankLogoAssets` maps each bank name (the
   string the backend stores) to `assets/banks/<name>.png`; `BankLogo` (`wallet_widgets.dart`) shows it (see below) and falls back to the coloured monogram when the file is missing. **(2026-10-14)** The logo is now a 32pt rounded
   square (radius 25 %), drawn edge to edge with no padding; the monogram uses the same shape. Every file must be a
@@ -964,7 +968,11 @@ the next session can uncomment once the backend exists.
   (`WalletHistorySection`): totals (`walletIncome` / `walletSpending` — rejected requests were refunded, so they do
   not count) and every reward (`HistoryRow`, from `GET /viewer/history`) and payout request (`PayoutHistoryRow`: status,
   reject reason, struck-through amount when refunded), merged newest first by `buildWalletHistory` (sealed
-  `WalletEntry` = `RewardEntry` | `PayoutEntry`). The rows sit in a box of `kWalletHistoryBoxHeight` (360) that scrolls
+  `WalletEntry` = `RewardEntry` | `PayoutEntry`). **Direction first (2026-10-21)**: `moneyFlowOf(entry)` →
+  `MoneyFlow.incoming|outgoing|returned`, and `MoneyFlowLook` (`wallet_widgets.dart`) is the one place that maps it to
+  a glyph + colour (green ↙ in, red ↗ out, grey ↶ refunded); every history row and the totals use it. The totals are
+  two separate cards (`WalletTotalsCard` → two `WalletTotalTile`s, each led by a `MoneyFlowBadge`). `tool/render_design_test.dart`
+  renders a `wallet-history` preview with sample rows. The rows sit in a box of `kWalletHistoryBoxHeight` (360) that scrolls
   on its own: `GroupedCard(maxHeight: …)` (shared kit, own `ScrollController` + visible scrollbar; short content keeps
   its natural height). The old 'Урамшууллын түүх' link card was removed; Profile's
   'Үзсэн видеонуудын түүх' page stays. Regression test:

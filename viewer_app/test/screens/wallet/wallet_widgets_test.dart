@@ -590,6 +590,23 @@ void main() {
       expect(find.text('+700 ₮'), findsNWidgets(2)); // total + the row
       expect(find.text('-5,000 ₮'), findsNWidgets(2));
       expect(find.byType(HistoryRow), findsOneWidget);
+      // Every row is led by the arrow of its direction, not a topic glyph.
+      expect(
+        find.descendant(
+          of: find.byType(HistoryRow),
+          matching: find.byIcon(AppIcons.moneyIn),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(PayoutHistoryRow),
+          matching: find.byIcon(AppIcons.moneyOut),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byIcon(AppIcons.watched), findsNothing);
+      expect(find.byIcon(AppIcons.payout), findsNothing);
       expect(find.text('Мөнгө татсан · Khan Bank'), findsOneWidget);
       expect(find.textContaining('Дансанд шилжүүлсэн · Өнөөдөр · 11:00'),
           findsOneWidget);
@@ -659,24 +676,47 @@ void main() {
   });
 
   group('WalletTotalsCard', () {
-    testWidgets('money in sits on the left, money out on the right',
+    testWidgets('income and spending are two separate cards, in then out',
         (tester) async {
       await pumpWallet(
           tester, const WalletTotalsCard(income: 4100, spending: 4000));
       await tester.pumpAndSettle();
 
-      final card = tester.getRect(find.byType(WalletTotalsCard));
-      final income = tester.getRect(find.text('+4,100 ₮'));
-      final spending = tester.getRect(find.text('-4,000 ₮'));
-      final spendingLabel = tester.getRect(find.text(kWalletSpendingLabel));
+      final tiles = find.byType(WalletTotalTile);
+      expect(tiles, findsNWidgets(2));
+      expect(
+        find.descendant(of: tiles, matching: find.byType(AppCard)),
+        findsNWidgets(2),
+      );
+      final income = tester.getRect(tiles.at(0));
+      final spending = tester.getRect(tiles.at(1));
+      expect(income.right, lessThan(spending.left), reason: 'side by side');
+      expect(income.height, spending.height, reason: 'same height');
+      expect(
+        find.descendant(of: tiles.at(0), matching: find.text('+4,100 ₮')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: tiles.at(1), matching: find.text('-4,000 ₮')),
+        findsOneWidget,
+      );
+    });
 
-      expect(income.left - card.left, lessThan(card.width / 4));
-      expect(card.right - spending.right, lessThan(card.width / 4));
-      // The label and the amount share one right edge.
-      expect(spendingLabel.right, closeTo(spending.right, 1));
-      expect(find.byType(VerticalDivider), findsOneWidget);
+    testWidgets('each card is led by its direction badge', (tester) async {
+      await pumpWallet(
+          tester, const WalletTotalsCard(income: 4100, spending: 4000));
+      await tester.pumpAndSettle();
+
+      final badges = tester
+          .widgetList<MoneyFlowBadge>(find.byType(MoneyFlowBadge))
+          .map((b) => b.flow);
+      expect(badges, [MoneyFlow.incoming, MoneyFlow.outgoing]);
       expect(find.byIcon(AppIcons.moneyIn), findsOneWidget);
       expect(find.byIcon(AppIcons.moneyOut), findsOneWidget);
+      final incomeIcon = tester.widget<Icon>(find.byIcon(AppIcons.moneyIn));
+      expect(incomeIcon.color, AppColors.success);
+      final incomeValue = tester.widget<Text>(find.text('+4,100 ₮'));
+      expect(incomeValue.style?.color, AppColors.success);
     });
 
     testWidgets('each side reads as one phrase to a screen reader',
@@ -701,6 +741,38 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('MoneyFlowLook', () {
+    test('one glyph and colour per direction', () {
+      const c = AppPalette(false);
+      expect(MoneyFlow.incoming.icon, AppIcons.moneyIn);
+      expect(MoneyFlow.outgoing.icon, AppIcons.moneyOut);
+      expect(MoneyFlow.returned.icon, AppIcons.payoutReturned);
+      expect(MoneyFlow.incoming.colorIn(c), c.success);
+      expect(MoneyFlow.outgoing.colorIn(c), c.danger);
+      expect(MoneyFlow.returned.colorIn(c), c.textTertiary);
+    });
+
+    testWidgets('a refunded payout row shows the grey return arrow',
+        (tester) async {
+      await pumpWallet(
+        tester,
+        PayoutHistoryRow(
+          payout: PayoutRequest(
+            id: 1,
+            amount: 5000,
+            bank: 'Khan Bank',
+            status: PayoutStatus.rejected,
+            requestedAt: DateTime(2026, 10, 14, 10),
+            rejectReason: 'Нэр таарахгүй',
+          ),
+          now: DateTime(2026, 10, 14, 12),
+        ),
+      );
+      final icon = tester.widget<Icon>(find.byIcon(AppIcons.payoutReturned));
+      expect(icon.color, AppColors.textTertiary);
     });
   });
 }

@@ -10,6 +10,8 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:viewer_app/models/campaign.dart';
+import 'package:viewer_app/models/payout_request.dart';
+import 'package:viewer_app/models/view_history_item.dart';
 import 'package:viewer_app/models/user.dart';
 import 'package:viewer_app/screens/auth/login_screen.dart';
 import 'package:viewer_app/screens/auth/register_screen.dart';
@@ -49,6 +51,7 @@ void main() {
   });
 
   final campaigns = Campaign.mockFeed();
+  final historyNow = DateTime(2026, 10, 21, 12);
   const user = AppUser(
       id: 1,
       phoneNumber: '88112233',
@@ -96,12 +99,49 @@ void main() {
           WalletBalanceCard(
               balance: user.balance,
               verified: true,
+              phoneNumber: user.phoneNumber,
+              holderName: walletCardName(lastName: 'Бат', firstName: 'Сараа'),
               progress: payoutProgress(user.balance)),
           const SizedBox(height: 16),
           AppButton(
               label: 'Мөнгө татах',
               icon: Icons.account_balance_rounded,
               onPressed: () {}),
+        ], tab: 1),
+        'wallet-history': page([
+          WalletHistorySection(
+            now: historyNow,
+            rewards: [
+              ViewHistoryItem(
+                  campaignId: 1,
+                  title: 'Шинэ 5G багц',
+                  companyName: 'MobiCom',
+                  rewardPaid: 700,
+                  watchedAt: historyNow.subtract(const Duration(hours: 1))),
+              ViewHistoryItem(
+                  campaignId: 2,
+                  title: 'Хадгаламжийн судалгаа',
+                  companyName: 'Голомт банк',
+                  rewardPaid: 500,
+                  watchedAt: historyNow.subtract(const Duration(days: 1))),
+            ],
+            payouts: [
+              PayoutRequest(
+                  id: 1,
+                  amount: 5000,
+                  bank: 'Хаан банк',
+                  status: PayoutStatus.approved,
+                  requestedAt: historyNow.subtract(const Duration(hours: 3)),
+                  decidedAt: historyNow.subtract(const Duration(hours: 2))),
+              PayoutRequest(
+                  id: 2,
+                  amount: 3000,
+                  bank: 'Голомт банк',
+                  status: PayoutStatus.rejected,
+                  rejectReason: 'Нэр таарахгүй',
+                  requestedAt: historyNow.subtract(const Duration(days: 2))),
+            ],
+          ),
         ], tab: 1),
         'profile': page([
           ProfileBody(
@@ -176,6 +216,7 @@ void main() {
   for (final name in [
     'home',
     'wallet',
+    'wallet-history',
     'profile',
     'survey',
     'login',

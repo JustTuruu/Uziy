@@ -234,33 +234,16 @@ String maskedCardNumber(String? phone) {
 }
 
 /// The name printed on the wallet card: the registered нэр + овог in capitals
-/// (bank-card style, given name first), or — for accounts made before names
-/// were asked — [cardHolderName] of their payout requests.
-String? walletCardName({
-  String? lastName,
-  String? firstName,
-  required List<PayoutRequest> payouts,
-}) {
+/// (bank-card style, given name first). Only the name given at registration
+/// (owner, 2026-10-21) — never a payout's account holder, which can be someone
+/// else's. Null (no name line) for accounts made before names were asked.
+String? walletCardName({String? lastName, String? firstName}) {
   final registered = [firstName, lastName]
       .whereType<String>()
       .map((s) => s.trim())
       .where((s) => s.isNotEmpty)
       .join(' ');
-  return registered.isNotEmpty
-      ? registered.toUpperCase()
-      : cardHolderName(payouts);
-}
-
-/// The account holder from the viewer's
-/// newest payout request that was not rejected (a rejected one may carry a
-/// wrong name — that can be why it was rejected), in capitals like a bank
-/// card. Null when there is none, e.g. before the first payout.
-String? cardHolderName(List<PayoutRequest> payouts) {
-  final usable = payouts
-      .where((p) => p.status != PayoutStatus.rejected && p.accountName != null)
-      .toList()
-    ..sort((a, b) => b.requestedAt.compareTo(a.requestedAt));
-  return usable.isEmpty ? null : usable.first.accountName!.toUpperCase();
+  return registered.isEmpty ? null : registered.toUpperCase();
 }
 
 /// Whether the viewer has not made their first payout yet — the one the
@@ -347,6 +330,27 @@ List<WalletEntry> buildWalletHistory(
       for (final r in rewards) RewardEntry(r),
       for (final p in payouts) PayoutEntry(p),
     ]..sort((a, b) => b.at.compareTo(a.at));
+
+/// Which way money moved for one history entry — the icon in front of a row
+/// says it at a glance.
+enum MoneyFlow {
+  /// A reward came into the wallet.
+  incoming,
+
+  /// A payout left the wallet (or is on its way to the bank).
+  outgoing,
+
+  /// A rejected payout: the money came back.
+  returned,
+}
+
+/// [MoneyFlow] of a wallet history entry.
+MoneyFlow moneyFlowOf(WalletEntry entry) => switch (entry) {
+      RewardEntry() => MoneyFlow.incoming,
+      PayoutEntry(:final payout) => payout.status == PayoutStatus.rejected
+          ? MoneyFlow.returned
+          : MoneyFlow.outgoing,
+    };
 
 /// Everything the rewards paid in.
 double walletIncome(List<ViewHistoryItem> rewards) =>

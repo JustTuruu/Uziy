@@ -163,10 +163,22 @@ class _Stat extends StatelessWidget {
 
 /// One watched video: title, company · day · time, and the reward paid.
 class HistoryRow extends StatelessWidget {
-  const HistoryRow({super.key, required this.item, required this.now});
+  const HistoryRow({
+    super.key,
+    required this.item,
+    required this.now,
+    this.icon = AppIcons.watched,
+    this.iconColor,
+  });
 
   final ViewHistoryItem item;
   final DateTime now;
+
+  /// The watched-video glyph here; the wallet passes its money-in arrow.
+  final IconData icon;
+
+  /// Defaults to the accent colour.
+  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -175,8 +187,8 @@ class HistoryRow extends StatelessWidget {
     final subtitle =
         item.companyName.isEmpty ? when : '${item.companyName} · $when';
     return InfoRow(
-      icon: AppIcons.watched,
-      iconColor: context.colors.accent,
+      icon: icon,
+      iconColor: iconColor ?? context.colors.accent,
       label: item.title,
       subtitle: subtitle,
       trailing: Text(

@@ -211,7 +211,6 @@ class _WalletScreenState extends State<WalletScreen> {
           holderName: walletCardName(
             lastName: me.lastName,
             firstName: me.firstName,
-            payouts: _payouts ?? const [],
           ),
           progress: payoutProgress(me.balance),
         ),

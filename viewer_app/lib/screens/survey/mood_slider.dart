@@ -492,7 +492,7 @@ class MoodThumbPainter extends CustomPainter {
       width: size.width * 0.34,
       sag: shape.mouthSag * size.width * 0.9,
       stroke: size.width * 0.07,
-      color: dark ? const Color(0xFF10291C) : MoodColors.ink,
+      color: dark ? const AppPalette(true).onPrimary : MoodColors.ink,
     );
   }
 

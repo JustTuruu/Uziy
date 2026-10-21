@@ -36,8 +36,8 @@ class IncentiveBanner extends StatelessWidget {
           color: colors.primary.withValues(alpha: borderAlpha),
         ),
       ),
-      // No coin of its own: the register page's RewardPromise right above
-      // already carries it.
+      // Text only: the register page states no reward amount here (owner,
+      // 2026-10-21: the '500–700 ₮ per survey' promise was removed).
       child: Text(
         _message,
         // Body size, not small print: it is a promise, not a disclaimer

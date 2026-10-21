@@ -14,7 +14,6 @@ import '../../widgets/ui.dart';
 import 'auth_widgets.dart';
 import 'location_fields.dart';
 import 'phone_verify_logic.dart' show kSmsPriceNote;
-import 'reward_promise.dart';
 import 'login_fields.dart';
 
 /// The pinned button: it does not create the account yet, it opens the
@@ -269,8 +268,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: AuthPageTitle('Бүртгүүлэх'),
                     ),
                     const SizedBox(height: AppSpacing.xxl),
-                    const FadeSlideIn(index: 1, child: RewardPromise()),
-                    const SizedBox(height: AppSpacing.xl),
                     // Spec §4A: shown before the profile questions so the
                     // viewer knows why honest answers pay off.
                     const FadeSlideIn(index: 1, child: IncentiveBanner()),
