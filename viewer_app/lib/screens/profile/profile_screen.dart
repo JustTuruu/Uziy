@@ -10,6 +10,7 @@ import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/viewer_service.dart';
 import '../../widgets/ui.dart';
+import 'delete_account_sheet.dart';
 import 'profile_logic.dart';
 import 'profile_widgets.dart';
 
@@ -120,6 +121,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  /// Profile → 'Бүртгэл устгах': the sheet checks the password with the
+  /// backend; once deleted, the session is cleared like a logout and the
+  /// viewer lands on Home as a guest.
+  Future<void> _confirmDeleteAccount() async {
+    final me = _me;
+    if (me == null || _loggingOut) return;
+    final deleted = await showDeleteAccountSheet(
+      context,
+      balance: me.balance,
+      onDelete: (password) =>
+          ViewerService.instance.deleteAccount(password: password),
+    );
+    if (!deleted || !mounted) return;
+    setState(() => _loggingOut = true);
+    await AuthService.instance.logout();
+    _cache.clear();
+    if (!mounted) return;
+    showProfileSnackBar(
+      context,
+      kAccountDeleted,
+      icon: AppIcons.check,
+      color: context.colors.success,
+    );
+    context.go(Routes.home);
+  }
+
   @override
   Widget build(BuildContext context) {
     return AmbientBackground(
@@ -155,6 +182,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     onHistoryTap: () => context.push(Routes.history),
                     onHelpTap: () => context.push(Routes.help),
                     onPrivacyTap: () => context.push(Routes.privacy),
+                    onDeleteAccount: _me == null ? null : _confirmDeleteAccount,
                     loggingOut: _loggingOut,
                   ),
                 ],

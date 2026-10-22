@@ -66,6 +66,17 @@ class AnswerValidatorTest {
     }
 
     @Test
+    void aFiveStopRatingAcceptsItsOwnLabelsAndAnOlderOneKeepsItsThree() {
+        var five = List.of(q(1, "RATING", "[\"Маш муу\",\"Муу\",\"Дунд\",\"Сайн\",\"Маш сайн\"]", true));
+        accepts(five, a(1, "\"Маш сайн\""));
+        accepts(five, a(1, "\"Муу\""));
+        refuses(AnswerValidator.BAD_ANSWER, five, a(1, "\"Гайхалтай\""));
+
+        var three = List.of(q(1, "RATING", "[\"Муу\",\"Дунд\",\"Сайн\"]", true));
+        refuses(AnswerValidator.BAD_ANSWER, three, a(1, "\"Маш сайн\""));
+    }
+
+    @Test
     void multiChoiceTakesAnArrayOfListedOptions() {
         var multi = List.of(q(1, "MULTI_CHOICE", "[\"A\",\"B\",\"C\"]", true));
         accepts(multi, a(1, "[\"A\",\"C\"]"));

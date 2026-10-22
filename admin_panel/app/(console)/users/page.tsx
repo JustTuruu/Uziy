@@ -3,54 +3,32 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Search, ShieldCheck } from "lucide-react";
+import { ChevronRight, ShieldCheck, X } from "lucide-react";
 import {
   Badge,
   Button,
   Card,
   CardBody,
   CardHeader,
-  Input,
   PageHeader,
-  SegmentedControl,
 } from "@uziy/ui";
+import { UserFilterBar } from "@/components/users/user-filter-bar";
 import { adminApi, ApiError, auth, type AdminUser } from "@/lib/api";
+import {
+  cityOptions,
+  companyOptions,
+  filterUsers,
+  hasActiveFilters,
+  NO_USER_FILTERS,
+  resultCountLabel,
+} from "@/lib/user-filters";
 import { formatTugrik, relativeTime } from "@/lib/utils";
-
-export function filterUsers(
-  users: AdminUser[],
-  filter: "ALL" | "VERIFIED" | "UNVERIFIED",
-  query: string,
-): AdminUser[] {
-  const q = query.trim().toLowerCase();
-  return users.filter((u) => {
-    if (filter === "VERIFIED" && !u.isVerified) return false;
-    if (filter === "UNVERIFIED" && u.isVerified) return false;
-    if (!q) return true;
-    return (
-      u.phoneNumber.toLowerCase().includes(q) ||
-      (u.city?.toLowerCase().includes(q) ?? false) ||
-      (u.companyName?.toLowerCase().includes(q) ?? false)
-    );
-  });
-}
-
-type UserFilter = "ALL" | "VERIFIED" | "UNVERIFIED";
-
-const USER_FILTERS = [
-  { value: "ALL", label: "Бүгд" },
-  { value: "VERIFIED", label: "Баталгаажсан" },
-  { value: "UNVERIFIED", label: "Баталгаажаагүй" },
-] as const satisfies readonly { value: UserFilter; label: string }[];
 
 export default function UsersPage() {
   const router = useRouter();
   const [users, setUsers] = useState<AdminUser[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<UserFilter>(
-    "ALL",
-  );
+  const [filters, setFilters] = useState(NO_USER_FILTERS);
   const [pendingVerify, setPendingVerify] = useState<Set<number>>(new Set());
 
   useEffect(() => {
@@ -90,9 +68,12 @@ export default function UsersPage() {
   };
 
   const filtered = useMemo(
-    () => (users ? filterUsers(users, filter, query) : []),
-    [users, filter, query],
+    () => (users ? filterUsers(users, filters) : []),
+    [users, filters],
   );
+  const cities = useMemo(() => cityOptions(users ?? []), [users]);
+  const companies = useMemo(() => companyOptions(users ?? []), [users]);
+  const filtering = hasActiveFilters(filters);
 
   return (
     <>
@@ -101,31 +82,21 @@ export default function UsersPage() {
         description="Бүх бүртгэлтэй үзэгчид ба компаниуд"
       />
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-64">
-          <Search
-            size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]"
-          />
-          <Input
-            className="pl-9"
-            placeholder="Утас, хот, компаниар хайх..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </div>
-        <SegmentedControl
-          label="Статусын шүүлт"
-          value={filter}
-          onChange={setFilter}
-          options={USER_FILTERS}
-        />
-      </div>
+      <UserFilterBar
+        filters={filters}
+        onChange={setFilters}
+        cities={cities}
+        companies={companies}
+      />
 
       <Card>
         <CardHeader
           title={
-            users === null ? "Ачаалж байна..." : `Нийт: ${filtered.length}`
+            <span aria-live="polite">
+              {users === null
+                ? "Ачаалж байна..."
+                : resultCountLabel(filtered.length, users.length, filtering)}
+            </span>
           }
         />
         <CardBody className="p-0">
@@ -237,7 +208,21 @@ export default function UsersPage() {
                       colSpan={7}
                       className="px-5 py-10 text-center text-sm text-[var(--color-text-muted)]"
                     >
-                      Хэрэглэгч олдсонгүй.
+                      {filtering ? (
+                        <div className="flex flex-col items-center gap-3">
+                          <span>Шүүлтэд тохирох хэрэглэгч олдсонгүй.</span>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            leftIcon={<X size={12} aria-hidden />}
+                            onClick={() => setFilters(NO_USER_FILTERS)}
+                          >
+                            Шүүлтийг цэвэрлэх
+                          </Button>
+                        </div>
+                      ) : (
+                        "Хэрэглэгч олдсонгүй."
+                      )}
                     </td>
                   </tr>
                 )}

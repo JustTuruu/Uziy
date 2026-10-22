@@ -13,6 +13,7 @@ import 'package:viewer_app/models/campaign.dart';
 import 'package:viewer_app/models/payout_request.dart';
 import 'package:viewer_app/models/view_history_item.dart';
 import 'package:viewer_app/models/user.dart';
+import 'package:viewer_app/screens/auth/birth_date_picker.dart';
 import 'package:viewer_app/screens/auth/login_screen.dart';
 import 'package:viewer_app/screens/auth/register_screen.dart';
 import 'package:viewer_app/screens/home/feed_logic.dart';
@@ -23,6 +24,11 @@ import 'package:viewer_app/screens/wallet/wallet_logic.dart';
 import 'package:viewer_app/screens/wallet/wallet_widgets.dart';
 import 'package:viewer_app/widgets/ui.dart';
 import 'package:viewer_app/widgets/app_nav_bar.dart';
+import 'package:viewer_app/widgets/nav_glyphs.dart';
+import 'package:viewer_app/screens/survey/mood_logic.dart';
+import 'package:viewer_app/screens/survey/mood_slider.dart';
+import 'package:viewer_app/screens/profile/help_content.dart';
+import 'package:viewer_app/screens/profile/help_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -72,9 +78,8 @@ void main() {
         )),
         bottomNavigationBar:
             AppNavBar(currentIndex: tab, onTap: (_) {}, items: const [
-          AppNavItem(icon: Icons.play_circle_outline_rounded, label: 'Нүүр'),
-          AppNavItem(
-              icon: Icons.account_balance_wallet_outlined, label: 'Хэтэвч'),
+          AppNavItem(glyphBuilder: NavGlyph.home, label: 'Нүүр'),
+          AppNavItem(glyphBuilder: NavGlyph.wallet, label: 'Хэтэвч'),
           AppNavItem(icon: Icons.person_outline_rounded, label: 'Профайл'),
         ]),
       );
@@ -103,6 +108,7 @@ void main() {
           AppButton(
               label: 'Мөнгө татах',
               icon: Icons.account_balance_rounded,
+              variant: AppButtonVariant.tonal,
               onPressed: () {}),
         ], tab: 1),
         'wallet-history': page([
@@ -140,6 +146,33 @@ void main() {
             ],
           ),
         ], tab: 1),
+        'mood-faces': page([
+          Text('Үнэлгээ', style: context.textStyles.title),
+          const SizedBox(height: 16),
+          for (var i = 0; i < kMoodSteps; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(children: [
+                SizedBox(
+                  width: 120,
+                  height: 82,
+                  child: CustomPaint(
+                      painter: MoodFacePainter(i / (kMoodSteps - 1),
+                          dark: context.colors.isDark)),
+                ),
+                const SizedBox(width: 16),
+                Text(kMoodLabels[i], style: context.textStyles.title),
+              ]),
+            ),
+        ], tab: 0),
+        'mood-slider': page([
+          MoodSlider(labels: kMoodLabels, selectedIndex: 4, onChanged: (_) {}),
+        ], tab: 0),
+        'help': page([
+          Text('Тусламж', style: context.textStyles.pageTitle),
+          const SizedBox(height: 16),
+          const HelpChat(items: kFaqItems),
+        ], tab: 2),
         'profile': page([
           ProfileBody(
               user: user,
@@ -206,6 +239,27 @@ void main() {
             ),
           )),
         ),
+        'birth-date': Scaffold(
+          backgroundColor: Colors.black54,
+          body: Align(
+            alignment: Alignment.bottomCenter,
+            child: Material(
+              color: Theme.of(context).bottomSheetTheme.backgroundColor ??
+                  Theme.of(context).colorScheme.surfaceContainerLow,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(28)),
+              child: Padding(
+                padding: const EdgeInsets.only(top: 36),
+                child: BirthDateSheet(
+                  initial: DateTime(2006, 10, 22),
+                  first: DateTime(1946),
+                  last: DateTime(2013),
+                  now: DateTime(2026, 10, 22),
+                ),
+              ),
+            ),
+          ),
+        ),
         'login': const LoginScreen(),
         'register': const RegisterScreen(),
       };
@@ -214,10 +268,14 @@ void main() {
     'home',
     'wallet',
     'wallet-history',
+    'mood-faces',
+    'mood-slider',
+    'help',
     'profile',
     'survey',
     'login',
     'register',
+    'birth-date',
     'campaign'
   ]) {
     testWidgets('render $name', (tester) async {

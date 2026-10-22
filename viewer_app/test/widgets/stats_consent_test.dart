@@ -33,65 +33,6 @@ Future<void> _pump(WidgetTester tester, Widget child) async {
 }
 
 void main() {
-  test('only adults are asked', () {
-    expect(canAskStatsConsent(null), isFalse);
-    expect(canAskStatsConsent(17), isFalse);
-    expect(canAskStatsConsent(18), isTrue);
-  });
-
-  test('the explanation says what happens, to whom, and how to undo it', () {
-    expect(kStatsConsentBody, contains('нэр, утас'));
-    expect(kStatsConsentBody, contains('50'));
-    expect(kStatsConsentBody, contains('байгууллагуудад'));
-    expect(kStatsConsentBody, contains('цуцална'));
-    expect(kStatsConsentBody.toLowerCase(), isNot(contains('админ')));
-  });
-
-  group('StatsConsentPrompt', () {
-    testWidgets('asks a viewer who never answered and sends yes',
-        (tester) async {
-      final api = _FakeApi(StatisticsConsentStatus.unasked);
-      await _pump(tester, StatsConsentPrompt(api: api));
-
-      expect(find.text(kStatsConsentTitle), findsOneWidget);
-      await tester.tap(find.text(kStatsConsentYes));
-      await tester.pumpAndSettle();
-
-      expect(api.decisions, [true]);
-      expect(find.text(kStatsConsentTitle), findsNothing);
-      expect(find.text(kStatsConsentThanks), findsOneWidget);
-    });
-
-    testWidgets('a no is respected and the card goes away', (tester) async {
-      final api = _FakeApi(StatisticsConsentStatus.unasked);
-      await _pump(tester, StatsConsentPrompt(api: api));
-
-      await tester.tap(find.text(kStatsConsentNo));
-      await tester.pumpAndSettle();
-
-      expect(api.decisions, [false]);
-      expect(find.text(kStatsConsentTitle), findsNothing);
-    });
-
-    testWidgets('a viewer who already answered is not asked again',
-        (tester) async {
-      await _pump(tester,
-          StatsConsentPrompt(api: _FakeApi(StatisticsConsentStatus.declined)));
-      expect(find.text(kStatsConsentTitle), findsNothing);
-    });
-
-    testWidgets('a failed save keeps the question so it can be answered',
-        (tester) async {
-      final api = _FakeApi(StatisticsConsentStatus.unasked, failDecide: true);
-      await _pump(tester, StatsConsentPrompt(api: api));
-
-      await tester.tap(find.text(kStatsConsentYes));
-      await tester.pumpAndSettle();
-
-      expect(find.text(kStatsConsentTitle), findsOneWidget);
-    });
-  });
-
   group('StatsConsentTile', () {
     testWidgets('shows the current choice and withdraws it with the switch',
         (tester) async {

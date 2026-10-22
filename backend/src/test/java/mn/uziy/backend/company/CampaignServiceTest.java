@@ -303,6 +303,16 @@ class CampaignServiceTest {
         }
 
         @Test
+        void aCampaignAimedAtOneExactAgeIs400SoItCannotSingleOutAFewViewers() {
+            CreateCampaignReq oneAge = new CreateCampaignReq(
+                    "Шинэ 5G", null, null, 45, TargetGender.FEMALE, 30, 30, "Улаанбаатар", 1_000_000.0, 1_000, null,
+                    List.of(new CreateCampaignReq.NewQuestion("P", "SINGLE_CHOICE", List.of("A", "B"), null)));
+
+            assertBadRequest(TargetAgeRule.AGE_RANGE_TOO_NARROW, () -> campaignSvc.create(companyId, oneAge));
+            verify(campaigns, never()).save(any());
+        }
+
+        @Test
         void everywhereOrAnAimagIsAccepted() {
             captureSave();
             campaignSvc.create(companyId, targeting("ALL"));

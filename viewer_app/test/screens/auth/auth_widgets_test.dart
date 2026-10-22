@@ -57,6 +57,18 @@ void main() {
       expect(AuthValidators.password('a much longer one'), isNull);
     });
 
+    test('passwordRepeat: must equal the first typing exactly', () {
+      expect(AuthValidators.passwordRepeat(null, 'secret1'),
+          AuthValidators.passwordRepeatRequired);
+      expect(AuthValidators.passwordRepeat('', 'secret1'),
+          AuthValidators.passwordRepeatRequired);
+      expect(AuthValidators.passwordRepeat('secret2', 'secret1'),
+          AuthValidators.passwordMismatch);
+      expect(AuthValidators.passwordRepeat('Secret1', 'secret1'),
+          AuthValidators.passwordMismatch);
+      expect(AuthValidators.passwordRepeat('secret1', 'secret1'), isNull);
+    });
+
     test('names: real names pass, like the backend rule', () {
       for (final name in [
         'Оюун-Эрдэнэ',
@@ -383,17 +395,40 @@ void main() {
       expect(picked, isEmpty);
     });
 
-    testWidgets('as tall as a text field, no check mark', (tester) async {
-      await _pump(
-        tester,
-        GenderSelector(value: Gender.male, onChanged: (_) {}),
-      );
-      expect(
-        tester.getSize(find.byType(SegmentedButton<Gender>)).height,
-        greaterThanOrEqualTo(GenderSelector.height),
-      );
-      expect(find.byIcon(Icons.check), findsNothing);
-    });
+    // Owner, 2026-10-22: it grew to ~62pt (taller than the fields) and
+    // looked too big; it is now a compact 44pt at any text size.
+    for (final scale in [1.0, 1.3]) {
+      testWidgets('compact: exactly 44pt tall, no check mark (text x$scale)',
+          (tester) async {
+        await _pump(
+          tester,
+          MediaQuery(
+            data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+            child: GenderSelector(value: Gender.male, onChanged: (_) {}),
+          ),
+        );
+        expect(GenderSelector.height, 44);
+        expect(
+          tester.getSize(find.byType(SegmentedButton<Gender>)).height,
+          GenderSelector.height,
+        );
+        expect(tester.takeException(), isNull);
+        expect(find.byIcon(Icons.check), findsNothing);
+
+        // Each half fills the control and its word sits in the middle (a
+        // forced outer height once left the word high over a dark band).
+        final box = tester.getRect(find.byType(SegmentedButton<Gender>));
+        for (final label in GenderSelector.labels.values) {
+          final half = tester.getRect(find
+              .ancestor(of: find.text(label), matching: find.byType(TextButton))
+              .first);
+          expect(half.height, closeTo(box.height, 1), reason: label);
+          expect(
+              tester.getCenter(find.text(label)).dy, closeTo(box.center.dy, 1),
+              reason: label);
+        }
+      });
+    }
   });
 
   group('AuthPageTitle', () {

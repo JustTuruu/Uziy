@@ -75,6 +75,9 @@ void main() {
       expect(find.text('A'), findsOneWidget);
       expect(find.text('2'), findsOneWidget);
       expect(find.text('1,200 ₮'), findsOneWidget);
+      // Owner, 2026-10-21: a survey history, not a video one.
+      expect(find.text('Бөглөсөн судалгаа'), findsOneWidget);
+      expect(find.textContaining('Үзсэн видео'), findsNothing);
     });
 
     testWidgets('a row shows company, day, time and the signed reward',

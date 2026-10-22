@@ -13,7 +13,8 @@ import org.springframework.stereotype.Component;
 /**
  * How each segment (men, women, each age band) answered a choice question, so an advertiser can see
  * who liked the offer. A segment smaller than the minimum is left out entirely rather than shown,
- * so a handful of answers can never point at one person.
+ * and so is one whose leftover could be subtracted from the question's totals, so a handful of answers
+ * can never point at one person.
  */
 @Component
 public class SegmentCounter {
@@ -63,13 +64,14 @@ public class SegmentCounter {
             }
         }
 
-        List<String> kept = orderedSegments().stream()
-                .filter(s -> answerers.getOrDefault(s, 0L) >= minSample)
-                .toList();
-        if (kept.isEmpty() || options.isEmpty()) {
+        long answered = rows.size();
+        List<Slice> segments = new ArrayList<>();
+        segments.addAll(reportable(GENDERS, answerers, answered, minSample));
+        segments.addAll(reportable(AgeBands.labels(), answerers, answered, minSample));
+        if (segments.isEmpty() || options.isEmpty()) {
             return null;
         }
-        List<Slice> segments = kept.stream().map(s -> new Slice(s, answerers.get(s))).toList();
+        List<String> kept = segments.stream().map(Slice::label).toList();
         List<OptionBySegment> rowsOut = new ArrayList<>();
         for (String option : options) {
             List<Long> counts = kept.stream()
@@ -92,10 +94,17 @@ public class SegmentCounter {
         return segments;
     }
 
-    /** Genders first, then the age bands in age order. */
-    private static List<String> orderedSegments() {
-        List<String> all = new ArrayList<>(GENDERS);
-        AgeBands.group(Map.of()).forEach(band -> all.add(band.label()));
-        return all;
+    /**
+     * The segments of one dimension (genders, or age bands) that can be shown. The question's answer count and
+     * option totals are public, so a segment is also withheld when the rest of its dimension would be small
+     * enough to work out by subtraction ({@link SmallGroupRule}). A segment nobody is in is not a segment here.
+     */
+    private static List<Slice> reportable(List<String> dimension, Map<String, Long> answerers, long answered,
+                                          int minSample) {
+        List<Slice> present = dimension.stream()
+                .filter(answerers::containsKey)
+                .map(s -> new Slice(s, answerers.get(s)))
+                .toList();
+        return SmallGroupRule.reportable(present, answered, minSample);
     }
 }

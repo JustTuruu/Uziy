@@ -5,6 +5,7 @@ import '../../routes/app_router.dart';
 import '../../routes/auth_gate.dart';
 import '../../services/api_error.dart';
 import '../../services/auth_service.dart';
+import '../../services/debug_log.dart';
 import '../../widgets/ui.dart';
 import '../splash_screen.dart';
 import 'auth_widgets.dart';
@@ -61,7 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
       });
     } catch (e, stack) {
       // The details go to the console for us; the user gets a plain sentence.
-      debugPrint('[login] unexpected error: $e\n$stack');
+      debugLog(() => '[login] unexpected error: $e\n$stack');
       if (!mounted) return;
       setState(() {
         _error = kUnexpectedError;

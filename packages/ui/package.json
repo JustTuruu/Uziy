@@ -7,7 +7,9 @@
     ".": "./src/index.ts",
     "./theme.css": "./src/theme.css",
     "./theme-light.css": "./src/theme-light.css",
-    "./fonts": "./src/fonts.ts"
+    "./fonts": "./src/fonts.ts",
+    "./security-headers": "./src/security-headers.ts",
+    "./regions": "./src/regions.ts"
   },
   "scripts": {
     "test": "vitest run",

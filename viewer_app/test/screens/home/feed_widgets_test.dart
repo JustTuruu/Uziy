@@ -61,9 +61,11 @@ void _useSmallPhone(WidgetTester tester) {
   addTearDown(tester.view.reset);
 }
 
+void _noFilter(FeedFilter _) {}
+
 void main() {
   group('CampaignCard', () {
-    testWidgets('renders title, company, reward, duration and CTA',
+    testWidgets('renders title, company, reward and duration; no CTA button',
         (tester) async {
       await _pump(tester, CampaignCard(campaign: _video, onTap: () {}));
       await tester.pumpAndSettle();
@@ -73,18 +75,20 @@ void main() {
       expect(find.text('MobiCom'), findsOneWidget);
       expect(find.text('+700 ₮'), findsOneWidget);
       expect(find.text('45 сек'), findsOneWidget);
-      expect(find.text('Үзэх'), findsOneWidget);
+      // Owner, 2026-10-21: the card itself is the button.
+      expect(find.text('Үзэх'), findsNothing);
+      expect(find.byIcon(Icons.arrow_forward_rounded), findsNothing);
       expect(find.byIcon(Icons.play_arrow_rounded), findsOneWidget);
       expect(find.byType(CampaignArt), findsOneWidget);
     });
 
-    testWidgets('survey-only shows the Судалгаа tag and Бөглөх CTA',
+    testWidgets('survey-only shows the Судалгаа tag and no Бөглөх button',
         (tester) async {
       await _pump(tester, CampaignCard(campaign: _survey, onTap: () {}));
       await tester.pumpAndSettle();
 
       expect(find.text('Судалгаа'), findsOneWidget);
-      expect(find.text('Бөглөх'), findsOneWidget);
+      expect(find.text('Бөглөх'), findsNothing);
       expect(find.text('+250 ₮'), findsOneWidget);
       expect(find.byIcon(Icons.play_arrow_rounded), findsNothing);
       expect(find.text('0 сек'), findsNothing);
@@ -134,7 +138,7 @@ void main() {
       expect(find.text('+12,500 ₮'), findsOneWidget);
     });
 
-    testWidgets('dark card keeps reward and action readable at 2x text',
+    testWidgets('dark card keeps the reward readable at 2x text',
         (tester) async {
       _useSmallPhone(tester);
       await _pump(tester, CampaignCard(campaign: _video, onTap: () {}),
@@ -142,7 +146,25 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       expect(find.text('+700 ₮'), findsOneWidget);
-      expect(find.text('Үзэх'), findsOneWidget);
+    });
+
+    testWidgets('the reward sits on the publisher line, right of the name',
+        (tester) async {
+      await _pump(tester, CampaignCard(campaign: _video, onTap: () {}));
+      await tester.pumpAndSettle();
+      final company = tester.getRect(find.text('MobiCom'));
+      final reward = tester.getRect(find.byType(RewardChip));
+      expect(reward.center.dy, closeTo(company.center.dy, 2));
+      expect(reward.left, greaterThan(company.right - 1));
+      expect(
+        reward.right,
+        closeTo(
+            tester.getRect(find.byType(CardTitle)).left +
+                tester.getRect(find.byType(CampaignCard)).width -
+                32,
+            1),
+        reason: 'flush with the card padding on the right',
+      );
     });
 
     testWidgets('renders under reduce-motion', (tester) async {
@@ -154,6 +176,13 @@ void main() {
       await tester.pump();
       expect(find.text('Шинэ 5G багц'), findsOneWidget);
     });
+  });
+
+  test('CampaignCard.stacksReward: one line when roomy, stacked when tight',
+      () {
+    expect(CampaignCard.stacksReward(320, 1.0), isFalse);
+    expect(CampaignCard.stacksReward(248, 1.3), isTrue);
+    expect(CampaignCard.stacksReward(400, 2.0), isTrue);
   });
 
   group('CardTitle', () {
@@ -240,7 +269,7 @@ void main() {
   });
 
   group('FeedFilterBar', () {
-    testWidgets('shows the three tabs and reports a new selection',
+    testWidgets('three chips with icon and name; reports a change',
         (tester) async {
       final changes = <FeedFilter>[];
       await _pump(
@@ -248,9 +277,11 @@ void main() {
         FeedFilterBar(value: FeedFilter.all, onChanged: changes.add),
       );
 
+      expect(find.byType(FeedFilterChip), findsNWidgets(3));
       expect(find.text('Бүгд'), findsOneWidget);
-      expect(find.text('Видео'), findsOneWidget);
-      expect(find.text('Судалгаа'), findsOneWidget);
+      expect(find.byIcon(AppIcons.feedAll), findsOneWidget);
+      expect(find.byIcon(AppIcons.feedVideo), findsOneWidget);
+      expect(find.byIcon(AppIcons.feedSurvey), findsOneWidget);
 
       await tester.tap(find.text('Видео'));
       await tester.tap(find.text('Судалгаа'));
@@ -258,7 +289,7 @@ void main() {
       expect(changes, [FeedFilter.video, FeedFilter.survey]);
     });
 
-    testWidgets('tapping the selected tab does nothing', (tester) async {
+    testWidgets('tapping the selected chip does nothing', (tester) async {
       final changes = <FeedFilter>[];
       await _pump(
         tester,
@@ -269,7 +300,25 @@ void main() {
       expect(changes, isEmpty);
     });
 
-    testWidgets('segments are full-height tap targets with selected state',
+    testWidgets('the selected chip is a flat action fill, the rest are quiet',
+        (tester) async {
+      await _pump(
+        tester,
+        FeedFilterBar(value: FeedFilter.survey, onChanged: (_) {}),
+      );
+      await tester.pumpAndSettle();
+      BoxDecoration deco(String label) => tester
+          .widget<AnimatedContainer>(find.descendant(
+            of: find.widgetWithText(FeedFilterChip, label),
+            matching: find.byType(AnimatedContainer),
+          ))
+          .decoration! as BoxDecoration;
+      expect(deco('Судалгаа').color, AppColors.primary);
+      expect(deco('Судалгаа').gradient, isNull);
+      expect(deco('Бүгд').color, AppColors.surface);
+    });
+
+    testWidgets('chips are 44pt targets and announce name and state',
         (tester) async {
       final handle = tester.ensureSemantics();
       await _pump(
@@ -277,18 +326,98 @@ void main() {
         FeedFilterBar(value: FeedFilter.survey, onChanged: (_) {}),
       );
       expect(
-        tester.getSize(find.byType(Pressable).first).height,
+        tester.getSize(find.byType(FeedFilterChip).first).height,
         greaterThanOrEqualTo(AppLayout.minTapTarget),
       );
       expect(
-        tester.getSemantics(find.text('Судалгаа')),
+        tester.getSemantics(find.widgetWithText(FeedFilterChip, 'Судалгаа')),
         isSemantics(label: 'Судалгаа', isSelected: true, isButton: true),
       );
       expect(
-        tester.getSemantics(find.text('Бүгд')),
+        tester.getSemantics(find.widgetWithText(FeedFilterChip, 'Бүгд')),
         isSemantics(label: 'Бүгд', isSelected: false),
       );
       handle.dispose();
+    });
+
+    // The counts already sit in the hero card above; repeating them made
+    // the third chip run off a 390pt screen (checked with the real font in
+    // tool/render_design_test.dart).
+    testWidgets('chips carry no count badge', (tester) async {
+      await _pump(
+        tester,
+        FeedFilterBar(value: FeedFilter.all, onChanged: (_) {}),
+      );
+      await tester.pumpAndSettle();
+      final texts = tester
+          .widgetList<Text>(find.descendant(
+              of: find.byType(FeedFilterChip), matching: find.byType(Text)))
+          .map((t) => t.data)
+          .toList();
+      expect(texts, ['Бүгд', 'Видео', 'Судалгаа']);
+    });
+
+    testWidgets('every chip label keeps the same size (no shrink-to-fit)',
+        (tester) async {
+      await _pump(
+        tester,
+        FeedFilterBar(value: FeedFilter.all, onChanged: (_) {}),
+      );
+      await tester.pumpAndSettle();
+      final heights = [
+        for (final l in ['Бүгд', 'Видео', 'Судалгаа'])
+          tester.getSize(find.text(l)).height,
+      ];
+      expect(heights.toSet(), hasLength(1));
+      expect(find.byType(FittedBox), findsNothing);
+    });
+
+    testWidgets('fits a 320pt phone at 1.3x text', (tester) async {
+      _useSmallPhone(tester);
+      await _pump(
+        tester,
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20),
+          child: FeedFilterBar(
+            value: FeedFilter.all,
+            onChanged: _noFilter,
+          ),
+        ),
+        textScale: 1.3,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('EarningsHeroCard', () {
+    test('light: a flat forest sheet with white ink', () {
+      final look = EarningsHeroCard.lookIn(const AppPalette(false));
+      expect(look.fill, AppColors.primary);
+      expect(look.money, AppColors.onPrimary);
+    });
+
+    test('dark: the graphite surface with sage money, not a sage block', () {
+      const dark = AppPalette(true);
+      final look = EarningsHeroCard.lookIn(dark);
+      expect(look.fill, dark.surfaceElevated);
+      expect(look.fill, isNot(dark.primary));
+      expect(look.money, dark.primary);
+    });
+
+    testWidgets('draws flat in both themes', (tester) async {
+      for (final dark in [false, true]) {
+        await _pump(
+          tester,
+          const EarningsHeroCard(
+            summary:
+                FeedSummary(totalReward: 1450, videoCount: 2, surveyCount: 1),
+          ),
+          dark: dark,
+        );
+        await tester.pumpAndSettle();
+        final card = tester.widget<AppCard>(find.byType(AppCard));
+        expect(card.gradient, isNull, reason: 'dark: $dark');
+      }
     });
   });
 

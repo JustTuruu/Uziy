@@ -1,10 +1,10 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
 import '../models/phone_verification.dart';
 import '../models/user.dart';
+import '../widgets/animated_money.dart';
 import 'api_error.dart';
 import 'api_service.dart';
+import 'secure_store.dart';
 
 /// One-shot error thrown by AuthService when the backend returns 4xx.
 /// UI layer catches this to show a friendly localized message.
@@ -36,7 +36,7 @@ class AuthService {
   /// On login a 401 means the phone or password is wrong, not "sign in
   /// again" (used only if the backend sent no message).
   static const _loginByStatus = {401: kWrongCredentials};
-  final _storage = const FlutterSecureStorage();
+  final _storage = appSecureStorage;
 
   /// True while a JWT is loaded into the HTTP client (after login,
   /// registration or [restore]); false for a guest. Synchronous on purpose:
@@ -67,8 +67,15 @@ class AuthService {
     try {
       await onBeforeLogout?.call();
     } catch (_) {}
-    await _storage.delete(key: _tokenKey);
-    ApiService.instance.setAuthToken(null);
+    try {
+      await _storage.delete(key: _tokenKey);
+    } finally {
+      // In-memory session state goes even if the keychain write failed.
+      ApiService.instance.setAuthToken(null);
+      // The next person on this phone must not see the previous balance
+      // roll in from the remembered amount.
+      MoneyMemory.clear();
+    }
   }
 
   /// Bootstrap on app start — reload the persisted token into Dio's default

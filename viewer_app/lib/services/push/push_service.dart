@@ -1,7 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
-
+import '../debug_log.dart';
 import 'device_registry.dart';
 import 'push_client.dart';
 import 'push_message.dart';
@@ -39,7 +38,7 @@ class PushService {
       if (token != null && token.isNotEmpty) await _register(token);
       _refreshSub = _client.onTokenRefresh.listen(_register);
     } catch (e) {
-      debugPrint('[push] start failed: $e');
+      debugLog(() => '[push] start failed: $e');
       _started = false;
     }
   }
@@ -56,7 +55,7 @@ class PushService {
     try {
       await _registry.unregister(token);
     } catch (e) {
-      debugPrint('[push] unregister failed: $e');
+      debugLog(() => '[push] unregister failed: $e');
     }
   }
 
@@ -65,7 +64,7 @@ class PushService {
     try {
       await _registry.register(token, _platform);
     } catch (e) {
-      debugPrint('[push] register failed: $e');
+      debugLog(() => '[push] register failed: $e');
     }
   }
 }

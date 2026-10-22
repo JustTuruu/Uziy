@@ -24,7 +24,7 @@ class _FakeStatsApi implements StatisticsConsentApi {
 }
 
 Future<_FakeStatsApi> _pump(WidgetTester tester) async {
-  tester.view.physicalSize = const Size(390, 3000) * 3;
+  tester.view.physicalSize = const Size(390, 4200) * 3;
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
   final api = _FakeStatsApi();
@@ -82,8 +82,6 @@ void main() {
   });
 
   test('the copy points to where the switch now is', () {
-    expect(kStatsConsentBody, contains('Нууцлалын бодлого'));
-    expect(kStatsConsentThanks, contains('Нууцлалын бодлого'));
     final rights = kPrivacySections.map((s) => s.body).join(' ');
     expect(rights, isNot(contains('зөвшөөрлөө Профайл хэсгээс')));
   });

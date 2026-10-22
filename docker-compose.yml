@@ -11,7 +11,10 @@
 #
 # Local secrets (VERIFY_MN_API_KEY, PHONE_VERIFICATION_PROVIDER, ...) are read from
 # backend/.env when it exists; see backend/.env.example. This stack is for local
-# development only — it uses the dev database password and dev JWT secret.
+# development only — it uses the dev database password. Put a random JWT_SECRET in
+# backend/.env (`openssl rand -base64 64`): the backend port is reachable from the LAN
+# (the phone needs it), and the committed dev secret would let anyone there forge an
+# admin token. The database and pgAdmin are bound to 127.0.0.1.
 name: uziy
 
 include:
@@ -41,6 +44,7 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/uziy
       DB_USER: uziy
       DB_PASSWORD: uziy_dev
+    # Open to the LAN on purpose: the app on a real phone talks to http://<Mac IP>:8080.
     ports:
       - "8080:8080"
     healthcheck:

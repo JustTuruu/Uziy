@@ -1,6 +1,7 @@
 package mn.uziy.backend.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -99,6 +100,41 @@ class PasswordResetFlowIntegrationTest {
 
         login(phone, "newpass1").andExpect(status().isOk());
         login(phone, "oldpass1").andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * Audit 2026-10-22: a reset must sign out every device that still holds a token (a lost phone, a leaked
+     * token). JWT keeps whole seconds, so the old token is taken over a second before the reset.
+     */
+    @Test
+    void aResetSignsOutEveryOldTokenButTheNewLoginWorks() throws Exception {
+        String phone = "72000011";
+        viewer(phone);
+        String oldToken = JsonPath.read(login(phone, "oldpass1").andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), "$.token");
+        mvc.perform(get("/viewer/me").header("Authorization", "Bearer " + oldToken)).andExpect(status().isOk());
+        Thread.sleep(1_100);
+
+        reset(phone, verifiedCheck(phone, "PASSWORD_RESET"), "newpass1").andExpect(status().isNoContent());
+
+        mvc.perform(get("/viewer/me").header("Authorization", "Bearer " + oldToken))
+                .andExpect(status().is4xxClientError());
+        String newToken = JsonPath.read(login(phone, "newpass1").andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), "$.token");
+        mvc.perform(get("/viewer/me").header("Authorization", "Bearer " + newToken)).andExpect(status().isOk());
+    }
+
+    /** The reset changes the password only: the balance (and everything else) stays as the database has it. */
+    @Test
+    void aResetLeavesTheBalanceAlone() throws Exception {
+        String phone = "72000012";
+        viewer(phone);
+        jdbc.update("UPDATE users SET balance = 6500 WHERE phone_number = ?", phone);
+
+        reset(phone, verifiedCheck(phone, "PASSWORD_RESET"), "newpass1").andExpect(status().isNoContent());
+
+        assertThat(jdbc.queryForObject("SELECT balance FROM users WHERE phone_number = ?", Double.class, phone))
+                .isEqualTo(6500.0);
     }
 
     @Test

@@ -10,7 +10,20 @@ import org.junit.jupiter.api.Test;
 
 class AnswerCounterTest {
 
+    /** The counting tests below are about what is counted, not about hiding small groups. */
+    private static final int NO_MINIMUM = 0;
+    private static final int MIN = 5;
+
     private final AnswerCounter counter = new AnswerCounter();
+
+    private List<QuestionBreakdown> count(List<SurveyQuestionEntity> questions, List<Object[]> answers) {
+        return counter.count(questions, answers, NO_MINIMUM);
+    }
+
+    /** {@code n} copies of the same answer row. */
+    private static List<Object[]> repeated(int n, Object[] row) {
+        return java.util.Collections.nCopies(n, row);
+    }
 
     private static SurveyQuestionEntity question(long id, String type, String optionsJson) {
         SurveyQuestionEntity q = new SurveyQuestionEntity();
@@ -36,7 +49,7 @@ class AnswerCounterTest {
     void singleChoiceCountsEachOptionKeepingTheQuestionsOrder() {
         var q = question(1, "SINGLE_CHOICE", "[\"Тийм\",\"Дунд зэрэг\",\"Үгүй\"]");
 
-        QuestionBreakdown out = counter.count(List.of(q), answers(
+        QuestionBreakdown out = count(List.of(q), answers(
                 answer(1, "\"Тийм\""), answer(1, "\"Тийм\""), answer(1, "\"Үгүй\""))).get(0);
 
         assertThat(out.answered()).isEqualTo(3);
@@ -48,7 +61,7 @@ class AnswerCounterTest {
     void multiChoiceCountsEveryPickedOption() {
         var q = question(1, "MULTI_CHOICE", "[\"A\",\"B\",\"C\"]");
 
-        QuestionBreakdown out = counter.count(List.of(q), answers(
+        QuestionBreakdown out = count(List.of(q), answers(
                 answer(1, "[\"A\",\"B\"]"), answer(1, "[\"B\"]"))).get(0);
 
         assertThat(out.answered()).isEqualTo(2);
@@ -59,7 +72,7 @@ class AnswerCounterTest {
     void anOptionWithACommaIsCountedWhole() {
         var q = question(1, "SINGLE_CHOICE", "[\"Тийм, гэхдээ\",\"Үгүй\"]");
 
-        QuestionBreakdown out = counter.count(List.of(q), answers(answer(1, "\"Тийм, гэхдээ\""))).get(0);
+        QuestionBreakdown out = count(List.of(q), answers(answer(1, "\"Тийм, гэхдээ\""))).get(0);
 
         assertThat(out.options()).containsExactly(new Slice("Тийм, гэхдээ", 1), new Slice("Үгүй", 0));
     }
@@ -68,7 +81,7 @@ class AnswerCounterTest {
     void freeTextIsCountedButHasNoOptions() {
         var q = question(1, "TEXT", "[]");
 
-        QuestionBreakdown out = counter.count(List.of(q), answers(answer(1, "\"сайн\""), answer(1, "\"муу\""))).get(0);
+        QuestionBreakdown out = count(List.of(q), answers(answer(1, "\"сайн\""), answer(1, "\"муу\""))).get(0);
 
         assertThat(out.answered()).isEqualTo(2);
         assertThat(out.options()).isEmpty();
@@ -78,7 +91,7 @@ class AnswerCounterTest {
     void anAnswerNotAmongTheOptionsAddsToNoOption() {
         var q = question(1, "SINGLE_CHOICE", "[\"A\",\"B\"]");
 
-        QuestionBreakdown out = counter.count(List.of(q), answers(answer(1, "\"old option\""))).get(0);
+        QuestionBreakdown out = count(List.of(q), answers(answer(1, "\"old option\""))).get(0);
 
         assertThat(out.answered()).isEqualTo(1);
         assertThat(out.options()).containsExactly(new Slice("A", 0), new Slice("B", 0));
@@ -88,7 +101,7 @@ class AnswerCounterTest {
     void unreadableAnswerJsonIsCountedAsAnsweredAndNothingElse() {
         var q = question(1, "SINGLE_CHOICE", "[\"A\"]");
 
-        QuestionBreakdown out = counter.count(List.of(q), answers(answer(1, "{not json"))).get(0);
+        QuestionBreakdown out = count(List.of(q), answers(answer(1, "{not json"))).get(0);
 
         assertThat(out.answered()).isEqualTo(1);
         assertThat(out.options()).containsExactly(new Slice("A", 0));
@@ -98,7 +111,7 @@ class AnswerCounterTest {
     void aQuestionNobodyAnsweredStillAppearsWithZeros() {
         var q = question(1, "SINGLE_CHOICE", "[\"A\"]");
 
-        QuestionBreakdown out = counter.count(List.of(q), List.of()).get(0);
+        QuestionBreakdown out = count(List.of(q), List.of()).get(0);
 
         assertThat(out.answered()).isZero();
         assertThat(out.options()).containsExactly(new Slice("A", 0));
@@ -109,9 +122,44 @@ class AnswerCounterTest {
         var q1 = question(1, "SINGLE_CHOICE", "[\"A\"]");
         var q2 = question(2, "SINGLE_CHOICE", "[\"A\"]");
 
-        List<QuestionBreakdown> out = counter.count(List.of(q1, q2), answers(answer(2, "\"A\"")));
+        List<QuestionBreakdown> out = count(List.of(q1, q2), answers(answer(2, "\"A\"")));
 
         assertThat(out.get(0).options()).containsExactly(new Slice("A", 0));
         assertThat(out.get(1).options()).containsExactly(new Slice("A", 1));
+    }
+
+    // ------- the minimum -----------------------------------------------------
+
+    @Test
+    void belowTheMinimumOnlyTheAnswerCountIsShownNotWhatWasChosen() {
+        var q = question(1, "SINGLE_CHOICE", "[\"Тийм\",\"Үгүй\"]");
+
+        QuestionBreakdown out = counter.count(List.of(q), repeated(MIN - 1, answer(1, "\"Тийм\"")), MIN).get(0);
+
+        assertThat(out.answered()).isEqualTo(MIN - 1);
+        assertThat(out.options()).isEmpty();
+    }
+
+    @Test
+    void atTheMinimumTheOptionsAreCounted() {
+        var q = question(1, "SINGLE_CHOICE", "[\"Тийм\",\"Үгүй\"]");
+
+        QuestionBreakdown out = counter.count(List.of(q), repeated(MIN, answer(1, "\"Тийм\"")), MIN).get(0);
+
+        assertThat(out.options()).containsExactly(new Slice("Тийм", MIN), new Slice("Үгүй", 0));
+    }
+
+    @Test
+    void theMinimumIsJudgedPerQuestion() {
+        var big = question(1, "SINGLE_CHOICE", "[\"A\"]");
+        var small = question(2, "SINGLE_CHOICE", "[\"A\"]");
+        List<Object[]> rows = new java.util.ArrayList<>(repeated(MIN, answer(1, "\"A\"")));
+        rows.add(answer(2, "\"A\""));
+
+        List<QuestionBreakdown> out = counter.count(List.of(big, small), rows, MIN);
+
+        assertThat(out.get(0).options()).containsExactly(new Slice("A", MIN));
+        assertThat(out.get(1).answered()).isEqualTo(1);
+        assertThat(out.get(1).options()).isEmpty();
     }
 }

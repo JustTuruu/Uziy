@@ -15,8 +15,8 @@ import 'add_name_sheet.dart';
 import 'wallet_logic.dart';
 import 'wallet_widgets.dart';
 
-/// Wallet tab: balance card, payout action (+ progress toward the 1,000 ₮
-/// minimum) and the wallet history (rewards in, payouts out, each payout
+/// Wallet tab: balance card, payout action (+ progress toward the
+/// [kPayoutMinimum]) and the wallet history (rewards in, payouts out, each payout
 /// with its status) right on the page.
 ///
 /// Stays fresh on its own: reloads when the app returns to the foreground,
@@ -238,9 +238,12 @@ class _WalletScreenState extends State<WalletScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Tonal, not the solid action fill: right under the green card
+            // a forest button melted into it (owner, 2026-10-21).
             AppButton(
               label: 'Мөнгө татах',
               icon: Icons.account_balance_rounded,
+              variant: AppButtonVariant.tonal,
               haptic: true,
               onPressed: canPayout ? _openPayoutForm : null,
             ),

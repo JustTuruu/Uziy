@@ -225,7 +225,7 @@ export interface Campaign {
   thumbnailUrl?: string | null;
 }
 
-/** RATING is the 3-point Муу / Дунд / Сайн mood slider; its options are fixed by the backend. */
+/** RATING is the 5-point Маш муу … Маш сайн mood slider (older questions: 3 points); its options are fixed by the backend. */
 export type QuestionType = "SINGLE_CHOICE" | "MULTI_CHOICE" | "TEXT" | "RATING";
 
 interface NewCampaignQuestion {

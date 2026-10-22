@@ -15,6 +15,7 @@ import mn.uziy.backend.domain.PayoutRepository;
 import mn.uziy.backend.domain.PayoutStatus;
 import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
+import mn.uziy.backend.insights.DataAccessLogRepository;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,8 @@ public class PayoutServiceImpl implements PayoutService {
     static final String INSUFFICIENT_BALANCE = Messages.INSUFFICIENT_BALANCE;
     static final String PAYOUT_NOT_FOUND = "Мөнгө татах хүсэлт олдсонгүй";
     static final String ALREADY_DECIDED = "Энэ хүсэлтийг аль хэдийн шийдвэрлэсэн байна";
+    static final String ACTION_PENDING = "VIEW_PAYOUTS";
+    static final String ACTION_HISTORY = "VIEW_PAYOUT_HISTORY";
 
     private final PayoutRepository payouts;
     private final UserRepository users;
@@ -34,6 +37,7 @@ public class PayoutServiceImpl implements PayoutService {
     private final PayoutMapper mapper;
     private final DomainEventPublisher events;
     private final Clock clock;
+    private final DataAccessLogRepository accessLog;
 
     public PayoutServiceImpl(
             PayoutRepository payouts,
@@ -42,7 +46,8 @@ public class PayoutServiceImpl implements PayoutService {
             PayoutDecisionStrategies decisionStrategies,
             PayoutMapper mapper,
             DomainEventPublisher events,
-            Clock clock) {
+            Clock clock,
+            DataAccessLogRepository accessLog) {
         this.payouts = payouts;
         this.users = users;
         this.requestRules = requestRules;
@@ -50,6 +55,7 @@ public class PayoutServiceImpl implements PayoutService {
         this.mapper = mapper;
         this.events = events;
         this.clock = clock;
+        this.accessLog = accessLog;
     }
 
     @Override
@@ -90,12 +96,16 @@ public class PayoutServiceImpl implements PayoutService {
     }
 
     @Override
-    public List<PayoutDto> pending() {
+    @Transactional
+    public List<PayoutDto> pending(long adminId) {
+        accessLog.record(adminId, ACTION_PENDING, "");
         return withPhones(payouts.findAllByStatusOrderByRequestedAtAsc(PayoutStatus.PENDING));
     }
 
     @Override
-    public List<PayoutDto> history() {
+    @Transactional
+    public List<PayoutDto> history(long adminId) {
+        accessLog.record(adminId, ACTION_HISTORY, "");
         return withPhones(payouts.findAllByStatusInOrderByDecidedAtDesc(
                 List.of(PayoutStatus.APPROVED, PayoutStatus.REJECTED)));
     }
@@ -121,7 +131,7 @@ public class PayoutServiceImpl implements PayoutService {
         p.setStatus(decision);
         p.setDecidedBy(adminId);
         p.setDecidedAt(OffsetDateTime.now(clock));
-        PayoutDto dto = mapper.toDto(payouts.save(p), user.getPhoneNumber());
+        PayoutDto dto = mapper.toAdminDto(payouts.save(p), user.getPhoneNumber());
         events.publish(new PayoutDecided(dto.id(), dto.userId(), decision, adminId));
         return dto;
     }
@@ -131,7 +141,7 @@ public class PayoutServiceImpl implements PayoutService {
         Map<Long, String> phoneById = users.findAllById(userIds).stream()
                 .collect(Collectors.toMap(UserEntity::getId, UserEntity::getPhoneNumber, (a, b) -> a));
         return list.stream()
-                .map(p -> mapper.toDto(p, phoneById.getOrDefault(p.getUserId(), "")))
+                .map(p -> mapper.toAdminDto(p, phoneById.getOrDefault(p.getUserId(), "")))
                 .toList();
     }
 }

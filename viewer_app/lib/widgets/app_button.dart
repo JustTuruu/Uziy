@@ -4,7 +4,7 @@ import '../theme/app_theme.dart';
 import 'fill_width.dart';
 import 'pressable.dart';
 
-enum AppButtonVariant { primary, secondary, ghost, danger }
+enum AppButtonVariant { primary, tonal, secondary, ghost, danger }
 
 enum AppButtonSize { normal, small }
 
@@ -12,6 +12,9 @@ enum AppButtonSize { normal, small }
 ///
 /// * primary — flat gold, near-black label (no gradient, no glow: the plain
 ///   fill reads cleaner and more hand-made).
+/// * tonal — the action colour as a soft wash with its own ink and a hairline:
+///   still the screen's action, but quiet next to a big action-coloured
+///   surface (the payout button under the green wallet card, 2026-10-21).
 /// * secondary — elevated surface with hairline border.
 /// * ghost — no background, gold label (text-link style).
 /// * danger — translucent red, light-red label (AA).
@@ -90,6 +93,10 @@ class AppButton extends StatelessWidget {
         case AppButtonVariant.primary:
           fill = context.colors.primary;
           fg = context.colors.onPrimary;
+        case AppButtonVariant.tonal:
+          fill = context.colors.actionWash;
+          fg = context.colors.primary;
+          border = Border.all(color: context.colors.actionLine);
         case AppButtonVariant.secondary:
           fill = context.colors.surfaceElevated;
           fg = context.colors.textPrimary;

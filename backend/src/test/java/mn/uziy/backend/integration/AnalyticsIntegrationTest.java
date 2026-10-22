@@ -142,17 +142,16 @@ class AnalyticsIntegrationTest {
                 .andExpect(jsonPath("$.daily[0].responses").value(0));
     }
 
+    /** 6 responses: 3 men / 3 women, 4·1·1 per age band, 3·2·1 per city — every slice is under 5 people. */
     @Test
-    void theAudienceGroupsGenderAgeAndCity() throws Exception {
+    void theAudienceHidesEverySliceOfFewerThanFivePeople() throws Exception {
         fixture();
 
         mvc.perform(get("/company/analytics").header("Authorization", bearer(company)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.audience.gender[?(@.label=='MALE')].count").value(3))
-                .andExpect(jsonPath("$.audience.gender[?(@.label=='FEMALE')].count").value(3))
-                .andExpect(jsonPath("$.audience.ageBands", hasSize(5)))
-                .andExpect(jsonPath("$.audience.cities[0].label").value("Улаанбаатар"))
-                .andExpect(jsonPath("$.audience.cities[0].count").value(3));
+                .andExpect(jsonPath("$.audience.gender", hasSize(0)))
+                .andExpect(jsonPath("$.audience.ageBands[?(@.count > 0)]", hasSize(0)))
+                .andExpect(jsonPath("$.audience.cities", hasSize(0)));
     }
 
     @Test
@@ -202,7 +201,13 @@ class AnalyticsIntegrationTest {
                 .andExpect(jsonPath("$.segments[0].options[0].label").value("Yes"))
                 .andExpect(jsonPath("$.segments[0].options[0].counts[0]").value(5))
                 .andExpect(jsonPath("$.segments[0].options[0].counts[1]").value(0))
-                .andExpect(jsonPath("$.segments[0].options[0].counts[2]").value(5));
+                .andExpect(jsonPath("$.segments[0].options[0].counts[2]").value(5))
+                .andExpect(jsonPath("$.audience.gender[?(@.label=='MALE')].count").value(5))
+                .andExpect(jsonPath("$.audience.gender[?(@.label=='FEMALE')].count").value(5))
+                .andExpect(jsonPath("$.audience.ageBands", hasSize(5)))
+                .andExpect(jsonPath("$.audience.ageBands[?(@.label=='18–24')].count").value(10))
+                .andExpect(jsonPath("$.audience.cities[0].label").value("Улаанбаатар"))
+                .andExpect(jsonPath("$.audience.cities[0].count").value(10));
     }
 
     @Test

@@ -45,15 +45,15 @@ void main() {
       await pumpWallet(
         tester,
         WalletBalanceCard(
-          balance: 3400,
+          balance: 8400,
           verified: true,
-          progress: payoutProgress(3400),
+          progress: payoutProgress(8400),
         ),
       );
       await tester.pumpAndSettle();
 
       expect(find.text('Одоогийн үлдэгдэл'), findsOneWidget);
-      expect(find.text('3,400 ₮'), findsOneWidget);
+      expect(find.text('8,400 ₮'), findsOneWidget);
       expect(find.text(WalletVerifiedBadge.verifiedLabel), findsOneWidget);
       expect(find.text(WalletVerifiedBadge.unverifiedLabel), findsNothing);
       // Minimum reached: no progress meter.
@@ -205,8 +205,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(PayoutProgressMeter), findsOneWidget);
-      expect(find.text('Мөнгө татахад 600 ₮ дутуу'), findsOneWidget);
-      expect(find.text('40%'), findsOneWidget);
+      expect(find.text('Мөнгө татахад 4,600 ₮ дутуу'), findsOneWidget);
+      expect(find.text('8%'), findsOneWidget);
     });
 
     testWidgets('reduce motion shows the final balance in the first frame', (
@@ -254,10 +254,10 @@ void main() {
     test('label copy', () {
       expect(
         PayoutProgressMeter.labelFor(payoutProgress(0)),
-        'Мөнгө татахад 1,000 ₮ дутуу',
+        'Мөнгө татахад 5,000 ₮ дутуу',
       );
       expect(
-        PayoutProgressMeter.labelFor(payoutProgress(999)),
+        PayoutProgressMeter.labelFor(payoutProgress(4999)),
         'Мөнгө татахад 1 ₮ дутуу',
       );
     });
@@ -265,7 +265,7 @@ void main() {
     testWidgets('bar width follows the fraction', (tester) async {
       await pumpWallet(
         tester,
-        PayoutProgressMeter(progress: payoutProgress(250)),
+        PayoutProgressMeter(progress: payoutProgress(1250)),
         width: 300,
       );
       await tester.pumpAndSettle();
@@ -284,7 +284,7 @@ void main() {
         tester,
         QuickAmountChips(selected: null, onSelected: (a) => picked = a),
       );
-      for (final label in ['1,000 ₮', '2,000 ₮', '5,000 ₮', '10,000 ₮']) {
+      for (final label in ['5,000 ₮', '10,000 ₮', '20,000 ₮', '50,000 ₮']) {
         expect(find.text(label), findsOneWidget);
       }
       await tester.tap(find.text('5,000 ₮'));
@@ -296,13 +296,13 @@ void main() {
       final handle = tester.ensureSemantics();
       await pumpWallet(
         tester,
-        QuickAmountChips(selected: 2000, onSelected: (_) {}),
+        QuickAmountChips(selected: 20000, onSelected: (_) {}),
       );
       await tester.pumpAndSettle();
       expect(
-        tester.getSemantics(find.text('2,000 ₮')),
+        tester.getSemantics(find.text('20,000 ₮')),
         isSemantics(
-          label: '2,000 ₮',
+          label: '20,000 ₮',
           isButton: true,
           isSelected: true,
           hasTapAction: true,
@@ -319,8 +319,8 @@ void main() {
         QuickAmountChips(selected: null, onSelected: (_) {}),
         width: 400,
       );
-      final y1 = tester.getCenter(find.text('1,000 ₮')).dy;
-      expect(tester.getCenter(find.text('10,000 ₮')).dy, y1);
+      final y1 = tester.getCenter(find.text('5,000 ₮')).dy;
+      expect(tester.getCenter(find.text('50,000 ₮')).dy, y1);
 
       await pumpWallet(
         tester,
@@ -330,9 +330,9 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
-      final top = tester.getCenter(find.text('1,000 ₮')).dy;
-      expect(tester.getCenter(find.text('2,000 ₮')).dy, top);
-      expect(tester.getCenter(find.text('5,000 ₮')).dy, greaterThan(top));
+      final top = tester.getCenter(find.text('5,000 ₮')).dy;
+      expect(tester.getCenter(find.text('10,000 ₮')).dy, top);
+      expect(tester.getCenter(find.text('20,000 ₮')).dy, greaterThan(top));
     });
   });
 
@@ -564,6 +564,83 @@ void main() {
               : DateTime(2026, 10, 14, 11),
           rejectReason: reason,
         );
+
+    Future<void> pumpHistory(WidgetTester tester,
+        {List<PayoutRequest>? payouts}) async {
+      await pumpWallet(
+        tester,
+        SingleChildScrollView(
+          child: WalletHistorySection(
+            rewards: [reward],
+            payouts: payouts ?? [payout(PayoutStatus.approved)],
+            now: now,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('tapping a total narrows the list; tapping again restores it',
+        (tester) async {
+      await pumpHistory(tester);
+      expect(find.byType(HistoryRow), findsOneWidget);
+      expect(find.byType(PayoutHistoryRow), findsOneWidget);
+
+      await tester.tap(find.text(kWalletIncomeLabel));
+      await tester.pumpAndSettle();
+      expect(find.byType(HistoryRow), findsOneWidget);
+      expect(find.byType(PayoutHistoryRow), findsNothing);
+      expect(find.text(kWalletOnlyIncome), findsOneWidget);
+
+      await tester.tap(find.text(kWalletSpendingLabel));
+      await tester.pumpAndSettle();
+      expect(find.byType(HistoryRow), findsNothing);
+      expect(find.byType(PayoutHistoryRow), findsOneWidget);
+      expect(find.text(kWalletOnlySpending), findsOneWidget);
+
+      await tester.tap(find.text(kWalletSpendingLabel));
+      await tester.pumpAndSettle();
+      expect(find.byType(HistoryRow), findsOneWidget);
+      expect(find.byType(PayoutHistoryRow), findsOneWidget);
+      expect(find.text(kWalletShowAll), findsNothing);
+    });
+
+    testWidgets("'Бүгдийг харах' clears the filter", (tester) async {
+      await pumpHistory(tester);
+      await tester.tap(find.text(kWalletIncomeLabel));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(kWalletShowAll));
+      await tester.pumpAndSettle();
+      expect(find.byType(PayoutHistoryRow), findsOneWidget);
+      expect(find.text(kWalletOnlyIncome), findsNothing);
+    });
+
+    testWidgets('a filter with nothing in it says so', (tester) async {
+      await pumpHistory(tester,
+          payouts: [payout(PayoutStatus.rejected, reason: 'Нэр таарахгүй')]);
+      await tester.tap(find.text(kWalletSpendingLabel));
+      await tester.pumpAndSettle();
+      expect(find.text(kWalletNoSpending), findsOneWidget);
+    });
+
+    testWidgets('the chosen total is lit and announced as selected',
+        (tester) async {
+      final handle = tester.ensureSemantics();
+      await pumpHistory(tester);
+      await tester.tap(find.text(kWalletIncomeLabel));
+      await tester.pumpAndSettle();
+
+      final tiles = tester
+          .widgetList<WalletTotalTile>(find.byType(WalletTotalTile))
+          .toList();
+      expect(tiles[0].selected, isTrue);
+      expect(tiles[1].selected, isFalse);
+      expect(
+        tester.getSemantics(find.byType(WalletTotalTile).first),
+        isSemantics(isButton: true, isSelected: true),
+      );
+      handle.dispose();
+    });
 
     testWidgets('empty: says how the history fills up', (tester) async {
       await pumpWallet(

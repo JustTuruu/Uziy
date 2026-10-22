@@ -3,9 +3,10 @@ package mn.uziy.backend.auth;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import mn.uziy.backend.common.TooManyRequestsException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -24,45 +25,78 @@ public class LoginAttemptLimiter {
     public static final Duration LOCK = Duration.ofMinutes(15);
     public static final String LOCKED = "Хэт олон удаа буруу оролдлоо. 15 минутын дараа дахин оролдоно уу";
 
-    /** Past this many tracked phones, entries whose lock has run out are swept away. */
-    private static final int SWEEP_THRESHOLD = 10_000;
+    /**
+     * At most this many phones are remembered (a few MB). Each failure costs the caller a BCrypt check, so filling
+     * the table means tens of thousands of requests inside one lock period; only then does the phone whose last
+     * mistake is oldest drop out, and the gateway's per-IP limit (PRODUCTION_CHECKLIST) is the guard beyond that.
+     */
+    static final int DEFAULT_MAX_TRACKED = 50_000;
 
     private record Record(int failures, Instant lastFailure) {
+        boolean expiredAt(Instant now) {
+            return lastFailure.plus(LOCK).isBefore(now);
+        }
     }
 
-    private final Map<String, Record> attempts = new ConcurrentHashMap<>();
+    /**
+     * Ordered by last failure, oldest first (a phone is moved to the end on each failure), so both the expired
+     * entries and the eviction candidate are always at the head: every operation is O(1) amortised, and nothing
+     * ever scans the whole table. Guarded by {@code this}: the work under the lock is tiny next to the BCrypt
+     * check every login already does.
+     */
+    private final LinkedHashMap<String, Record> attempts = new LinkedHashMap<>();
     private final Clock clock;
+    private final int maxTracked;
 
+    @Autowired
     public LoginAttemptLimiter(Clock clock) {
+        this(clock, DEFAULT_MAX_TRACKED);
+    }
+
+    LoginAttemptLimiter(Clock clock, int maxTracked) {
+        if (maxTracked < 1) {
+            throw new IllegalArgumentException("maxTracked must be positive");
+        }
         this.clock = clock;
+        this.maxTracked = maxTracked;
     }
 
     /** @throws TooManyRequestsException while {@code phone} is locked */
-    public void requireNotLocked(String phone) {
-        Record r = attempts.get(phone);
-        if (r == null) {
-            return;
-        }
+    public synchronized void requireNotLocked(String phone) {
         Instant now = clock.instant();
-        if (r.lastFailure().plus(LOCK).isBefore(now)) {
-            attempts.remove(phone, r); // the lock ran out: start fresh
-            return;
-        }
-        if (r.failures() >= MAX_FAILURES) {
+        dropExpired(now);
+        Record r = attempts.get(phone);
+        if (r != null && r.failures() >= MAX_FAILURES) {
             throw new TooManyRequestsException(LOCKED);
         }
     }
 
-    public void recordFailure(String phone) {
+    public synchronized void recordFailure(String phone) {
         Instant now = clock.instant();
-        attempts.merge(phone, new Record(1, now), (old, fresh) ->
-                old.lastFailure().plus(LOCK).isBefore(now) ? fresh : new Record(old.failures() + 1, now));
-        if (attempts.size() > SWEEP_THRESHOLD) {
-            attempts.entrySet().removeIf(e -> e.getValue().lastFailure().plus(LOCK).isBefore(now));
+        dropExpired(now);
+        Record old = attempts.remove(phone);
+        attempts.put(phone, new Record(old == null ? 1 : old.failures() + 1, now));
+        while (attempts.size() > maxTracked) {
+            Iterator<String> eldest = attempts.keySet().iterator();
+            eldest.next();
+            eldest.remove();
         }
     }
 
-    public void recordSuccess(String phone) {
+    public synchronized void recordSuccess(String phone) {
         attempts.remove(phone);
+    }
+
+    /** How many phones are remembered right now. */
+    synchronized int tracked() {
+        return attempts.size();
+    }
+
+    /** Pops the entries whose lock has run out; they sit at the head because the map is in failure order. */
+    private void dropExpired(Instant now) {
+        Iterator<Record> oldestFirst = attempts.values().iterator();
+        while (oldestFirst.hasNext() && oldestFirst.next().expiredAt(now)) {
+            oldestFirst.remove();
+        }
     }
 }

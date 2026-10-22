@@ -18,7 +18,8 @@ abstract final class MoneyMemory {
 
   static void remember(String key, double value) => _shown[key] = value;
 
-  @visibleForTesting
+  /// Forgets every remembered amount; called on logout so the next account
+  /// does not start its odometer from someone else's balance.
   static void clear() => _shown.clear();
 }
 

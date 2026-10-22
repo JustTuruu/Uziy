@@ -12,8 +12,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
+import mn.uziy.backend.admin.CreateCompanyReq;
+import mn.uziy.backend.adminlogin.AdminLoginVerifyReq;
 import mn.uziy.backend.auth.LoginReq;
-import mn.uziy.backend.auth.RegisterCompanyReq;
 import mn.uziy.backend.auth.RegisterViewerReq;
 import mn.uziy.backend.company.CreateCampaignReq;
 import mn.uziy.backend.domain.Gender;
@@ -42,7 +43,8 @@ class RequestValidationMessagesTest {
         return Stream.of(
                 new LoginReq("123", ""),
                 new RegisterViewerReq("12", "123", " ", "1abc", null, null, "", huge, null),
-                new RegisterCompanyReq("abc", "1", " "),
+                new CreateCompanyReq(" ", "abc", "1"),
+                new AdminLoginVerifyReq("12", null),
                 new ResetPasswordReq("1", null, "1"),
                 new StartPhoneVerificationReq("phone", null),
                 new CreatePayoutReq(0, "", "", ""),
@@ -99,6 +101,28 @@ class RequestValidationMessagesTest {
     void anOverlongNameIsRefused() {
         assertThat(nameMessages("Б".repeat(RegisterViewerReq.NAME_MAX + 1), "Болд"))
                 .contains(FieldMessages.NAME_TOO_LONG);
+    }
+
+    @Test
+    void theAdminCompanyFormNamesEachBadField() {
+        assertThat(messages(new CreateCompanyReq(" ", "12", "1"))).containsExactlyInAnyOrder(
+                FieldMessages.COMPANY_NAME_REQUIRED, FieldMessages.PHONE, FieldMessages.PASSWORD_LENGTH);
+        assertThat(messages(new CreateCompanyReq("MobiCom", "88112233", null)))
+                .containsExactly(FieldMessages.PASSWORD_LENGTH);
+        assertThat(messages(new CreateCompanyReq("MobiCom", "88112233", "temp-pass1"))).isEmpty();
+    }
+
+    /** 37 Cyrillic letters are 74 bytes: past BCrypt's 72, which used to end in a 500 (audit 2026-10-22). */
+    @Test
+    void aTemporaryCompanyPasswordMustFitBcrypt() {
+        assertThat(messages(new CreateCompanyReq("MobiCom", "88112233", "ж".repeat(37)))).isNotEmpty();
+    }
+
+    @Test
+    void theAdminSecondStepNeedsThePhoneAndTheCheck() {
+        assertThat(messages(new AdminLoginVerifyReq("12", null))).containsExactlyInAnyOrder(
+                FieldMessages.PHONE, FieldMessages.PHONE_NOT_VERIFIED);
+        assertThat(messages(new AdminLoginVerifyReq("88112233", UUID.randomUUID()))).isEmpty();
     }
 
     @Test

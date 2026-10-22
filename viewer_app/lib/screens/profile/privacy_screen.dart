@@ -9,7 +9,8 @@ import 'profile_page_shell.dart';
 ///
 /// The anonymous-statistics switch lives here, under its own section (owner,
 /// 2026-10-21: off the Profile list). The consent must stay revocable, and
-/// this is the place the Home prompt and the policy point to.
+/// this is the place the policy points to (nobody is asked elsewhere since
+/// 2026-10-21).
 class PrivacyScreen extends StatelessWidget {
   const PrivacyScreen({
     super.key,

@@ -13,6 +13,9 @@ import 'otp_widgets.dart';
 const String kResetTitle = 'Шинэ нууц үг';
 const String kResetSubtitle = 'Утас баталгаажлаа. Шинэ нууц үгээ оруулна уу.';
 const String kResetSubmitLabel = 'Нууц үг шинэчлэх';
+const String kResetPasswordLabel = 'Нууц үг';
+const String kResetRepeatLabel = 'Нууц үгээ давтах';
+const String kResetRepeatHint = 'Нууц үгээ дахин оруулна уу';
 const String kResetDone = 'Нууц үг шинэчлэгдлээ. Нэвтэрнэ үү.';
 const String kResetStartOverLabel = 'Дахин эхлэх';
 
@@ -21,8 +24,9 @@ const String kResetStartOverLabel = 'Дахин эхлэх';
 const int kCheckNotUsableStatus = 400;
 
 /// Last step of a password reset: the phone is proved (the viewer texted the
-/// code), so only the new password is asked for. The check is spent when it
-/// is sent.
+/// code), so only the new password is asked for — typed twice, each field
+/// with its own show/hide eye (owner, 2026-10-21), so a typo cannot lock the
+/// viewer out again. The check is spent when it is sent.
 class ResetPasswordScreen extends StatefulWidget {
   const ResetPasswordScreen({super.key, required this.reset});
 
@@ -35,6 +39,8 @@ class ResetPasswordScreen extends StatefulWidget {
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _password = TextEditingController();
+  final _repeat = TextEditingController();
+  final _repeatFocus = FocusNode();
   bool _loading = false;
   bool _checkUsedUp = false;
   String? _error;
@@ -42,6 +48,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   @override
   void dispose() {
     _password.dispose();
+    _repeat.dispose();
+    _repeatFocus.dispose();
     super.dispose();
   }
 
@@ -107,14 +115,28 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   ),
                   const SizedBox(height: AppSpacing.xxxl),
                   LabeledField(
-                    label: 'Шинэ нууц үг',
+                    label: kResetPasswordLabel,
                     child: PasswordField(
                       controller: _password,
                       hintText: 'Нууц үгээ оруулна уу',
+                      textInputAction: TextInputAction.next,
+                      autofillHints: const [AutofillHints.newPassword],
+                      onFieldSubmitted: (_) => _repeatFocus.requestFocus(),
+                      validator: AuthValidators.password,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  LabeledField(
+                    label: kResetRepeatLabel,
+                    child: PasswordField(
+                      controller: _repeat,
+                      focusNode: _repeatFocus,
+                      hintText: kResetRepeatHint,
                       textInputAction: TextInputAction.done,
                       autofillHints: const [AutofillHints.newPassword],
                       onFieldSubmitted: (_) => _submit(),
-                      validator: AuthValidators.password,
+                      validator: (v) =>
+                          AuthValidators.passwordRepeat(v, _password.text),
                     ),
                   ),
                   OtpErrorText(message: _error),

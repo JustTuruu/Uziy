@@ -21,6 +21,10 @@ const String kUnverifiedHint = 'Анхны мөнгө татахад батал�
 /// Snackbar copy.
 const String kLogoutFailed = 'Гарахад алдаа гарлаа. Дахин оролдоно уу.';
 
+/// The danger row under 'Гарах' and the snackbar after a deletion.
+const String kDeleteAccountLabel = 'Бүртгэл устгах';
+const String kAccountDeleted = 'Таны бүртгэл устлаа';
+
 /// Load error for anything that is not an [ApiException] (no network,
 /// timeout, unexpected payload).
 const String kGenericLoadError = 'Сервертэй холбогдож чадсангүй';

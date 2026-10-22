@@ -37,10 +37,11 @@ class UserFactoryTest {
 
     @Test
     void buildsCompanyWithName() {
-        UserEntity u = factory.newCompany(new RegisterCompanyReq("88112233", "pw", "MobiCom"), "hash");
+        UserEntity u = factory.newCompany("88112233", "  MobiCom ", "hash");
         assertThat(u.getRole()).isEqualTo(Role.COMPANY);
         assertThat(u.getCompanyName()).isEqualTo("MobiCom");
         assertThat(u.getPasswordHash()).isEqualTo("hash");
+        assertThat(u.getPhoneNumber()).isEqualTo("88112233");
         assertThat(u.getGender()).isNull();
     }
 }

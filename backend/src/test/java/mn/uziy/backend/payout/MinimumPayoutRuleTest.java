@@ -1,5 +1,6 @@
 package mn.uziy.backend.payout;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -18,13 +19,21 @@ class MinimumPayoutRuleTest {
 
     @Test
     void theMinimumItselfAndAnythingAboveItInWholeTogrogPass() {
-        assertThatCode(() -> rule.check(user, req(1000))).doesNotThrowAnyException();
+        assertThatCode(() -> rule.check(user, req(5000))).doesNotThrowAnyException();
         assertThatCode(() -> rule.check(user, req(250_000))).doesNotThrowAnyException();
     }
 
     @Test
+    void theMinimumIsFiveThousandTogrog() {
+        assertThat(MinimumPayoutRule.MINIMUM_PAYOUT).isEqualTo(5000);
+        assertThatThrownBy(() -> rule.check(user, req(1000)))
+                .isInstanceOf(BadRequestException.class).hasMessage(MinimumPayoutRule.TOO_SMALL);
+        assertThat(MinimumPayoutRule.TOO_SMALL).contains("5,000");
+    }
+
+    @Test
     void anythingBelowTheMinimumIsRefused() {
-        assertThatThrownBy(() -> rule.check(user, req(999)))
+        assertThatThrownBy(() -> rule.check(user, req(4999)))
                 .isInstanceOf(BadRequestException.class).hasMessage(MinimumPayoutRule.TOO_SMALL);
         assertThatThrownBy(() -> rule.check(user, req(0.0001)))
                 .isInstanceOf(BadRequestException.class);
@@ -32,7 +41,7 @@ class MinimumPayoutRuleTest {
 
     @Test
     void fractionsOfATogrogAreRefused() {
-        assertThatThrownBy(() -> rule.check(user, req(1000.5)))
+        assertThatThrownBy(() -> rule.check(user, req(5000.5)))
                 .isInstanceOf(BadRequestException.class).hasMessage(MinimumPayoutRule.NOT_WHOLE);
     }
 }

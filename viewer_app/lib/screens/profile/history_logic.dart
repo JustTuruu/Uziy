@@ -4,11 +4,15 @@ library;
 
 import '../../models/view_history_item.dart';
 
-const String kHistoryTitle = 'Үзсэн видеонуудын түүх';
+/// Owner, 2026-10-21: was 'Үзсэн видеонуудын түүх' — every reward comes from
+/// an answered survey (with or without a video), so the page is named for that.
+const String kHistoryTitle = 'Судалгааны түүх';
+
+/// Label of the count on the summary card.
+const String kHistoryCountLabel = 'Бөглөсөн судалгаа';
 const String kHistoryLoadError = 'Түүх ачаалж чадсангүй';
 const String kHistoryEmptyTitle = 'Түүх хоосон байна';
-const String kHistoryEmptyMessage =
-    'Видео үзээд судалгаа бөглөх бүртээ энд бүртгэгдэнэ.';
+const String kHistoryEmptyMessage = 'Судалгаа бөглөх бүртээ энд бүртгэгдэнэ.';
 const String kToday = 'Өнөөдөр';
 const String kYesterday = 'Өчигдөр';
 

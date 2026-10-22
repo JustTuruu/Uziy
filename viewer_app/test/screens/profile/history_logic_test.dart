@@ -11,6 +11,11 @@ ViewHistoryItem _item(double reward) => ViewHistoryItem(
     );
 
 void main() {
+  test('the page is the survey history (owner, 2026-10-21)', () {
+    expect(kHistoryTitle, 'Судалгааны түүх');
+    expect(kHistoryCountLabel, 'Бөглөсөн судалгаа');
+  });
+
   group('historyTotalReward', () {
     test('sums the rewards', () {
       expect(historyTotalReward([_item(700), _item(500)]), 1200);

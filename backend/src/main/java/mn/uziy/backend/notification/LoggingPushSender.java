@@ -12,11 +12,13 @@ import org.springframework.stereotype.Component;
 public class LoggingPushSender implements PushSender {
 
     private static final Logger LOG = LoggerFactory.getLogger(LoggingPushSender.class);
+    private static final String TYPE_KEY = "type";
 
     @Override
     public PushResult send(PushMessage message, List<String> tokens) {
-        LOG.info("push (disabled, not sent) title='{}' body='{}' data={} recipients={}",
-                message.title(), message.body(), message.data(), tokens.size());
+        // Only the kind and the count: the title/body carry amounts, bank names and reject reasons, which are a
+        // viewer's personal data and do not belong in the server log (audit 2026-10-22).
+        LOG.info("push (disabled, not sent) type={} recipients={}", message.data().get(TYPE_KEY), tokens.size());
         return PushResult.none();
     }
 }

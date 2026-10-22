@@ -8,7 +8,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** HTTP adapter only — credential checking and account creation live in {@link AuthService}. */
+/**
+ * HTTP adapter only — credential checking and account creation live in {@link AuthService}. Company accounts are
+ * created by an admin ({@code POST /admin/companies}); there is no company self-registration.
+ */
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
@@ -19,18 +22,22 @@ public class AuthController {
         this.auth = auth;
     }
 
+    /**
+     * Viewers and companies: 200 with {@link AuthResponse}, unchanged. An admin with the right password: <b>202
+     * Accepted</b> with {@code {"twoStep": {...}}} and no token — the phone must still be proved, see
+     * {@code mn.uziy.backend.adminlogin.AdminLoginController}. A wrong password: 401.
+     */
     @PostMapping("/login")
-    public AuthResponse login(@Valid @RequestBody LoginReq body) {
-        return auth.login(body);
+    public ResponseEntity<Object> login(@Valid @RequestBody LoginReq body) {
+        LoginOutcome outcome = auth.login(body);
+        if (outcome instanceof LoginOutcome.SecondStepRequired second) {
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body(second.challenge());
+        }
+        return ResponseEntity.ok(((LoginOutcome.SignedIn) outcome).response());
     }
 
     @PostMapping("/register/viewer")
     public ResponseEntity<AuthResponse> registerViewer(@Valid @RequestBody RegisterViewerReq body) {
         return ResponseEntity.status(HttpStatus.CREATED).body(auth.registerViewer(body));
-    }
-
-    @PostMapping("/register/company")
-    public ResponseEntity<AuthResponse> registerCompany(@Valid @RequestBody RegisterCompanyReq body) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(auth.registerCompany(body));
     }
 }

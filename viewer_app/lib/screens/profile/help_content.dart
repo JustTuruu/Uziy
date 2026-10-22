@@ -2,8 +2,18 @@
 /// the widgets so copy edits never touch layout code.
 library;
 
+import '../wallet/wallet_logic.dart' show kPayoutMinimumLabel;
+
 const String kHelpTitle = 'Тусламж';
 const String kHelpIntro = 'Түгээмэл асуулт, хариулт';
+
+/// Uziy's first message at the top of the help chat.
+const String kHelpGreeting =
+    'Сайн байна уу! Түгээмэл асуултуудын хариултыг доор нэг дор бичлээ. '
+    'Доош гүйлгээд уншаарай.';
+
+/// Name shown over Uziy's messages.
+const String kHelpSender = 'Uziy';
 
 class FaqItem {
   final String question;
@@ -12,7 +22,7 @@ class FaqItem {
 }
 
 /// Answers reflect the app's real rules: full-watch gate, one reward per
-/// video, the payout minimum (kPayoutMinimum = 1,000 ₮) and the first-payout
+/// video, the payout minimum ([kPayoutMinimumLabel]) and the first-payout
 /// verification.
 const List<FaqItem> kFaqItems = [
   FaqItem(
@@ -26,18 +36,13 @@ const List<FaqItem> kFaqItems = [
         'нь тухайн видео, судалгааны карт дээр бичигдсэн байдаг.',
   ),
   FaqItem(
-    'Яагаад надад видео цөөн харагдаж байна?',
-    'Шинэ видео нэмэгдэх бүрт таны жагсаалтад орно. Үзсэн видео дахин '
-        'гарахгүй. Мэдэгдлээ асаалттай байлгавал шинэ видеог эхэнд нь авна.',
-  ),
-  FaqItem(
     'Видеог дахин үзвэл урамшуулал авах уу?',
     'Үгүй. Нэг видеогоор урамшууллыг зөвхөн нэг удаа олгоно.',
   ),
   FaqItem(
     'Мөнгөө хэрхэн татах вэ?',
     'Хэтэвч хэсгээс Мөнгө татах товчийг дарж банк, дансны мэдээллээ '
-        'оруулна. Доод хэмжээ 1,000 ₮. Хүсэлтийг шалгасны дараа мөнгө '
+        'оруулна. Доод хэмжээ $kPayoutMinimumLabel. Хүсэлтийг шалгасны дараа мөнгө '
         'таны данс руу шилжинэ.',
   ),
   FaqItem(

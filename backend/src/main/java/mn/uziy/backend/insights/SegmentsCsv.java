@@ -46,9 +46,12 @@ final class SegmentsCsv {
         out.append(String.join(",", cells.stream().map(SegmentsCsv::quote).toList())).append("\r\n");
     }
 
+    /** Characters a spreadsheet may treat as the start of a formula (OWASP CSV injection list). */
+    private static final String FORMULA_STARTS = "=+-@\t\r";
+
     /** Quotes every cell and neutralises a leading formula character (CSV injection). */
     static String quote(String cell) {
-        String safe = !cell.isEmpty() && "=+-@".indexOf(cell.charAt(0)) >= 0 ? "'" + cell : cell;
+        String safe = !cell.isEmpty() && FORMULA_STARTS.indexOf(cell.charAt(0)) >= 0 ? "'" + cell : cell;
         return "\"" + safe.replace("\"", "\"\"") + "\"";
     }
 }

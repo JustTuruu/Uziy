@@ -206,30 +206,88 @@ class AnalyticsServiceTest {
     @Test
     void theAudienceIsBuiltOnceThereAreEnoughResponses() {
         owns(campaign(1, 1000, 500, 10));
-        when(views.statsByCompany(COMPANY)).thenReturn(
-                List.of(new CampaignViewStats(1, AnalyticsService.MIN_AUDIENCE_SAMPLE, 0)));
+        when(views.statsByCompany(COMPANY)).thenReturn(List.of(new CampaignViewStats(1, 12, 0)));
         when(views.genderCounts(COMPANY, null)).thenReturn(
-                rows(new Object[] {"MALE", 3L}, new Object[] {"FEMALE", 2L}));
+                rows(new Object[] {"MALE", 7L}, new Object[] {"FEMALE", 5L}));
         when(views.ageCounts(COMPANY, null)).thenReturn(
-                rows(new Object[] {20, 4L}, new Object[] {50, 1L}));
-        when(views.cityCounts(COMPANY, null)).thenReturn(rows(new Object[] {"Улаанбаатар", 5L}));
+                rows(new Object[] {20, 6L}, new Object[] {50, 6L}));
+        when(views.cityCounts(COMPANY, null)).thenReturn(rows(new Object[] {"Улаанбаатар", 12L}));
 
         var audience = service.analytics(COMPANY, 30, null).audience();
 
-        assertThat(audience.gender()).containsExactly(new Slice("MALE", 3), new Slice("FEMALE", 2));
+        assertThat(audience.gender()).containsExactly(new Slice("MALE", 7), new Slice("FEMALE", 5));
         assertThat(audience.ageBands()).containsExactly(
-                new Slice("13–17", 0), new Slice("18–24", 4), new Slice("25–34", 0),
-                new Slice("35–44", 0), new Slice("45+", 1));
-        assertThat(audience.cities()).containsExactly(new Slice("Улаанбаатар", 5));
+                new Slice("13–17", 0), new Slice("18–24", 6), new Slice("25–34", 0),
+                new Slice("35–44", 0), new Slice("45+", 6));
+        assertThat(audience.cities()).containsExactly(new Slice("Улаанбаатар", 12));
+    }
+
+    /**
+     * Regression (2026-10-22 audit): with 3 men and 2 women among 5 responses both were listed, and with
+     * "MALE 20" shown and 22 responses the 2 women could be worked out. Neither can be read now.
+     */
+    @Test
+    void aSmallGenderSliceIsHiddenAndSoIsTheOtherOneThatWouldGiveItAway() {
+        owns(campaign(1, 1000, 500, 10));
+        when(views.statsByCompany(COMPANY)).thenReturn(List.of(new CampaignViewStats(1, 22, 0)));
+        when(views.genderCounts(COMPANY, null)).thenReturn(
+                rows(new Object[] {"MALE", 20L}, new Object[] {"FEMALE", 2L}));
+
+        var audience = service.analytics(COMPANY, 30, null).audience();
+
+        assertThat(audience.gender()).isEmpty();
+    }
+
+    /** Regression (2026-10-22 audit): "Говьсүмбэр: 1" was listed beside the big cities. */
+    @Test
+    void aCityWithOnlyAFewViewersIsNotListedNorLeftToBeSubtracted() {
+        owns(campaign(1, 1000, 500, 10));
+        when(views.statsByCompany(COMPANY)).thenReturn(List.of(new CampaignViewStats(1, 31, 0)));
+        when(views.cityCounts(COMPANY, null)).thenReturn(rows(
+                new Object[] {"Улаанбаатар", 20L}, new Object[] {"Орхон", 10L}, new Object[] {"Говьсүмбэр", 1L}));
+
+        var cities = service.analytics(COMPANY, 30, null).audience().cities();
+
+        // Hiding only Говьсүмбэр would leave 31 − 20 − 10 = 1 for anyone to subtract, so Орхон goes too.
+        assertThat(cities).containsExactly(new Slice("Улаанбаатар", 20));
+        long hidden = 31 - cities.stream().mapToLong(Slice::count).sum();
+        assertThat(hidden).isGreaterThanOrEqualTo(AnalyticsService.MIN_AUDIENCE_SAMPLE);
+    }
+
+    @Test
+    void anAgeBandWithFewViewersIsHiddenWithEnoughOthersThatTheRestStaysAGroup() {
+        owns(campaign(1, 1000, 500, 10));
+        when(views.statsByCompany(COMPANY)).thenReturn(List.of(new CampaignViewStats(1, 30, 0)));
+        when(views.ageCounts(COMPANY, null)).thenReturn(
+                rows(new Object[] {20, 20L}, new Object[] {30, 7L}, new Object[] {40, 3L}));
+
+        var bands = service.analytics(COMPANY, 30, null).audience().ageBands();
+
+        assertThat(bands).containsExactly(
+                new Slice("13–17", 0), new Slice("18–24", 20), new Slice("45+", 0));
+    }
+
+    @Test
+    void viewersWithoutAGenderStillCountTowardsTheHiddenRest() {
+        owns(campaign(1, 1000, 500, 10));
+        // 12 responses, but only 10 have a gender on record: the 2 others are visible as 12 − 10.
+        when(views.statsByCompany(COMPANY)).thenReturn(List.of(new CampaignViewStats(1, 12, 0)));
+        when(views.genderCounts(COMPANY, null)).thenReturn(
+                rows(new Object[] {"MALE", 5L}, new Object[] {"FEMALE", 5L}));
+
+        var gender = service.analytics(COMPANY, 30, null).audience().gender();
+
+        assertThat(gender).hasSize(1);
+        assertThat(12 - gender.get(0).count()).isGreaterThanOrEqualTo(AnalyticsService.MIN_AUDIENCE_SAMPLE);
     }
 
     @Test
     void onlyTheBiggestCitiesAreListed() {
         owns(campaign(1, 1000, 500, 10));
-        when(views.statsByCompany(COMPANY)).thenReturn(List.of(new CampaignViewStats(1, 100, 0)));
+        when(views.statsByCompany(COMPANY)).thenReturn(List.of(new CampaignViewStats(1, 200, 0)));
         List<Object[]> many = new ArrayList<>();
         for (int i = 0; i < AnalyticsService.MAX_CITIES + 3; i++) {
-            many.add(new Object[] {"city" + i, 10L - i});
+            many.add(new Object[] {"city" + i, 20L - i});
         }
         when(views.cityCounts(COMPANY, null)).thenReturn(many);
 
@@ -253,7 +311,8 @@ class AnalyticsServiceTest {
         var breakdown = new AnalyticsDtos.QuestionBreakdown(7, "q", "TEXT", 0, List.of());
         when(questions.findAllByCampaignIdOrderByPosition(1L)).thenReturn(List.of());
         when(responses.answersOfCampaign(1L)).thenReturn(List.of());
-        when(answerCounter.count(List.of(), List.of())).thenReturn(List.of(breakdown));
+        when(answerCounter.count(List.of(), List.of(), AnalyticsService.MIN_SEGMENT_SAMPLE))
+                .thenReturn(List.of(breakdown));
 
         AnalyticsResponse all = service.analytics(COMPANY, 30, null);
         AnalyticsResponse one = service.analytics(COMPANY, 30, 1L);

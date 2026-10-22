@@ -82,3 +82,30 @@ bool isPastDeadline(DateTime expiresAt, DateTime now) =>
 /// A failed registration that a retry cannot fix (the check is not, or no
 /// longer, usable — HTTP 400) needs a new code instead.
 bool needsNewCode(int statusCode) => statusCode == 400;
+
+/// The only link schemes 'SMS илгээх' may open. The link comes from the
+/// server; anything else (https, tel, an app scheme) could send the viewer
+/// somewhere other than their SMS app.
+const Set<String> kSmsUriSchemes = {'sms', 'smsto'};
+
+/// A short code or phone number: digits, optionally led by '+'.
+final RegExp _smsRecipient = RegExp(r'^\+?\d+$');
+
+/// The link that opens the SMS app for [check]: the provider's own
+/// `smsUri` when it is an `sms:`/`smsto:` link, otherwise one built from the
+/// short code and text (`sms:<shortcode>?body=<smsText>`). Null when neither
+/// is usable — the page then asks the viewer to text the code by hand.
+Uri? smsLaunchUri(PhoneVerification check) {
+  final given = Uri.tryParse(check.smsUri.trim());
+  if (given != null && kSmsUriSchemes.contains(given.scheme.toLowerCase())) {
+    return given;
+  }
+  final recipient = check.shortcode.trim();
+  if (!_smsRecipient.hasMatch(recipient)) return null;
+  final body = check.smsText;
+  return Uri.parse(
+    body.isEmpty
+        ? 'sms:$recipient'
+        : 'sms:$recipient?body=${Uri.encodeComponent(body)}',
+  );
+}

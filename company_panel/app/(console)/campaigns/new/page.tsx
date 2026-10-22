@@ -46,6 +46,7 @@ import {
   type QuestionType,
 } from "@/lib/api";
 import { RATING_LABELS, takesOptions } from "@/lib/survey";
+import { ageRangeError } from "@/lib/targeting";
 import {
   CAPITAL,
   EVERYWHERE,
@@ -83,7 +84,7 @@ const QUESTION_TYPE_OPTIONS = [
   { value: "SINGLE_CHOICE", label: "Ганц сонголт" },
   { value: "MULTI_CHOICE", label: "Олон сонголт" },
   { value: "TEXT", label: "Чөлөөт текст" },
-  { value: "RATING", label: "Үнэлгээ (Муу · Дунд · Сайн)" },
+  { value: "RATING", label: `Үнэлгээ (${RATING_LABELS.join(" · ")})` },
 ];
 
 interface SurveyQ {
@@ -158,6 +159,7 @@ export default function NewCampaignPage() {
   const [maxAgeText, setMaxAgeText] = useState("45");
   const minAge = parseIntInput(minAgeText);
   const maxAge = parseIntInput(maxAgeText);
+  const ageError = ageRangeError(minAge, maxAge);
   const [city, setCity] = useState<string>(CAPITAL);
 
   // Step: budget. The company enters a total budget plus EITHER a viewer
@@ -278,12 +280,10 @@ export default function NewCampaignPage() {
       );
       return;
     }
-    // Number fields can now be left blank (blank counts as 0), so catch
-    // empty/out-of-range values here instead of sending them to the API.
-    if (minAge < 13 || maxAge > 99 || minAge > maxAge) {
-      setSubmitError(
-        "Нас 13-99 хооронд, бага нас нь их наснаас хэтрэхгүй байх ёстой",
-      );
+    // Number fields can be left blank (blank counts as 0), so catch
+    // empty/out-of-range/too narrow values here instead of sending them.
+    if (ageError) {
+      setSubmitError(ageError);
       return;
     }
     if (pricing.error) {
@@ -398,7 +398,7 @@ export default function NewCampaignPage() {
               <div className="md:col-span-2">
                 <Input
                   label="Судалгааны гарчиг"
-                  placeholder="Ж-нь: Шинэ 5G багц"
+                  placeholder="Гарчгаа бичнэ үү"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
@@ -521,6 +521,14 @@ export default function NewCampaignPage() {
                   onValueChange={setMaxAgeText}
                 />
               </div>
+              {ageError && (
+                <p
+                  role="alert"
+                  className="-mt-3 text-xs text-[var(--color-danger)]"
+                >
+                  {ageError}
+                </p>
+              )}
 
               <Select
                 label="Аймаг / хот"
@@ -642,7 +650,7 @@ export default function NewCampaignPage() {
 
                       {q.type === "RATING" && (
                         <p className="rounded-lg border border-[var(--color-divider)] bg-[var(--color-surface)] p-3 text-xs text-[var(--color-text-secondary)]">
-                          {`Үзэгч нүүр дүрстэй слайдераар ${RATING_LABELS.join(" · ")} гэсэн 3 төлөвөөс сонгоно. Хариултыг тусад нь бичих шаардлагагүй.`}
+                          {`Үзэгч нүүр дүрстэй слайдераар ${RATING_LABELS.join(" · ")} гэсэн ${RATING_LABELS.length} төлөвөөс сонгоно. Хариултыг тусад нь бичих шаардлагагүй.`}
                         </p>
                       )}
 
@@ -830,6 +838,7 @@ export default function NewCampaignPage() {
                 !canNext ||
                 (step === "type" && !title.trim()) ||
                 (step === "video" && !isVideoLengthAllowed(duration)) ||
+                (step === "targeting" && ageError !== null) ||
                 (step === "budget" && !pricingOk)
               }
               onClick={goNext}

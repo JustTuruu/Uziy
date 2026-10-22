@@ -11,6 +11,7 @@ public final class FieldMessages {
     public static final String PHONE = "Утасны дугаар 8 оронтой тоо байх ёстой";
     public static final String PASSWORD_REQUIRED = "Нууц үгээ оруулна уу";
     public static final String PASSWORD_LENGTH = "Нууц үг 6–100 тэмдэгт байх ёстой";
+    public static final String PASSWORD_TOO_LONG = "Нууц үг хэт урт байна, богиносгоно уу";
     public static final String CODE = "Код 6 оронтой тоо байх ёстой";
     public static final String LAST_NAME_REQUIRED = "Овгоо оруулна уу";
     public static final String FIRST_NAME_REQUIRED = "Нэрээ оруулна уу";

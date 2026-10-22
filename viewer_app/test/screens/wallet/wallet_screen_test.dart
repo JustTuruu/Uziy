@@ -5,7 +5,7 @@ import 'package:viewer_app/screens/wallet/wallet_logic.dart';
 import 'package:viewer_app/screens/wallet/wallet_screen.dart';
 import 'package:viewer_app/screens/wallet/wallet_widgets.dart';
 import 'package:viewer_app/services/auto_refresher.dart';
-import 'package:viewer_app/theme/app_theme.dart';
+import 'package:viewer_app/widgets/ui.dart';
 
 import '../../support/fake_api.dart';
 
@@ -242,6 +242,22 @@ void main() {
     expect(find.text('САРАА БАТ'), findsOneWidget);
     expect(find.byType(AddNameChip), findsNothing);
     expect(find.text(kAddNameSaved), findsOneWidget);
+    await _close(tester);
+  });
+
+  // Owner, 2026-10-21: a forest button under the forest card melted into it.
+  testWidgets('the payout button is tonal, not the card\'s solid green',
+      (tester) async {
+    FakeApi.install((call) => switch (call.path) {
+          '/viewer/me' => FakeReply(200, _me(balance: 5000, verified: true)),
+          '/viewer/payouts' => const FakeReply(200, []),
+          '/viewer/history' => const FakeReply(200, []),
+          _ => const FakeReply(404),
+        });
+    await _pumpWallet(tester);
+    final button =
+        tester.widget<AppButton>(find.widgetWithText(AppButton, 'Мөнгө татах'));
+    expect(button.variant, AppButtonVariant.tonal);
     await _close(tester);
   });
 }

@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'app_theme.dart';
 
+/// Strength of the action colour in [AppPalette.actionWash].
+const double kActionWashOpacity = 0.12;
+
+/// Strength of the action colour in [AppPalette.actionLine].
+const double kActionLineOpacity = 0.24;
+
 /// Scoped semantic colors. Never depends on mutable global theme state.
 ///
 /// Dark appearance (owner, 2026-10-21: the green-tinted "forest night" was
@@ -59,6 +65,14 @@ class AppPalette {
   /// clearer one on light surfaces (where 7 % white would not show).
   Color get shimmer =>
       isDark ? const Color(0x12FFFFFF) : const Color(0x8CFFFFFF);
+
+  /// The action colour washed over a surface: the quiet tinted fill of the
+  /// reward chip and the tonal button (2026-10-21).
+  Color get actionWash =>
+      Color.alphaBlend(primary.withValues(alpha: kActionWashOpacity), surface);
+
+  /// Hairline around an [actionWash] fill.
+  Color get actionLine => primary.withValues(alpha: kActionLineOpacity);
 
   /// Quiet backdrop of a list row's icon tile.
   Color get iconTile => isDark ? const Color(0x0FFFFFFF) : surfaceElevated;

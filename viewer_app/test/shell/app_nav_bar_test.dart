@@ -2,17 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:viewer_app/widgets/app_nav_bar.dart';
-import 'package:viewer_app/widgets/reels_icon.dart';
+import 'package:viewer_app/widgets/nav_glyphs.dart';
 import 'package:viewer_app/widgets/ui.dart';
 
 const _items = [
   AppNavItem(
-    glyphBuilder: ReelsIcon.glyph,
+    glyphBuilder: NavGlyph.home,
     label: 'Нүүр',
   ),
   AppNavItem(
-    icon: Icons.account_balance_wallet_outlined,
-    selectedIcon: Icons.account_balance_wallet_rounded,
+    glyphBuilder: NavGlyph.wallet,
     label: 'Хэтэвч',
   ),
   AppNavItem(
@@ -95,14 +94,19 @@ void main() {
       expect(_labelColor(tester, 'Нүүр'), AppColors.textSecondary);
       expect(_labelColor(tester, 'Профайл'), AppColors.textSecondary);
       // Filled icon for the active tab, outlined for the rest.
-      expect(find.byIcon(Icons.account_balance_wallet_rounded), findsOneWidget);
-      final reels = tester.widget<ReelsIcon>(find.byType(ReelsIcon));
-      expect(reels.filled, isFalse); // Нүүр is not selected here
+      final glyphs = tester
+          .widgetList<NavGlyph>(find.byType(NavGlyph))
+          .map((g) => (g.kind, g.filled))
+          .toList();
+      expect(glyphs, [
+        (NavGlyphKind.home, false), // Нүүр is not selected here
+        (NavGlyphKind.wallet, true),
+      ]);
     });
 
     testWidgets('label sits below its icon', (tester) async {
       await _pumpBar(tester, index: 0);
-      final icon = tester.getRect(find.byType(ReelsIcon));
+      final icon = tester.getRect(find.byType(NavGlyph).first);
       final label = tester.getRect(find.text('Нүүр'));
       expect(label.top, greaterThanOrEqualTo(icon.bottom));
       expect((label.center.dx - icon.center.dx).abs(), lessThan(1));

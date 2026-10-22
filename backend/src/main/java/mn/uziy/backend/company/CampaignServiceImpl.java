@@ -136,6 +136,7 @@ public class CampaignServiceImpl implements CampaignService {
         if (!MongolianRegions.isTargetCity(req.targetCity())) {
             throw new BadRequestException(UNKNOWN_TARGET_CITY);
         }
+        TargetAgeRule.check(req.minAge(), req.maxAge());
         if (req.hasVideo()) {
             int d = req.durationSeconds();
             if (d < MIN_DURATION_SECONDS || d > MAX_DURATION_SECONDS) {

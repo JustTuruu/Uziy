@@ -34,6 +34,15 @@ abstract final class AuthValidators {
   static String? password(String? v) =>
       (v == null || v.length < minPasswordLength) ? passwordTooShort : null;
 
+  static const String passwordRepeatRequired = 'Нууц үгээ давтан оруулна уу';
+  static const String passwordMismatch = 'Нууц үг таарахгүй байна';
+
+  /// The second typing of a new password: it must be exactly [original].
+  static String? passwordRepeat(String? v, String original) {
+    if (v == null || v.isEmpty) return passwordRepeatRequired;
+    return v == original ? null : passwordMismatch;
+  }
+
   /// Same rule and wording as the backend (`RegisterViewerReq.NAME_PATTERN`,
   /// `FieldMessages`): letters of any alphabet plus the spaces, hyphens and
   /// apostrophes double names use ("Оюун-Эрдэнэ"); starts with a letter.
@@ -215,7 +224,7 @@ class PhoneField extends StatelessWidget {
   static const String countryCode = '+976';
 
   /// The adorned field's placeholder.
-  static const String adornedHint = 'Утасны дугаараа оруулна уу';
+  static const String adornedHint = '8 оронтой дугаар';
   static const double countryDividerHeight = 20;
   static const String defaultHint = '8 оронтой дугаар';
 
@@ -779,10 +788,9 @@ class AuthBackButton extends StatelessWidget {
   }
 }
 
-/// Эрэгтэй / Эмэгтэй as one two-part control shaped like the text fields
-/// (same height, corners and border), with no check mark: the filled half
-/// is the answer. Nothing is chosen until the viewer taps; [error] paints
-/// the border red.
+/// Эрэгтэй / Эмэгтэй as one two-part control with the text fields' corners
+/// and border, with no check mark: the filled half is the answer. Nothing is
+/// chosen until the viewer taps; [error] paints the border red.
 class GenderSelector extends StatelessWidget {
   const GenderSelector({
     super.key,
@@ -791,8 +799,10 @@ class GenderSelector extends StatelessWidget {
     this.error = false,
   });
 
-  /// Same height as a themed text field.
-  static const double height = 54;
+  /// A compact two-choice control (owner, 2026-10-22: the field-high
+  /// version, which grew to ~62pt with the line height, was too big). Still
+  /// a full 44pt tap target.
+  static const double height = 44;
 
   static const Map<Gender, String> labels = {
     Gender.male: 'Эрэгтэй',
@@ -807,10 +817,20 @@ class GenderSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final current = value;
     final textStyle = context.textStyles.body;
+    // SegmentedButton sizes each half from its label plus padding (and
+    // ignores minimumSize for the height), so the label itself carries the
+    // height, with the word centred in it. Forcing the outer box instead
+    // left the halves short: the word rode high over a dark band.
     return SegmentedButton<Gender>(
       segments: [
         for (final e in labels.entries)
-          ButtonSegment(value: e.key, label: Text(e.value)),
+          ButtonSegment(
+            value: e.key,
+            label: SizedBox(
+              height: height,
+              child: Center(child: Text(e.value)),
+            ),
+          ),
       ],
       emptySelectionAllowed: true,
       showSelectedIcon: false,
@@ -821,12 +841,10 @@ class GenderSelector extends StatelessWidget {
         onChanged(values.first);
       },
       style: ButtonStyle(
-        // SegmentedButton ignores minimumSize for its height; it is the font
-        // size plus the vertical padding, so pad up to [height].
-        padding: WidgetStatePropertyAll(EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: (height - textStyle.fontSize!) / 2,
-        )),
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: AppSpacing.md),
+        ),
+        visualDensity: VisualDensity.compact,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         textStyle: WidgetStatePropertyAll(textStyle),
         shape: const WidgetStatePropertyAll(

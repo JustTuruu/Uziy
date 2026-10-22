@@ -14,7 +14,8 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * Turns the raw JSONB answers of a campaign into per-question counts. A choice answer is
  * a JSON string ("Тийм") or an array of strings; anything unreadable counts as answered
- * but adds to no option.
+ * but adds to no option. A question answered by fewer than the minimum shows only how many
+ * answered, never what they chose: with a handful of answers each pick points at a person.
  */
 @Component
 public class AnswerCounter {
@@ -23,8 +24,12 @@ public class AnswerCounter {
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
-    /** @param answers rows of [question id, answer JSON text] */
-    public List<QuestionBreakdown> count(List<SurveyQuestionEntity> questions, List<Object[]> answers) {
+    /**
+     * @param answers rows of [question id, answer JSON text]
+     * @param minAnswered fewest answers a question needs before its option counts are shown
+     */
+    public List<QuestionBreakdown> count(List<SurveyQuestionEntity> questions, List<Object[]> answers,
+                                         int minAnswered) {
         Map<Long, List<String>> answersByQuestion = new LinkedHashMap<>();
         for (Object[] row : answers) {
             answersByQuestion.computeIfAbsent(((Number) row[0]).longValue(), k -> new ArrayList<>())
@@ -33,7 +38,8 @@ public class AnswerCounter {
         List<QuestionBreakdown> out = new ArrayList<>();
         for (SurveyQuestionEntity q : questions) {
             List<String> given = answersByQuestion.getOrDefault(q.getId(), List.of());
-            out.add(new QuestionBreakdown(q.getId(), q.getPrompt(), q.getQType(), given.size(), optionCounts(q, given)));
+            List<Slice> options = given.size() < minAnswered ? List.of() : optionCounts(q, given);
+            out.add(new QuestionBreakdown(q.getId(), q.getPrompt(), q.getQType(), given.size(), options));
         }
         return out;
     }

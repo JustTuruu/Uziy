@@ -6,6 +6,7 @@ import 'app.dart';
 import 'theme/theme_controller.dart';
 import 'routes/app_router.dart';
 import 'routes/router_push_target.dart';
+import 'services/api_service.dart';
 import 'services/push/push_runtime.dart';
 import 'services/auth_service.dart';
 
@@ -18,6 +19,8 @@ Future<void> main() async {
       statusBarBrightness: Brightness.light,
     ),
   );
+  // A release build without an https API URL stops here, before any request.
+  ApiService.instance.ensureConfigured();
   // Rehydrate the persisted JWT into Dio's headers so /viewer/* calls made
   // during splash / early screens don't 401.
   await ThemeController.instance.restore();

@@ -711,7 +711,7 @@ void main() {
                           icon: Icons.schedule_rounded,
                           tone: TagTone.glass,
                         ),
-                        RewardChip(amount: 700, glow: true),
+                        RewardChip(amount: 700),
                       ],
                     ),
                   ),

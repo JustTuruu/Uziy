@@ -80,7 +80,7 @@ class CampaignFactoryTest {
                 new CreateCampaignReq.NewQuestion("Бусад?", RatingScale.TYPE)));
 
         assertThat(qs).extracting(SurveyQuestionEntity::getOptionsJson)
-                .containsOnly("[\"Муу\", \"Дунд\", \"Сайн\"]");
+                .containsOnly("[\"Маш муу\", \"Муу\", \"Дунд\", \"Сайн\", \"Маш сайн\"]");
         assertThat(qs.get(0).getQType()).isEqualTo("RATING");
     }
 

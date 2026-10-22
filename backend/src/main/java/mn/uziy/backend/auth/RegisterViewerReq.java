@@ -8,12 +8,13 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.util.UUID;
+import mn.uziy.backend.common.BcryptSafe;
 import mn.uziy.backend.domain.Gender;
 import org.jspecify.annotations.Nullable;
 
 public record RegisterViewerReq(
         @Pattern(regexp = "\\d{8}", message = PHONE) String phoneNumber,
-        @NotNull(message = PASSWORD_LENGTH) @Size(min = 6, max = 100, message = PASSWORD_LENGTH) String password,
+        @NotNull(message = PASSWORD_LENGTH) @Size(min = 6, max = 100, message = PASSWORD_LENGTH) @BcryptSafe String password,
         @NotBlank(message = LAST_NAME_REQUIRED) @Size(max = NAME_MAX, message = NAME_TOO_LONG)
         @Pattern(regexp = NAME_PATTERN, message = NAME_LETTERS) String lastName,
         @NotBlank(message = FIRST_NAME_REQUIRED) @Size(max = NAME_MAX, message = NAME_TOO_LONG)

@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
  * rate-limited and a confirmed check is never asked about again.
  */
 @Service
-public class PhoneVerificationServiceImpl implements PhoneVerificationService, VerifiedPhoneClaim {
+public class PhoneVerificationServiceImpl implements PhoneVerificationService, VerifiedPhoneClaim, AdminPhoneCheck {
 
     private static final Logger LOG = LoggerFactory.getLogger(PhoneVerificationServiceImpl.class);
 
@@ -29,7 +29,9 @@ public class PhoneVerificationServiceImpl implements PhoneVerificationService, V
     public static final Duration HOURLY_WINDOW = Duration.ofHours(1);
     public static final int MAX_PER_HOUR = 5;
     /** How long after the SMS a confirmed check can still finish a registration or a reset. */
-    public static final Duration CLAIM_WINDOW = Duration.ofMinutes(30);
+    public static final Duration CLAIM_WINDOW = PhoneVerificationPurpose.REGISTER.claimWindow();
+    /** First key of the advisory lock that serialises check starts per phone ("PHON"), apart from any other lock. */
+    static final int START_LOCK_NAMESPACE = 0x50484F4E;
 
     private final PhoneVerificationRepository verifications;
     private final PhoneVerificationGateway gateway;
@@ -52,10 +54,21 @@ public class PhoneVerificationServiceImpl implements PhoneVerificationService, V
     @Override
     @Transactional
     public PhoneVerificationStartedRes start(String phoneNumber, PhoneVerificationPurpose purpose) {
+        // The account first: a taken phone answers 409 even right after its own check (owner's decision), and a
+        // purpose the endpoint does not offer never reaches the limits or the lock.
         requireAccountState(phoneNumber, purpose);
-        OffsetDateTime now = OffsetDateTime.now(clock);
-        requireWithinLimits(phoneNumber, now);
+        return open(phoneNumber, purpose, lockAndRequireWithinLimits(phoneNumber));
+    }
 
+    /** The password was proved by the caller (the login), so no account check here — only the SMS limits. */
+    @Override
+    @Transactional
+    public PhoneVerificationStartedRes openForAdminLogin(String phoneNumber) {
+        return open(phoneNumber, PhoneVerificationPurpose.ADMIN_LOGIN, lockAndRequireWithinLimits(phoneNumber));
+    }
+
+    private PhoneVerificationStartedRes open(String phoneNumber, PhoneVerificationPurpose purpose,
+                                             OffsetDateTime now) {
         PhoneVerificationSession session;
         try {
             session = gateway.start(phoneNumber, codes.next());
@@ -95,7 +108,21 @@ public class PhoneVerificationServiceImpl implements PhoneVerificationService, V
                     throw new NotFoundException(ACCOUNT_NOT_FOUND);
                 }
             }
+            // Only a correct admin password opens one (openForAdminLogin); a stranger must not text an admin's phone.
+            case ADMIN_LOGIN -> throw new BadRequestException(PURPOSE_NOT_OFFERED);
         }
+    }
+
+    /**
+     * Read-then-insert is only safe one at a time: two parallel taps used to both pass the cool-down and send
+     * the user two paid SMS codes. The advisory lock lasts until the caller's transaction has committed its new
+     * row, so the next start for this phone sees it. Returns the time the limits were judged at.
+     */
+    private OffsetDateTime lockAndRequireWithinLimits(String phoneNumber) {
+        verifications.lockPhone(START_LOCK_NAMESPACE, phoneNumber);
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        requireWithinLimits(phoneNumber, now);
+        return now;
     }
 
     private void requireWithinLimits(String phoneNumber, OffsetDateTime now) {
@@ -127,7 +154,7 @@ public class PhoneVerificationServiceImpl implements PhoneVerificationService, V
                 .orElseThrow(() -> new BadRequestException(NOT_VERIFIED));
         // The app may finish before its next poll saw the SMS: ask once more.
         refresh(row);
-        OffsetDateTime verifiedAfter = OffsetDateTime.now(clock).minus(CLAIM_WINDOW);
+        OffsetDateTime verifiedAfter = OffsetDateTime.now(clock).minus(purpose.claimWindow());
         if (verifications.tryClaim(verificationId, phoneNumber, purpose, verifiedAfter) == 0) {
             throw new BadRequestException(NOT_VERIFIED);
         }

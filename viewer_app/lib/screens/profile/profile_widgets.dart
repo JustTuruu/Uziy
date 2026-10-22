@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../models/user.dart';
 import '../../widgets/ui.dart';
 import '../../widgets/appearance_settings.dart';
+import 'history_logic.dart' show kHistoryTitle;
 import 'profile_logic.dart';
 
 // Presentational pieces of the profile tab. Nothing here imports the router:
@@ -77,31 +78,7 @@ class LogoutConfirmSheet extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ExcludeSemantics(
-              child: Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: context.colors.danger.withValues(alpha: 0.12),
-                  border: Border.all(
-                    color: context.colors.danger.withValues(alpha: 0.30),
-                  ),
-                  boxShadow: AppShadows.glow(
-                    context.colors.danger,
-                    strength: 0.35,
-                    blur: 24,
-                    offset: const Offset(0, 6),
-                  ),
-                ),
-                alignment: Alignment.center,
-                child: Icon(
-                  AppIcons.logout,
-                  size: 30,
-                  color: context.colors.dangerLight,
-                ),
-              ),
-            ),
+            const DangerIconBadge(icon: AppIcons.logout),
             const SizedBox(height: AppSpacing.lg),
             Semantics(
               header: true,
@@ -135,6 +112,39 @@ class LogoutConfirmSheet extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Round red-tinted badge at the top of a destructive confirmation sheet
+/// (logout, account deletion). Decorative: the sheet's title says it.
+class DangerIconBadge extends StatelessWidget {
+  const DangerIconBadge({super.key, required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeSemantics(
+      child: Container(
+        width: 64,
+        height: 64,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: context.colors.danger.withValues(alpha: 0.12),
+          border: Border.all(
+            color: context.colors.danger.withValues(alpha: 0.30),
+          ),
+          boxShadow: AppShadows.glow(
+            context.colors.danger,
+            strength: 0.35,
+            blur: 24,
+            offset: const Offset(0, 6),
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Icon(icon, size: 30, color: context.colors.dangerLight),
       ),
     );
   }
@@ -821,6 +831,7 @@ class ProfileBody extends StatelessWidget {
     this.onHistoryTap,
     this.onHelpTap,
     this.onPrivacyTap,
+    this.onDeleteAccount,
     this.loggingOut = false,
   });
 
@@ -836,6 +847,9 @@ class ProfileBody extends StatelessWidget {
   final VoidCallback? onHistoryTap;
   final VoidCallback? onHelpTap;
   final VoidCallback? onPrivacyTap;
+
+  /// Opens the account-deletion sheet; null hides the row (no profile yet).
+  final VoidCallback? onDeleteAccount;
 
   /// While true the logout row shows a spinner and ignores taps.
   final bool loggingOut;
@@ -945,7 +959,7 @@ class ProfileBody extends StatelessWidget {
                   InfoRow(
                     icon: AppIcons.history,
                     iconColor: context.colors.accent,
-                    label: 'Үзсэн видеонуудын түүх',
+                    label: kHistoryTitle,
                     onTap: _menuTap(onHistoryTap),
                   ),
                   InfoRow(
@@ -988,6 +1002,15 @@ class ProfileBody extends StatelessWidget {
                       )
                     : const SizedBox.shrink(),
               ),
+              if (onDeleteAccount != null)
+                InfoRow(
+                  key: const ValueKey('profile-delete-account'),
+                  icon: AppIcons.deleteAccount,
+                  label: kDeleteAccountLabel,
+                  danger: true,
+                  onTap: loggingOut ? null : _menuTap(onDeleteAccount),
+                  trailing: const SizedBox.shrink(),
+                ),
             ],
           ),
         ),

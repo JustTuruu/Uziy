@@ -140,7 +140,7 @@ class CampaignPaymentFlowIntegrationTest {
                 created.id());
         assertThat(rows).singleElement().satisfies(row -> {
             assertThat(row.get("q_type")).isEqualTo("RATING");
-            assertThat(row.get("options").toString()).contains("Муу", "Дунд", "Сайн");
+            assertThat(row.get("options").toString()).contains("Маш муу", "Муу", "Дунд", "Сайн", "Маш сайн");
         });
     }
 

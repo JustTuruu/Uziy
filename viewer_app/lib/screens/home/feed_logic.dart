@@ -120,9 +120,6 @@ bool shouldShowFilter(FeedSummary s) => s.hasBothKinds;
 FeedFilter effectiveFilter(FeedFilter selected, FeedSummary s) =>
     shouldShowFilter(s) ? selected : FeedFilter.all;
 
-/// Card call-to-action: watch a video, or fill in a survey.
-String campaignCtaLabel(Campaign c) => c.hasVideo ? 'Үзэх' : 'Бөглөх';
-
 /// Top-left chip text on a card: the video length, or 'Судалгаа'.
 String campaignKindLabel(Campaign c) =>
     c.hasVideo ? formatDurationShort(c.durationSeconds) : 'Судалгаа';

@@ -78,6 +78,7 @@ Future<void> _pump(
   WidgetTester tester, {
   SmsLauncher? launchSms,
   DateTime Function()? now,
+  PendingRegistration? pending,
 }) async {
   tester.view.physicalSize = const Size(390, 1000) * 3;
   tester.view.devicePixelRatio = 3;
@@ -89,7 +90,7 @@ Future<void> _pump(
       GoRoute(
         path: '/screen',
         builder: (_, __) => PhoneVerifyScreen(
-          pending: _pending,
+          pending: pending ?? _pending,
           launchSms: launchSms ?? (_) async => true,
           now: now ?? () => _now,
         ),
@@ -150,6 +151,36 @@ void main() {
       opened.add(uri);
       return true;
     });
+
+    await tester.tap(find.text(kSendSmsLabel));
+    await tester.pump();
+
+    expect(opened.single.toString(), 'sms:144773?body=482916');
+  });
+
+  testWidgets('a non-SMS link from the server is never opened', (tester) async {
+    FakeApi.install((_) => _state('PENDING'));
+    final opened = <Uri>[];
+    final check = _check('v1', '482916');
+    await _pump(
+      tester,
+      pending: PendingRegistration(
+        draft: _pending.draft,
+        verification: PhoneVerification(
+          id: check.id,
+          phone: check.phone,
+          shortcode: check.shortcode,
+          smsText: check.smsText,
+          smsUri: 'https://evil.example/login',
+          displayInstruction: check.displayInstruction,
+          expiresAt: check.expiresAt,
+        ),
+      ),
+      launchSms: (uri) async {
+        opened.add(uri);
+        return true;
+      },
+    );
 
     await tester.tap(find.text(kSendSmsLabel));
     await tester.pump();

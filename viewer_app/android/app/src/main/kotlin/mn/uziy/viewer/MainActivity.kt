@@ -1,4 +1,4 @@
-package com.example.viewer_app
+package mn.uziy.viewer
 
 import io.flutter.embedding.android.FlutterActivity
 

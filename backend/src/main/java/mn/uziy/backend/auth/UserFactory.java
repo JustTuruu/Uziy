@@ -19,9 +19,10 @@ public class UserFactory {
         return user;
     }
 
-    public UserEntity newCompany(RegisterCompanyReq req, String passwordHash) {
-        UserEntity user = base(req.phoneNumber(), passwordHash, Role.COMPANY);
-        user.setCompanyName(req.companyName());
+    /** A company account an admin opens (companies cannot register themselves). */
+    public UserEntity newCompany(String phoneNumber, String companyName, String passwordHash) {
+        UserEntity user = base(phoneNumber, passwordHash, Role.COMPANY);
+        user.setCompanyName(companyName.strip());
         return user;
     }
 

@@ -21,6 +21,7 @@ import mn.uziy.backend.domain.PayoutStatus;
 import mn.uziy.backend.domain.Role;
 import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
+import mn.uziy.backend.insights.DataAccessLogRepository;
 import mn.uziy.backend.security.JwtPrincipal;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -32,11 +33,12 @@ class PayoutServiceTest {
     private final UserRepository users = mock(UserRepository.class);
     private final DomainEventPublisher events = mock(DomainEventPublisher.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-10-06T00:00:00Z"), ZoneOffset.UTC);
+    private final DataAccessLogRepository accessLog = mock(DataAccessLogRepository.class);
     private final PayoutServiceImpl service = new PayoutServiceImpl(
             payouts, users,
             new PayoutRuleChain(List.of(new MinimumPayoutRule(), new SufficientBalanceRule())),
             new PayoutDecisionStrategies(List.of(new ApprovePayoutStrategy(), new RejectPayoutStrategy(users))),
-            new PayoutMapper(), events, clock);
+            new PayoutMapper(), events, clock, accessLog);
 
     private final UserEntity viewer = newViewer();
     private final JwtPrincipal viewerPrincipal = new JwtPrincipal(42L, Role.VIEWER);
@@ -48,7 +50,7 @@ class PayoutServiceTest {
         u.setPhoneNumber("77000001");
         u.setPasswordHash("x");
         u.setRole(Role.VIEWER);
-        u.setBalance(1500.0);
+        u.setBalance(7500.0);
         u.setVerified(false);
         return u;
     }
@@ -63,7 +65,7 @@ class PayoutServiceTest {
         p.setUserId(42L);
         p.setAmount(amount);
         p.setBank("Khan");
-        p.setAccountNumber("1");
+        p.setAccountNumber("5001234567");
         p.setAccountName("X");
         p.setStatus(status);
         p.setFirstPayout(first);
@@ -87,7 +89,7 @@ class PayoutServiceTest {
     @Test
     void requestReservesBalanceAtomicallyAndMarksFirstPayout() {
         when(users.findById(42L)).thenReturn(Optional.of(viewer));
-        when(users.tryDeductBalance(42L, 1000.0)).thenReturn(1);
+        when(users.tryDeductBalance(42L, 5000.0)).thenReturn(1);
         when(payouts.existsByUserIdAndStatus(42L, PayoutStatus.APPROVED)).thenReturn(false);
         when(payouts.save(any())).thenAnswer(inv -> {
             PayoutEntity p = inv.getArgument(0);
@@ -95,14 +97,14 @@ class PayoutServiceTest {
             return p;
         });
 
-        PayoutDto dto = service.request(viewerPrincipal.userId(), reqBody(1000.0));
+        PayoutDto dto = service.request(viewerPrincipal.userId(), reqBody(5000.0));
 
         assertThat(dto.id()).isEqualTo(1L);
         assertThat(dto.isFirstPayout()).isTrue();
         assertThat(dto.status()).isEqualTo(PayoutStatus.PENDING);
-        verify(users).tryDeductBalance(42L, 1000.0);
+        verify(users).tryDeductBalance(42L, 5000.0);
         verify(users, never()).save(any());
-        verify(events).publish(new PayoutRequested(1L, 42L, 1000.0));
+        verify(events).publish(new PayoutRequested(1L, 42L, 5000.0));
     }
 
     @Test
@@ -119,9 +121,9 @@ class PayoutServiceTest {
     void requestLosingTheRaceForTheBalanceIsRefusedAndRecordsNothing() {
         // The balance looked big enough when read, but another request spent it first.
         when(users.findById(42L)).thenReturn(Optional.of(viewer));
-        when(users.tryDeductBalance(42L, 1000.0)).thenReturn(0);
+        when(users.tryDeductBalance(42L, 5000.0)).thenReturn(0);
 
-        var ex = assertFailsWithHttp(() -> service.request(viewerPrincipal.userId(), reqBody(1000.0)));
+        var ex = assertFailsWithHttp(() -> service.request(viewerPrincipal.userId(), reqBody(5000.0)));
 
         assertThat(ex.statusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         verify(payouts, never()).save(any());
@@ -132,9 +134,9 @@ class PayoutServiceTest {
     void requestBelowTheMinimumOrWithFractionsIsRefused() {
         when(users.findById(42L)).thenReturn(Optional.of(viewer));
 
-        assertThat(assertFailsWithHttp(() -> service.request(42L, reqBody(500.0))).statusCode())
+        assertThat(assertFailsWithHttp(() -> service.request(42L, reqBody(4999.0))).statusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(assertFailsWithHttp(() -> service.request(42L, reqBody(1000.5))).statusCode())
+        assertThat(assertFailsWithHttp(() -> service.request(42L, reqBody(5000.5))).statusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
         verify(users, never()).tryDeductBalance(org.mockito.ArgumentMatchers.anyLong(),
                 org.mockito.ArgumentMatchers.anyDouble());
@@ -143,7 +145,7 @@ class PayoutServiceTest {
     @Test
     void requestMarksIsFirstPayoutFalseWhenUserHasAPriorApprovedPayout() {
         when(users.findById(42L)).thenReturn(Optional.of(viewer));
-        when(users.tryDeductBalance(42L, 1000.0)).thenReturn(1);
+        when(users.tryDeductBalance(42L, 5000.0)).thenReturn(1);
         when(payouts.existsByUserIdAndStatus(42L, PayoutStatus.APPROVED)).thenReturn(true);
         when(payouts.save(any())).thenAnswer(inv -> {
             PayoutEntity p = inv.getArgument(0);
@@ -151,7 +153,7 @@ class PayoutServiceTest {
             return p;
         });
 
-        PayoutDto dto = service.request(viewerPrincipal.userId(), reqBody(1000.0));
+        PayoutDto dto = service.request(viewerPrincipal.userId(), reqBody(5000.0));
         assertThat(dto.isFirstPayout()).isFalse();
     }
 
@@ -159,7 +161,7 @@ class PayoutServiceTest {
     void requestForAMissingUserIs404() {
         when(users.findById(42L)).thenReturn(Optional.empty());
 
-        assertThat(assertFailsWithHttp(() -> service.request(42L, reqBody(1000.0))).statusCode())
+        assertThat(assertFailsWithHttp(() -> service.request(42L, reqBody(5000.0))).statusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
     }
 
@@ -183,9 +185,12 @@ class PayoutServiceTest {
                 .thenReturn(List.of(payout(10L, 500.0, PayoutStatus.PENDING, false)));
         when(users.findAllById(List.of(42L))).thenReturn(List.of(viewer));
 
-        List<PayoutDto> list = service.pending();
+        List<PayoutDto> list = service.pending(adminPrincipal.userId());
         assertThat(list).hasSize(1);
         assertThat(list.get(0).userPhone()).isEqualTo("77000001");
+        // Still to be paid: the admin needs the whole number.
+        assertThat(list.get(0).accountNumber()).isEqualTo("5001234567");
+        verify(accessLog).record(1L, PayoutServiceImpl.ACTION_PENDING, "");
     }
 
     // ------- admin.history -------------------------------------------------
@@ -198,8 +203,10 @@ class PayoutServiceTest {
                 .thenReturn(List.of(payout(20L, 500.0, PayoutStatus.APPROVED, false), rejected));
         when(users.findAllById(List.of(42L))).thenReturn(List.of(viewer));
 
-        List<PayoutDto> list = service.history();
+        List<PayoutDto> list = service.history(adminPrincipal.userId());
         assertThat(list).hasSize(2);
+        assertThat(list).extracting(PayoutDto::accountNumber).containsOnly("•••• 4567");
+        verify(accessLog).record(1L, PayoutServiceImpl.ACTION_HISTORY, "");
         assertThat(list.get(0).status()).isEqualTo(PayoutStatus.APPROVED);
         assertThat(list.get(1).status()).isEqualTo(PayoutStatus.REJECTED);
         assertThat(list.get(0).userPhone()).isEqualTo("77000001");
@@ -211,7 +218,7 @@ class PayoutServiceTest {
                 .thenReturn(List.of());
         when(users.findAllById(List.of())).thenReturn(List.of());
 
-        assertThat(service.history()).isEmpty();
+        assertThat(service.history(adminPrincipal.userId())).isEmpty();
     }
 
     // ------- admin.decide --------------------------------------------------

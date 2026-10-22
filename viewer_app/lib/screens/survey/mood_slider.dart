@@ -6,14 +6,16 @@ import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
 import 'mood_logic.dart';
 
-/// Three-mood rating (Муу / Дунд / Сайн) as a drag slider.
+/// Mood rating as a drag slider: five stops (Маш муу · Муу · Дунд · Сайн ·
+/// Маш сайн), or the three of a question created before 2026-10-21 — the
+/// number of [labels] decides.
 ///
-/// While the thumb moves, only the *shapes* change: the eyes and mouth stay
-/// where they are and morph (circles → pills → big circles; frown → flat →
-/// smile) and the colour of the face, word and track drifts coral → gold →
-/// mint on the app's dark panel. The big word is a
-/// carousel that slides sideways with the thumb, so Муу, Дунд and Сайн flow
-/// past one another instead of cross-fading in place. Letting go snaps to the
+/// While the thumb moves, only the *shapes* change: the eyes, brows and mouth
+/// stay where they are and morph (worried brows and a deep frown → a frown →
+/// flat pills → a smile → an open laugh) and the colour of the face, word and
+/// track drifts red → gold → green on the app's panel. The big word is a
+/// carousel that slides sideways with the thumb, so the moods flow past one
+/// another instead of cross-fading in place. Letting go snaps to the
 /// nearest stop with a small bounce; tapping a label or the track jumps there.
 ///
 /// The thumb rests on Дунд until the viewer touches it, and a short nudge
@@ -27,7 +29,8 @@ class MoodSlider extends StatefulWidget {
     required this.onChanged,
   });
 
-  /// One label per stop, worst to best ([kMoodSteps] of them).
+  /// One label per stop, worst to best ([kMoodSteps], or
+  /// [kMoodLegacySteps] for an older question).
   final List<String> labels;
 
   /// Stop already chosen (e.g. coming back to this question), if any.
@@ -64,6 +67,8 @@ class _MoodSliderState extends State<MoodSlider> with TickerProviderStateMixin {
   double _snapFrom = kMoodStartPosition;
   double _snapTo = kMoodStartPosition;
   late bool _touched;
+
+  int get _steps => widget.labels.length;
   late int _lastStop;
   bool _hintStarted = false;
 
@@ -75,8 +80,10 @@ class _MoodSliderState extends State<MoodSlider> with TickerProviderStateMixin {
     super.initState();
     final selected = widget.selectedIndex;
     _touched = selected != null;
-    _base = selected == null ? kMoodStartPosition : moodPositionOf(selected);
-    _lastStop = moodIndexFor(_base);
+    _base = selected == null
+        ? kMoodStartPosition
+        : moodPositionOf(selected, steps: _steps);
+    _lastStop = moodIndexFor(_base, steps: _steps);
     _shown = ValueNotifier(_base);
     _snap.addListener(_onSnap);
     _hint.addListener(_publish);
@@ -100,7 +107,7 @@ class _MoodSliderState extends State<MoodSlider> with TickerProviderStateMixin {
         !_snap.isAnimating) {
       _touched = true;
       _hint.stop();
-      _setBase(moodPositionOf(selected));
+      _setBase(moodPositionOf(selected, steps: _steps));
     }
   }
 
@@ -121,7 +128,7 @@ class _MoodSliderState extends State<MoodSlider> with TickerProviderStateMixin {
   void _setBase(double t, {bool haptic = false}) {
     _base = t.clamp(0.0, 1.0);
     _publish();
-    final stop = moodIndexFor(_base);
+    final stop = moodIndexFor(_base, steps: _steps);
     if (stop != _lastStop) {
       _lastStop = stop;
       if (haptic) HapticFeedback.selectionClick();
@@ -153,14 +160,14 @@ class _MoodSliderState extends State<MoodSlider> with TickerProviderStateMixin {
   void _choose(int index) {
     _touch();
     if (index != _lastStop) HapticFeedback.selectionClick();
-    _animateTo(moodPositionOf(index));
+    _animateTo(moodPositionOf(index, steps: _steps));
     widget.onChanged(index);
   }
 
   void _endDrag() {
     if (!_dragging) return;
     _dragging = false;
-    _choose(moodIndexFor(_base));
+    _choose(moodIndexFor(_base, steps: _steps));
   }
 
   double _positionAt(double dx, double trackWidth) {
@@ -173,15 +180,15 @@ class _MoodSliderState extends State<MoodSlider> with TickerProviderStateMixin {
     return ValueListenableBuilder<double>(
       valueListenable: _shown,
       builder: (context, position, _) {
-        final stop = moodIndexFor(position);
+        final stop = moodIndexFor(position, steps: _steps);
         final labels = widget.labels;
         return Semantics(
           slider: true,
           label: MoodSlider.semanticLabel,
           value: labels[stop],
-          increasedValue: labels[math.min(stop + 1, kMoodSteps - 1)],
+          increasedValue: labels[math.min(stop + 1, _steps - 1)],
           decreasedValue: labels[math.max(stop - 1, 0)],
-          onIncrease: stop < kMoodSteps - 1 ? () => _choose(stop + 1) : null,
+          onIncrease: stop < _steps - 1 ? () => _choose(stop + 1) : null,
           onDecrease: stop > 0 ? () => _choose(stop - 1) : null,
           child: ExcludeSemantics(child: _buildPanel(position, stop)),
         );
@@ -198,11 +205,10 @@ class _MoodSliderState extends State<MoodSlider> with TickerProviderStateMixin {
         AppSpacing.xl,
       ),
       decoration: BoxDecoration(
-        color: moodPanelAt(position, surface: context.colors.surface),
+        color: moodPanelAt(position,
+            surface: context.colors.surface, steps: _steps),
         borderRadius: AppRadii.brXl,
-        border: Border.all(
-            color: moodTintAt(position, dark: context.colors.isDark)
-                .withValues(alpha: 0.28)),
+        border: Border.all(color: _tint(position).withValues(alpha: 0.28)),
       ),
       child: Column(
         children: [
@@ -211,8 +217,8 @@ class _MoodSliderState extends State<MoodSlider> with TickerProviderStateMixin {
             child: AspectRatio(
               aspectRatio: 1.45,
               child: CustomPaint(
-                  painter:
-                      MoodFacePainter(position, dark: context.colors.isDark)),
+                  painter: MoodFacePainter(position,
+                      dark: context.colors.isDark, steps: _steps)),
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
@@ -243,8 +249,9 @@ class _MoodSliderState extends State<MoodSlider> with TickerProviderStateMixin {
               _setBase(_positionAt(d.localPosition.dx, width), haptic: true),
           onHorizontalDragEnd: (_) => _endDrag(),
           onHorizontalDragCancel: _endDrag,
-          onTapUp: (d) =>
-              _choose(moodIndexFor(_positionAt(d.localPosition.dx, width))),
+          onTapUp: (d) => _choose(moodIndexFor(
+              _positionAt(d.localPosition.dx, width),
+              steps: _steps)),
           child: SizedBox(
             height: MoodSlider.thumbSize,
             child: Stack(
@@ -268,20 +275,20 @@ class _MoodSliderState extends State<MoodSlider> with TickerProviderStateMixin {
                   child: Container(
                     height: MoodSlider.trackHeight,
                     decoration: BoxDecoration(
-                      color: moodTintAt(position, dark: context.colors.isDark),
+                      color: _tint(position),
                       borderRadius: AppRadii.brPill,
                     ),
                   ),
                 ),
-                for (var i = 0; i < kMoodSteps; i++)
+                for (var i = 0; i < _steps; i++)
                   Positioned(
-                    left: r + travel * moodPositionOf(i) - 4,
+                    left: r + travel * moodPositionOf(i, steps: _steps) - 4,
                     child: Container(
                       width: 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: moodPositionOf(i) <= position
-                            ? moodTintAt(position, dark: context.colors.isDark)
+                        color: moodPositionOf(i, steps: _steps) <= position
+                            ? _tint(position)
                             : context.colors.borderStrong,
                         shape: BoxShape.circle,
                       ),
@@ -293,7 +300,7 @@ class _MoodSliderState extends State<MoodSlider> with TickerProviderStateMixin {
                     dimension: MoodSlider.thumbSize,
                     child: CustomPaint(
                         painter: MoodThumbPainter(position,
-                            dark: context.colors.isDark)),
+                            dark: context.colors.isDark, steps: _steps)),
                   ),
                 ),
               ],
@@ -304,35 +311,67 @@ class _MoodSliderState extends State<MoodSlider> with TickerProviderStateMixin {
     );
   }
 
+  static const int _labelFlex = 5;
+  static const int _endLabelFlex = 6;
+
+  Color _tint(double position) =>
+      moodTintAt(position, dark: context.colors.isDark, steps: _steps);
+
+  /// One tappable label per stop under the track: the ends hug the edges,
+  /// the middle ones are centred. Five labels wrap to two short lines on a
+  /// narrow screen ('Маш / муу') instead of crowding.
   Widget _buildLabels(int stop) {
-    Widget label(int i, Alignment alignment) => Expanded(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => _choose(i),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-              child: Align(
-                alignment: alignment,
-                child: AnimatedDefaultTextStyle(
-                  duration: AppMotion.duration(context, AppDurations.fast),
-                  style: context.textStyles.bodyStrong.copyWith(
-                    color: i == stop
-                        ? context.colors.textPrimary
-                        : context.colors.textTertiary,
-                    fontWeight: i == stop ? FontWeight.w800 : FontWeight.w600,
-                  ),
-                  child: Text(widget.labels[i]),
+    final last = _steps - 1;
+    final compact = _steps > kMoodLegacySteps;
+    Widget label(int i) {
+      final (Alignment alignment, TextAlign textAlign) = i == 0
+          ? (Alignment.centerLeft, TextAlign.left)
+          : i == last
+              ? (Alignment.centerRight, TextAlign.right)
+              : (Alignment.center, TextAlign.center);
+      final base =
+          compact ? context.textStyles.label : context.textStyles.bodyStrong;
+      return Expanded(
+        // The end words are the longest ('Маш муу', 'Маш сайн'): a little
+        // more room keeps them on one line like the rest.
+        flex: compact && (i == 0 || i == last) ? _endLabelFlex : _labelFlex,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _choose(i),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+            child: Align(
+              alignment: alignment,
+              child: AnimatedDefaultTextStyle(
+                duration: AppMotion.duration(context, AppDurations.fast),
+                // Merge onto the inherited style: AnimatedDefaultTextStyle
+                // replaces it outright, which would drop the theme's font.
+                style: DefaultTextStyle.of(context).style.merge(base.copyWith(
+                      color: i == stop
+                          ? context.colors.textPrimary
+                          : context.colors.textTertiary,
+                      // Five labels: the chosen one changes colour only, so
+                      // it never widens and jumps to a second line.
+                      fontWeight: compact
+                          ? FontWeight.w700
+                          : (i == stop ? FontWeight.w800 : FontWeight.w600),
+                      height: 1.2,
+                    )),
+                child: Text(
+                  widget.labels[i],
+                  textAlign: textAlign,
+                  maxLines: 2,
                 ),
               ),
             ),
           ),
-        );
+        ),
+      );
+    }
+
     return Row(
-      children: [
-        label(0, Alignment.centerLeft),
-        label(1, Alignment.center),
-        label(2, Alignment.centerRight),
-      ],
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [for (var i = 0; i <= last; i++) label(i)],
     );
   }
 }
@@ -363,9 +402,10 @@ class MoodWordCarousel extends StatelessWidget {
           children: [
             for (var i = 0; i < labels.length; i++)
               FractionalTranslation(
-                translation: Offset(moodWordShift(i, position), 0),
+                translation:
+                    Offset(moodWordShift(i, position, steps: labels.length), 0),
                 child: Opacity(
-                  opacity: moodWordOpacity(i, position),
+                  opacity: moodWordOpacity(i, position, steps: labels.length),
                   child: SizedBox(
                     width: double.infinity,
                     child: FittedBox(
@@ -377,8 +417,9 @@ class MoodWordCarousel extends StatelessWidget {
                           fontSize: fontSize,
                           fontWeight: FontWeight.w900,
                           letterSpacing: -2,
-                          color:
-                              moodTintAt(position, dark: context.colors.isDark),
+                          color: moodTintAt(position,
+                              dark: context.colors.isDark,
+                              steps: labels.length),
                         ),
                       ),
                     ),
@@ -400,6 +441,7 @@ void _paintMouth(
   required double sag,
   required double stroke,
   required Color color,
+  double open = 0,
 }) {
   final path = Path()
     ..moveTo(center.dx - width / 2, center.dy)
@@ -410,6 +452,13 @@ void _paintMouth(
       center.dx + width / 2,
       center.dy,
     );
+  if (open > 0.01 && sag > 0) {
+    // An open laugh: the smile closed by a straight top lip and filled.
+    canvas.drawPath(
+      Path.from(path)..close(),
+      Paint()..color = color.withValues(alpha: open.clamp(0.0, 1.0)),
+    );
+  }
   canvas.drawPath(
     path,
     Paint()
@@ -420,10 +469,13 @@ void _paintMouth(
   );
 }
 
-/// The face: two eyes and a mouth at fixed spots, shaped by [position].
+/// The face: two eyes (with brows when worried) and a mouth at fixed spots,
+/// shaped by [position] on a [steps]-stop scale.
 class MoodFacePainter extends CustomPainter {
-  const MoodFacePainter(this.position, {this.dark = false});
+  const MoodFacePainter(this.position,
+      {this.dark = false, this.steps = kMoodSteps});
   final bool dark;
+  final int steps;
 
   final double position;
 
@@ -431,13 +483,17 @@ class MoodFacePainter extends CustomPainter {
   static const double _eyeY = 0.28;
   static const double _mouthY = 0.78;
   static const double _mouthStroke = 0.05;
+  static const double _browWidth = 0.17;
+  static const double _browGap = 0.05;
+  static const double _browLift = 0.07;
+  static const double _browStroke = 0.04;
 
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
-    final shape = moodShapeAt(position);
-    final tint = moodTintAt(position, dark: dark);
+    final shape = moodShapeAt(position, steps: steps);
+    final tint = moodTintAt(position, dark: dark, steps: steps);
     final eye = Paint()..color = tint;
     for (final side in [-1.0, 1.0]) {
       final center = Offset(w / 2 + side * _eyeSpread * w, _eyeY * h);
@@ -453,6 +509,21 @@ class MoodFacePainter extends CustomPainter {
         ),
         eye,
       );
+      if (shape.browTilt > 0.01) {
+        // Worried brows: the inner end (towards the nose) rides higher.
+        final y = rect.top - _browGap * w;
+        final outer = Offset(center.dx + side * _browWidth * w / 2, y);
+        final inner = Offset(center.dx - side * _browWidth * w / 2,
+            y - shape.browTilt * _browLift * w);
+        canvas.drawLine(
+          outer,
+          inner,
+          Paint()
+            ..color = tint.withValues(alpha: shape.browTilt.clamp(0.0, 1.0))
+            ..strokeWidth = _browStroke * w
+            ..strokeCap = StrokeCap.round,
+        );
+      }
     }
     _paintMouth(
       canvas,
@@ -461,19 +532,22 @@ class MoodFacePainter extends CustomPainter {
       sag: shape.mouthSag * w,
       stroke: _mouthStroke * w,
       color: tint,
+      open: shape.mouthOpen,
     );
   }
 
   @override
   bool shouldRepaint(MoodFacePainter old) =>
-      old.position != position || old.dark != dark;
+      old.position != position || old.dark != dark || old.steps != steps;
 }
 
 /// The draggable knob: a disc in the mood colour with a tiny dark mouth that
 /// follows the mood.
 class MoodThumbPainter extends CustomPainter {
-  const MoodThumbPainter(this.position, {this.dark = false});
+  const MoodThumbPainter(this.position,
+      {this.dark = false, this.steps = kMoodSteps});
   final bool dark;
+  final int steps;
 
   final double position;
 
@@ -483,9 +557,9 @@ class MoodThumbPainter extends CustomPainter {
     canvas.drawCircle(
       c,
       size.width / 2,
-      Paint()..color = moodTintAt(position, dark: dark),
+      Paint()..color = moodTintAt(position, dark: dark, steps: steps),
     );
-    final shape = moodShapeAt(position);
+    final shape = moodShapeAt(position, steps: steps);
     _paintMouth(
       canvas,
       center: Offset(c.dx, c.dy + size.height * 0.04),
@@ -498,5 +572,5 @@ class MoodThumbPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(MoodThumbPainter old) =>
-      old.position != position || old.dark != dark;
+      old.position != position || old.dark != dark || old.steps != steps;
 }

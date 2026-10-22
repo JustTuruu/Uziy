@@ -306,4 +306,24 @@ void main() {
       expect(e.message, 'Овог, нэр аль хэдийн бүртгэгдсэн байна');
     });
   });
+
+  group('deleteAccount', () {
+    test('sends DELETE /viewer/me with the password and accepts 204', () async {
+      final api = FakeApi.install((_) => const FakeReply(204));
+      await svc.deleteAccount(password: 'secret12');
+
+      final call = api.callsTo('/viewer/me').single;
+      expect(call.method, 'DELETE');
+      expect(call.body, {'password': 'secret12'});
+    });
+
+    test('a refusal comes back as the backend message', () async {
+      const pending = 'Таны мөнгө татах хүсэлт шалгагдаж байна. '
+          'Хүсэлт шийдвэрлэгдсэний дараа бүртгэлээ устгана уу';
+      FakeApi.install((_) => const FakeReply(409, {'message': pending}));
+      final e = await _catch(() => svc.deleteAccount(password: 'secret12'));
+      expect(e.statusCode, 409);
+      expect(e.message, pending);
+    });
+  });
 }

@@ -23,7 +23,7 @@ import '../screens/wallet/payout_request_screen.dart';
 import '../screens/wallet/wallet_screen.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_nav_bar.dart';
-import '../widgets/reels_icon.dart';
+import '../widgets/nav_glyphs.dart';
 import 'auth_gate.dart';
 
 class Routes {
@@ -264,12 +264,11 @@ class _MainShell extends StatelessWidget {
 
   static const _tabs = [
     AppNavItem(
-      glyphBuilder: ReelsIcon.glyph,
+      glyphBuilder: NavGlyph.home,
       label: 'Нүүр',
     ),
     AppNavItem(
-      icon: Icons.account_balance_wallet_outlined,
-      selectedIcon: Icons.account_balance_wallet_rounded,
+      glyphBuilder: NavGlyph.wallet,
       label: 'Хэтэвч',
     ),
     AppNavItem(

@@ -31,5 +31,9 @@ class SegmentsCsvTest {
         assertThat(SegmentsCsv.quote("a\"b")).isEqualTo("\"a\"\"b\"");
         assertThat(SegmentsCsv.quote("=HYPERLINK(1)")).isEqualTo("\"'=HYPERLINK(1)\"");
         assertThat(SegmentsCsv.quote("-5")).isEqualTo("\"'-5\"");
+        // Tab and carriage return can also start a formula (audit 2026-10-22).
+        assertThat(SegmentsCsv.quote("\t=1+1")).isEqualTo("\"'\t=1+1\"");
+        assertThat(SegmentsCsv.quote("\r=1+1")).isEqualTo("\"'\r=1+1\"");
+        assertThat(SegmentsCsv.quote("Сайн")).isEqualTo("\"Сайн\"");
     }
 }

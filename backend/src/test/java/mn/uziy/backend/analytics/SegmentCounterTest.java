@@ -69,7 +69,43 @@ class SegmentCounterTest {
 
         SegmentBreakdown out = counter.count(List.of(q), rows, MIN).get(0);
 
-        assertThat(out.segments()).containsExactly(new Slice("MALE", 5), new Slice("18–24", 9));
+        // Showing the 5 men would give the 4 women away (9 answers − the men's), so neither gender is shown.
+        assertThat(out.segments()).containsExactly(new Slice("18–24", 9));
+    }
+
+    /**
+     * Regression (2026-10-22 audit): the question's totals are public (AnswerCounter), so with "MALE" shown and
+     * the 2 women hidden, the women's answers were simply total − men. Whatever a hidden segment chose must now be
+     * mixed in with at least {@code MIN} other people.
+     */
+    @Test
+    void aHiddenSegmentCannotBeWorkedOutFromTheTotalsMinusTheShownOnes() {
+        var q = question(1, "SINGLE_CHOICE", "[\"Yes\",\"No\"]");
+        var rows = concat(many(20, 1, "\"Yes\"", "MALE", 30), many(2, 1, "\"No\"", "FEMALE", 30));
+
+        SegmentBreakdown out = counter.count(List.of(q), rows, MIN).get(0);
+        long answered = rows.size();
+
+        assertThat(out.segments()).extracting(Slice::label).doesNotContain("MALE", "FEMALE");
+        for (List<String> dimension : List.of(List.of("MALE", "FEMALE"), AgeBands.labels())) {
+            long shown = out.segments().stream()
+                    .filter(s -> dimension.contains(s.label()))
+                    .mapToLong(Slice::count)
+                    .sum();
+            long rest = answered - shown;
+            assertThat(rest == 0 || rest >= MIN).as("rest of %s", dimension).isTrue();
+        }
+    }
+
+    @Test
+    void anAgeBandIsHiddenWithTheNextSmallestWhenItAloneWouldBeLeftOver() {
+        var q = question(1, "SINGLE_CHOICE", "[\"Yes\"]");
+        var rows = concat(concat(many(10, 1, "\"Yes\"", "MALE", 20), many(6, 1, "\"Yes\"", "MALE", 30)),
+                many(1, 1, "\"Yes\"", "MALE", 50));
+
+        SegmentBreakdown out = counter.count(List.of(q), rows, MIN).get(0);
+
+        assertThat(out.segments()).containsExactly(new Slice("MALE", 17), new Slice("18–24", 10));
     }
 
     @Test
@@ -101,11 +137,20 @@ class SegmentCounterTest {
     @Test
     void respondentsWithAnUnknownGenderOrAgeStillCountInTheOtherSegment() {
         var q = question(1, "SINGLE_CHOICE", "[\"Yes\"]");
-        var rows = concat(many(5, 1, "\"Yes\"", null, 40), many(1, 1, "\"Yes\"", "MALE", null));
+        var rows = concat(many(5, 1, "\"Yes\"", null, 40), many(5, 1, "\"Yes\"", "MALE", null));
 
         SegmentBreakdown out = counter.count(List.of(q), rows, MIN).get(0);
 
-        assertThat(out.segments()).containsExactly(new Slice("35–44", 5));
+        assertThat(out.segments()).containsExactly(new Slice("MALE", 5), new Slice("35–44", 5));
+    }
+
+    @Test
+    void oneRespondentWithoutAnAgeIsEnoughToHideTheOnlyAgeBand() {
+        var q = question(1, "SINGLE_CHOICE", "[\"Yes\"]");
+        // 6 answered, 5 of them aged 40: showing 35–44 would give the sixth person's answer away.
+        var rows = concat(many(5, 1, "\"Yes\"", null, 40), many(1, 1, "\"No\"", "MALE", null));
+
+        assertThat(counter.count(List.of(q), rows, MIN)).isEmpty();
     }
 
     @Test

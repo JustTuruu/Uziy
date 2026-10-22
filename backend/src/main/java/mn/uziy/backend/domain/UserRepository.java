@@ -1,5 +1,6 @@
 package mn.uziy.backend.domain;
 
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -15,8 +16,25 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     boolean existsByPhoneNumber(String phoneNumber);
 
     /** The account's current role, or empty when it no longer exists. */
-    @Query("SELECT u.role FROM UserEntity u WHERE u.id = :id")
-    Optional<Role> roleOf(@Param("id") long id);
+    @Query("SELECT new mn.uziy.backend.domain.AccountState(u.role, u.credentialsChangedAt) "
+            + "FROM UserEntity u WHERE u.id = :id")
+    Optional<AccountState> accountState(@Param("id") long id);
+
+    /**
+     * Sets a new password for the account of {@code phone} with {@code role}, in one UPDATE that touches nothing
+     * else. Loading the entity and saving it back instead could write an old balance over a payout made in
+     * between (audit 2026-10-22). Returns 0 when there is no such account.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE UserEntity u SET u.passwordHash = :hash, u.credentialsChangedAt = :at "
+            + "WHERE u.phoneNumber = :phone AND u.role = :role")
+    int trySetPassword(@Param("phone") String phone, @Param("role") Role role, @Param("hash") String hash,
+                       @Param("at") OffsetDateTime at);
+
+    /** Marks the account verified without loading and saving it back (same reason as {@link #trySetPassword}). */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE UserEntity u SET u.verified = true WHERE u.id = :id")
+    int markVerified(@Param("id") long id);
 
     /**
      * Atomically takes {@code amount} from the balance, only if that much is there. Returns 1 when it

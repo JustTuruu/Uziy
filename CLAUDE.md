@@ -126,7 +126,7 @@ asked, say so and propose the compliant way instead of silently bending it.
    `useEffect` (ESLint `react-hooks/set-state-in-effect`).
    **Both panels are light (owner, 2026-10-21; company followed admin the same day)**: the shared
    `packages/ui/src/theme-light.css` (imported by each app's `globals.css` AFTER `theme.css`) overrides the token
-   VALUES in an unlayered `:root` (white page/surfaces/sidebar, deep amber `--color-primary` #975b06 with white text
+   VALUES in an unlayered `:root` (soft off-white page `#f6f6f3` and sidebar `#fafaf8` with white cards — pure white was too harsh, owner 2026-10-21; deep amber `--color-primary` #975b06 with white text
    on it, darker success/danger/warning/accent). `theme.css` still holds the dark defaults (nothing uses them now). Text on a filled control
    uses `--color-on-primary` / `--color-on-success` / `--color-on-danger` (never a hex); the sidebar uses
    `--color-sidebar`, floating menus `--shadow-popover`. `packages/ui/src/theme-light.test.ts` checks WCAG AA for the
@@ -153,9 +153,11 @@ asked, say so and propose the compliant way instead of silently bending it.
 
 1. **Bottom navigation is fixed and static**: no sliding capsule or
    transition animation; every tab is an icon with its **label underneath**;
-   the active tab is gold with the filled icon. The **Нүүр tab uses the custom
-   Instagram-Reels-style glyph** (`ReelsIcon`); Хэтэвч/Профайл use Material
-   icons. Custom glyphs go through `AppNavItem.glyphBuilder`.
+   the active tab is in the action colour with the filled icon. **Нүүр and
+   Хэтэвч use the authored `NavGlyph`s** (`widgets/nav_glyphs.dart`, owner
+   2026-10-21: a house with a play-triangle door, a wallet with a coin on its
+   clasp; `ReelsIcon` was removed); Профайл uses a Material icon. Custom glyphs
+   go through `AppNavItem.glyphBuilder`.
 2. **Never wrap the `ShellRoute` child (the nested Navigator) in an
    `AnimatedSwitcher`** — it throws `'_dependents.isEmpty'`. Tab animation, if
    any, belongs in the page transition (`_tab`).
@@ -596,6 +598,28 @@ Full write-up and checklist: **`docs/PRODUCTION_CHECKLIST.md`**. Rules that now 
   accounts, simulated payments, logging OTP or localhost CORS. `application-prod.yml` has no secret defaults.
 - Known open risk: rewards cannot yet be tied to real watching (see the checklist).
 
+### Second security audit (2026-10-22) — rules that now hold
+
+Details and the open decisions: `docs/PRODUCTION_CHECKLIST.md` ("Second audit").
+- **Never load-modify-save a `UserEntity`** for a single field: a phone check or any slow step in between lets a
+  payout run, and the save writes the old balance back. Use a one-column conditional UPDATE (`trySetPassword`,
+  `markVerified`, `trySetNameOnce`, the balance methods).
+- **Password change = sign-out everywhere**: `users.credentials_changed_at` (V16); `JwtAuthFilter.stillValid` refuses
+  tokens issued before it (whole seconds). Set it whenever a password changes.
+- New passwords carry `@BcryptSafe` (≤ 72 UTF-8 bytes); `ViewerAgeRule` (13+) runs at viewer registration.
+- Statistics count only a yes to the CURRENT consent wording (`InsightsRepository.CONSENTING`).
+- Never log personal data: no DB error detail (constraint name only), no push text, no phone/account/token.
+- **Local Docker**: Postgres and pgAdmin listen on 127.0.0.1 only; 8080 stays on the LAN for the phone, so
+  `backend/.env` holds a random `JWT_SECRET` (template in `.env.example`; never the committed dev default).
+- **Panels**: every Next app sends `@uziy/ui/security-headers` (`securityHeaderRoutes`, CSP with the API origin,
+  frame-ancestors 'none', HSTS in prod). A new external origin (CDN, analytics, images) must be added there.
+- **App**: secure storage only through `appSecureStorage` (`services/secure_store.dart`: iOS this-device-only, Android
+  encrypted prefs — a test fails on any other `FlutterSecureStorage(`); print only through `debugLog(() => …)`
+  (`services/debug_log.dart`), never a bare `debugPrint`; the debug network log masks password/newPassword/
+  accountNumber/token (`services/api_log.dart`); release builds refuse a non-https `API_BASE_URL`
+  (`ApiService.ensureConfigured` in `main.dart`); the verify page opens only `sms:` links (`smsLaunchUri`); logout
+  clears `MoneyMemory`. Android `allowBackup="false"`. Switching the keychain options signed existing iOS users out once.
+
 ### Error messages users read (added 2026-10-13)
 
 Every error a client can show is Cyrillic Mongolian and says what to do; nothing technical or echoed.
@@ -697,9 +721,11 @@ For selling aggregate insights later. **Owner decisions**: separate opt-in conse
 group **50**. Added on my own judgement (flag to the owner): **minors (< 18) are never counted or asked**.
 - **Consent** (`privacy/`, V15 `users.stats_consent|_at|_version`): `GET|PUT /viewer/consents/statistics {granted}` →
   `{status: UNASKED|GRANTED|DECLINED, decidedAt, version}`; a consent to an older `CURRENT_VERSION` wording reads as
-  UNASKED. App: `widgets/stats_consent.dart` — `StatsConsentPrompt` (Home, once, adults only) and `StatsConsentTile`
-  (the withdraw switch: since 2026-10-21 on Profile → Нууцлалын бодлого, under the statistics section — owner took it
-  off the Profile list; it must stay somewhere, the consent is revocable); `canAskStatsConsent(age)`. Privacy page has a section. Copy needs a lawyer's review.
+  UNASKED. App: `widgets/stats_consent.dart` — only `StatsConsentTile` (the give/withdraw switch, on Profile →
+  Нууцлалын бодлого under the statistics section; owner took it off the Profile list on 2026-10-21; it must stay
+  somewhere, the consent is revocable). **Nobody is asked any more (owner, 2026-10-21)**: the one-time Home card
+  `StatsConsentPrompt` (and `canAskStatsConsent`) was removed, so a viewer is counted only after turning the switch on
+  themselves (regression test in `home_feed_completion_test.dart`). Privacy page has a section. Copy needs a lawyer's review.
 - **Statistics** (`insights/`, ADMIN only, `/admin/insights/overview|questions|questions/{id}?gender&ageBand&city|
   questions/{id}/segments|questions/{id}/export.csv|access-log`). ALL rules live in `StatisticsPrivacyPolicy` +
   `InsightsRepository.CONSENTING` — never query people without that filter, never return a count/percent for a group
@@ -713,8 +739,8 @@ group **50**. Added on my own judgement (flag to the owner): **minors (< 18) are
 - **Flat auth forms (owner's redesign, finished 2026-10-14)**: login and register sit on the plain background (no
   `AmbientBackground`, no card), inside `LoginFieldsTheme` (one field look, corners `LoginFieldsTheme.radius`). A label
   above each field, no placeholders, no leading icons (`PasswordField(showLeadingIcon: false)`, `RegionDropdown` has no
-  icon, `BirthDateTile` none). Titles are `AuthPageTitle`; gender is `GenderSelector` (two-part control as tall as a
-  field, no check mark). Login: brand row with 'Зочноор үзэх' (one line), form, then 'Шинэ хэрэглэгч үү?' + a
+  icon, `BirthDateTile` none). Titles are `AuthPageTitle`; gender is `GenderSelector` (two-part control, no check mark;
+  a compact 44pt since 2026-10-22 — the label carries the height, never force the outer box or the halves come up short). Login: brand row with 'Зочноор үзэх' (one line), form, then 'Шинэ хэрэглэгч үү?' + a
   secondary 'Бүртгүүлэх' button. Register shows the spec §4A `IncentiveBanner` (now flat: faint green wash, coin)
   under the title. `GenderOptionCard`, `ChoiceCardGroup`, `PhoneNumberSection`, `AuthFooterLink`, `HowItWorksStrip`
   and `authHeroMetrics` were removed with the redesign.
@@ -723,8 +749,8 @@ group **50**. Added on my own judgement (flag to the owner): **minors (< 18) are
   the 'uziy' name fades first on a narrow screen with large text so 'Зочноор үзэх' is never cut off.
   Critique → layout → bolder (2026-10-14, snapshot in `.impeccable/critique/`, score 23/40 before): register opens
   with the spec banner right under the title (body size, no coin; the '500–700 ₮ per survey' `RewardPromise` was
-  removed at the owner's request, 2026-10-21); the pinned button is `kContinueLabel` 'Үргэлжлүүлэх' with `kNextStepNote` above it naming
-  the SMS step and its price (`kSmsPriceNote`, shared with the verify page). No city is preselected (`kCityRequired`;
+  removed at the owner's request, 2026-10-21); the pinned button is `kContinueLabel` 'Үргэлжлүүлэх', alone (the `kNextStepNote` SMS/price
+  caption above it was removed by the owner on 2026-10-22; the verify page still states the price, `kSmsCostNote`). No city is preselected (`kCityRequired`;
   district/sum appear after a pick). Every labelled field is a `LabeledField` (label hidden from VoiceOver and put on
   the field's own node — MergeSemantics around a TextField asserts). One phone error: `AuthValidators.phoneInvalid`.
   Login = the owner's reference image (2026-10-14, palette unchanged; supersedes the earlier inline-prompt version):
@@ -987,8 +1013,10 @@ the next session can uncomment once the backend exists.
   two separate cards (`WalletTotalsCard` → two `WalletTotalTile`s, each led by a `MoneyFlowBadge`). `tool/render_design_test.dart`
   renders a `wallet-history` preview with sample rows. The rows sit in a box of `kWalletHistoryBoxHeight` (360) that scrolls
   on its own: `GroupedCard(maxHeight: …)` (shared kit, own `ScrollController` + visible scrollbar; short content keeps
-  its natural height). The old 'Урамшууллын түүх' link card was removed; Profile's
-  'Үзсэн видеонуудын түүх' page stays. Regression test:
+  its natural height; `ClampingScrollPhysics` on purpose — iOS bouncing made the scrollbar shrink and regrow, 2026-10-21; the box drops the
+  page's `MediaQuery` padding around its `Scrollbar`, or the nav-bar/home-indicator inset shortened the track by ~100pt and
+  the bar never reached the end of the list). The old 'Урамшууллын түүх' link card was removed; Profile's
+  'Судалгааны түүх' page stays. Regression test:
   `test/screens/wallet/wallet_screen_test.dart`. Reuse `AutoRefresher` for any other screen that waits on an admin.
 - **Finished campaigns leave Home by themselves (2026-10-14)**: Home stays alive under the video/survey routes, so a
   finished card used to linger until pull-to-refresh. `services/campaign_events.dart` `CampaignEvents` (Observer,
@@ -996,6 +1024,37 @@ the next session can uncomment once the backend exists.
   rewarded). `HomeFeedScreen` drops the card at once (`feed_logic.dart` `withoutCampaign`), remembers the id so an
   in-flight reply cannot bring it back, and reloads quietly for the balance; it also reloads on app resume
   (`AutoRefresher`). Regression test: `test/screens/home/home_feed_completion_test.dart`.
+- **Polish pass (owner, 2026-10-21; Impeccable `polish`)**:
+  - Home cards have **no 'Үзэх / Бөглөх' button** (the card is the button); the `RewardChip` sits on the publisher line.
+  - `RewardChip` is no longer gold: `context.colors.actionWash` fill, `actionLine` hairline, primary ink (AA in both
+    themes), no glow. `AppPalette.actionWash/actionLine` are shared with the new `AppButtonVariant.tonal`, which the
+    wallet's 'Мөнгө татах' uses (a forest button under the forest card melted into it).
+  - `FeedFilterBar` = three natural-width `FeedFilterChip`s (icon + name, flat forest when chosen, sideways scroll if
+    tight), no counts. `EarningsHeroCard.lookIn`: flat forest in light, graphite surface + sage money in dark.
+  - Wallet: tapping 'Нийт орлого' / 'Нийт зарлага' narrows the history (`WalletHistoryFilter`,
+    `filterWalletHistory`, `toggleWalletFilter`; refunded payouts show only under all); `WalletFilterLine` undoes it.
+  - **Payout minimum is 5,000 ₮ (owner, 2026-10-21; was 1,000)**: backend `MinimumPayoutRule.MINIMUM_PAYOUT`, app
+    `kPayoutMinimum` + `kPayoutMinimumLabel` (all payout copy and the help answer read it); quick picks
+    5,000 / 10,000 / 20,000 / 50,000, the form opens on 5,000.
+  - Profile's history page is **'Судалгааны түүх'** (`kHistoryTitle`, count 'Бөглөсөн судалгаа'), not 'Үзсэн видеонуудын түүх'.
+  - Help FAQ no longer has 'Яагаад надад видео цөөн харагдаж байна?'.
+  - Password reset asks the new password **twice** (`ResetPasswordScreen`: 'Нууц үг' + 'Нууц үгээ давтах',
+    `AuthValidators.passwordRepeat`); each `PasswordField` has its own show/hide eye.
+  - **Birth date = three wheels (owner, 2026-10-22)**: the month calendar (`showDatePicker`) was hard to use, so
+    registration opens `showBirthDatePicker` (`screens/auth/birth_date_picker.dart`): a bottom sheet with Он · Сар ·
+    Өдөр `CupertinoPicker`s, a centred summary — quiet title, the date as it is said ('2007 оны 2-р сарын 22',
+    `birthDateLong`; the dotted form read as a code) and a '19 настай' pill — and 'Сонгох'. `birthDateFrom` cuts the day to the
+    month (31 → 28/29) and keeps the bounds of `birthDatePickerBounds`. The highlight band is see-through (it is painted
+    over the chosen row) and the wheel text is merged onto the app's text style.
+  - A free-text answer's placeholder is `kTextAnswerHint` 'Та хариултаа энд бичнэ үү...' (`survey_widgets.dart`).
+  - Reward sheet button is 'Дууссан' with a check (was 'Дараагийн видео үзэх'); its amount is a plain colour.
+  - Help is a chat (`HelpChat`, `ChatBubble`): Uziy greets, each FAQ question is the viewer's bubble (right, action
+    fill), its answer Uziy's bubble (left, coin avatar).
+  - **RATING has five stops**: Маш муу · Муу · Дунд · Сайн · Маш сайн (backend `RatingScale.LABELS`, company
+    `RATING_LABELS`, app `kMoodLabels`). Questions are stored with their labels, so older 3-stop questions keep
+    working; every mood helper takes `steps` (3 or 5, from the labels). Faces: `kVeryBadFace` (worried brows,
+    `browTilt`), `kBadFace`, `kMidFace`, `kGoodFace`, `kVeryGoodFace` (open laugh, `mouthOpen`); 3-stop questions
+    draw exactly the old faces (`kLegacyGoodFace`).
 - **Video screen copy (2026-10-14)**: the reward line says both steps — 'Видеог бүтэн үзэж, судалгаанд хариулбал
   +700 ₮ хэтэвчинд тань орно' → after the video 'Судалгаанд хариулмагц +700 ₮ хэтэвчинд тань орно'
   (`RewardHintRow`); the locked button reads 'Видео дуусахад судалгаа нээгдэнэ · 12 сек'.

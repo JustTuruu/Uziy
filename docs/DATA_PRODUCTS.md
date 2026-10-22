@@ -7,7 +7,7 @@ Toluna / Kantar do — without ever exposing a person.
 
 | Area | What | Where |
 |---|---|---|
-| Consent | Separate, opt-in, revocable "Нэргүй статистикт оролцох" (default: no). Asked once on Home, switch in Profile. Versioned (`CURRENT_VERSION`); a new wording asks again. Only adults (18+) are asked or counted. | backend `privacy/`, V15; app `widgets/stats_consent.dart` |
+| Consent | Separate, opt-in, revocable "Нэргүй статистикт оролцох" (default: no). Nobody is asked (owner, 2026-10-21): a viewer opts in with the switch on Profile → Нууцлалын бодлого. Versioned (`CURRENT_VERSION`); a yes to an older wording is not counted (`InsightsRepository.CONSENTING`, 2026-10-22). Only adults (18+) are asked or counted. | backend `privacy/`, V15; app `widgets/stats_consent.dart` |
 | Protection | One policy class: consenting adults only; groups < 50 hidden; a group whose remainder is < 50 hidden (stops subtraction); counts rounded down to 10; whole percents; free text never; no name/phone/birth date/district leaves the DB (only gender, age band, aimag); every look/export logged. | `insights/StatisticsPrivacyPolicy`, `InsightsRepository.CONSENTING` |
 | Super admin | "Статистик" page: panel size by gender/age/aimag, cross-survey question explorer with filters, segment table, CSV export (Excel-ready, formula-safe), access log, the rules card. | admin_panel `/insights`; backend `/admin/insights/**` |
 | Audit | `data_access_log` (who, action, detail, when) — append-only. Consent changes go through the audit log (`StatisticsConsentChanged`). | V15 |

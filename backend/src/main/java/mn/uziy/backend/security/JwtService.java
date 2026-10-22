@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Date;
 import javax.crypto.SecretKey;
 import mn.uziy.backend.config.AppProperties;
@@ -47,13 +48,23 @@ public class JwtService {
     }
 
     public JwtPrincipal parse(String token) {
+        return parseToken(token).principal();
+    }
+
+    /** The caller and when the token was issued (to refuse tokens older than a password change). */
+    public ParsedToken parseToken(String token) {
         Claims claims = Jwts.parser()
                 .verifyWith(key())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-        return new JwtPrincipal(
+        JwtPrincipal principal = new JwtPrincipal(
                 Long.parseLong(claims.getSubject()),
                 Role.valueOf(claims.get(ROLE_CLAIM, String.class)));
+        return new ParsedToken(principal, claims.getIssuedAt().toInstant());
+    }
+
+    /** A verified token: who it is for and when it was issued (whole seconds, as JWT stores it). */
+    public record ParsedToken(JwtPrincipal principal, Instant issuedAt) {
     }
 }

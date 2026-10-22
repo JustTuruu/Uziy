@@ -313,9 +313,13 @@ class _PayoutRequestScreenState extends State<PayoutRequestScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Bank details must not end up in the keyboard's learned
+              // words or suggestion strip.
               TextFormField(
                 controller: _accountNumberCtrl,
                 keyboardType: TextInputType.number,
+                enableSuggestions: false,
+                autocorrect: false,
                 textInputAction: TextInputAction.next,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 style: context.textStyles.bodyStrong.copyWith(
@@ -331,6 +335,8 @@ class _PayoutRequestScreenState extends State<PayoutRequestScreen> {
               TextFormField(
                 controller: _accountNameCtrl,
                 textCapitalization: TextCapitalization.characters,
+                enableSuggestions: false,
+                autocorrect: false,
                 textInputAction: TextInputAction.done,
                 style: context.textStyles.bodyStrong,
                 decoration: field(

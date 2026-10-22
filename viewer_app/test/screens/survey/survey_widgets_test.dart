@@ -455,7 +455,7 @@ void main() {
           ),
         ),
       );
-      expect(find.text('Санал бодлоо бичээрэй...'), findsOneWidget);
+      expect(find.text('Та хариултаа энд бичнэ үү...'), findsOneWidget);
       expect(find.text('0 тэмдэгт'), findsOneWidget);
 
       await tester.enterText(find.byType(TextField), 'Сайн байна');
@@ -717,6 +717,22 @@ void main() {
       );
       expect(find.text('+700 ₮'), findsOneWidget);
       await tester.pumpAndSettle();
+    });
+
+    testWidgets("the finish button says 'Дууссан', not 'next video'",
+        (tester) async {
+      await _pump(
+        tester,
+        SingleChildScrollView(
+          child: RewardCelebration(reward: 500, onContinue: () {}),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(RewardCelebration.continueLabel, 'Дууссан');
+      expect(find.text('Дууссан'), findsOneWidget);
+      expect(find.textContaining('Дараагийн'), findsNothing);
+      expect(find.byIcon(AppIcons.check), findsOneWidget);
+      expect(find.byType(ShaderMask), findsNothing, reason: 'no gradient text');
     });
 
     testWidgets('continue button fires onContinue', (tester) async {

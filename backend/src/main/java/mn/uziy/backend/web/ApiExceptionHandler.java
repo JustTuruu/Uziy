@@ -76,7 +76,9 @@ public class ApiExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public void handleIntegrity(DataIntegrityViolationException e, HttpServletRequest request,
                                 HttpServletResponse response) throws IOException {
-        LOG.warn("data integrity violation: {}", e.getMostSpecificCause().getMessage());
+        // The constraint's name, never the database's message: for a duplicate it repeats the value, e.g. a
+        // phone number (audit 2026-10-22).
+        LOG.warn("data integrity violation: {}", constraintOf(e));
         send(request, response, HttpStatus.BAD_REQUEST, INVALID_DATA);
     }
 
@@ -110,5 +112,15 @@ public class ApiExceptionHandler {
         if (e instanceof UnavailableException) return HttpStatus.SERVICE_UNAVAILABLE;
         if (e instanceof TooManyRequestsException) return HttpStatus.TOO_MANY_REQUESTS;
         throw new IllegalStateException("Unmapped domain exception: " + e.getClass());
+    }
+
+    /** The violated constraint's name when Hibernate knows it, otherwise only the cause's type. */
+    static String constraintOf(DataIntegrityViolationException e) {
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            if (t instanceof org.hibernate.exception.ConstraintViolationException cve && cve.getConstraintName() != null) {
+                return cve.getConstraintName();
+            }
+        }
+        return e.getMostSpecificCause().getClass().getSimpleName();
     }
 }

@@ -115,7 +115,7 @@ class HistoryBody extends StatelessWidget {
   }
 }
 
-/// Count of watched videos and the reward they paid in total.
+/// Count of answered surveys and the reward they paid in total.
 class HistorySummaryCard extends StatelessWidget {
   const HistorySummaryCard(
       {super.key, required this.count, required this.total});
@@ -128,7 +128,7 @@ class HistorySummaryCard extends StatelessWidget {
     return AppCard(
       child: Row(
         children: [
-          Expanded(child: _Stat(label: 'Үзсэн видео', value: '$count')),
+          Expanded(child: _Stat(label: kHistoryCountLabel, value: '$count')),
           Expanded(
             child: _Stat(label: 'Нийт урамшуулал', value: formatTugrik(total)),
           ),

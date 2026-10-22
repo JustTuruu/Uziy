@@ -45,14 +45,14 @@ public class PayoutController {
 
     @GetMapping("/admin/payouts")
     @PreAuthorize("hasRole('ADMIN')")
-    public List<PayoutDto> pending() {
-        return adminPayouts.pending();
+    public List<PayoutDto> pending(@Auth JwtPrincipal principal) {
+        return adminPayouts.pending(principal.userId());
     }
 
     @GetMapping("/admin/payouts/history")
     @PreAuthorize("hasRole('ADMIN')")
-    public List<PayoutDto> history() {
-        return adminPayouts.history();
+    public List<PayoutDto> history(@Auth JwtPrincipal principal) {
+        return adminPayouts.history(principal.userId());
     }
 
     @PatchMapping("/admin/payouts/{id}/decision")

@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -10,8 +12,33 @@ if (file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
 }
 
+// Release signing: the owner's upload key, described by android/key.properties (git-ignored; template in
+// key.properties.example). Without it a local `flutter run --release` / `flutter build apk --release` still works,
+// signed with the debug key and a loud warning — but an App Bundle for Google Play is refused, because Play would
+// reject a debug-signed upload anyway.
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.inputStream().use { load(it) }
+    }
+}
+val hasReleaseKey = keystorePropertiesFile.exists()
+val buildsPlayBundle = gradle.startParameter.taskNames.any { it.contains("bundleRelease", ignoreCase = true) }
+if (!hasReleaseKey) {
+    if (buildsPlayBundle) {
+        throw GradleException(
+            "android/key.properties is missing: a Google Play App Bundle must be signed with the upload key. " +
+                "Copy android/key.properties.example to android/key.properties and fill it in (see RELEASE.md)."
+        )
+    }
+    logger.warn(
+        "WARNING: android/key.properties not found — the release build is signed with the DEBUG key. " +
+            "Fine for a local test, never for Google Play (see RELEASE.md)."
+    )
+}
+
 android {
-    namespace = "com.example.viewer_app"
+    namespace = "mn.uziy.viewer"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -23,10 +50,10 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.viewer_app"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        // Store identity (owner, 2026-10-22). Debug builds add ".dev" so both can sit on one phone.
+        applicationId = "mn.uziy.viewer"
+        // Flutter 3.47 defaults: minSdk 24, compileSdk/targetSdk 36 (Android 16) — what Google Play requires for
+        // new apps and updates since 31 Aug 2026. Re-check the target each August (RELEASE.md).
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
@@ -37,11 +64,26 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseKey) {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            applicationIdSuffix = ".dev"
+        }
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName(if (hasReleaseKey) "release" else "debug")
+            // R8 (minify + resource shrinking, proguard-android-optimize + Flutter's keep rules) is switched on for
+            // release by the Flutter Gradle plugin itself. Add an app/proguard-rules.pro only if a release build
+            // ever loses a class it needs; the plugin picks that file up automatically.
         }
     }
 }

@@ -72,6 +72,10 @@ public class UserEntity {
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
+    /** Set by a password change; tokens issued before it are refused. */
+    @Column(name = "credentials_changed_at")
+    private @Nullable OffsetDateTime credentialsChangedAt;
+
     public UserEntity() {
     }
 
@@ -116,6 +120,9 @@ public class UserEntity {
 
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
+
+    public @Nullable OffsetDateTime getCredentialsChangedAt() { return credentialsChangedAt; }
+    public void setCredentialsChangedAt(@Nullable OffsetDateTime at) { this.credentialsChangedAt = at; }
 
     /** Age computed from birth_date. Null for non-viewer accounts. */
     @Transient

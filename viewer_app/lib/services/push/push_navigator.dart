@@ -1,6 +1,5 @@
-import 'package:flutter/foundation.dart';
-
 import '../../models/campaign.dart';
+import '../debug_log.dart';
 import 'campaign_link_resolver.dart';
 import 'push_message_parser.dart';
 
@@ -58,7 +57,7 @@ class PushNavigator {
     try {
       campaign = await _resolver.resolve(push);
     } catch (e) {
-      debugPrint('[push] campaign lookup failed: $e');
+      debugLog(() => '[push] campaign lookup failed: $e');
       _target.showMessage(loadFailedMessage);
       return;
     }

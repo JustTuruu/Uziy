@@ -223,23 +223,37 @@ class EarningsHeroCard extends StatelessWidget {
 
   static const EdgeInsets _padding = EdgeInsets.fromLTRB(20, 18, 16, 20);
 
+  /// Fill, line and inks of the card. Light: a flat forest sheet with white
+  /// ink. Dark: the graphite surface with sage money (owner, 2026-10-21: a big
+  /// sage block was glaring at night). Flat in both — no gradient.
+  static ({Color fill, Color border, Color label, Color money, Color caption})
+      lookIn(AppPalette c) => c.isDark
+          ? (
+              fill: c.surfaceElevated,
+              border: c.border,
+              label: c.textSecondary,
+              money: c.primary,
+              caption: c.textSecondary,
+            )
+          : (
+              fill: c.primary,
+              border: Colors.transparent,
+              label: c.onPrimary,
+              money: c.onPrimary,
+              caption: c.onPrimary.withValues(alpha: 0.8),
+            );
+
   @override
   Widget build(BuildContext context) {
     final caption = summaryCaption(summary);
+    final look = lookIn(context.colors);
 
     return MergeSemantics(
       child: AppCard(
         padding: EdgeInsets.zero,
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            context.colors.primary,
-            context.colors.primary.withValues(alpha: 0.88)
-          ],
-        ),
+        color: look.fill,
         radius: AppRadii.xl,
-        borderColor: Colors.transparent,
+        borderColor: look.border,
         child: LayoutBuilder(
           builder: (context, constraints) {
             final showCoins = showsCoins(
@@ -259,23 +273,21 @@ class EarningsHeroCard extends StatelessWidget {
                           children: [
                             Text(label,
                                 style: context.textStyles.label
-                                    .copyWith(color: context.colors.onPrimary)),
+                                    .copyWith(color: look.label)),
                             const SizedBox(height: 6),
                             FittedBox(
                               fit: BoxFit.scaleDown,
                               child: AnimatedMoney(
                                 value: summary.totalReward,
-                                style: context.textStyles.moneyLarge.copyWith(
-                                    color: context.colors.onPrimary,
-                                    fontSize: 32),
+                                style: context.textStyles.moneyLarge
+                                    .copyWith(color: look.money, fontSize: 32),
                               ),
                             ),
                             if (caption.isNotEmpty) ...[
                               const SizedBox(height: 8),
                               Text(caption,
-                                  style: context.textStyles.caption.copyWith(
-                                      color: context.colors.onPrimary
-                                          .withValues(alpha: 0.8))),
+                                  style: context.textStyles.caption
+                                      .copyWith(color: look.caption)),
                             ],
                           ],
                         ),
@@ -320,9 +332,12 @@ class _CoinStack extends StatelessWidget {
 // Filter
 // ---------------------------------------------------------------------------
 
-/// 'Бүгд / Видео / Судалгаа' segmented control with a sliding accent pill.
-/// Each segment is a full-height (48) tap target; changing the selection
-/// plays a selection haptic.
+/// 'Бүгд / Видео / Судалгаа' as three separate chips, each with its icon and
+/// its name, so the choice reads at a glance (owner, 2026-10-21: the old box
+/// of three small words was hard to read). The counts live in the hero card
+/// right above ('2 видео · 1 судалгаа'), so the chips do not repeat them.
+/// The selected chip is a flat action-colour fill; changing the selection
+/// plays a selection haptic. Each chip is a 44pt target.
 class FeedFilterBar extends StatelessWidget {
   const FeedFilterBar({
     super.key,
@@ -333,109 +348,98 @@ class FeedFilterBar extends StatelessWidget {
   final FeedFilter value;
   final ValueChanged<FeedFilter> onChanged;
 
-  static const double height = 48;
+  static const double height = 44;
+
+  static IconData iconFor(FeedFilter f) => switch (f) {
+        FeedFilter.all => AppIcons.feedAll,
+        FeedFilter.video => AppIcons.feedVideo,
+        FeedFilter.survey => AppIcons.feedSurvey,
+      };
 
   @override
   Widget build(BuildContext context) {
-    const filters = FeedFilter.values;
-    final n = filters.length;
-    final index = filters.indexOf(value);
-    final duration = AppMotion.duration(context, AppDurations.normal);
-
-    return Container(
-      height: height,
-      decoration: BoxDecoration(
-        color: context.colors.surfaceElevated,
-        borderRadius: AppRadii.brMd,
-      ),
-      child: Stack(
-        fit: StackFit.expand,
+    // Each chip takes its own width, so every label keeps the same size; a
+    // narrow screen or large text scrolls the row sideways instead of
+    // shrinking one chip's words.
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(4),
-            child: AnimatedAlign(
-              alignment: Alignment(n == 1 ? 0 : -1 + 2 * index / (n - 1), 0),
-              duration: duration,
-              curve: AppMotion.standard,
-              child: FractionallySizedBox(
-                widthFactor: 1 / n,
-                heightFactor: 1,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: context.gradients.gold,
-                    borderRadius: AppRadii.brSm,
-                  ),
-                ),
-              ),
+          for (final (i, f) in FeedFilter.values.indexed) ...[
+            if (i > 0) const SizedBox(width: AppSpacing.sm),
+            FeedFilterChip(
+              icon: iconFor(f),
+              label: feedFilterLabel(f),
+              selected: f == value,
+              onTap: () {
+                if (f == value) return;
+                HapticFeedback.selectionClick();
+                onChanged(f);
+              },
             ),
-          ),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (final f in filters)
-                Expanded(
-                  child: _FilterSegment(
-                    label: feedFilterLabel(f),
-                    selected: f == value,
-                    duration: duration,
-                    onTap: () {
-                      if (f == value) return;
-                      HapticFeedback.selectionClick();
-                      onChanged(f);
-                    },
-                  ),
-                ),
-            ],
-          ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _FilterSegment extends StatelessWidget {
-  const _FilterSegment({
+/// One chip of [FeedFilterBar].
+class FeedFilterChip extends StatelessWidget {
+  const FeedFilterChip({
+    super.key,
+    required this.icon,
     required this.label,
     required this.selected,
-    required this.duration,
     required this.onTap,
   });
 
+  final IconData icon;
   final String label;
   final bool selected;
-  final Duration duration;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Pressable(
-      onTap: onTap,
-      scale: 0.96,
-      child: Semantics(
-        selected: selected,
-        inMutuallyExclusiveGroup: true,
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: AnimatedDefaultTextStyle(
-                duration: duration,
-                curve: AppMotion.standard,
-                // Merge onto the inherited style: AnimatedDefaultTextStyle
-                // replaces it outright, which would drop the theme's font.
-                style: DefaultTextStyle.of(context).style.merge(
-                      context.textStyles.label.copyWith(
-                        color: selected
-                            ? context.colors.onPrimary
-                            : context.colors.textSecondary,
-                        fontWeight:
-                            selected ? FontWeight.w800 : FontWeight.w600,
-                      ),
-                    ),
-                child: Text(label, maxLines: 1),
-              ),
+    final c = context.colors;
+    final ink = selected ? c.onPrimary : c.textSecondary;
+    final duration = AppMotion.duration(context, AppDurations.fast);
+    return Semantics(
+      button: true,
+      selected: selected,
+      inMutuallyExclusiveGroup: true,
+      label: label,
+      excludeSemantics: true,
+      child: Pressable(
+        onTap: onTap,
+        scale: 0.96,
+        child: AnimatedContainer(
+          duration: duration,
+          curve: AppMotion.standard,
+          height: FeedFilterBar.height,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: selected ? c.primary : c.surface,
+            borderRadius: AppRadii.brPill,
+            border: Border.all(
+              color: selected ? c.primary : c.borderStrong,
             ),
+          ),
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: ink),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                maxLines: 1,
+                style: context.textStyles.label.copyWith(
+                  color: selected ? c.onPrimary : c.textPrimary,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -447,13 +451,25 @@ class _FilterSegment extends StatelessWidget {
 // Campaign card
 // ---------------------------------------------------------------------------
 
-/// Artwork, publisher and headline lead into a separate reward/action row.
-/// The entire card remains one accessible button.
+/// Artwork, then the publisher with the reward beside it, then the headline.
+/// The entire card is one accessible button (no separate action button).
 class CampaignCard extends StatelessWidget {
   const CampaignCard({super.key, required this.campaign, required this.onTap});
 
   final Campaign campaign;
   final VoidCallback onTap;
+
+  /// Narrowest text column (at 1.0x text) that keeps the publisher and the
+  /// reward on one line.
+  static const double minInlineWidth = 260;
+
+  /// Text scale above which the reward moves under the publisher.
+  static const double maxInlineTextScale = 1.5;
+
+  /// Whether the reward goes on its own line under the publisher.
+  static bool stacksReward(double width, double textScale) =>
+      width < minInlineWidth * textScale.clamp(1.0, 2.0) ||
+      textScale > maxInlineTextScale;
 
   @override
   Widget build(BuildContext context) {
@@ -486,46 +502,50 @@ class CampaignCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (company.isNotEmpty) ...[
-                    Row(children: [
-                      _CompanyAvatar(campaignId: c.id, companyName: company),
-                      const SizedBox(width: 8),
-                      Expanded(
-                          child: Text(
-                        company,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: context.textStyles.caption.copyWith(
-                          color: context.colors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      )),
-                    ]),
-                    const SizedBox(height: 12),
-                  ],
-                  CardTitle(title: c.title),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Divider(height: 1, color: context.colors.border),
-                  ),
+                  // Who pays and what they pay share one line (the reward
+                  // drops under the name when the line is too tight). The
+                  // whole card is the button, so it carries no action button
+                  // of its own (owner, 2026-10-21).
                   LayoutBuilder(builder: (context, constraints) {
+                    final publisher = Row(children: [
+                      if (company.isNotEmpty) ...[
+                        _CompanyAvatar(campaignId: c.id, companyName: company),
+                        const SizedBox(width: 8),
+                      ],
+                      Expanded(
+                        child: Text(
+                          company,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.textStyles.caption.copyWith(
+                            color: context.colors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ]);
                     final reward = RewardChip(amount: c.rewardPerUser);
-                    final action = _CardCta(label: campaignCtaLabel(c));
-                    if (constraints.maxWidth < 260 ||
-                        MediaQuery.textScalerOf(context).scale(14) > 21) {
+                    if (stacksReward(constraints.maxWidth,
+                        MediaQuery.textScalerOf(context).scale(14) / 14)) {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [reward, const SizedBox(height: 12), action],
+                        children: [
+                          if (company.isNotEmpty) ...[
+                            publisher,
+                            const SizedBox(height: AppSpacing.sm),
+                          ],
+                          reward,
+                        ],
                       );
                     }
                     return Row(children: [
-                      Expanded(
-                          child: Align(
-                              alignment: Alignment.centerLeft, child: reward)),
-                      const SizedBox(width: 12),
-                      action,
+                      Expanded(child: publisher),
+                      const SizedBox(width: AppSpacing.sm),
+                      reward,
                     ]);
                   }),
+                  const SizedBox(height: 12),
+                  CardTitle(title: c.title),
                 ],
               ),
             ),
@@ -720,46 +740,6 @@ class _CompanyAvatar extends StatelessWidget {
             color: Colors.white,
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _CardCta extends StatelessWidget {
-  const _CardCta({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 44),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: context.colors.primary,
-        borderRadius: BorderRadius.circular(12),
-        border:
-            Border.all(color: context.colors.primary.withValues(alpha: 0.26)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            maxLines: 1,
-            style: context.textStyles.label.copyWith(
-              color: context.colors.onPrimary,
-              fontWeight: FontWeight.w700,
-              height: 1.1,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          Icon(
-            Icons.arrow_forward_rounded,
-            size: 16,
-            color: context.colors.onPrimary,
-          ),
-        ],
       ),
     );
   }

@@ -1,5 +1,6 @@
 package mn.uziy.backend.integration;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -8,9 +9,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import mn.uziy.backend.phoneverify.PhoneVerificationGateway;
 import mn.uziy.backend.phoneverify.PhoneVerificationSession;
 import mn.uziy.backend.phoneverify.PhoneVerificationStatus;
@@ -191,5 +199,48 @@ class PhoneVerificationFlowIntegrationTest {
         json("/auth/register/viewer", """
                 {"phoneNumber":"71000008","password":"password1","lastName":"Бат","firstName":"Болд","gender":"FEMALE","birthDate":"2000-01-01",
                  "city":"Улаанбаатар"}""").andExpect(status().isBadRequest());
+    }
+
+    /**
+     * Regression (2026-10-22 audit): the cool-down was read before the new row existed, so parallel taps all
+     * passed it and the user paid for several SMS codes. Starts for one phone now run one at a time.
+     */
+    @Test
+    void parallelStartsForOnePhoneOpenExactlyOneCheck() throws Exception {
+        String phone = "71000098";
+        int callers = 8;
+        ExecutorService pool = Executors.newFixedThreadPool(callers);
+        CountDownLatch go = new CountDownLatch(1);
+        List<Future<Integer>> results = new ArrayList<>();
+        for (int i = 0; i < callers; i++) {
+            results.add(pool.submit(() -> {
+                go.await();
+                return json("/auth/phone-verifications", "{\"phoneNumber\":\"%s\"}".formatted(phone))
+                        .andReturn().getResponse().getStatus();
+            }));
+        }
+        go.countDown();
+        List<Integer> statuses = new ArrayList<>();
+        for (Future<Integer> r : results) {
+            statuses.add(r.get(30, TimeUnit.SECONDS));
+        }
+        pool.shutdown();
+
+        assertThat(statuses).filteredOn(s -> s == 201).hasSize(1);
+        assertThat(statuses).filteredOn(s -> s == 429).hasSize(callers - 1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM phone_verifications WHERE phone_number = ?",
+                Long.class, phone)).isEqualTo(1L);
+    }
+
+    @Test
+    void parallelStartsForDifferentPhonesDoNotHoldEachOtherUp() throws Exception {
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        Future<Integer> a = pool.submit(() -> json("/auth/phone-verifications", "{\"phoneNumber\":\"71000096\"}")
+                .andReturn().getResponse().getStatus());
+        Future<Integer> b = pool.submit(() -> json("/auth/phone-verifications", "{\"phoneNumber\":\"71000097\"}")
+                .andReturn().getResponse().getStatus());
+
+        assertThat(List.of(a.get(30, TimeUnit.SECONDS), b.get(30, TimeUnit.SECONDS))).containsOnly(201);
+        pool.shutdown();
     }
 }

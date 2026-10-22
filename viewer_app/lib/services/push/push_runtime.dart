@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
+import '../debug_log.dart';
 import '../viewer_service.dart';
 import 'campaign_link_resolver.dart';
 import 'device_registry.dart';
@@ -66,7 +67,7 @@ class PushRuntime {
         platform: platform,
       );
     } catch (e) {
-      debugPrint('[push] disabled, Firebase unavailable: $e');
+      debugLog(() => '[push] disabled, Firebase unavailable: $e');
       _service = null;
       _navigator = null;
     }

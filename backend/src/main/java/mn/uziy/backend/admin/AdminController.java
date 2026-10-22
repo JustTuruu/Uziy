@@ -3,6 +3,8 @@ package mn.uziy.backend.admin;
 import java.util.List;
 import mn.uziy.backend.company.CampaignDto;
 import mn.uziy.backend.domain.CampaignStatus;
+import mn.uziy.backend.security.Auth;
+import mn.uziy.backend.security.JwtPrincipal;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,13 +36,13 @@ public class AdminController {
     }
 
     @GetMapping("/users")
-    public List<UserDto> listUsers() {
-        return users.list();
+    public List<UserDto> listUsers(@Auth JwtPrincipal principal) {
+        return users.list(principal.userId());
     }
 
     @GetMapping("/users/{id}")
-    public UserDto getUser(@PathVariable("id") long id) {
-        return users.get(id);
+    public UserDto getUser(@PathVariable("id") long id, @Auth JwtPrincipal principal) {
+        return users.get(id, principal.userId());
     }
 
     @PatchMapping("/users/{id}/verify")

@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { Select, stepIndex, type SelectOption } from "./select";
+import { matchOptions, Select, stepIndex, type SelectOption } from "./select";
 
 const OPTIONS: SelectOption[] = [
   { value: "ALL", label: "Бүх судалгаа" },
@@ -117,5 +117,126 @@ describe("<Select>", () => {
     await userEvent.keyboard("{Enter}");
     const active = trigger.getAttribute("aria-activedescendant");
     expect(document.getElementById(active!)).toHaveTextContent("Шинэ 5G багц");
+  });
+});
+
+const COMPANIES: SelectOption[] = [
+  { value: "ALL", label: "Бүх компани" },
+  { value: "10", label: "MobiCom" },
+  { value: "11", label: "Голомт банк" },
+  { value: "12", label: "Unitel" },
+];
+
+function Searchable({ onChange }: { onChange?: (v: string) => void }) {
+  const [value, setValue] = useState("ALL");
+  return (
+    <Select
+      label="Компани"
+      searchable
+      searchPlaceholder="Компани хайх..."
+      options={COMPANIES}
+      value={value}
+      onValueChange={(v) => {
+        setValue(v);
+        onChange?.(v);
+      }}
+    />
+  );
+}
+
+describe("matchOptions", () => {
+  it("keeps every option for an empty or blank query", () => {
+    expect(matchOptions(COMPANIES, "")).toBe(COMPANIES);
+    expect(matchOptions(COMPANIES, "   ")).toBe(COMPANIES);
+  });
+
+  it("matches a label substring ignoring case, Cyrillic too", () => {
+    expect(matchOptions(COMPANIES, "mob").map((o) => o.value)).toEqual(["10"]);
+    expect(matchOptions(COMPANIES, "ГОЛОМТ").map((o) => o.value)).toEqual(["11"]);
+    expect(matchOptions(COMPANIES, "zzz")).toEqual([]);
+  });
+});
+
+describe("<Select searchable>", () => {
+  it("has no search box unless asked", async () => {
+    render(<Controlled />);
+    await userEvent.click(screen.getByRole("combobox"));
+    expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
+  });
+
+  it("opens with the search box focused and narrows the options as you type", async () => {
+    render(<Searchable />);
+    await userEvent.click(screen.getByRole("combobox", { name: "Компани" }));
+
+    const search = screen.getByRole("searchbox", { name: "Компани хайх..." });
+    expect(search).toHaveFocus();
+    await userEvent.type(search, "голомт");
+
+    expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual([
+      "Голомт банк",
+    ]);
+  });
+
+  it("chooses the highlighted match with Enter and returns focus to the trigger", async () => {
+    const onChange = vi.fn();
+    render(<Searchable onChange={onChange} />);
+    const trigger = screen.getByRole("combobox", { name: "Компани" });
+    trigger.focus();
+    await userEvent.keyboard("{Enter}");
+    await userEvent.keyboard("uni{Enter}");
+
+    expect(onChange).toHaveBeenCalledWith("12");
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+    expect(trigger).toHaveTextContent("Unitel");
+  });
+
+  it("moves through the matches with the arrows and announces the active one", async () => {
+    const onChange = vi.fn();
+    render(<Searchable onChange={onChange} />);
+    await userEvent.click(screen.getByRole("combobox"));
+    const search = screen.getByRole("searchbox");
+    await userEvent.keyboard("{ArrowDown}");
+
+    const active = search.getAttribute("aria-activedescendant");
+    expect(document.getElementById(active!)).toHaveTextContent("MobiCom");
+    await userEvent.keyboard("{Enter}");
+    expect(onChange).toHaveBeenCalledWith("10");
+  });
+
+  it("lets Space type into the search box instead of choosing", async () => {
+    const onChange = vi.fn();
+    render(<Searchable onChange={onChange} />);
+    await userEvent.click(screen.getByRole("combobox"));
+    await userEvent.keyboard("Голомт ба");
+
+    expect(screen.getByRole("searchbox")).toHaveValue("Голомт ба");
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getAllByRole("option")).toHaveLength(1);
+  });
+
+  it("says so when nothing matches, and Enter then changes nothing", async () => {
+    const onChange = vi.fn();
+    render(<Searchable onChange={onChange} />);
+    await userEvent.click(screen.getByRole("combobox"));
+    await userEvent.keyboard("zzz");
+
+    expect(screen.queryAllByRole("option")).toHaveLength(0);
+    expect(screen.getByRole("status")).toHaveTextContent("Олдсонгүй");
+    await userEvent.keyboard("{Enter}");
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("Escape closes, clears the typed text and refocuses the trigger", async () => {
+    render(<Searchable />);
+    const trigger = screen.getByRole("combobox");
+    await userEvent.click(trigger);
+    await userEvent.keyboard("mob{Escape}");
+
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+    await userEvent.click(trigger);
+    expect(screen.getByRole("searchbox")).toHaveValue("");
+    expect(screen.getAllByRole("option")).toHaveLength(COMPANIES.length);
   });
 });

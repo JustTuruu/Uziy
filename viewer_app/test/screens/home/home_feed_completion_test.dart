@@ -39,7 +39,12 @@ class _Backend {
         'role': 'VIEWER',
         'balance': balance,
         'isVerified': false,
+        'age': 30,
       });
+    }
+    if (call.path == '/viewer/consents/statistics') {
+      // Never decided: the old Home card would have asked.
+      return const FakeReply(200, {'status': 'UNASKED'});
     }
     final submit =
         RegExp(r'^/viewer/campaigns/(\d+)/submit$').firstMatch(call.path);
@@ -104,6 +109,16 @@ void main() {
     expect(find.textContaining('Хадгаламж', findRichText: true), findsWidgets);
     expect(find.text('1,700 ₮'), findsOneWidget);
     expect(backend.done, {1});
+  });
+
+  // Owner, 2026-10-21: a new (adult) viewer used to get a 'Нэргүй
+  // статистикт оролцох уу?' card on Home; nobody is asked there any more.
+  testWidgets('Home never asks about anonymous statistics', (tester) async {
+    final backend = _Backend()..api;
+    await _pumpHome(tester);
+
+    expect(find.textContaining('статистик'), findsNothing);
+    expect(backend.api.callsTo('/viewer/consents/statistics'), isEmpty);
   });
 
   testWidgets('a campaign the server says is already rewarded also leaves',

@@ -278,7 +278,7 @@ class _TopBar extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
-                  RewardChip(amount: campaign.rewardPerUser, glow: true),
+                  RewardChip(amount: campaign.rewardPerUser),
                 ],
               );
             },

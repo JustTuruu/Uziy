@@ -8,8 +8,10 @@ services:
     image: postgres:16-alpine
     container_name: uziy-postgres
     restart: unless-stopped
+    # Only this Mac can connect (audit 2026-10-22): published on 0.0.0.0, anyone on the same Wi-Fi could read
+    # every phone number and bank account with the dev password.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_USER: uziy
       POSTGRES_PASSWORD: uziy_dev
@@ -23,7 +25,8 @@ services:
       retries: 5
 
   # Dev-only DB browser → http://localhost:5050 (no login; server is pre-
-  # registered, password when asked: uziy_dev). Never expose this in prod.
+  # registered, password when asked: uziy_dev). Bound to 127.0.0.1 because it has
+  # no login of its own. Never run it in prod.
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: uziy-pgadmin
@@ -32,7 +35,7 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "5050:80"
+      - "127.0.0.1:5050:80"
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@uziy.com
       PGADMIN_DEFAULT_PASSWORD: admin

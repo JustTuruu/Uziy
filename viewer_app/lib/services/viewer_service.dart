@@ -58,6 +58,23 @@ class ViewerService {
     }
   }
 
+  /// DELETE /viewer/me {password} — deletes the viewer's own account (204).
+  /// The password is asked again so an unlocked phone cannot do it; any
+  /// balance left is forfeited. 400 = wrong password, 409 = a payout request
+  /// is still being checked (the backend's own message says so).
+  Future<void> deleteAccount({required String password}) async {
+    const fallback = 'Бүртгэлийг устгаж чадсангүй';
+    try {
+      final r = await _dio.delete<dynamic>(
+        '/viewer/me',
+        data: {'password': password},
+      );
+      _check(r, fallback);
+    } on DioException catch (e) {
+      throw _map(e, fallback);
+    }
+  }
+
   /// GET /viewer/feed — targeted campaigns the user hasn't watched.
   Future<List<Campaign>> feed() async {
     try {

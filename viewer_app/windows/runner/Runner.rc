@@ -89,11 +89,11 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
+            VALUE "CompanyName", "Uziy" "\0"
             VALUE "FileDescription", "viewer_app" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "viewer_app" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Uziy. All rights reserved." "\0"
             VALUE "OriginalFilename", "viewer_app.exe" "\0"
             VALUE "ProductName", "viewer_app" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

@@ -11,7 +11,9 @@ import static org.mockito.Mockito.when;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
-import mn.uziy.backend.common.ConflictException;
+import java.time.OffsetDateTime;
+import mn.uziy.backend.adminlogin.AdminLoginChallenge;
+import mn.uziy.backend.adminlogin.AdminSecondStep;
 import mn.uziy.backend.common.UnauthorizedException;
 import mn.uziy.backend.common.event.DomainEventPublisher;
 import mn.uziy.backend.config.AppProperties;
@@ -37,10 +39,18 @@ class AuthServiceTest {
             new AppProperties.Push(false, "")));
     private final DomainEventPublisher events = mock(DomainEventPublisher.class);
     private final VerifiedPhoneClaim verifiedPhones = mock(VerifiedPhoneClaim.class);
+    private final AdminSecondStep adminSecondStep = mock(AdminSecondStep.class);
     private static final UUID CHECK = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private final AuthServiceImpl service = new AuthServiceImpl(users, encoder, jwt,
             new UserFactory(), new MeMapper(), events, verifiedPhones,
-            new LoginAttemptLimiter(java.time.Clock.systemUTC()));
+            new LoginAttemptLimiter(java.time.Clock.systemUTC()),
+            java.time.Clock.fixed(java.time.Instant.parse("2026-10-22T04:00:00Z"), java.time.ZoneOffset.UTC),
+            adminSecondStep);
+
+    private AuthResponse signedIn(LoginOutcome outcome) {
+        assertThat(outcome).isInstanceOf(LoginOutcome.SignedIn.class);
+        return ((LoginOutcome.SignedIn) outcome).response();
+    }
 
     private UserEntity seedUser(Role role) {
         UserEntity u = new UserEntity();
@@ -69,11 +79,47 @@ class AuthServiceTest {
         when(users.findByPhoneNumber("88112233")).thenReturn(Optional.of(u));
         when(encoder.matches("password", "hashed")).thenReturn(true);
 
-        AuthResponse res = service.login(new LoginReq("88112233", "password"));
+        AuthResponse res = signedIn(service.login(new LoginReq("88112233", "password")));
 
         assertThat(res.token()).isNotBlank();
         assertThat(res.user().id()).isEqualTo(1L);
         assertThat(res.user().role()).isEqualTo(Role.VIEWER);
+        org.mockito.Mockito.verifyNoInteractions(adminSecondStep);
+    }
+
+    @Test
+    void aCompanyIsSignedInAtOnceAsBefore() {
+        when(users.findByPhoneNumber("88112233")).thenReturn(Optional.of(seedUser(Role.COMPANY)));
+        when(encoder.matches("password", "hashed")).thenReturn(true);
+
+        AuthResponse res = signedIn(service.login(new LoginReq("88112233", "password")));
+
+        assertThat(res.user().role()).isEqualTo(Role.COMPANY);
+        org.mockito.Mockito.verifyNoInteractions(adminSecondStep);
+    }
+
+    @Test
+    void anAdminWithTheRightPasswordGetsTheSecondStepAndNoToken() {
+        UserEntity admin = seedUser(Role.ADMIN);
+        when(users.findByPhoneNumber("88112233")).thenReturn(Optional.of(admin));
+        when(encoder.matches("password", "hashed")).thenReturn(true);
+        AdminLoginChallenge challenge = new AdminLoginChallenge(new AdminLoginChallenge.TwoStep(CHECK, "•••• 2233",
+                "144773", "123456", "sms:144773?body=123456", "SMS илгээнэ үү", OffsetDateTime.parse("2026-10-22T04:05:00Z")));
+        when(adminSecondStep.open(admin)).thenReturn(challenge);
+
+        LoginOutcome outcome = service.login(new LoginReq("88112233", "password"));
+
+        assertThat(outcome).isEqualTo(new LoginOutcome.SecondStepRequired(challenge));
+    }
+
+    @Test
+    void aWrongAdminPasswordOpensNoPhoneCheck() {
+        when(users.findByPhoneNumber("88112233")).thenReturn(Optional.of(seedUser(Role.ADMIN)));
+        when(encoder.matches("wrong", "hashed")).thenReturn(false);
+
+        assertThat(statusOf(() -> service.login(new LoginReq("88112233", "wrong"))))
+                .isEqualTo(HttpStatus.UNAUTHORIZED);
+        org.mockito.Mockito.verifyNoInteractions(adminSecondStep);
     }
 
     @Test
@@ -130,6 +176,19 @@ class AuthServiceTest {
         org.mockito.Mockito.verify(users, org.mockito.Mockito.never()).save(any(UserEntity.class));
     }
 
+    /** Audit 2026-10-22: the minimum age was only checked by the app's date picker. */
+    @Test
+    void registerViewerYoungerThan13IsRefusedBeforeThePhoneCheckIsSpent() {
+        when(users.existsByPhoneNumber("77000001")).thenReturn(false);
+
+        assertThatThrownBy(() -> service.registerViewer(new RegisterViewerReq(
+                "77000001", "password1", "Бат", "Болд", Gender.MALE, LocalDate.of(2015, 1, 1), "Улаанбаатар",
+                "Баянзүрх", CHECK)))
+                .hasMessage(ViewerAgeRule.TOO_YOUNG);
+        org.mockito.Mockito.verifyNoInteractions(verifiedPhones);
+        org.mockito.Mockito.verify(users, org.mockito.Mockito.never()).save(any(UserEntity.class));
+    }
+
     @Test
     void registerViewerWithAnUnverifiedPhoneCreatesNoUser() {
         when(users.existsByPhoneNumber("77000001")).thenReturn(false);
@@ -152,33 +211,6 @@ class AuthServiceTest {
                 "77000001", "password1", "Бат", "Болд", Gender.MALE, LocalDate.of(2000, 1, 1), "Улаанбаатар", CHECK))))
                 .isEqualTo(HttpStatus.CONFLICT);
         org.mockito.Mockito.verifyNoInteractions(verifiedPhones);
-    }
-
-    // ------- register company ----------------------------------------------
-
-    @Test
-    void registerCompanyCreatesCompanyRoleAndReturns201() {
-        when(users.existsByPhoneNumber("88112233")).thenReturn(false);
-        when(encoder.encode("password1")).thenReturn("hash");
-        when(users.save(any(UserEntity.class))).thenAnswer(inv -> {
-            UserEntity saved = inv.getArgument(0);
-            saved.setId(42L);
-            return saved;
-        });
-
-        AuthResponse res = service.registerCompany(
-                new RegisterCompanyReq("88112233", "password1", "MobiCom"));
-
-        assertThat(res.user().role()).isEqualTo(Role.COMPANY);
-        assertThat(res.user().companyName()).isEqualTo("MobiCom");
-        verify(events).publish(new UserRegistered(42L, Role.COMPANY));
-    }
-
-    @Test
-    void registerCompanyThrows409WhenPhoneAlreadyExists() {
-        when(users.existsByPhoneNumber(anyString())).thenReturn(true);
-        assertThatThrownBy(() -> service.registerCompany(new RegisterCompanyReq("88112233", "password1", "X")))
-                .isInstanceOf(ConflictException.class);
     }
 
     @Test

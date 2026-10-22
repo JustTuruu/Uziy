@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:viewer_app/models/password_reset.dart';
 import 'package:viewer_app/models/phone_verification.dart';
 import 'package:viewer_app/routes/app_router.dart' show Routes;
+import 'package:viewer_app/screens/auth/auth_widgets.dart';
 import 'package:viewer_app/screens/auth/forgot_password_screen.dart';
 import 'package:viewer_app/screens/auth/phone_verify_logic.dart';
 import 'package:viewer_app/screens/auth/phone_verify_screen.dart';
@@ -199,14 +200,27 @@ void main() {
   });
 
   group('ResetPasswordScreen', () {
+    Finder field(int i) => find.byType(TextField).at(i);
+
+    Future<void> fill(WidgetTester tester, String first, String second) async {
+      await tester.enterText(field(0), first);
+      await tester.enterText(field(1), second);
+    }
+
+    Future<void> send(WidgetTester tester) async {
+      await tester.ensureVisible(find.text(kResetSubmitLabel));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(kResetSubmitLabel));
+      await _settle(tester);
+    }
+
     testWidgets('sends the confirmed check with the new password, then login',
         (tester) async {
       final api = FakeApi.install((_) => const FakeReply(204));
       await _pump(tester, ResetPasswordScreen(reset: _reset));
 
-      await tester.enterText(find.byType(TextField), 'newpass1');
-      await tester.tap(find.text(kResetSubmitLabel));
-      await _settle(tester);
+      await fill(tester, 'newpass1', 'newpass1');
+      await send(tester);
 
       expect(api.calls.single.path, '/auth/password/reset');
       expect(api.calls.single.body, {
@@ -222,11 +236,63 @@ void main() {
       final api = FakeApi.install((_) => const FakeReply(204));
       await _pump(tester, ResetPasswordScreen(reset: _reset));
 
-      await tester.enterText(find.byType(TextField), '12');
-      await tester.tap(find.text(kResetSubmitLabel));
-      await _settle(tester);
+      await fill(tester, '12', '12');
+      await send(tester);
 
       expect(api.calls, isEmpty);
+    });
+
+    // Owner, 2026-10-21: the new password is typed twice.
+    testWidgets('asks for the password twice', (tester) async {
+      FakeApi.install((_) => const FakeReply(204));
+      await _pump(tester, ResetPasswordScreen(reset: _reset));
+
+      expect(find.byType(PasswordField), findsNWidgets(2));
+      expect(find.text(kResetPasswordLabel), findsOneWidget);
+      expect(find.text(kResetRepeatLabel), findsOneWidget);
+    });
+
+    testWidgets('a repeat that does not match is not sent', (tester) async {
+      final api = FakeApi.install((_) => const FakeReply(204));
+      await _pump(tester, ResetPasswordScreen(reset: _reset));
+
+      await fill(tester, 'newpass1', 'newpass2');
+      await send(tester);
+
+      expect(api.calls, isEmpty);
+      expect(find.text(AuthValidators.passwordMismatch), findsOneWidget);
+    });
+
+    testWidgets('an empty repeat is not sent', (tester) async {
+      final api = FakeApi.install((_) => const FakeReply(204));
+      await _pump(tester, ResetPasswordScreen(reset: _reset));
+
+      await fill(tester, 'newpass1', '');
+      await send(tester);
+
+      expect(api.calls, isEmpty);
+      expect(find.text(AuthValidators.passwordRepeatRequired), findsOneWidget);
+    });
+
+    testWidgets('each field has its own eye that shows the password',
+        (tester) async {
+      FakeApi.install((_) => const FakeReply(204));
+      await _pump(tester, ResetPasswordScreen(reset: _reset));
+      bool hidden(int i) => tester.widget<TextField>(field(i)).obscureText;
+
+      expect(hidden(0), isTrue);
+      expect(hidden(1), isTrue);
+      final eyes = find.bySemanticsLabel(PasswordField.showLabel);
+      expect(eyes, findsNWidgets(2));
+
+      await tester.tap(eyes.last);
+      await tester.pump();
+      expect(hidden(0), isTrue);
+      expect(hidden(1), isFalse);
+
+      await tester.tap(find.bySemanticsLabel(PasswordField.showLabel));
+      await tester.pump();
+      expect(hidden(0), isFalse);
     });
 
     testWidgets('a check that can no longer be used offers to start over',
@@ -235,11 +301,12 @@ void main() {
           400, {'message': 'Утасны дугаар баталгаажаагүй байна'}));
       await _pump(tester, ResetPasswordScreen(reset: _reset));
 
-      await tester.enterText(find.byType(TextField), 'newpass1');
-      await tester.tap(find.text(kResetSubmitLabel));
-      await _settle(tester);
+      await fill(tester, 'newpass1', 'newpass1');
+      await send(tester);
 
       expect(find.text('Утасны дугаар баталгаажаагүй байна'), findsOneWidget);
+      await tester.ensureVisible(find.text(kResetStartOverLabel));
+      await tester.pumpAndSettle();
       await tester.tap(find.text(kResetStartOverLabel));
       await _settle(tester);
       expect(find.text('page ${Routes.forgot}'), findsOneWidget);

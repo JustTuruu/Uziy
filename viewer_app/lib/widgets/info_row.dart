@@ -194,14 +194,36 @@ class _ScrollingBoxState extends State<_ScrollingBox> {
   Widget build(BuildContext context) {
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: widget.maxHeight),
-      child: Scrollbar(
+      // A scrollbar keeps its track clear of the screen's safe-area padding.
+      // That padding belongs to the page (the floating nav bar, the home
+      // indicator), not to this small box: with it the track lost ~100pt at
+      // the bottom, so the bar was too short and stopped well above the end
+      // of the list (owner, 2026-10-21).
+      child: MediaQuery.removePadding(
+        context: context,
+        removeLeft: true,
+        removeTop: true,
+        removeRight: true,
+        removeBottom: true,
+        child: _scrollbar(),
+      ),
+    );
+  }
+
+  Widget _scrollbar() {
+    return Scrollbar(
+      controller: _controller,
+      thumbVisibility: true,
+      child: SingleChildScrollView(
         controller: _controller,
-        thumbVisibility: true,
-        child: SingleChildScrollView(
-          controller: _controller,
-          primary: false,
-          child: widget.child,
-        ),
+        primary: false,
+        // Stops at its ends on every platform. With iOS bouncing the box
+        // overscrolled, and the iOS scrollbar shrinks and regrows with the
+        // overscroll, so the bar seemed to change size while scrolling
+        // (owner, 2026-10-21). A small box inside a scrolling page should
+        // not rubber-band anyway.
+        physics: const ClampingScrollPhysics(),
+        child: widget.child,
       ),
     );
   }

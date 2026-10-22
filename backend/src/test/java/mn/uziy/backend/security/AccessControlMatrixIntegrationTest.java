@@ -42,6 +42,8 @@ class AccessControlMatrixIntegrationTest extends AbstractApiIntegrationTest {
                 ep(HttpMethod.GET, "/admin/users", "ADMIN"),
                 ep(HttpMethod.GET, "/admin/users/1", "ADMIN"),
                 ep(HttpMethod.PATCH, "/admin/users/1/verify", "ADMIN"),
+                ep(HttpMethod.GET, "/admin/companies", "ADMIN"),
+                ep(HttpMethod.POST, "/admin/companies", "ADMIN"),
                 ep(HttpMethod.GET, "/admin/campaigns", "ADMIN"),
                 ep(HttpMethod.GET, "/admin/campaigns/1", "ADMIN"),
                 ep(HttpMethod.PATCH, "/admin/campaigns/1/moderate?decision=ACTIVE", "ADMIN"),
@@ -63,6 +65,7 @@ class AccessControlMatrixIntegrationTest extends AbstractApiIntegrationTest {
                 ep(HttpMethod.PATCH, "/company/campaigns/" + campaign + "/status?status=PAUSED", "COMPANY"),
                 ep(HttpMethod.GET, "/company/analytics", "COMPANY"),
                 ep(HttpMethod.GET, "/viewer/me", "VIEWER"),
+                ep(HttpMethod.DELETE, "/viewer/me", "VIEWER"),
                 ep(HttpMethod.GET, "/viewer/feed", "VIEWER"),
                 ep(HttpMethod.GET, "/viewer/history", "VIEWER"),
                 ep(HttpMethod.GET, "/viewer/campaigns/1/questions", "VIEWER"),
@@ -147,7 +150,9 @@ class AccessControlMatrixIntegrationTest extends AbstractApiIntegrationTest {
                         + "\",\"verificationId\":\"" + java.util.UUID.randomUUID() + "\",\"newPassword\":\"secret12\"}"),
                 new Endpoint(HttpMethod.POST, "/auth/phone-verifications", "-", "{\"phoneNumber\":\"" + freshPhone() + "\"}"),
                 ep(HttpMethod.GET, "/auth/phone-verifications/" + java.util.UUID.randomUUID(), "-"),
-                ep(HttpMethod.POST, "/auth/phone-verifications/simulated-sms/unknown", "-"));
+                ep(HttpMethod.POST, "/auth/phone-verifications/simulated-sms/unknown", "-"),
+                new Endpoint(HttpMethod.POST, "/auth/admin/login/verify", "-", "{\"phoneNumber\":\"" + freshPhone()
+                        + "\",\"verificationId\":\"" + java.util.UUID.randomUUID() + "\"}"));
         return open.stream().map(e -> DynamicTest.dynamicTest(e.toString(), () ->
                 assertThat(turnedAway(statusOf(e, null))).as("%s", e).isFalse()));
     }

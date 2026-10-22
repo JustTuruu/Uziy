@@ -174,10 +174,10 @@ class ApiAbuseIntegrationTest extends AbstractApiIntegrationTest {
      */
     @Test
     void anOldAppThatStillSendsTheNationalIdCanCashOutAndTheIdIsNotKept() throws Exception {
-        long viewer = viewer(1000);
+        long viewer = viewer(5000);
 
         int s = status(post("/viewer/payouts"), viewer,
-                "{\"amount\":1000,\"bank\":\"Khan Bank\",\"accountNumber\":\"1\",\"accountName\":\"A\","
+                "{\"amount\":5000,\"bank\":\"Khan Bank\",\"accountNumber\":\"1\",\"accountName\":\"A\","
                         + "\"nationalId\":\"AA00000000\"}");
 
         assertThat(s).isEqualTo(200);
@@ -186,15 +186,29 @@ class ApiAbuseIntegrationTest extends AbstractApiIntegrationTest {
                 WHERE table_name = 'payout_requests' AND column_name = 'national_id'""", Integer.class)).isZero();
     }
 
+    /**
+     * Audit 2026-10-22: these answered 500. 37 Cyrillic letters are under the 100-character limit but over
+     * BCrypt's 72 bytes; a login body without a phone reached the lock map with a null key.
+     */
+    @Test
+    void aTooLongCyrillicPasswordAndALoginWithoutAPhoneAreRefusedNot500() throws Exception {
+        int reset = status(post("/auth/password/reset"), null, """
+                {"phoneNumber":"88112233","verificationId":"00000000-0000-0000-0000-000000000001",
+                 "newPassword":"%s"}""".formatted("ө".repeat(37)));
+        assertThat(reset).isEqualTo(400);
+
+        assertThat(status(post("/auth/login"), null, "{\"password\":\"whatever1\"}")).isEqualTo(400);
+    }
+
     @Test
     void aPayoutLargerThanTheBalanceIsRefused() throws Exception {
-        long viewer = viewer(500);
+        long viewer = viewer(5000);
 
         int s = status(post("/viewer/payouts"), viewer,
-                "{\"amount\":501,\"bank\":\"Khan Bank\",\"accountNumber\":\"1\",\"accountName\":\"A\"}");
+                "{\"amount\":5001,\"bank\":\"Khan Bank\",\"accountNumber\":\"1\",\"accountName\":\"A\"}");
 
         assertThat(s).isEqualTo(400);
-        assertThat(balanceOf(viewer)).isEqualTo(500.0);
+        assertThat(balanceOf(viewer)).isEqualTo(5000.0);
     }
 
     @Test
@@ -242,24 +256,38 @@ class ApiAbuseIntegrationTest extends AbstractApiIntegrationTest {
     }
 
     @Test
-    void registrationFieldsAreBounded() throws Exception {
+    void companyAccountFieldsAreBounded() throws Exception {
         String huge = "x".repeat(5000);
+        long admin = admin();
 
-        assertThat(status(post("/auth/register/company"), null,
+        assertThat(status(post("/admin/companies"), admin,
                 "{\"phoneNumber\":\"" + freshPhone() + "\",\"password\":\"abcdef\",\"companyName\":\"" + huge + "\"}"))
                 .isBetween(400, 499);
-        assertThat(status(post("/auth/register/company"), null,
+        assertThat(status(post("/admin/companies"), admin,
                 "{\"phoneNumber\":\"" + freshPhone() + "\",\"password\":\"" + huge + "\",\"companyName\":\"X\"}"))
                 .isBetween(400, 499);
+    }
+
+    /** Audit 2026-10-22: anyone could open a company account on any phone (a viewer's too) and burn BCrypt time. */
+    @Test
+    void companiesCanNoLongerRegisterThemselves() throws Exception {
+        String phone = freshPhone();
+
+        int s = status(post("/auth/register/company"), null,
+                "{\"phoneNumber\":\"" + phone + "\",\"password\":\"abcdef\",\"companyName\":\"X\"}");
+
+        assertThat(s).isEqualTo(404);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE phone_number = ?", Long.class, phone))
+                .isZero();
     }
 
     // ------- privilege and money escalation ----------------------------------
 
     @Test
-    void registeringCannotGrantARoleOrAMoneyBalance() throws Exception {
+    void openingACompanyAccountCannotGrantARoleOrAMoneyBalance() throws Exception {
         String phone = freshPhone();
 
-        int s = status(post("/auth/register/company"), null,
+        int s = status(post("/admin/companies"), admin(),
                 "{\"phoneNumber\":\"" + phone + "\",\"password\":\"abcdef\",\"companyName\":\"X\","
                         + "\"role\":\"ADMIN\",\"balance\":999999,\"isVerified\":true,\"id\":1}");
 
@@ -423,17 +451,17 @@ class ApiAbuseIntegrationTest extends AbstractApiIntegrationTest {
 
     @Test
     void parallelPayoutRequestsCannotSpendTheSameBalanceTwice() throws Exception {
-        long viewer = viewer(1000);
+        long viewer = viewer(5000);
         String token = bearer(viewer);
 
         List<Integer> statuses = parallel(6, () -> mvc.perform(post("/viewer/payouts")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"amount\":1000,\"bank\":\"Khan Bank\",\"accountNumber\":\"1\",\"accountName\":\"A\"}")
+                .content("{\"amount\":5000,\"bank\":\"Khan Bank\",\"accountNumber\":\"1\",\"accountName\":\"A\"}")
                 .header("Authorization", token)).andReturn().getResponse().getStatus());
 
         assertThat(balanceOf(viewer)).as("balance never goes negative").isGreaterThanOrEqualTo(0.0);
         assertThat(jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM payout_requests WHERE user_id = ?",
-                Double.class, viewer)).as("requested in total, statuses " + statuses).isLessThanOrEqualTo(1000.0);
+                Double.class, viewer)).as("requested in total, statuses " + statuses).isLessThanOrEqualTo(5000.0);
         assertThat(statuses).as("no server error under a race").noneMatch(s -> s >= 500);
     }
 

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:viewer_app/widgets/ui.dart';
@@ -137,6 +139,32 @@ void main() {
   });
 
   group('AppButton', () {
+    testWidgets('tonal: the action colour as a soft wash with its own ink',
+        (tester) async {
+      await pumpKit(
+        tester,
+        AppButton(
+          label: 'Мөнгө татах',
+          variant: AppButtonVariant.tonal,
+          onPressed: () {},
+        ),
+      );
+      const c = AppPalette(false);
+      final box = tester
+          .widget<AnimatedContainer>(find.descendant(
+              of: find.byType(AppButton),
+              matching: find.byType(AnimatedContainer)))
+          .decoration! as BoxDecoration;
+      expect(box.color, c.actionWash);
+      expect(box.color, isNot(c.primary));
+      expect(box.border, isNotNull);
+      final label = tester.widget<Text>(find.text('Мөнгө татах'));
+      expect(label.style?.color, c.primary);
+      final contrast = (c.actionWash.computeLuminance() + 0.05) /
+          (c.primary.computeLuminance() + 0.05);
+      expect(contrast, greaterThanOrEqualTo(4.5));
+    });
+
     testWidgets('trailing icon sits at the right edge, label stays centred',
         (tester) async {
       await pumpKit(
@@ -339,7 +367,7 @@ void main() {
           children: [
             RewardChip(amount: 1250.0, size: RewardChipSize.small),
             RewardChip(amount: 500, size: RewardChipSize.medium),
-            RewardChip(amount: 700, size: RewardChipSize.large, glow: true),
+            RewardChip(amount: 700, size: RewardChipSize.large),
           ],
         ),
       );
@@ -614,6 +642,119 @@ void main() {
       expect(find.text('Мөр 19').hitTestable(), findsOneWidget);
       expect(tester.getSize(find.byType(GroupedCard)).height, 200);
     });
+
+    // Regression (owner, 2026-10-21): on iPhone the box bounced past its ends
+    // and the iOS scrollbar shrank and grew with the overscroll, so the
+    // indicator looked like it changed size while scrolling up and down.
+    for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+      testWidgets(
+          'maxHeight: never scrolls past its ends, so the bar keeps its '
+          'length (${platform.name})', (tester) async {
+        debugDefaultTargetPlatformOverride = platform;
+        try {
+          await pumpKit(
+              tester, GroupedCard(maxHeight: 200, children: rows(20)));
+          final position = tester
+              .state<ScrollableState>(find.descendant(
+                  of: find.byType(GroupedCard),
+                  matching: find.byType(Scrollable)))
+              .position;
+
+          // Pull down at the top, holding the finger there.
+          final top = await tester
+              .startGesture(tester.getCenter(find.byType(GroupedCard)));
+          await top.moveBy(const Offset(0, 40));
+          await top.moveBy(const Offset(0, 120));
+          await tester.pump();
+          expect(position.pixels, 0, reason: 'no overscroll above the top');
+          await top.up();
+          await tester.pumpAndSettle();
+
+          // Jump to the end and push further up.
+          position.jumpTo(position.maxScrollExtent);
+          await tester.pump();
+          final bottom = await tester
+              .startGesture(tester.getCenter(find.byType(GroupedCard)));
+          await bottom.moveBy(const Offset(0, -40));
+          await bottom.moveBy(const Offset(0, -120));
+          await tester.pump();
+          expect(position.pixels, position.maxScrollExtent,
+              reason: 'no overscroll below the end');
+          await bottom.up();
+          await tester.pumpAndSettle();
+        } finally {
+          debugDefaultTargetPlatformOverride = null;
+        }
+      });
+    }
+
+    // Regression (owner, 2026-10-21): inside a page the screen's bottom
+    // padding (floating nav bar + home indicator) was taken off the box's
+    // scrollbar track, so the bar was too short and stopped ~100pt above the
+    // end of the list.
+    for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+      testWidgets(
+          'maxHeight: the bar runs the full box height despite the page '
+          'padding (${platform.name})', (tester) async {
+        debugDefaultTargetPlatformOverride = platform;
+        try {
+          const boxHeight = 200.0;
+          await tester.pumpWidget(MaterialApp(
+            theme: AppTheme.light(),
+            builder: (context, app) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                padding: const EdgeInsets.only(top: 50, bottom: 120),
+              ),
+              child: app!,
+            ),
+            home: Scaffold(
+              body: Center(
+                child: GroupedCard(maxHeight: boxHeight, children: rows(20)),
+              ),
+            ),
+          ));
+
+          Rect? thumb;
+          void readThumb() {
+            thumb = null;
+            expect(
+              find.byType(GroupedCard),
+              paints
+                ..everything((method, args) {
+                  if (method == #drawRRect && (args[0] as RRect).width < 12) {
+                    thumb = (args[0] as RRect).outerRect;
+                  }
+                  return true;
+                }),
+            );
+          }
+
+          // The painter draws in the box's own coordinates: 0..boxHeight.
+          // Drag to the very end of the list.
+          for (var i = 0; i < 12; i++) {
+            await tester.drag(find.byType(GroupedCard), const Offset(0, -150));
+            await tester.pump();
+          }
+          await tester.pumpAndSettle();
+          readThumb();
+          expect(thumb, isNotNull);
+          expect(thumb!.bottom, closeTo(boxHeight, 8),
+              reason: 'at the end the bar reaches the bottom of the box');
+
+          // Back to the top: it starts at the top of the box.
+          for (var i = 0; i < 12; i++) {
+            await tester.drag(find.byType(GroupedCard), const Offset(0, 150));
+            await tester.pump();
+          }
+          await tester.pumpAndSettle();
+          readThumb();
+          expect(thumb!.top, closeTo(0, 8),
+              reason: 'at the start the bar touches the top of the box');
+        } finally {
+          debugDefaultTargetPlatformOverride = null;
+        }
+      });
+    }
 
     testWidgets('maxHeight: short content keeps its natural height',
         (tester) async {
@@ -1089,5 +1230,31 @@ void main() {
         expect(tester.getSize(find.byType(Image)).height, 28);
       });
     }
+  });
+
+  group('RewardChip colours (owner, 2026-10-21: no loud gold)', () {
+    double contrast(Color a, Color b) {
+      final la = a.computeLuminance(), lb = b.computeLuminance();
+      return (math.max(la, lb) + 0.05) / (math.min(la, lb) + 0.05);
+    }
+
+    for (final dark in [false, true]) {
+      test('${dark ? 'dark' : 'light'}: a soft action wash with AA ink', () {
+        final c = AppPalette(dark);
+        final fill = RewardChip.fillIn(c);
+        expect(fill, isNot(const Color(0xFFF2D48A)));
+        expect(contrast(RewardChip.inkIn(c), fill), greaterThanOrEqualTo(4.5));
+      });
+    }
+
+    testWidgets('no glow, a hairline instead', (tester) async {
+      await pumpKit(tester, const RewardChip(amount: 700));
+      final box = tester
+          .widget<Container>(find.descendant(
+              of: find.byType(RewardChip), matching: find.byType(Container)))
+          .decoration! as BoxDecoration;
+      expect(box.boxShadow, isNull);
+      expect(box.border, isNotNull);
+    });
   });
 }

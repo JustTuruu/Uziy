@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:viewer_app/models/payout_request.dart';
 import 'package:viewer_app/models/view_history_item.dart';
 import 'package:viewer_app/screens/wallet/wallet_logic.dart';
+import 'package:viewer_app/utils/format.dart';
 
 PayoutRequest _payout(
   int id,
@@ -147,44 +148,50 @@ void main() {
   });
 
   group('payoutProgress', () {
+    test('the minimum is 5,000 ₮ and its label says so', () {
+      expect(kPayoutMinimum, 5000);
+      expect(kPayoutMinimumLabel, formatTugrik(kPayoutMinimum));
+      expect(kPayoutAmountHelper, contains(kPayoutMinimumLabel));
+    });
+
     test('empty wallet: nothing collected, full minimum missing', () {
       final p = payoutProgress(0);
       expect(p.fraction, 0);
-      expect(p.remaining, 1000);
+      expect(p.remaining, 5000);
       expect(p.minimum, kPayoutMinimum);
       expect(p.reached, isFalse);
     });
 
-    test('partway: 400 of 1,000 is 40% with 600 missing', () {
-      final p = payoutProgress(400);
+    test('partway: 2,000 of 5,000 is 40% with 3,000 missing', () {
+      final p = payoutProgress(2000);
       expect(p.fraction, closeTo(0.4, 1e-9));
-      expect(p.remaining, 600);
+      expect(p.remaining, 3000);
       expect(p.reached, isFalse);
     });
 
-    test('999 is 1 ₮ short', () {
-      final p = payoutProgress(999);
-      expect(p.fraction, closeTo(0.999, 1e-9));
+    test('4,999 is 1 ₮ short', () {
+      final p = payoutProgress(4999);
+      expect(p.fraction, closeTo(0.9998, 1e-9));
       expect(p.remaining, 1);
       expect(p.reached, isFalse);
     });
 
     test('a fractional balance just under the minimum is never "0 short"', () {
-      final p = payoutProgress(999.6);
+      final p = payoutProgress(4999.6);
       expect(p.remaining, 1);
       expect(p.reached, isFalse);
       expect(p.fraction, lessThan(1));
     });
 
     test('exactly the minimum is reached', () {
-      final p = payoutProgress(1000);
+      final p = payoutProgress(5000);
       expect(p.fraction, 1);
       expect(p.remaining, 0);
       expect(p.reached, isTrue);
     });
 
     test('above the minimum is clamped to 100%', () {
-      final p = payoutProgress(5000);
+      final p = payoutProgress(12000);
       expect(p.fraction, 1);
       expect(p.remaining, 0);
       expect(p.reached, isTrue);
@@ -193,7 +200,7 @@ void main() {
     test('negative balance counts as 0', () {
       final p = payoutProgress(-500);
       expect(p.fraction, 0);
-      expect(p.remaining, 1000);
+      expect(p.remaining, 5000);
       expect(p.reached, isFalse);
     });
 
@@ -223,16 +230,18 @@ void main() {
     });
   });
 
-  group('canRequestPayout (same gate as before: loaded and >= 1,000)', () {
+  group('canRequestPayout (loaded and >= 5,000)', () {
     test('not loaded yet', () => expect(canRequestPayout(null), isFalse));
     test('0', () => expect(canRequestPayout(0), isFalse));
-    test('999', () => expect(canRequestPayout(999), isFalse));
-    test('999.99', () => expect(canRequestPayout(999.99), isFalse));
-    test('1000', () => expect(canRequestPayout(1000), isTrue));
+    test('1000 (the old minimum)',
+        () => expect(canRequestPayout(1000), isFalse));
+    test('4999', () => expect(canRequestPayout(4999), isFalse));
+    test('4999.99', () => expect(canRequestPayout(4999.99), isFalse));
     test('5000', () => expect(canRequestPayout(5000), isTrue));
+    test('12000', () => expect(canRequestPayout(12000), isTrue));
     test('negative', () => expect(canRequestPayout(-1), isFalse));
     test('agrees with payoutProgress.reached', () {
-      for (final b in [0, 1, 500, 999, 999.5, 1000, 1000.1, 7000]) {
+      for (final b in [0, 1, 1000, 4999, 4999.5, 5000, 5000.1, 17000]) {
         expect(canRequestPayout(b), payoutProgress(b).reached, reason: '$b');
       }
     });
@@ -240,10 +249,11 @@ void main() {
 
   group('quick amounts', () {
     test('offered amounts are all at or above the minimum', () {
-      expect(kQuickPayoutAmounts, [1000, 2000, 5000, 10000]);
+      expect(kQuickPayoutAmounts, [5000, 10000, 20000, 50000]);
       for (final a in kQuickPayoutAmounts) {
         expect(a, greaterThanOrEqualTo(kPayoutMinimum));
       }
+      expect(kQuickPayoutAmounts, contains(kDefaultPayoutAmount));
     });
 
     test('quickAmountValue writes the grouped amount, caret at the end', () {
@@ -261,8 +271,8 @@ void main() {
     });
 
     test('selectedQuickAmount matches exact chip values only', () {
-      expect(selectedQuickAmount('2000'), 2000);
-      expect(selectedQuickAmount('2,000'), 2000);
+      expect(selectedQuickAmount('20000'), 20000);
+      expect(selectedQuickAmount('20,000'), 20000);
       expect(selectedQuickAmount(' 5000 '), 5000);
       expect(selectedQuickAmount('10000'), 10000);
       expect(selectedQuickAmount('2500'), isNull);
@@ -412,14 +422,13 @@ void main() {
   });
 
   group('validators keep the original rules', () {
-    test('amount: at least 1,000', () {
-      expect(validatePayoutAmount(null), 'Хамгийн бага дүн: 1,000 ₮');
+    test('amount: at least 5,000', () {
+      expect(validatePayoutAmount(null), 'Хамгийн бага дүн: 5,000 ₮');
       expect(validatePayoutAmount(''), isNotNull);
-      expect(validatePayoutAmount('999'), isNotNull);
-      expect(validatePayoutAmount('1000'), isNull);
-      expect(validatePayoutAmount('2000'), isNull);
+      expect(validatePayoutAmount('1000'), isNotNull);
+      expect(validatePayoutAmount('4,999'), isNotNull);
+      expect(validatePayoutAmount('5000'), isNull);
       expect(validatePayoutAmount('12,500'), isNull);
-      expect(validatePayoutAmount('999'), isNotNull);
     });
 
     test('account number: 8 or more characters', () {
@@ -433,6 +442,50 @@ void main() {
       expect(validateAccountName(null), isNotNull);
       expect(validateAccountName('  аб  '), isNotNull);
       expect(validateAccountName('Бат'), isNull);
+    });
+  });
+
+  group('history filter (tap a total)', () {
+    final entries = buildWalletHistory(
+      [_reward(1, DateTime(2026, 10, 10)), _reward(2, DateTime(2026, 10, 13))],
+      [
+        _payout(7, PayoutStatus.approved, requestedAt: DateTime(2026, 10, 12)),
+        _payout(8, PayoutStatus.rejected, requestedAt: DateTime(2026, 10, 11)),
+      ],
+    );
+    String id(WalletEntry e) => switch (e) {
+          RewardEntry(:final reward) => 'r${reward.campaignId}',
+          PayoutEntry(:final payout) => 'p${payout.id}',
+        };
+
+    test('all keeps everything, newest first', () {
+      expect(filterWalletHistory(entries, WalletHistoryFilter.all).map(id),
+          ['r2', 'p7', 'p8', 'r1']);
+    });
+
+    test('income keeps only rewards', () {
+      expect(filterWalletHistory(entries, WalletHistoryFilter.income).map(id),
+          ['r2', 'r1']);
+    });
+
+    test('spending keeps payouts that left, not the refunded one', () {
+      expect(filterWalletHistory(entries, WalletHistoryFilter.spending).map(id),
+          ['p7']);
+    });
+
+    test('tapping the chosen total again shows everything', () {
+      expect(
+          toggleWalletFilter(
+              WalletHistoryFilter.all, WalletHistoryFilter.income),
+          WalletHistoryFilter.income);
+      expect(
+          toggleWalletFilter(
+              WalletHistoryFilter.income, WalletHistoryFilter.spending),
+          WalletHistoryFilter.spending);
+      expect(
+          toggleWalletFilter(
+              WalletHistoryFilter.spending, WalletHistoryFilter.spending),
+          WalletHistoryFilter.all);
     });
   });
 }

@@ -57,14 +57,14 @@ Future<void> _tapSubmit(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('opens with 2,000 ₮ and Khan Bank preselected', (tester) async {
+  testWidgets('opens with 5,000 ₮ and Khan Bank preselected', (tester) async {
     final handle = tester.ensureSemantics();
     await pumpPayout(tester);
 
     expect(find.text('Мөнгө татах'), findsOneWidget); // app bar title
-    expect(_amountText(tester), '2,000');
+    expect(_amountText(tester), '5,000');
     expect(
-      tester.getSemantics(find.text('2,000 ₮')),
+      tester.getSemantics(find.text('5,000 ₮')),
       isSemantics(isSelected: true),
     );
     await tester.ensureVisible(find.text('Khan Bank'));
@@ -122,7 +122,7 @@ void main() {
     await tester.pump();
 
     expect(_amountText(tester), '12,500');
-    for (final chip in ['1,000 ₮', '2,000 ₮', '5,000 ₮', '10,000 ₮']) {
+    for (final chip in ['5,000 ₮', '10,000 ₮', '20,000 ₮', '50,000 ₮']) {
       expect(
           tester.getSemantics(find.text(chip)), isSemantics(isSelected: false));
     }
@@ -218,8 +218,8 @@ void main() {
       find.text('Дансны эзэмшигчийн нэрийг бүтэн оруулна уу'),
       findsOneWidget,
     );
-    // Amount is prefilled with a valid 2,000.
-    expect(find.text('Хамгийн бага дүн: 1,000 ₮'), findsNothing);
+    // Amount is prefilled with a valid 5,000.
+    expect(find.text('Хамгийн бага дүн: 5,000 ₮'), findsNothing);
     // Still on the form: nothing was sent.
     expect(find.byType(PayoutSuccessSheet), findsNothing);
   });
@@ -236,18 +236,19 @@ void main() {
     expect(find.text('Дансны дугаар дор хаяж 8 оронтой байна'), findsNothing);
   });
 
-  testWidgets('amount below 1,000 is rejected', (tester) async {
+  testWidgets('amount below 5,000 is rejected (1,000 was the old minimum)',
+      (tester) async {
     await pumpPayout(tester);
-    await tester.enterText(_amountField, '500');
+    await tester.enterText(_amountField, '1000');
     await _tapSubmit(tester);
-    expect(find.text('Хамгийн бага дүн: 1,000 ₮'), findsOneWidget);
+    expect(find.text('Хамгийн бага дүн: 5,000 ₮'), findsOneWidget);
 
     // A quick amount fixes it immediately.
-    await tester.ensureVisible(find.text('1,000 ₮'));
+    await tester.ensureVisible(find.text('5,000 ₮'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('1,000 ₮'));
+    await tester.tap(find.text('5,000 ₮'));
     await tester.pumpAndSettle();
-    expect(find.text('Хамгийн бага дүн: 1,000 ₮'), findsNothing);
+    expect(find.text('Хамгийн бага дүн: 5,000 ₮'), findsNothing);
   });
 
   /// The national ID is no longer asked for (owner, 2026-10-14).
@@ -263,5 +264,21 @@ void main() {
     expect(tester.takeException(), isNull);
     await _tapSubmit(tester);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('bank account fields keep the keyboard from learning them',
+      (tester) async {
+    await pumpPayout(tester);
+
+    for (final index in [1, 2]) {
+      final editable = tester.widget<EditableText>(
+        find.descendant(
+          of: find.byType(TextFormField).at(index),
+          matching: find.byType(EditableText),
+        ),
+      );
+      expect(editable.enableSuggestions, isFalse, reason: 'field $index');
+      expect(editable.autocorrect, isFalse, reason: 'field $index');
+    }
   });
 }

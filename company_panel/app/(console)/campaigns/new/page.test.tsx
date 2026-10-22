@@ -9,6 +9,7 @@ import {
   type Campaign,
   type CreateCampaignBody,
 } from "@/lib/api";
+import { AGE_RANGE_TOO_NARROW_MESSAGE } from "@/lib/targeting";
 import { formatTugrik } from "@/lib/utils";
 import NewCampaignPage from "./page";
 
@@ -181,7 +182,7 @@ describe("New campaign wizard — pricing and payment", () => {
     await userEvent.click(screen.getByRole("option", { name: /Үнэлгээ/ }));
 
     expect(screen.queryByPlaceholderText("Хариулт 1")).not.toBeInTheDocument();
-    expect(screen.getByText(/Муу · Дунд · Сайн гэсэн 3 төлөв/)).toBeInTheDocument();
+    expect(screen.getByText(/Маш муу · Муу · Дунд · Сайн · Маш сайн гэсэн 5 төлөв/)).toBeInTheDocument();
 
     await userEvent.click(next()); // → review, no '2 хариулт' error
     await userEvent.click(screen.getByRole("button", { name: "Үүсгэх" }));
@@ -238,5 +239,30 @@ describe("New campaign wizard — pricing and payment", () => {
     );
     expect(screen.getByRole("button", { name: "Үүсгэх" })).toBeEnabled();
     expect(screen.getByRole("button", { name: /Буцах/ })).toBeEnabled();
+  });
+
+  // Regression (2026-10-22 audit): 30–30 in one aimag reached the backend and aimed a survey at a few people.
+  it("explains a too narrow age range on the targeting step and keeps 'Дараах' off", async () => {
+    vi.spyOn(platformSettingsApi, "get").mockResolvedValue(settings);
+    render(<NewCampaignPage />);
+    await userEvent.click(screen.getByRole("button", { name: /Судалгаа зөвхөн/ }));
+    await userEvent.type(screen.getByLabelText("Судалгааны гарчиг"), "Хэрэглэгчийн судалгаа");
+    await userEvent.click(next()); // → targeting
+    expect(next()).toBeEnabled();
+
+    const min = screen.getByLabelText("Хамгийн бага нас");
+    const max = screen.getByLabelText("Хамгийн их нас");
+    await userEvent.clear(min);
+    await userEvent.type(min, "30");
+    await userEvent.clear(max);
+    await userEvent.type(max, "32");
+
+    expect(screen.getByRole("alert")).toHaveTextContent(AGE_RANGE_TOO_NARROW_MESSAGE);
+    expect(next()).toBeDisabled();
+
+    await userEvent.clear(max);
+    await userEvent.type(max, "35");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(next()).toBeEnabled();
   });
 });

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -101,6 +102,24 @@ void main() {
     expect(find.byIcon(AppIcons.phone), findsOneWidget);
     expect(find.byIcon(AppIcons.lock), findsOneWidget);
     expect(find.text('Нэвтрэх'), findsNWidgets(2)); // title + button
+  });
+
+  // The test font draws every glyph as a full 1 em square; the real face's
+  // Cyrillic letters average well under 0.6 em. So a placeholder whose
+  // test-font width shrunk by that factor still overflows its slot would be cut
+  // off on a phone too (the old 'Утасны дугаараа оруулна уу' was).
+  testWidgets('placeholders fit their field on a common phone width',
+      (tester) async {
+    const realToTestFontWidth = 0.6;
+    await _pump(tester);
+
+    for (final hint in [kPhoneHint, kPasswordHint]) {
+      final paragraph = tester.renderObject<RenderParagraph>(find.text(hint));
+      final needed =
+          paragraph.getMaxIntrinsicWidth(double.infinity) * realToTestFontWidth;
+      expect(needed, lessThanOrEqualTo(paragraph.constraints.maxWidth),
+          reason: hint);
+    }
   });
 
   testWidgets('small screen with large text stays scrollable without overflow',

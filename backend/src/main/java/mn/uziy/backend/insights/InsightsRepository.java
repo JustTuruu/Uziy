@@ -3,6 +3,7 @@ package mn.uziy.backend.insights;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import mn.uziy.backend.privacy.StatisticsConsentService;
 import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -16,10 +17,12 @@ import org.springframework.stereotype.Repository;
 public class InsightsRepository {
 
     /**
-     * The one consent filter; every person-level query below uses it: viewers who said yes AND are adults
-     * ({@link StatisticsPrivacyPolicy#MIN_AGE}) — a minor's yes is not enough.
+     * The one consent filter; every person-level query below uses it: viewers who said yes to the CURRENT
+     * wording AND are adults ({@link StatisticsPrivacyPolicy#MIN_AGE}) — a minor's yes is not enough. A yes to an
+     * older wording reads as "not asked" in the app, so it must not count here either (audit 2026-10-22).
      */
     static final String CONSENTING = "u.role = 'VIEWER' AND u.stats_consent = 'GRANTED'"
+            + " AND u.stats_consent_version = '" + StatisticsConsentService.CURRENT_VERSION + "'"
             + " AND u.birth_date <= CURRENT_DATE - INTERVAL '" + StatisticsPrivacyPolicy.MIN_AGE + " years'";
 
     /** What the statistics may know about a person. */

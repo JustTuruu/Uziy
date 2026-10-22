@@ -445,13 +445,17 @@ class _CheckboxBadge extends StatelessWidget {
 // Free-text answer
 // ---------------------------------------------------------------------------
 
+/// Placeholder of a free-text answer (owner, 2026-10-21: was 'Санал
+/// бодлоо бичээрэй...').
+const String kTextAnswerHint = 'Та хариултаа энд бичнэ үү...';
+
 /// Large multiline answer field with a live character counter.
 class SurveyTextField extends StatelessWidget {
   const SurveyTextField({
     super.key,
     required this.controller,
     required this.onChanged,
-    this.hintText = 'Санал бодлоо бичээрэй...',
+    this.hintText = kTextAnswerHint,
   });
 
   final TextEditingController controller;
@@ -731,7 +735,10 @@ class RewardCelebration extends StatelessWidget {
 
   static const String title = 'Урамшуулал таны хэтэвчинд орлоо';
   static const String subtitle = 'Хэтэвч рүү шууд орлоо';
-  static const String continueLabel = 'Дараагийн видео үзэх';
+
+  /// The survey is over: the button closes the sheet (owner, 2026-10-21:
+  /// 'Дууссан', not a promise of another video).
+  static const String continueLabel = 'Дууссан';
 
   @override
   Widget build(BuildContext context) {
@@ -784,18 +791,14 @@ class RewardCelebration extends StatelessWidget {
               const SizedBox(height: AppSpacing.sm),
               FittedBox(
                 fit: BoxFit.scaleDown,
-                child: ShaderMask(
-                  blendMode: BlendMode.srcIn,
-                  shaderCallback: context.gradients.gold.createShader,
-                  child: AnimatedMoney(
-                    value: reward,
-                    withSign: true,
-                    textAlign: TextAlign.center,
-                    // White so the gold gradient mask shows at full strength.
-                    style: context.textStyles.moneyLarge.copyWith(
-                      fontSize: 46,
-                      color: context.colors.textPrimary,
-                    ),
+                // A plain action-colour amount: no gradient text.
+                child: AnimatedMoney(
+                  value: reward,
+                  withSign: true,
+                  textAlign: TextAlign.center,
+                  style: context.textStyles.moneyLarge.copyWith(
+                    fontSize: 46,
+                    color: context.colors.primary,
                   ),
                 ),
               ),
@@ -821,7 +824,7 @@ class RewardCelebration extends StatelessWidget {
               const SizedBox(height: AppSpacing.xxxl),
               AdaptiveCtaButton(
                 label: continueLabel,
-                icon: Icons.play_arrow_rounded,
+                icon: AppIcons.check,
                 onPressed: onContinue,
                 haptic: true,
               ),

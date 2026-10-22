@@ -70,10 +70,10 @@ const color = (name: string) => {
 };
 
 describe("light console palette (admin + company)", () => {
-  it("is a plain white page", () => {
-    expect(color("background")).toBe("#ffffff");
+  it("is a soft off-white page with white cards on it", () => {
+    expect(color("background")).toBe("#f6f6f3");
+    expect(color("sidebar")).toBe("#fafaf8");
     expect(color("surface")).toBe("#ffffff");
-    expect(color("sidebar")).toBe("#ffffff");
   });
 
   it("only overrides tokens the shared theme (or Tailwind) defines", () => {
@@ -93,7 +93,7 @@ describe("light console palette (admin + company)", () => {
     "danger",
     "warning",
   ])("%s reads as text on white and on the grey surfaces", (name) => {
-    for (const bg of ["background", "surface-elevated", "surface-hover"]) {
+    for (const bg of ["background", "surface", "sidebar", "surface-elevated", "surface-hover"]) {
       expect(contrast(color(name), color(bg)), `${name} on ${bg}`).toBeGreaterThanOrEqual(AA);
     }
   });

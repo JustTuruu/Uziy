@@ -1,18 +1,20 @@
 /* Light console theme, shared by the admin and company panels (owner,
-   2026-10-21: "plain white", then "the company side clean like admin").
+   2026-10-21: "plain white", then "the company side clean like admin", then
+   "pure white is too harsh": the page and sidebar are a soft warm off-white,
+   cards stay white so they lift off it).
    Import AFTER theme.css. Only the token VALUES change; every shared component
    reads these variables, so nothing is forked. Unlayered :root beats
    Tailwind's @layer theme, whatever the import order. Text colours meet WCAG
-   AA on white and on the elevated grey (theme-light.test.ts checks it).
+   AA on white, on the page and on the elevated grey (theme-light.test.ts checks it).
    The font itself (Rubik) is loaded by each app's layout from ./fonts.ts. */
 :root {
   color-scheme: light;
 
-  --color-background: #ffffff;
+  --color-background: #f6f6f3;
   --color-surface: #ffffff;
-  --color-surface-elevated: #f6f7f9;
-  --color-surface-hover: #f1f3f6;
-  --color-sidebar: #ffffff;
+  --color-surface-elevated: #f4f4f0;
+  --color-surface-hover: #f3f3ef;
+  --color-sidebar: #fafaf8;
 
   /* The brand gold, deepened so it reads as text on white; fills carry white. */
   --color-primary: #975b06;
@@ -50,7 +52,7 @@
     0 2px 6px rgb(15 23 42 / 0.06);
 }
 
-/* No ambient glow: a plain white page. Rubik needs no tightening (the shared
+/* No ambient glow: a plain off-white page. Rubik needs no tightening (the shared
    negative tracking suits Inter) and has no Inter stylistic sets; keep only
    tabular figures so amounts line up. */
 body {

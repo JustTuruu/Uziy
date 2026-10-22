@@ -11,19 +11,23 @@ import '../../utils/format.dart';
 
 /// Smallest payout a viewer can request, in tögrög. The wallet's
 /// "Мөнгө татах" button stays disabled below it and the payout form rejects
-/// smaller amounts.
-const int kPayoutMinimum = 1000;
+/// smaller amounts. Owner, 2026-10-21: raised from 1,000 ₮; mirrors the
+/// backend's `MinimumPayoutRule.MINIMUM_PAYOUT`.
+const int kPayoutMinimum = 5000;
+
+/// [kPayoutMinimum] as the copy shows it (a test keeps the two in step).
+const String kPayoutMinimumLabel = '5,000 ₮';
 
 /// Amount the payout form opens with (also one of the quick picks).
-const int kDefaultPayoutAmount = 2000;
+const int kDefaultPayoutAmount = kPayoutMinimum;
 
 const String kPayoutAmountLabel = 'Татах дүн';
 const String kPayoutAmountHelper =
-    'Дүнгээ бичнэ үү, эсвэл доороос сонгоно уу. Хамгийн багадаа 1,000 ₮.';
+    'Дүнгээ бичнэ үү, эсвэл доороос сонгоно уу. Хамгийн багадаа $kPayoutMinimumLabel.';
 const String kQuickAmountsLabel = 'Хурдан сонгох';
 
 /// Quick-pick amounts offered under the payout amount field.
-const List<int> kQuickPayoutAmounts = [1000, 2000, 5000, 10000];
+const List<int> kQuickPayoutAmounts = [5000, 10000, 20000, 50000];
 
 /// Banks a viewer can cash out to. The first one is the default selection.
 const List<String> kPayoutBanks = [
@@ -207,7 +211,7 @@ int? selectedQuickAmount(
 /// Amount: whole tögrög, at least [kPayoutMinimum].
 String? validatePayoutAmount(String? value) {
   final n = payoutAmountOf(value) ?? 0;
-  if (n < kPayoutMinimum) return 'Хамгийн бага дүн: 1,000 ₮';
+  if (n < kPayoutMinimum) return 'Хамгийн бага дүн: $kPayoutMinimumLabel';
   return null;
 }
 
@@ -350,6 +354,38 @@ MoneyFlow moneyFlowOf(WalletEntry entry) => switch (entry) {
       PayoutEntry(:final payout) => payout.status == PayoutStatus.rejected
           ? MoneyFlow.returned
           : MoneyFlow.outgoing,
+    };
+
+/// Which part of the wallet history is listed: tapping a total narrows the
+/// list to it (owner, 2026-10-21).
+enum WalletHistoryFilter { all, income, spending }
+
+const String kWalletOnlyIncome = 'Зөвхөн орлого';
+const String kWalletOnlySpending = 'Зөвхөн зарлага';
+const String kWalletShowAll = 'Бүгдийг харах';
+const String kWalletNoIncome = 'Одоогоор орлого алга';
+const String kWalletNoSpending = 'Одоогоор зарлага алга';
+
+/// Tapping the total that is already chosen goes back to everything.
+WalletHistoryFilter toggleWalletFilter(
+  WalletHistoryFilter current,
+  WalletHistoryFilter tapped,
+) =>
+    current == tapped ? WalletHistoryFilter.all : tapped;
+
+/// [entries] narrowed to [filter]: income = rewards that came in; spending =
+/// payouts that left or are leaving (a refunded one is neither, it shows only
+/// under everything — it does not count in either total).
+List<WalletEntry> filterWalletHistory(
+  List<WalletEntry> entries,
+  WalletHistoryFilter filter,
+) =>
+    switch (filter) {
+      WalletHistoryFilter.all => entries,
+      WalletHistoryFilter.income =>
+        entries.where((e) => moneyFlowOf(e) == MoneyFlow.incoming).toList(),
+      WalletHistoryFilter.spending =>
+        entries.where((e) => moneyFlowOf(e) == MoneyFlow.outgoing).toList(),
     };
 
 /// Everything the rewards paid in.

@@ -15,6 +15,6 @@ describe("takesOptions", () => {
 
 describe("RATING_LABELS", () => {
   it("runs worst to best", () => {
-    expect([...RATING_LABELS]).toEqual(["Муу", "Дунд", "Сайн"]);
+    expect([...RATING_LABELS]).toEqual(["Маш муу", "Муу", "Дунд", "Сайн", "Маш сайн"]);
   });
 });

@@ -28,6 +28,8 @@ abstract final class AppIcons {
   static const IconData help = LucideIcons.lifeBuoy;
   static const IconData privacy = LucideIcons.shieldCheck;
   static const IconData logout = LucideIcons.logOut;
+  static const IconData deleteAccount = LucideIcons.userX;
+  static const IconData warning = LucideIcons.triangleAlert;
   static const IconData watched = LucideIcons.circlePlay;
 
   // Wallet history
@@ -38,6 +40,9 @@ abstract final class AppIcons {
 
   // How it works
   static const IconData answer = LucideIcons.listChecks;
+  static const IconData feedAll = LucideIcons.layoutGrid;
+  static const IconData feedVideo = LucideIcons.clapperboard;
+  static const IconData feedSurvey = LucideIcons.clipboardList;
   static const IconData reward = LucideIcons.coins;
   static const IconData next = LucideIcons.arrowRight;
 

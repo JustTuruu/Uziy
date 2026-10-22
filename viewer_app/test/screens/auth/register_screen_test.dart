@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:viewer_app/routes/app_router.dart' show Routes;
 import 'package:viewer_app/screens/auth/auth_widgets.dart';
+import 'package:viewer_app/screens/auth/birth_date_picker.dart';
 import 'package:viewer_app/screens/auth/register_screen.dart';
 import 'package:viewer_app/models/regions.dart';
 import 'package:viewer_app/screens/auth/location_fields.dart';
@@ -50,6 +51,28 @@ Future<void> _agreeAndSubmit(WidgetTester tester) async {
 
 void main() {
   /// The owner's request (2026-10-14): овог and нэр are asked separately.
+  // Owner, 2026-10-22: the month calendar was hard to use; the birth date is
+  // picked on Он · Сар · Өдөр wheels.
+  testWidgets('the birth date opens the wheels and fills the field',
+      (tester) async {
+    await _pump(tester);
+    await tester.ensureVisible(find.byType(BirthDateTile));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(BirthDateTile));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BirthDateSheet), findsOneWidget);
+    expect(find.byType(CalendarDatePicker), findsNothing);
+
+    await tester.tap(find.text(kBirthPickerDone));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BirthDateSheet), findsNothing);
+    final tile = tester.widget<BirthDateTile>(find.byType(BirthDateTile));
+    expect(tile.value, isNotNull);
+    expect(find.text(formatBirthDate(tile.value!)), findsOneWidget);
+  });
+
   testWidgets('asks for овог and нэр as two separate fields', (tester) async {
     await _pump(tester);
 
@@ -125,13 +148,13 @@ void main() {
     expect(find.text(kTermsRequired), findsNothing);
   });
 
-  /// Critique 2026-10-14 (P0): the paid SMS step is announced before the
-  /// tap, and the button no longer claims to finish the registration.
-  testWidgets('the pinned bar names the SMS step and its price',
-      (tester) async {
+  /// Owner, 2026-10-22: the 'Дараа нь дугаараа SMS-ээр баталгаажуулна…'
+  /// caption above the button was removed; the verify page tells the price.
+  /// The button still does not claim to finish the registration.
+  testWidgets('the pinned bar is just the continue button', (tester) async {
     await _pump(tester);
-    expect(find.text(kNextStepNote), findsOneWidget);
-    expect(kNextStepNote, contains('150₮'));
+    expect(find.textContaining('SMS'), findsNothing);
+    expect(find.textContaining('150₮'), findsNothing);
     expect(find.widgetWithText(AppButton, kContinueLabel), findsOneWidget);
   });
 

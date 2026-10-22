@@ -1,0 +1,8 @@
+# Copy to android/key.properties (git-ignored) and fill in. Never commit the real file or the .jks.
+# Create the upload key once (keep the .jks and passwords in a password manager + a backup):
+#   keytool -genkey -v -keystore ~/uziy-upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+storePassword=CHANGE_ME
+keyPassword=CHANGE_ME
+keyAlias=upload
+# Absolute path, or relative to android/app/
+storeFile=/Users/<you>/uziy-upload-keystore.jks

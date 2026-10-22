@@ -16,7 +16,9 @@ class StatisticsPrivacyPolicyTest {
     @Test
     void onlyAdultsCount() {
         assertThat(StatisticsPrivacyPolicy.MIN_AGE).isEqualTo(18);
-        assertThat(InsightsRepository.CONSENTING).contains("INTERVAL '18 years'").contains("'GRANTED'");
+        assertThat(InsightsRepository.CONSENTING).contains("INTERVAL '18 years'").contains("'GRANTED'")
+                // A yes to an older consent wording does not count (audit 2026-10-22).
+                .contains("stats_consent_version = '" + mn.uziy.backend.privacy.StatisticsConsentService.CURRENT_VERSION + "'");
     }
 
     @Test

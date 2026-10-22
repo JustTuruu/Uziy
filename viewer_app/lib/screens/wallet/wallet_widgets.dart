@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../models/payout_request.dart';
 import '../../models/view_history_item.dart';
@@ -686,7 +687,7 @@ class WalletNote extends StatelessWidget {
 
 // --- Payout form pieces -----------------------------------------------------
 
-/// Quick-pick amount pills ('1,000 ₮', '2,000 ₮', ...). Four across when they
+/// Quick-pick amount pills ('5,000 ₮', '10,000 ₮', ...). Four across when they
 /// fit, otherwise two per row.
 class QuickAmountChips extends StatelessWidget {
   const QuickAmountChips({
@@ -1213,7 +1214,7 @@ SnackBar _walletSnackBar(String message, IconData icon, Color iconColor) =>
 /// decision shows up as the status of its own row. The list sits in a box of
 /// [kWalletHistoryBoxHeight] that scrolls on its own, so a long history does
 /// not push the rest of the page away.
-class WalletHistorySection extends StatelessWidget {
+class WalletHistorySection extends StatefulWidget {
   const WalletHistorySection({
     super.key,
     required this.rewards,
@@ -1228,14 +1229,27 @@ class WalletHistorySection extends StatelessWidget {
   final DateTime now;
 
   @override
+  State<WalletHistorySection> createState() => _WalletHistorySectionState();
+}
+
+class _WalletHistorySectionState extends State<WalletHistorySection> {
+  WalletHistoryFilter _filter = WalletHistoryFilter.all;
+
+  void _select(WalletHistoryFilter tapped) {
+    HapticFeedback.selectionClick();
+    setState(() => _filter = toggleWalletFilter(_filter, tapped));
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final entries = buildWalletHistory(rewards, payouts);
+    final all = buildWalletHistory(widget.rewards, widget.payouts);
+    final shown = filterWalletHistory(all, _filter);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SectionHeader(title: kWalletHistoryTitle),
         const SizedBox(height: AppSpacing.md),
-        if (entries.isEmpty)
+        if (all.isEmpty)
           const EmptyState(
             icon: AppIcons.history,
             title: kWalletHistoryEmptyTitle,
@@ -1243,28 +1257,97 @@ class WalletHistorySection extends StatelessWidget {
           )
         else ...[
           WalletTotalsCard(
-            income: walletIncome(rewards),
-            spending: walletSpending(payouts),
+            income: walletIncome(widget.rewards),
+            spending: walletSpending(widget.payouts),
+            selected: _filter,
+            onSelect: _select,
           ),
+          if (_filter != WalletHistoryFilter.all)
+            WalletFilterLine(
+              filter: _filter,
+              onShowAll: () => _select(_filter),
+            ),
           const SizedBox(height: AppSpacing.md),
-          GroupedCard(
-            maxHeight: kWalletHistoryBoxHeight,
-            children: [
-              for (final e in entries)
-                switch (e) {
-                  RewardEntry(:final reward) => HistoryRow(
-                      item: reward,
-                      now: now,
-                      icon: MoneyFlow.incoming.icon,
-                      iconColor: MoneyFlow.incoming.colorIn(context.colors),
-                    ),
-                  PayoutEntry(:final payout) =>
-                    PayoutHistoryRow(payout: payout, now: now),
-                },
-            ],
-          ),
+          if (shown.isEmpty)
+            GroupedCard(children: [
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Text(
+                  _filter == WalletHistoryFilter.income
+                      ? kWalletNoIncome
+                      : kWalletNoSpending,
+                  textAlign: TextAlign.center,
+                  style: context.textStyles.bodySmall,
+                ),
+              ),
+            ])
+          else
+            GroupedCard(
+              maxHeight: kWalletHistoryBoxHeight,
+              children: [
+                for (final e in shown)
+                  switch (e) {
+                    RewardEntry(:final reward) => HistoryRow(
+                        item: reward,
+                        now: widget.now,
+                        icon: MoneyFlow.incoming.icon,
+                        iconColor: MoneyFlow.incoming.colorIn(context.colors),
+                      ),
+                    PayoutEntry(:final payout) =>
+                      PayoutHistoryRow(payout: payout, now: widget.now),
+                  },
+              ],
+            ),
         ],
       ],
+    );
+  }
+}
+
+/// 'Зөвхөн орлого' on the left, 'Бүгдийг харах' on the right: says the list
+/// is narrowed and how to undo it.
+class WalletFilterLine extends StatelessWidget {
+  const WalletFilterLine({
+    super.key,
+    required this.filter,
+    required this.onShowAll,
+  });
+
+  final WalletHistoryFilter filter;
+  final VoidCallback onShowAll;
+
+  @override
+  Widget build(BuildContext context) {
+    final flow = filter == WalletHistoryFilter.income
+        ? MoneyFlow.incoming
+        : MoneyFlow.outgoing;
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.sm),
+      child: Row(
+        children: [
+          Icon(flow.icon, size: 16, color: flow.colorIn(context.colors)),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Text(
+              filter == WalletHistoryFilter.income
+                  ? kWalletOnlyIncome
+                  : kWalletOnlySpending,
+              style: context.textStyles.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          TextButton(
+            onPressed: onShowAll,
+            style: TextButton.styleFrom(
+              minimumSize: const Size(0, AppLayout.minTapTarget),
+              foregroundColor: context.colors.primary,
+              textStyle: context.textStyles.label,
+            ),
+            child: const Text(kWalletShowAll),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1315,45 +1398,63 @@ class MoneyFlowBadge extends StatelessWidget {
 }
 
 /// Total income and total spending as two cards side by side, each led by its
-/// [MoneyFlowBadge] so in and out read at a glance.
+/// [MoneyFlowBadge] so in and out read at a glance. With [onSelect] each card
+/// is a toggle that narrows the history to it ([selected] is lit).
 class WalletTotalsCard extends StatelessWidget {
   const WalletTotalsCard({
     super.key,
     required this.income,
     required this.spending,
+    this.selected = WalletHistoryFilter.all,
+    this.onSelect,
   });
 
   final double income;
   final double spending;
+  final WalletHistoryFilter selected;
+  final ValueChanged<WalletHistoryFilter>? onSelect;
 
   @override
-  Widget build(BuildContext context) => IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: WalletTotalTile(
-                flow: MoneyFlow.incoming,
-                label: kWalletIncomeLabel,
-                value: formatTugrik(income, withSign: true),
-                valueColor: context.colors.success,
-              ),
+  Widget build(BuildContext context) {
+    final select = onSelect;
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: WalletTotalTile(
+              flow: MoneyFlow.incoming,
+              label: kWalletIncomeLabel,
+              value: formatTugrik(income, withSign: true),
+              valueColor: context.colors.success,
+              selected: selected == WalletHistoryFilter.income,
+              onTap: select == null
+                  ? null
+                  : () => select(WalletHistoryFilter.income),
             ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: WalletTotalTile(
-                flow: MoneyFlow.outgoing,
-                label: kWalletSpendingLabel,
-                value: formatTugrik(-spending),
-                valueColor: context.colors.textPrimary,
-              ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: WalletTotalTile(
+              flow: MoneyFlow.outgoing,
+              label: kWalletSpendingLabel,
+              value: formatTugrik(-spending),
+              valueColor: context.colors.textPrimary,
+              selected: selected == WalletHistoryFilter.spending,
+              onTap: select == null
+                  ? null
+                  : () => select(WalletHistoryFilter.spending),
             ),
-          ],
-        ),
-      );
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-/// One total: the flow badge, its label and the amount.
+/// One total: the flow badge, its label and the amount. Tappable when
+/// [onTap] is set; when [selected] it takes a wash and a line of its flow's
+/// colour.
 class WalletTotalTile extends StatelessWidget {
   const WalletTotalTile({
     super.key,
@@ -1361,46 +1462,67 @@ class WalletTotalTile extends StatelessWidget {
     required this.label,
     required this.value,
     required this.valueColor,
+    this.selected = false,
+    this.onTap,
   });
 
   final MoneyFlow flow;
   final String label;
   final String value;
   final Color valueColor;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  /// Strength of the flow colour wash on a selected tile.
+  static const double selectedWash = 0.08;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-        container: true,
-        label: '$label: $value',
-        excludeSemantics: true,
-        child: AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              MoneyFlowBadge(flow: flow),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                label,
-                style: context.textStyles.caption,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 2),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  value,
-                  style: context.textStyles.title.copyWith(
-                    color: valueColor,
-                    fontFeatures: AppTextStyles.tabular,
-                  ),
-                ),
-              ),
-            ],
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final flowColor = flow.colorIn(c);
+    final card = AppCard(
+      color: selected
+          ? Color.alphaBlend(
+              flowColor.withValues(alpha: selectedWash), c.surface)
+          : null,
+      borderColor: selected ? flowColor : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          MoneyFlowBadge(flow: flow),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            label,
+            style: context.textStyles.caption,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-        ),
-      );
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: context.textStyles.title.copyWith(
+                color: valueColor,
+                fontFeatures: AppTextStyles.tabular,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    final tap = onTap;
+    return Semantics(
+      container: true,
+      button: tap != null,
+      selected: tap != null ? selected : null,
+      label: '$label: $value',
+      excludeSemantics: true,
+      child:
+          tap == null ? card : Pressable(onTap: tap, scale: 0.97, child: card),
+    );
+  }
 }
 
 /// One payout request in the history: bank, status · day · time, and the

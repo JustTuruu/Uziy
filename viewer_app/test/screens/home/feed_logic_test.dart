@@ -210,11 +210,6 @@ void main() {
   });
 
   group('card copy', () {
-    test('CTA label', () {
-      expect(campaignCtaLabel(_c()), 'Үзэх');
-      expect(campaignCtaLabel(_c(hasVideo: false)), 'Бөглөх');
-    });
-
     test('kind label uses the short duration or Судалгаа', () {
       expect(campaignKindLabel(_c(duration: 45)), '45 сек');
       expect(campaignKindLabel(_c(duration: 90)), '1:30');

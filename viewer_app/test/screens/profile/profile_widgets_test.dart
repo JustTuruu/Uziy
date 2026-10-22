@@ -391,7 +391,8 @@ void main() {
       expect(find.byType(ProfileStatsRow), findsOneWidget);
       expect(find.text('Хувийн мэдээлэл'), findsOneWidget);
       expect(find.text('Бусад'), findsOneWidget);
-      expect(find.text('Үзсэн видеонуудын түүх'), findsOneWidget);
+      expect(find.text('Судалгааны түүх'), findsOneWidget);
+      expect(find.textContaining('Үзсэн видео'), findsNothing);
       expect(find.text('Нууцлалын бодлого'), findsOneWidget);
       expect(find.byType(StatusBanner), findsNothing);
       // Owner, 2026-10-21: the statistics switch is off the profile list
@@ -448,7 +449,7 @@ void main() {
       await tester.pumpAndSettle();
 
       for (final label in [
-        'Үзсэн видеонуудын түүх',
+        'Судалгааны түүх',
         'Тусламж',
         'Нууцлалын бодлого',
       ]) {

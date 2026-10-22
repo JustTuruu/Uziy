@@ -1,5 +1,6 @@
 package mn.uziy.backend.auth;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -107,5 +108,90 @@ class LoginAttemptLimiterTest {
         failTimes(PHONE, 1);
 
         assertThatCode(() -> limiter.requireNotLocked(PHONE)).doesNotThrowAnyException();
+    }
+
+    // ------- bounded memory (2026-10-22 audit: the table could be grown without limit) ------------------
+
+    @Test
+    void theTableNeverHoldsMoreThanItsCapNoMatterHowManyPhonesAreTried() {
+        LoginAttemptLimiter small = new LoginAttemptLimiter(clock, 3);
+
+        for (int i = 0; i < 1_000; i++) {
+            small.recordFailure("9" + i);
+        }
+
+        assertThat(small.tracked()).isEqualTo(3);
+    }
+
+    @Test
+    void whenFullThePhoneWhoseLastMistakeIsOldestIsForgottenFirst() {
+        LoginAttemptLimiter small = new LoginAttemptLimiter(clock, 2);
+        for (int i = 0; i < LoginAttemptLimiter.MAX_FAILURES; i++) {
+            small.recordFailure("A");
+        }
+        clock.advance(Duration.ofSeconds(1));
+        for (int i = 0; i < LoginAttemptLimiter.MAX_FAILURES; i++) {
+            small.recordFailure("B");
+        }
+        clock.advance(Duration.ofSeconds(1));
+
+        small.recordFailure("C");
+
+        assertThatCode(() -> small.requireNotLocked("A")).doesNotThrowAnyException();
+        assertThatThrownBy(() -> small.requireNotLocked("B")).isInstanceOf(TooManyRequestsException.class);
+    }
+
+    @Test
+    void aNewMistakeMovesAPhoneToTheBackOfTheEvictionQueue() {
+        LoginAttemptLimiter small = new LoginAttemptLimiter(clock, 2);
+        for (int i = 0; i < LoginAttemptLimiter.MAX_FAILURES - 1; i++) {
+            small.recordFailure("A");
+        }
+        small.recordFailure("B");
+        clock.advance(Duration.ofSeconds(1));
+        small.recordFailure("A"); // A is now the most recent, and locked
+
+        small.recordFailure("C"); // evicts B, not A
+
+        assertThatThrownBy(() -> small.requireNotLocked("A")).isInstanceOf(TooManyRequestsException.class);
+    }
+
+    @Test
+    void phonesWhoseLockRanOutAreDroppedWithoutAnyoneAskingAboutThem() {
+        for (int i = 0; i < 100; i++) {
+            limiter.recordFailure("9" + i);
+        }
+        clock.advance(LoginAttemptLimiter.LOCK.plusSeconds(1));
+
+        limiter.recordFailure(PHONE);
+
+        assertThat(limiter.tracked()).isEqualTo(1);
+    }
+
+    @Test
+    void parallelWrongPasswordsAreAllCounted() throws Exception {
+        int threads = LoginAttemptLimiter.MAX_FAILURES;
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(threads);
+        java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+        java.util.List<java.util.concurrent.Future<?>> done = new java.util.ArrayList<>();
+        for (int i = 0; i < threads; i++) {
+            done.add(pool.submit(() -> {
+                start.await();
+                limiter.recordFailure(PHONE);
+                return null;
+            }));
+        }
+        start.countDown();
+        for (java.util.concurrent.Future<?> f : done) {
+            f.get();
+        }
+        pool.shutdown();
+
+        assertThatThrownBy(() -> limiter.requireNotLocked(PHONE)).isInstanceOf(TooManyRequestsException.class);
+    }
+
+    @Test
+    void aCapBelowOneIsAProgrammingError() {
+        assertThatThrownBy(() -> new LoginAttemptLimiter(clock, 0)).isInstanceOf(IllegalArgumentException.class);
     }
 }

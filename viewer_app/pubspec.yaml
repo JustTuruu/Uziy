@@ -1,7 +1,7 @@
 name: viewer_app
 description: Uziy — targeted rewarded-video platform for Mongolia (viewer app).
 publish_to: 'none'
-version: 0.1.0+1
+version: 1.0.0+1
 
 environment:
   sdk: ^3.4.0
@@ -60,9 +60,16 @@ flutter_launcher_icons:
   android: true
   ios: true
   remove_alpha_ios: true
+  # Android 8+ adaptive icon (and Android 13 themed icon): the mark alone on a transparent 1024 canvas, sized to
+  # sit inside the 66/108 safe zone, over a white layer — the same look as the legacy icon.
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icon/adaptive_foreground.png"
+  adaptive_icon_monochrome: "assets/icon/adaptive_foreground.png"
+  # The foreground file already keeps the mark inside the safe zone, so no extra inset.
+  adaptive_icon_foreground_inset: 0
   web:
     generate: true
     image_path: "assets/logo.png"
     background_color: "#0B0B0F"
     theme_color: "#FFCE00"
-  min_sdk_android: 21
+  min_sdk_android: 24

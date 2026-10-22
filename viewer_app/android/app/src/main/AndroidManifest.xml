@@ -1,7 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The API. (Flutter's template only declares it for debug/profile; release must not rely on a plugin
+         merging it in.) -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Android 13+ runtime notification permission (push). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- No Auto Backup / adb backup: the stored session token must not be
+         copied to Google Drive or restored onto another phone. -->
     <application
+        android:allowBackup="false"
+        android:fullBackupContent="false"
         android:usesCleartextTraffic="false"
         android:label="Uziy"
         android:name="${applicationName}"

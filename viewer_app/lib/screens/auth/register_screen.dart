@@ -12,17 +12,13 @@ import '../../services/auth_service.dart';
 import '../../widgets/incentive_banner.dart';
 import '../../widgets/ui.dart';
 import 'auth_widgets.dart';
+import 'birth_date_picker.dart';
 import 'location_fields.dart';
-import 'phone_verify_logic.dart' show kSmsPriceNote;
 import 'login_fields.dart';
 
 /// The pinned button: it does not create the account yet, it opens the
 /// SMS step.
 const String kContinueLabel = 'Үргэлжлүүлэх';
-
-/// Caption above it, ending in the operator's SMS price.
-const String kNextStepNote =
-    'Дараа нь дугаараа SMS-ээр баталгаажуулна. $kSmsPriceNote';
 
 /// Shown under the terms tile when 'Бүртгүүлэх' is tapped before agreeing.
 const String kTermsRequired = 'Үйлчилгээний нөхцөлийг зөвшөөрнө үү';
@@ -104,12 +100,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     FocusScope.of(context).unfocus();
     final now = DateTime.now();
     final bounds = birthDatePickerBounds(now);
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: birthDatePickerInitial(_birthDate, now),
-      firstDate: bounds.first,
-      lastDate: bounds.last,
-      helpText: 'Төрсөн он сар өдөр',
+    final picked = await showBirthDatePicker(
+      context,
+      initial: birthDatePickerInitial(_birthDate, now),
+      first: bounds.first,
+      last: bounds.last,
     );
     if (!mounted) return;
     if (picked != null) {
@@ -348,7 +343,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     FadeSlideIn(
                       index: 4,
                       child: _FormSection(
-                        title: 'Байршил',
+                        title: 'Хаяг',
                         children: [
                           LocationFields(
                             city: _cityCtrl,
@@ -454,14 +449,9 @@ class _SubmitBar extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Said before the tap: the next step is a paid SMS
-                  // (Product principle 2: nothing costs money unannounced).
-                  Text(
-                    kNextStepNote,
-                    textAlign: TextAlign.center,
-                    style: context.textStyles.caption,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
+                  // No caption above the button (owner, 2026-10-22): the SMS
+                  // step and its price are told on the verify page, before
+                  // anything is sent.
                   AppButton(
                     label: kContinueLabel,
                     trailingIcon: AppIcons.next,

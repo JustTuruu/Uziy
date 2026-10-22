@@ -253,7 +253,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen>
   }
 
   Future<void> _sendSms() async {
-    final uri = Uri.tryParse(_check.smsUri);
+    final uri = smsLaunchUri(_check);
     final opened = uri != null && await widget.launchSms(uri);
     if (!mounted || opened) return;
     ScaffoldMessenger.of(context)

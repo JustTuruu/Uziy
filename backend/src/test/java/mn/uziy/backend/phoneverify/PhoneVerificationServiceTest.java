@@ -3,8 +3,10 @@ package mn.uziy.backend.phoneverify;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -28,6 +30,7 @@ import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 
 class PhoneVerificationServiceTest {
 
@@ -113,6 +116,36 @@ class PhoneVerificationServiceTest {
                 .isInstanceOf(TooManyRequestsException.class)
                 .hasMessage(PhoneVerificationService.TOO_SOON);
         verifyNoInteractions(gateway);
+    }
+
+    /** Regression (2026-10-22 audit): parallel starts both passed the cool-down — the read now runs under a lock. */
+    @Test
+    void startTakesThePerPhoneLockBeforeReadingTheLimits() {
+        when(codes.next()).thenReturn("482916");
+        when(gateway.start(PHONE, "482916")).thenReturn(session());
+        when(verifications.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.start(PHONE, REGISTER);
+
+        InOrder order = inOrder(verifications, gateway);
+        order.verify(verifications).lockPhone(PhoneVerificationServiceImpl.START_LOCK_NAMESPACE, PHONE);
+        order.verify(verifications).findFirstByPhoneNumberOrderByCreatedAtDesc(PHONE);
+        order.verify(gateway).start(PHONE, "482916");
+        order.verify(verifications).save(any());
+    }
+
+    @Test
+    void aTakenPhoneAnswersConflictEvenInsideTheCooldownAndTakesNoLock() {
+        PhoneVerificationEntity latest = row(PhoneVerificationStatus.VERIFIED, T0.plusSeconds(270));
+        latest.setCreatedAt(at(T0.minusSeconds(1)));
+        when(verifications.findFirstByPhoneNumberOrderByCreatedAtDesc(PHONE)).thenReturn(Optional.of(latest));
+        when(users.existsByPhoneNumber(PHONE)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.start(PHONE, REGISTER))
+                .isInstanceOf(ConflictException.class)
+                .hasMessage(PhoneVerificationService.PHONE_TAKEN);
+        verifyNoInteractions(gateway);
+        verify(verifications, never()).lockPhone(anyInt(), anyString());
     }
 
     @Test

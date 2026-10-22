@@ -105,8 +105,8 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                 performance,
                 dailySeries(companyId, campaignId, days),
                 hourlySeries(companyId, campaignId, days),
-                selectedResponses >= MIN_AUDIENCE_SAMPLE ? audienceOf(companyId, campaignId) : null,
-                campaignId == null ? List.of() : answerCounter.count(chosenQuestions, answers),
+                selectedResponses >= MIN_AUDIENCE_SAMPLE ? audienceOf(companyId, campaignId, selectedResponses) : null,
+                campaignId == null ? List.of() : answerCounter.count(chosenQuestions, answers, MIN_SEGMENT_SAMPLE),
                 campaignId == null
                         ? List.of()
                         : segmentCounter.count(chosenQuestions, answers, MIN_SEGMENT_SAMPLE));
@@ -173,7 +173,11 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         return value instanceof Date sqlDate ? sqlDate.toLocalDate() : (LocalDate) value;
     }
 
-    private Audience audienceOf(long companyId, @Nullable Long campaignId) {
+    /**
+     * Each dimension is cut by {@link SmallGroupRule} against {@code responses}, the total the company already
+     * sees, so no slice of fewer than {@link #MIN_AUDIENCE_SAMPLE} people can be read off or subtracted out.
+     */
+    private Audience audienceOf(long companyId, @Nullable Long campaignId, long responses) {
         List<Slice> gender = new ArrayList<>();
         for (Object[] row : views.genderCounts(companyId, campaignId)) {
             gender.add(new Slice((String) row[0], ((Number) row[1]).longValue()));
@@ -184,12 +188,14 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         }
         List<Slice> cities = new ArrayList<>();
         for (Object[] row : views.cityCounts(companyId, campaignId)) {
-            if (cities.size() == MAX_CITIES) {
-                break;
-            }
             cities.add(new Slice((String) row[0], ((Number) row[1]).longValue()));
         }
-        return new Audience(gender, AgeBands.group(byAge), cities);
+        // Cut before keeping the biggest: the cities left off the list only add to the hidden rest.
+        List<Slice> shownCities = SmallGroupRule.reportable(cities, responses, MIN_AUDIENCE_SAMPLE);
+        return new Audience(
+                SmallGroupRule.reportable(gender, responses, MIN_AUDIENCE_SAMPLE),
+                SmallGroupRule.reportable(AgeBands.group(byAge), responses, MIN_AUDIENCE_SAMPLE),
+                shownCities.subList(0, Math.min(MAX_CITIES, shownCities.size())));
     }
 
     /** Responses per hour of the day (index = hour, 24 entries) over the window, in market time. */

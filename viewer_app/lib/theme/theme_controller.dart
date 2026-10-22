@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+import '../services/secure_store.dart';
 
 /// Persists only appearance; independent of authentication and logout.
 class ThemeController extends ChangeNotifier {
@@ -10,7 +11,7 @@ class ThemeController extends ChangeNotifier {
         _write = write ?? ((value) => _storage.write(key: _key, value: value));
 
   static final instance = ThemeController();
-  static const _storage = FlutterSecureStorage();
+  static const _storage = appSecureStorage;
   static const _key = 'appearance_mode';
   final Future<String?> Function() _read;
   final Future<void> Function(String) _write;

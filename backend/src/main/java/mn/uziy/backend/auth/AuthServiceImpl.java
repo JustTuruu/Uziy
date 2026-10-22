@@ -1,9 +1,13 @@
 package mn.uziy.backend.auth;
 
+import java.time.Clock;
+import java.time.LocalDate;
+import mn.uziy.backend.adminlogin.AdminSecondStep;
 import mn.uziy.backend.common.ConflictException;
 import mn.uziy.backend.common.Messages;
 import mn.uziy.backend.common.UnauthorizedException;
 import mn.uziy.backend.common.event.DomainEventPublisher;
+import mn.uziy.backend.domain.Role;
 import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
 import mn.uziy.backend.phoneverify.PhoneVerificationPurpose;
@@ -27,10 +31,15 @@ public class AuthServiceImpl implements AuthService {
     private final DomainEventPublisher events;
     private final VerifiedPhoneClaim verifiedPhones;
     private final LoginAttemptLimiter loginLimiter;
+    private final Clock clock;
+    private final AdminSecondStep adminSecondStep;
 
     public AuthServiceImpl(UserRepository users, PasswordEncoder encoder, JwtService jwt,
                            UserFactory userFactory, MeMapper meMapper, DomainEventPublisher events,
-                           VerifiedPhoneClaim verifiedPhones, LoginAttemptLimiter loginLimiter) {
+                           VerifiedPhoneClaim verifiedPhones, LoginAttemptLimiter loginLimiter, Clock clock,
+                           AdminSecondStep adminSecondStep) {
+        this.clock = clock;
+        this.adminSecondStep = adminSecondStep;
         this.verifiedPhones = verifiedPhones;
         this.loginLimiter = loginLimiter;
         this.users = users;
@@ -41,8 +50,9 @@ public class AuthServiceImpl implements AuthService {
         this.events = events;
     }
 
+    /** The password is always proved first, so a wrong one never leads to an SMS for an admin's phone. */
     @Override
-    public AuthResponse login(LoginReq req) {
+    public LoginOutcome login(LoginReq req) {
         loginLimiter.requireNotLocked(req.phoneNumber());
         UserEntity user = users.findByPhoneNumber(req.phoneNumber()).orElse(null);
         if (user == null || !encoder.matches(req.password(), user.getPasswordHash())) {
@@ -51,7 +61,10 @@ public class AuthServiceImpl implements AuthService {
             throw new UnauthorizedException(INVALID_CREDENTIALS);
         }
         loginLimiter.recordSuccess(req.phoneNumber());
-        return respond(user);
+        if (user.getRole() == Role.ADMIN) {
+            return new LoginOutcome.SecondStepRequired(adminSecondStep.open(user));
+        }
+        return new LoginOutcome.SignedIn(respond(user));
     }
 
     /** One transaction: a refused save gives the phone check back instead of spending it. */
@@ -60,15 +73,9 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponse registerViewer(RegisterViewerReq req) {
         requirePhoneFree(req.phoneNumber());
         ViewerLocationRule.check(req.city(), req.district());
+        ViewerAgeRule.check(req.birthDate(), LocalDate.now(clock));
         verifiedPhones.claim(req.verificationId(), req.phoneNumber(), PhoneVerificationPurpose.REGISTER);
         UserEntity user = userFactory.newViewer(req, encoder.encode(req.password()));
-        return registered(users.save(user));
-    }
-
-    @Override
-    public AuthResponse registerCompany(RegisterCompanyReq req) {
-        requirePhoneFree(req.phoneNumber());
-        UserEntity user = userFactory.newCompany(req, encoder.encode(req.password()));
         return registered(users.save(user));
     }
 

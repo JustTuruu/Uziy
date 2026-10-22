@@ -81,25 +81,32 @@ class _CoinRingPainter extends CustomPainter {
 enum RewardChipSize { small, medium, large }
 
 /// Flat gold pill with a coin and the signed reward: `[coin] +700 ₮`.
+/// The reward of one campaign: the coin and '+700 ₮' on a soft wash of the
+/// action colour, in the action colour's ink. (Owner, 2026-10-21: the flat
+/// gold pill was too loud; green on green belongs to the Meadow palette and
+/// reads in light and dark alike.) Flat: no glow.
 class RewardChip extends StatelessWidget {
   const RewardChip({
     super.key,
     required this.amount,
     this.size = RewardChipSize.medium,
-    this.glow = false,
   });
 
   final num amount;
   final RewardChipSize size;
 
-  /// Adds a soft gold glow (use on dark imagery / hero moments).
-  final bool glow;
-
   /// Upper bound for OS text scaling inside the fixed-height pill.
   static const double maxTextScale = 1.3;
 
+  /// The pill's fill: the action colour washed over the card surface.
+  static Color fillIn(AppPalette c) => c.actionWash;
+
+  /// The amount's ink.
+  static Color inkIn(AppPalette c) => c.primary;
+
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final (double height, double coin, double font, double gap) =
         switch (size) {
       RewardChipSize.small => (26.0, 16.0, 12.5, 5.0),
@@ -118,16 +125,9 @@ class RewardChip extends StatelessWidget {
           right: height * 0.42,
         ),
         decoration: BoxDecoration(
-          color: const Color(0xFFF2D48A),
+          color: fillIn(colors),
           borderRadius: AppRadii.brPill,
-          boxShadow: glow
-              ? AppShadows.glow(
-                  const Color(0xFFF2D48A),
-                  strength: 0.9,
-                  blur: height * 0.6,
-                  offset: Offset(0, height * 0.15),
-                )
-              : null,
+          border: Border.all(color: colors.actionLine),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -148,7 +148,7 @@ class RewardChip extends StatelessWidget {
                   height: 1.0,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.2,
-                  color: AppColors.primaryInk,
+                  color: inkIn(colors),
                   fontFeatures: AppTextStyles.tabular,
                 ),
               ),
