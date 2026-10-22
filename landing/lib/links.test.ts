@@ -8,6 +8,7 @@ describe("resolveLinks", () => {
       playStore: null,
       companyPanel: DEFAULT_COMPANY_PANEL_URL,
       contactEmail: null,
+      contactPhone: null,
     });
   });
 
@@ -18,12 +19,14 @@ describe("resolveLinks", () => {
         NEXT_PUBLIC_PLAY_STORE_URL: "https://play.google.com/store/apps/uziy",
         NEXT_PUBLIC_COMPANY_PANEL_URL: "https://company.uziy.mn",
         NEXT_PUBLIC_CONTACT_EMAIL: "hello@example.mn",
+        NEXT_PUBLIC_CONTACT_PHONE: "+976 7711-2233",
       }),
     ).toEqual({
       appStore: "https://apps.apple.com/app/uziy",
       playStore: "https://play.google.com/store/apps/uziy",
       companyPanel: "https://company.uziy.mn",
       contactEmail: "hello@example.mn",
+      contactPhone: "+976 7711-2233",
     });
   });
 
@@ -33,10 +36,12 @@ describe("resolveLinks", () => {
       NEXT_PUBLIC_PLAY_STORE_URL: "   ",
       NEXT_PUBLIC_COMPANY_PANEL_URL: " ",
       NEXT_PUBLIC_CONTACT_EMAIL: "  ",
+      NEXT_PUBLIC_CONTACT_PHONE: "",
     });
     expect(links.appStore).toBeNull();
     expect(links.playStore).toBeNull();
     expect(links.companyPanel).toBe(DEFAULT_COMPANY_PANEL_URL);
     expect(links.contactEmail).toBeNull();
+    expect(links.contactPhone).toBeNull();
   });
 });

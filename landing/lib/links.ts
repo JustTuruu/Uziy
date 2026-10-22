@@ -8,6 +8,8 @@ export interface SiteLinks {
   companyPanel: string;
   /** Where a company asks for an account (mailto), or null when not configured — never a made-up address. */
   contactEmail: string | null;
+  /** Sales phone (tel:), or null when not configured. */
+  contactPhone: string | null;
 }
 
 export const DEFAULT_COMPANY_PANEL_URL = "http://localhost:3000";
@@ -28,6 +30,7 @@ export function resolveLinks(env: Env): SiteLinks {
       valueOrNull(env.NEXT_PUBLIC_COMPANY_PANEL_URL) ??
       DEFAULT_COMPANY_PANEL_URL,
     contactEmail: valueOrNull(env.NEXT_PUBLIC_CONTACT_EMAIL),
+    contactPhone: valueOrNull(env.NEXT_PUBLIC_CONTACT_PHONE),
   };
 }
 
@@ -36,4 +39,5 @@ export const siteLinks: SiteLinks = resolveLinks({
   NEXT_PUBLIC_PLAY_STORE_URL: process.env.NEXT_PUBLIC_PLAY_STORE_URL,
   NEXT_PUBLIC_COMPANY_PANEL_URL: process.env.NEXT_PUBLIC_COMPANY_PANEL_URL,
   NEXT_PUBLIC_CONTACT_EMAIL: process.env.NEXT_PUBLIC_CONTACT_EMAIL,
+  NEXT_PUBLIC_CONTACT_PHONE: process.env.NEXT_PUBLIC_CONTACT_PHONE,
 });

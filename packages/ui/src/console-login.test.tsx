@@ -53,7 +53,7 @@ function setup(api = fakeApi(), overrides: Partial<UseConsoleLoginOptions<User>>
   const view = renderHook(() =>
     useConsoleLogin<User>({
       api: api as unknown as ConsoleLoginApi<User>,
-      role: "COMPANY",
+      roles: ["COMPANY"],
       notRoleMessage: NOT_ROLE,
       genericError: GENERIC,
       onSignedIn,
@@ -211,6 +211,27 @@ describe("useConsoleLogin", () => {
     expect(view.result.current.error).toBe(NOT_ROLE);
     expect(view.result.current.sms).toBeNull();
     expect(onSignedIn).not.toHaveBeenCalled();
+  });
+
+  it("admits every role it is given, before and after the SMS", async () => {
+    const { api, onSignedIn, view } = setup(fakeApi(), { roles: ["COMPANY", "ADMIN"] });
+    api.login.mockResolvedValue({ token: "jwt", user: { id: 1, role: "ADMIN" } });
+    await typeAndSubmit(view);
+    expect(view.result.current.error).toBeNull();
+    expect(onSignedIn).toHaveBeenCalledWith({ token: "jwt", user: { id: 1, role: "ADMIN" } });
+
+    api.login.mockResolvedValue({ twoStep: twoStep("ADMIN") });
+    await typeAndSubmit(view);
+    expect(view.result.current.sms?.challenge.role).toBe("ADMIN");
+  });
+
+  it("shows a failing onSignedIn as the form's error", async () => {
+    const { api, view } = setup(fakeApi(), {
+      onSignedIn: () => Promise.reject(new Error("boom")),
+    });
+    api.login.mockResolvedValue({ token: "jwt", user: { id: 1, role: "COMPANY" } });
+    await typeAndSubmit(view);
+    expect(view.result.current.error).toBe(GENERIC);
   });
 
   it("turns away a signed-in answer of another role", async () => {

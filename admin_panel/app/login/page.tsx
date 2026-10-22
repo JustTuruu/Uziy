@@ -1,59 +1,20 @@
 "use client";
 
-import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { ClipboardCheck, ShieldCheck, Wallet } from "lucide-react";
-import { ConsoleLoginPage, useConsoleLogin, type LoginHighlight, type SignedIn } from "@uziy/ui";
-import { auth, authApi, GENERIC_ERROR_MESSAGE, type Me } from "@/lib/api";
+import { useEffect } from "react";
+import { leaveFor, SIGN_IN_URL } from "@/lib/handoff";
 
-const NOT_ADMIN = "Энэ данс админ эрхгүй байна";
-
-const HIGHLIGHTS: readonly LoginHighlight[] = [
-  {
-    icon: <ClipboardCheck size={18} />,
-    title: "Судалгаа батлах",
-    text: "Компаниудын илгээсэн судалгааг шалгаж, нийтэлнэ.",
-  },
-  {
-    icon: <Wallet size={18} />,
-    title: "Мөнгө татах хүсэлт",
-    text: "Үзэгчдийн хүсэлтийг дансных нь мэдээлэлтэй тулгаж шийднэ.",
-  },
-  {
-    icon: <ShieldCheck size={18} />,
-    title: "Хоёр шаттай нэвтрэлт",
-    text: "Нууц үгийн дараа бүртгэлтэй утаснаасаа SMS илгээж баталгаажуулна.",
-  },
-];
-
+/**
+ * There is no admin sign-in form (owner, 2026-10-22): everyone signs in on the one login page, and admins are
+ * handed back here. A signed-out visitor is sent there at once.
+ */
 export default function LoginPage() {
-  const router = useRouter();
-  const login = useConsoleLogin<Me>({
-    api: authApi,
-    role: "ADMIN",
-    notRoleMessage: NOT_ADMIN,
-    genericError: GENERIC_ERROR_MESSAGE,
-    onSignedIn: (res: SignedIn<Me>) => {
-      auth.setToken(res.token);
-      auth.setUser(res.user);
-      router.push("/");
-    },
-  });
+  useEffect(() => leaveFor(SIGN_IN_URL), []);
 
   return (
-    <ConsoleLoginPage
-      login={login}
-      logo={<Image src="/logo.png" alt="" width={28} height={28} priority className="h-7 w-7 object-contain" />}
-      consoleName="Админ самбар"
-      headline={
-        <>
-          Uziy платформыг <span className="text-[var(--color-primary)]">нэг дороос</span> хянана.
-        </>
-      }
-      lead="Судалгаа, мөнгө татах хүсэлт, хэрэглэгч, компаниудын бүх үйл ажиллагаа энд."
-      highlights={HIGHLIGHTS}
-      title="Админ самбарт нэвтрэх"
-      subtitle="Зөвхөн платформын админуудад"
-    />
+    <div className="flex min-h-screen items-center justify-center bg-[var(--color-background)] px-6 text-sm text-[var(--color-text-secondary)]">
+      <a href={SIGN_IN_URL} className="hover:text-[var(--color-text-primary)]">
+        Нэвтрэх хуудас руу шилжиж байна...
+      </a>
+    </div>
   );
 }

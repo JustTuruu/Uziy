@@ -19,10 +19,10 @@ export function SiteHeader({ companyPanelUrl }: { companyPanelUrl: string }) {
           ))}
         </nav>
         <a
-          className="button button-outline header-company"
+          className="button button-quiet header-company"
           href={companyPanelUrl}
         >
-          Компаниудад <ArrowUpRight size={16} />
+          Компанийн самбар <ArrowUpRight size={16} aria-hidden />
         </a>
       </div>
     </header>

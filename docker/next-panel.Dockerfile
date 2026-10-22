@@ -8,6 +8,9 @@ ARG APP
 # Baked into the client bundle at build time: the address the BROWSER uses to
 # reach the backend (the host's published port, not the compose service name).
 ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+# Where each panel sends the other (admins sign in on the company login page and are handed to the admin panel).
+ARG NEXT_PUBLIC_COMPANY_PANEL_URL=http://localhost:3000
+ARG NEXT_PUBLIC_ADMIN_PANEL_URL=http://localhost:3001
 ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /repo
 RUN corepack enable && corepack prepare pnpm@10.17.1 --activate
@@ -23,7 +26,9 @@ RUN --mount=type=cache,id=uziy-pnpm-store,target=/root/.local/share/pnpm/store \
 
 COPY packages/ui packages/ui
 COPY ${APP} ${APP}
-ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
+ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL} \
+    NEXT_PUBLIC_COMPANY_PANEL_URL=${NEXT_PUBLIC_COMPANY_PANEL_URL} \
+    NEXT_PUBLIC_ADMIN_PANEL_URL=${NEXT_PUBLIC_ADMIN_PANEL_URL}
 RUN pnpm --filter "${APP}" build
 
 ENV NODE_ENV=production \

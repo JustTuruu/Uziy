@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { BarChart3, Crosshair, PlayCircle } from "lucide-react";
 import { ConsoleLoginPage, useConsoleLogin, type LoginHighlight, type SignedIn } from "@uziy/ui";
 import { auth, authApi, GENERIC_ERROR_MESSAGE, type Me } from "@/lib/api";
+import { handOffToAdmin } from "@/lib/admin-handoff";
 
-const NOT_COMPANY = "Энэ данс компани эрхгүй байна";
+const NOT_CONSOLE_ACCOUNT = "Энэ дансаар самбарт нэвтрэх эрхгүй байна";
 const SALES_EMAIL = "sales@uziy.mn";
 
 const HIGHLIGHTS: readonly LoginHighlight[] = [
@@ -29,13 +30,18 @@ const HIGHLIGHTS: readonly LoginHighlight[] = [
 
 export default function LoginPage() {
   const router = useRouter();
-  // This console only admits companies; the admin console lives in its own app.
+  // The one sign-in page (owner, 2026-10-22): companies stay here, admins are handed to the admin panel by role.
+  // An admin's token is never stored on this site.
   const login = useConsoleLogin<Me>({
     api: authApi,
-    role: "COMPANY",
-    notRoleMessage: NOT_COMPANY,
+    roles: ["COMPANY", "ADMIN"],
+    notRoleMessage: NOT_CONSOLE_ACCOUNT,
     genericError: GENERIC_ERROR_MESSAGE,
-    onSignedIn: (res: SignedIn<Me>) => {
+    onSignedIn: async (res: SignedIn<Me>) => {
+      if (res.user.role === "ADMIN") {
+        await handOffToAdmin(res.token);
+        return;
+      }
       auth.setToken(res.token);
       auth.setUser(res.user);
       router.push("/");

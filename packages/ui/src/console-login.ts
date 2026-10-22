@@ -145,14 +145,14 @@ export interface SmsStep {
 
 export interface UseConsoleLoginOptions<U extends { role: string }> {
   api: ConsoleLoginApi<U>;
-  /** The one role this panel admits. */
-  role: ConsoleRole;
-  /** Shown when the account belongs to the other console (or is a viewer). */
+  /** The roles this login page admits (the company page also admits admins and hands them on). */
+  roles: readonly ConsoleRole[];
+  /** Shown when the account belongs to no admitted role (e.g. a viewer). */
   notRoleMessage: string;
   /** The panel's generic error sentence. */
   genericError: string;
-  /** Store the session and leave the login page. */
-  onSignedIn: (res: SignedIn<U>) => void;
+  /** Store the session and leave the login page. A rejection is shown as the form's error. */
+  onSignedIn: (res: SignedIn<U>) => void | Promise<void>;
 }
 
 export interface ConsoleLogin {
@@ -194,7 +194,8 @@ export function useConsoleLogin<U extends { role: string }>(
 
   /** Proves the password; the right account is then signed in or gets the SMS step. */
   const passwordStep = async (): Promise<boolean> => {
-    const { api, role, notRoleMessage, genericError, onSignedIn } = latest.current;
+    const { api, roles, notRoleMessage, genericError, onSignedIn } = latest.current;
+    const admits = (role: string) => (roles as readonly string[]).includes(role);
     try {
       const deviceToken = deviceTokenStore.get();
       const res = await api.login({
@@ -203,18 +204,18 @@ export function useConsoleLogin<U extends { role: string }>(
         ...(deviceToken ? { deviceToken } : {}),
       });
       if (isTwoStep(res)) {
-        if (res.twoStep.role !== role) {
+        if (!admits(res.twoStep.role)) {
           setError(notRoleMessage);
           return false;
         }
         setSms({ challenge: res.twoStep, status: "PENDING" });
         return true;
       }
-      if (res.user.role !== role) {
+      if (!admits(res.user.role)) {
         setError(notRoleMessage);
         return false;
       }
-      onSignedIn(res);
+      await onSignedIn(res);
       return true;
     } catch (e) {
       setError(loginErrorMessage(e, genericError));
@@ -262,16 +263,17 @@ export function useConsoleLogin<U extends { role: string }>(
         prev && prev.challenge.verificationId === verificationId ? { ...prev, status } : prev,
       );
     const finish = async () => {
-      const { api, role, notRoleMessage, genericError, onSignedIn } = latest.current;
+      const { api, roles, notRoleMessage, genericError, onSignedIn } = latest.current;
+    const admits = (role: string) => (roles as readonly string[]).includes(role);
       try {
         const res = await api.verify({ phoneNumber: phone, verificationId });
         if (stopped) return;
-        if (res.user.role !== role) {
+        if (!admits(res.user.role)) {
           setError(notRoleMessage);
           return;
         }
         deviceTokenStore.set(res.deviceToken);
-        onSignedIn({ token: res.token, user: res.user });
+        await onSignedIn({ token: res.token, user: res.user });
       } catch (e) {
         if (stopped) return;
         setError(loginErrorMessage(e, genericError));

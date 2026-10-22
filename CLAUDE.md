@@ -145,9 +145,19 @@ asked, say so and propose the compliant way instead of silently bending it.
 5. The company panel shows the **company's own name** (sidebar subtitle,
    footer, greeting) — never a hard-coded one; the admin sidebar shows the
    signed-in admin's phone.
-   **Sign-in page (2026-10-22)**: both `/login` pages are `@uziy/ui` `ConsoleLoginPage` (Template: brand panel with
-   headline, lead and `LoginHighlight`s beside a form card; under `lg` only the card + brand row). Each app passes
-   its own words, logo and `useConsoleLogin` state — never re-copy the layout into an app.
+   **One sign-in page (owner, 2026-10-22)**: companies AND admins sign in on `company_panel` `/login`
+   (`useConsoleLogin({ roles: ["COMPANY", "ADMIN"] })`; `onSignedIn` may be async and a rejection shows as the form
+   error). An ADMIN is never stored there: `lib/admin-handoff.ts` `handOffToAdmin(token)` trades the fresh token for a
+   one-time code (`POST /admin/session-handoffs`, 201 `{code, expiresAt}`) and leaves for
+   `NEXT_PUBLIC_ADMIN_PANEL_URL/login/handoff#code=…` (fragment, never query). The admin panel's `/login/handoff`
+   strips the fragment, spends the code (`POST /auth/session-handoffs/redeem {code}` → `AuthResponse`; 400
+   `Messages.HANDOFF_INVALID`) and opens `/`. Admin `/login` only redirects to `NEXT_PUBLIC_COMPANY_PANEL_URL/login`
+   (`lib/handoff.ts`). Backend `handoff/` (`SessionHandoffServiceImpl`): 32 random bytes via `DeviceSecrets`, only the
+   SHA-256 stored (`session_handoffs`, V19), lives 60 s, spent once by a conditional UPDATE, refused if the account is
+   no longer ADMIN; event `SessionHandedOff`. Both URLs are Docker build args (`COMPANY_PANEL_URL`, `ADMIN_PANEL_URL`).
+   **Sign-in page look (2026-10-22)**: the company `/login` is `@uziy/ui` `ConsoleLoginPage` (Template: brand panel with
+   headline, lead and `LoginHighlight`s beside a form card; under `lg` only the card + brand row). The app passes its
+   own words, logo and `useConsoleLogin` state — never re-copy the layout into an app.
 6. `pnpm exec tsc --noEmit`, `pnpm exec eslint` and `pnpm exec vitest run`
    must be clean in the app(s) and in `packages/ui` before you say done.
    Install/run from the repo root (`pnpm install`; `pnpm -C <app> dev`).
@@ -253,7 +263,7 @@ rewarded-video-platform/
 - **(2026-10-01) Company panel and Super Admin panel are now SEPARATE apps**:
   `company_panel/` (port 3000, routes at `/`, `/campaigns`, `/billing`, …) and
   `admin_panel/` (Super Admin only, port 3001, routes at `/`, `/payouts`,
-  `/users`, …). Each has its own `/login` that only admits its own role. UI is shared through
+  `/users`, …). **(2026-10-22) There is ONE sign-in page — the company panel's `/login`** (see "One sign-in page" below); the admin panel has no form. UI is shared through
   the pnpm workspace package **`packages/ui` (`@uziy/ui`)**: Button, IconButton,
   SegmentedControl, Card, Badge, Input/NumericInput/Textarea/Select, PageHeader,
   StatCard, Sidebar/SidebarUser/Topbar/ContentShell/PageContainer, `cn`, and the
@@ -536,13 +546,30 @@ The app opens on Home for everyone — no forced login. Splash always goes to `/
 Hero + 4 steps + benefits + FAQ (native `<details>`) + a 'Компаниудад' block linking to the company panel.
 - **Every visible sentence** lives in `lib/content.ts` (Cyrillic, "Та"; videos 30 s–2 min, 2–3 questions, min age 13,
   phone proved by texting a code to 144773 — keep in step with the app). Components only render it, so the positioning
-  test covers the whole page. Sections: hero (+ interactive `PhoneDemo`), how it works (4 numbered steps), benefits +
+  test covers the whole page. Sections: hero (+ interactive `PhoneDemo`), how it works (4 steps), benefits +
   a `#privacy` panel (companies never see name/phone, groups under 5 hidden, written answers not tied to a person,
-  in-app account deletion), for companies (accounts are created by Uziy: the button opens the company login; a
-  'Хамтран ажиллах' mailto appears only when `NEXT_PUBLIC_CONTACT_EMAIL` is set — never a made-up address), FAQ, download.
+  in-app account deletion), for companies (accounts are created by Uziy: 'Бидэнтэй холбогдох' with an email and/or phone
+  button from `NEXT_PUBLIC_CONTACT_EMAIL` / `NEXT_PUBLIC_CONTACT_PHONE`, the login demoted to a text link; with neither set
+  only the login shows — never a made-up address), FAQ, download. Critique 2026-10-22 (23/32, snapshot in
+  `.impeccable/critique/`): owner asked for better Mongolian wording rather than a bigger redesign or a teen angle.
 - Copy + design pass (owner, 2026-10-22): no eyebrow labels above headings, no unicode arrows as icons (lucide only),
   body text ≥ 14–16px (the sample-survey phone is 320px with ≥ 10px type — it is interactive), the font loads the
   `cyrillic-ext` subset (Ө/Ү fell back to another font before; `app/layout.test.ts`).
+- **Taste pass (owner asked for the `design-taste-frontend` skill, 2026-10-22; a restyle, layout and palette kept)**:
+  headings are one string in one ink (no two-tone `accent` part, `splitAccent` deleted), ≤ 6 words (hero ≤ 5;
+  `lib/content.test.ts`); the hero title spans the full width (2 lines at 1440) with copy + phone below; the steps are a
+  list in large type (no icons, no index numbers); benefits have no icon boxes; no hairlines, header blur or resting
+  shadows outside app fragments: separation is tone (`--tone`) and space; FAQ rows are filled, the +/× is CSS.
+  Running text uses `--body` (≈ 9:1), `--muted` is for notes only. The phone and the report card are marked `data-ui`
+  (cropped app pieces: they keep their own lines/shadow, CSS for them is scoped `[data-ui] …`).
+  **Motion layer**: parts marked `data-reveal` (+ `style={revealOrder(n)}` for the stagger, `lib/reveal.ts`) rise in
+  once via `components/motion-layer.tsx` (IntersectionObserver). `<html data-motion="on">` is set by that script only,
+  so without JS or with reduced motion nothing is hidden. Keep `revealOrder` and the constants in `lib/reveal.ts`: a
+  server component that imports a plain function from a `"use client"` file gets a client reference and the page 500s.
+  The phone drifts slowly (`phone-drift`). Skill checks: `lint.mjs` 0 FAIL; `inspect.mjs` (needs Node 22, or Node 20
+  with `--experimental-websocket`) still reports 2 FAIL on purpose — no real photos yet (stock pictures of strangers
+  would mislead; needs real app screenshots/photos from the owner) and the hero is 3 lines at 390px (five long
+  Mongolian words; 34px is the largest size that holds 3 lines).
 - Links are deploy-time config (`lib/links.ts`, see `.env.example`): `NEXT_PUBLIC_APP_STORE_URL`,
   `NEXT_PUBLIC_PLAY_STORE_URL`, `NEXT_PUBLIC_COMPANY_PANEL_URL`, `NEXT_PUBLIC_SITE_URL`. Empty store URL ⇒
   the store button is disabled and says 'Удахгүй' (no fake links).
@@ -679,7 +706,7 @@ Details and the open decisions: `docs/PRODUCTION_CHECKLIST.md` ("Second audit").
   `credentials_changed_at`), device tokens + phone checks + free-text answers deleted, choice answers kept anonymous,
   decided payouts kept for accounting with holder name removed and the account masked; 409 while a payout is pending;
   any balance is forfeited (the app warns). Event `ViewerDeleted`. App: Profile → 'Бүртгэл устгах'
-  (`delete_account_sheet.dart`); facts shared with the privacy page. Owner/accountant should confirm the retention choice.
+  (`delete_account_sheet.dart`): a short sheet (owner, 2026-10-22) — two lines `kDeleteSheetPoints` + the balance warning; the full rules (`kDeleteAccountFacts`) live on the privacy page. Owner/accountant should confirm the retention choice.
 - Store config: ids above, version from pubspec, Android release signing from git-ignored `android/key.properties`
   (template `key.properties.example`; no key ⇒ debug-signed APK with a warning, App Bundle refused), adaptive +
   monochrome icons, iPhone-only, `PrivacyInfo.xcprivacy`, `ITSAppUsesNonExemptEncryption=false`, ATS local networking

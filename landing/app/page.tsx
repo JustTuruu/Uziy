@@ -4,6 +4,7 @@ import { FinalCta } from "@/components/final-cta";
 import { ForCompanies } from "@/components/for-companies";
 import { Hero } from "@/components/hero";
 import { HowItWorks } from "@/components/how-it-works";
+import { MotionLayer } from "@/components/motion-layer";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { siteLinks } from "@/lib/links";
@@ -22,11 +23,13 @@ export default function LandingPage() {
         <ForCompanies
           companyPanelUrl={siteLinks.companyPanel}
           contactEmail={siteLinks.contactEmail}
+          contactPhone={siteLinks.contactPhone}
         />
         <FaqList />
         <FinalCta links={siteLinks} />
       </main>
       <SiteFooter year={new Date().getFullYear()} />
+      <MotionLayer />
     </>
   );
 }

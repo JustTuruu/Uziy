@@ -6,11 +6,21 @@
   --paper: #f7f8f2;
   --ink: #203b30;
   --green: #235a43;
-  --muted: #657368;
+  /* Running text: close to the ink so paragraphs read solid (about 9:1 on paper). */
+  --body: #2c463a;
+  /* Secondary notes only; stays at 4.5:1 or more on paper and on the tinted bands. */
+  --muted: #56645a;
   --line: #dce2d7;
+  --tone: #edf0e6;
   --lime: #d6ed9d;
   --white: #fff;
   --font-display: var(--font-body);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --t-press: 140ms;
+  --t-hover: 180ms;
+  --t-reveal: 800ms;
+  --stagger-item: 80ms;
 }
 * {
   box-sizing: border-box;
@@ -76,7 +86,7 @@ h3 {
   letter-spacing: -0.6px;
 }
 p {
-  line-height: 1.7;
+  line-height: 1.65;
 }
 .container {
   width: min(1200px, calc(100% - 96px));
@@ -98,9 +108,7 @@ p {
   position: sticky;
   top: 0;
   z-index: 30;
-  background: #f7f8f2ee;
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--line);
+  background: var(--paper);
 }
 .header-inner {
   height: 88px;
@@ -127,8 +135,14 @@ p {
 .header-inner nav {
   display: flex;
   gap: 25px;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
+}
+.header-inner nav a,
+.text-link,
+.company-login,
+.footer-right a {
+  transition: color var(--t-hover) ease;
 }
 .header-inner nav a:hover,
 .text-link:hover {
@@ -145,11 +159,17 @@ p {
   font-size: 15px;
   font-weight: 600;
   transition:
-    background 0.2s,
-    transform 0.2s;
+    background var(--t-hover) ease,
+    transform var(--t-hover) var(--ease-out);
 }
 .button:hover {
   transform: translateY(-2px);
+}
+.button:active,
+.store-button:active,
+.demo-submit:active {
+  transform: scale(0.97);
+  transition-duration: var(--t-press);
 }
 .button-primary {
   background: var(--green);
@@ -158,8 +178,11 @@ p {
 .button-primary:hover {
   background: #174330;
 }
-.button-outline {
-  border: 1px solid #bdc8b8;
+.button-quiet {
+  background: #e8eddc;
+}
+.button-quiet:hover {
+  background: #dfe6cf;
 }
 .header-company {
   min-height: 42px;
@@ -167,26 +190,30 @@ p {
 }
 .hero {
   display: grid;
-  grid-template-columns: 1.04fr 1fr;
-  gap: 45px;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 56px;
+  row-gap: 48px;
   align-items: center;
-  padding-block: 62px 68px;
+  padding-block: 56px 72px;
 }
-.hero h1 {
-  font-size: clamp(42px, 4.4vw, 62px);
+.hero-title {
+  grid-column: 1 / -1;
+  font-size: clamp(40px, 5.6vw, 84px);
   font-weight: 600;
-  letter-spacing: -0.035em;
-  line-height: 1.1;
+  letter-spacing: -0.04em;
+  line-height: 1.04;
   text-wrap: balance;
 }
-.hero h1 > span {
-  color: #688254;
+/* The copy starts level with the top of the phone, right under the headline, so the button stays in the first screen. */
+.hero-copy {
+  align-self: start;
+  padding-top: 28px;
 }
 .hero-description {
-  font-size: 17px;
-  color: var(--muted);
+  font-size: 20px;
+  line-height: 1.55;
+  color: var(--body);
   max-width: 34rem;
-  margin-top: 26px;
 }
 .hero-facts {
   list-style: none;
@@ -195,7 +222,7 @@ p {
   display: flex;
   flex-wrap: wrap;
   gap: 10px 22px;
-  font-size: 14px;
+  font-size: 15px;
   color: var(--muted);
 }
 .hero-facts li {
@@ -224,13 +251,25 @@ p {
 .hero-stage {
   min-width: 0;
   position: relative;
-  min-height: 646px;
+  min-height: 700px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #e8eddc;
   border-radius: 14px;
   overflow: hidden;
+}
+/* The one moving picture: the phone drifts slowly, as if held. */
+.demo-composition {
+  animation: phone-drift 7s var(--ease-in-out, ease-in-out) infinite alternate;
+}
+@keyframes phone-drift {
+  from {
+    transform: translateY(-8px);
+  }
+  to {
+    transform: translateY(10px);
+  }
 }
 .stage-orbit {
   position: absolute;
@@ -256,7 +295,7 @@ p {
   position: relative;
   margin-top: 12px;
 }
-.phone {
+[data-ui] .phone {
   position: relative;
   width: 320px;
   background: #fcfdf9;
@@ -347,8 +386,7 @@ p {
   border-radius: 15px 15px 19px 19px;
   border-top: 6px solid #bbc2ae;
   border-bottom: 5px solid #acb498;
-  background: linear-gradient(90deg, #e0e9c7, #f5f7de 45%, #cbd6a6);
-  box-shadow: 12px 15px 17px #46613b38;
+  background: #eef3d8;
   display: flex;
   align-items: center;
   flex-direction: column;
@@ -366,7 +404,7 @@ p {
   font-size: 5px;
   letter-spacing: 1px;
 }
-.can-line {
+[data-ui] .can-line {
   height: 1px;
   width: 45px;
   background: #91a372;
@@ -443,7 +481,7 @@ legend {
 }
 .demo-submit:disabled {
   background: #e2e7dc;
-  color: #687462;
+  color: #56645a;
 }
 .demo-disclaimer {
   text-align: center;
@@ -457,37 +495,6 @@ legend {
   background: #263c30;
   border-radius: 4px;
   margin: 8px auto;
-}
-.floating-note {
-  position: absolute;
-  left: -85px;
-  top: 60px;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: white;
-  box-shadow: 0 10px 25px #36462d12;
-  padding: 14px;
-  border: 1px solid #e2e8dc;
-  border-radius: 10px;
-  transform: rotate(-5deg);
-}
-.floating-note strong {
-  display: block;
-  font-size: 14px;
-}
-.floating-note div > span {
-  font-size: 12px;
-  color: var(--muted);
-}
-.note-icon {
-  display: grid;
-  place-items: center;
-  width: 31px;
-  height: 31px;
-  border-radius: 50%;
-  background: #eaf0dc;
 }
 
 .demo-success {
@@ -520,48 +527,39 @@ legend {
   margin-bottom: 52px;
 }
 .section-heading > p {
-  font-size: 16px;
-  max-width: 22rem;
-  color: var(--muted);
-}
-.muted-heading {
-  color: #7a8c70;
+  font-size: 17px;
+  max-width: 24rem;
+  color: var(--body);
 }
 .steps {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
   list-style: none;
   padding: 0;
   margin: 0;
-  gap: 30px;
+  gap: 8px;
 }
 .steps li {
-  border-top: 1px solid #bfcbb5;
-  padding-top: 24px;
-}
-.step-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: var(--green);
-  margin-bottom: 30px;
-}
-.step-top span {
-  font-size: 12px;
-  color: var(--muted);
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 48px;
+  align-items: baseline;
+  padding: 30px 36px;
+  border-radius: 14px;
+  background: var(--tone);
 }
 .steps h3 {
-  font-size: 17px;
-  margin-bottom: 12px;
+  font-size: clamp(26px, 2.4vw, 34px);
+  letter-spacing: -0.03em;
+  line-height: 1.15;
 }
 .steps p {
-  font-size: 15px;
-  color: var(--muted);
+  font-size: 18px;
+  color: var(--body);
+  max-width: 36rem;
 }
 .benefits-section {
-  padding: 84px 0;
-  background: #edf0e6;
-  border-block: 1px solid var(--line);
+  padding: 96px 0;
+  background: var(--tone);
 }
 .benefits-layout {
   display: grid;
@@ -571,9 +569,9 @@ legend {
 
 .benefits-intro > p {
   max-width: 30rem;
-  color: var(--muted);
-  font-size: 16px;
-  margin: 22px 0 36px;
+  color: var(--body);
+  font-size: 18px;
+  margin: 22px 0 44px;
 }
 .privacy-panel {
   align-self: start;
@@ -618,35 +616,18 @@ legend {
   margin-top: 3px;
   color: var(--lime);
 }
-.benefit-list article {
-  display: flex;
-  gap: 22px;
-  padding: 23px 0;
-  border-bottom: 1px solid #d4ddca;
-}
-.benefit-list article:first-child {
-  padding-top: 0;
-}
-.benefit-list article:last-child {
-  border: 0;
-  padding-bottom: 0;
-}
-.benefit-icon {
+.benefit-list {
   display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 43px;
-  height: 43px;
-  border: 1px solid #cad6bd;
-  border-radius: 10px;
+  gap: 36px;
 }
 .benefit-list h3 {
-  font-size: 18px;
+  font-size: 24px;
+  letter-spacing: -0.02em;
   margin-bottom: 8px;
 }
 .benefit-list p {
-  font-size: 15px;
-  color: var(--muted);
+  font-size: 17px;
+  color: var(--body);
 }
 .company-panel {
   display: grid;
@@ -665,7 +646,7 @@ legend {
   color: #bbd499;
 }
 .company-description {
-  font-size: 16px;
+  font-size: 18px;
   max-width: 34rem;
   color: #bacbbd;
   margin-top: 20px;
@@ -674,7 +655,7 @@ legend {
   list-style: none;
   padding: 0;
   margin: 26px 0;
-  font-size: 15px;
+  font-size: 17px;
 }
 .company-actions {
   display: flex;
@@ -682,18 +663,22 @@ legend {
   align-items: center;
   gap: 14px 24px;
 }
-.company-contact {
+.company-contacts-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+.company-login {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 15px;
+  gap: 4px;
   color: #dbe8c6;
   text-decoration: underline;
   text-underline-offset: 4px;
 }
 .company-note {
   margin-top: 16px;
-  font-size: 14px;
+  font-size: 15px;
   color: #bacbbd;
 }
 .company-panel li {
@@ -709,7 +694,7 @@ legend {
 .button-lime {
   background: var(--lime);
   color: var(--ink);
-  font-size: 12px;
+  font-size: 15px;
 }
 .button-lime:hover {
   background: #e6f6c3;
@@ -735,13 +720,12 @@ legend {
   background: #365341;
   color: var(--lime);
 }
-.report-card {
+[data-ui] .report-card {
   padding: 24px;
   background: #f7f9f1;
   color: var(--ink);
   border-radius: 12px;
   transform: rotate(-3deg);
-  box-shadow: 8px 13px 0 #ffffff0b;
 }
 .report-title {
   display: flex;
@@ -790,7 +774,7 @@ legend {
 .report-row:first-of-type i {
   background: var(--green);
 }
-.report-footer {
+[data-ui] .report-footer {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -806,7 +790,7 @@ legend {
 .report-caption {
   text-align: center;
   color: #b4c7b6;
-  font-size: 12px;
+  font-size: 13px;
   margin-top: 25px;
 }
 .faq-layout {
@@ -816,15 +800,23 @@ legend {
   padding-top: 0;
 }
 .section-description {
-  font-size: 13px;
-  color: var(--muted);
+  font-size: 18px;
+  color: var(--body);
   margin-top: 20px;
 }
 .faq-list {
-  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 8px;
 }
 .faq-list details {
-  border-bottom: 1px solid var(--line);
+  background: var(--tone);
+  border-radius: 12px;
+  padding-inline: 24px;
+  transition: background var(--t-hover) ease;
+}
+.faq-list details:hover,
+.faq-list details[open] {
+  background: #e6ebdb;
 }
 .faq-list summary {
   display: flex;
@@ -832,24 +824,30 @@ legend {
   gap: 20px;
   list-style: none;
   padding: 22px 0;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 500;
 }
 .faq-list summary::-webkit-details-marker {
   display: none;
 }
 
-.faq-list summary svg {
+/* The open/close mark is drawn in CSS: a plus that turns into a cross when the answer is open. */
+.faq-list summary::after {
+  content: "+";
   margin-left: auto;
   flex-shrink: 0;
-  transition: transform 0.2s;
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--green);
+  transition: transform var(--t-hover) var(--ease-out);
 }
-.faq-list details[open] svg {
+.faq-list details[open] summary::after {
   transform: rotate(45deg);
 }
 .faq-list details > p {
-  font-size: 15px;
-  color: var(--muted);
+  font-size: 17px;
+  color: var(--body);
   padding: 0 40px 24px 0;
   max-width: 62ch;
 }
@@ -878,8 +876,8 @@ legend {
 }
 .download-copy > small {
   display: block;
-  font-size: 13px;
-  color: #526247;
+  font-size: 15px;
+  color: #45553b;
   margin-top: 15px;
 }
 .store-buttons {
@@ -898,6 +896,12 @@ legend {
   border-radius: 8px;
   min-width: 149px;
   text-align: left;
+  transition:
+    background var(--t-hover) ease,
+    transform var(--t-hover) var(--ease-out);
+}
+a.store-button:hover {
+  background: #1b2e24;
 }
 .store-button:disabled {
   background: transparent;
@@ -906,10 +910,10 @@ legend {
 }
 .store-button small {
   display: block;
-  font-size: 10px;
+  font-size: 13px;
 }
 .store-button b {
-  font-size: 14px;
+  font-size: 15px;
 }
 .site-footer {
   display: flex;
@@ -919,7 +923,7 @@ legend {
   padding-block: 40px;
 }
 .site-footer p {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--muted);
   margin-top: 13px;
   max-width: 300px;
@@ -931,7 +935,7 @@ legend {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: 15px;
 }
 .site-footer .brand {
   gap: 0;
@@ -948,11 +952,6 @@ legend {
 .skip-link:focus {
   top: 12px;
 }
-@media (min-width: 1500px) {
-  .hero h1 {
-    font-size: 68px;
-  }
-}
 @media (max-width: 1100px) {
   .container {
     width: calc(100% - 64px);
@@ -962,19 +961,13 @@ legend {
     font-size: 13px;
   }
   .hero {
-    gap: 30px;
-  }
-  .hero h1 {
-    font-size: 52px;
-    letter-spacing: -2.8px;
+    column-gap: 32px;
   }
   .hero-actions {
     gap: 16px;
     flex-wrap: wrap;
   }
-  .floating-note {
-    left: -37px;
-  }
+  
 
   .benefits-layout {
     gap: 60px;
@@ -986,8 +979,16 @@ legend {
   .company-panel h2 {
     font-size: 31px;
   }
-  .steps {
-    gap: 20px;
+  .steps li {
+    gap: 32px;
+  }
+}
+@media (max-width: 1000px) {
+  .benefits-layout {
+    grid-template-columns: 1fr;
+  }
+  .privacy-panel {
+    position: static;
   }
 }
 @media (max-width: 800px) {
@@ -1003,11 +1004,7 @@ legend {
   .hero {
     grid-template-columns: 1fr;
     padding-top: 42px;
-    gap: 40px;
-  }
-  .hero h1 {
-    font-size: 58px;
-    letter-spacing: -3px;
+    row-gap: 32px;
   }
   .hero-description {
     max-width: 470px;
@@ -1017,17 +1014,17 @@ legend {
   }
   .hero-copy {
     max-width: 550px;
+    padding-top: 0;
   }
-  .floating-note {
-    left: -65px;
-  }
+  
 
   .section {
     padding-block: 65px;
   }
-  .steps {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 32px;
+  .steps li {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 26px 26px;
   }
   .section-heading {
     margin-bottom: 35px;
@@ -1073,13 +1070,10 @@ legend {
 
 }
 @media (max-width: 500px) {
-  .hero h1 {
-    font-size: 46px;
-    letter-spacing: -2.3px;
-  }
-
-  .hero-description {
-    font-size: 14px;
+  .hero-title {
+    /* Five long Mongolian words: 34px is the largest size that holds them to three lines at 390px. */
+    font-size: 34px;
+    letter-spacing: -0.035em;
   }
   .hero-actions {
     gap: 18px;
@@ -1088,25 +1082,13 @@ legend {
   .hero-stage {
     min-height: 607px;
   }
-  .phone {
+  [data-ui] .phone {
     width: 262px;
   }
-  .floating-note {
-    left: -24px;
-    top: 70px;
-    padding: 10px;
-    gap: 7px;
-  }
-  .floating-note strong {
-    font-size: 12px;
-  }
-  .floating-note div > span {
-    font-size: 11px;
-  }
-  .note-icon {
-    width: 24px;
-    height: 24px;
-  }
+  
+  
+  
+  
 
   .section-heading {
     display: block;
@@ -1115,24 +1097,13 @@ legend {
     margin-top: 20px;
     font-size: 15px;
   }
-  .steps {
-    gap: 28px 20px;
-  }
-  .steps h3 {
-    font-size: 16px;
-  }
-  .steps p {
-    font-size: 14px;
-  }
-  .step-top {
-    margin-bottom: 22px;
+  .steps li {
+    padding: 22px 20px;
   }
   .benefits-layout {
-    grid-template-columns: 1fr;
     gap: 40px;
   }
   .privacy-panel {
-    position: static;
     padding: 28px 24px;
   }
 
@@ -1140,14 +1111,14 @@ legend {
     padding: 28px 23px;
   }
   .company-panel h2 {
-    font-size: 31px;
-    letter-spacing: -1.5px;
+    font-size: 28px;
+    letter-spacing: -0.03em;
   }
   .company-panel .button {
     padding-inline: 15px;
     gap: 13px;
   }
-  .report-card {
+  [data-ui] .report-card {
     padding: 20px;
   }
   .faq-list summary {
@@ -1155,7 +1126,7 @@ legend {
     gap: 15px;
   }
   .download-inner h2 {
-    font-size: 34px;
+    font-size: 30px;
   }
   .store-button {
     min-width: 140px;
@@ -1191,12 +1162,31 @@ legend {
   }
 }
 
-.floating-note {
-  pointer-events: none;
+@media (max-width: 500px) {
+  .hero-description {
+    font-size: 18px;
+  }
+  .section-description,
+  .section-heading > p,
+  .steps p {
+    font-size: 17px;
+  }
+  .faq-list details {
+    padding-inline: 18px;
+  }
 }
 
-@media (max-width: 500px) {
-  .steps p {
-    font-size: 14px;
-  }
+/* Motion layer (components/motion-layer.tsx). Parts start hidden only once the script has switched motion on,
+   so without JavaScript, or with reduced motion, the page is simply finished. */
+html[data-motion="on"] [data-reveal] {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity var(--t-reveal) var(--ease-expo),
+    transform var(--t-reveal) var(--ease-expo);
+  transition-delay: calc(var(--reveal-order, 0) * var(--stagger-item));
+}
+html[data-motion="on"] [data-reveal].is-revealed {
+  opacity: 1;
+  transform: none;
 }

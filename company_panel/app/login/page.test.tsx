@@ -7,6 +7,8 @@ import LoginPage from "./page";
 
 const router = { replace: vi.fn(), push: vi.fn(), refresh: vi.fn() };
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
+const handoff = vi.hoisted(() => ({ handOffToAdmin: vi.fn() }));
+vi.mock("@/lib/admin-handoff", () => handoff);
 
 function me(role: Me["role"]): Me {
   return {
@@ -53,6 +55,7 @@ async function submitForm() {
 describe("Company login", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    handoff.handOffToAdmin.mockReset();
     router.push.mockReset();
     window.localStorage.clear();
     vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -154,28 +157,51 @@ describe("Company login", () => {
     expect(screen.queryByText("Утсаа баталгаажуулах")).toBeNull();
   });
 
-  it.each(["ADMIN", "VIEWER"] as const)(
-    "rejects a signed-in %s account without storing a token",
-    async (role) => {
-      vi.spyOn(authApi, "login").mockResolvedValue({
-        token: "jwt-2",
-        user: me(role),
-      });
-      render(<LoginPage />);
-      await submitForm();
-      expect(await screen.findByText("Энэ данс компани эрхгүй байна")).toBeTruthy();
-      expect(router.push).not.toHaveBeenCalled();
-      expect(auth.getToken()).toBeNull();
-    },
-  );
-
-  it("turns away an admin at the SMS step before any SMS is shown", async () => {
-    vi.spyOn(authApi, "login").mockResolvedValue({ twoStep: { ...twoStep, role: "ADMIN" } });
+  it("rejects a signed-in VIEWER account without storing a token", async () => {
+    vi.spyOn(authApi, "login").mockResolvedValue({ token: "jwt-2", user: me("VIEWER") });
     render(<LoginPage />);
     await submitForm();
-    expect(await screen.findByText("Энэ данс компани эрхгүй байна")).toBeTruthy();
-    expect(screen.queryByText("Утсаа баталгаажуулах")).toBeNull();
+    expect(await screen.findByText("Энэ дансаар самбарт нэвтрэх эрхгүй байна")).toBeTruthy();
     expect(router.push).not.toHaveBeenCalled();
+    expect(auth.getToken()).toBeNull();
+    expect(handoff.handOffToAdmin).not.toHaveBeenCalled();
+  });
+
+  it("hands a signed-in ADMIN to the admin panel and stores nothing here", async () => {
+    handoff.handOffToAdmin.mockResolvedValue(undefined);
+    vi.spyOn(authApi, "login").mockResolvedValue({ token: "admin-jwt", user: me("ADMIN") });
+    render(<LoginPage />);
+    await submitForm();
+    await waitFor(() => expect(handoff.handOffToAdmin).toHaveBeenCalledWith("admin-jwt"));
+    expect(router.push).not.toHaveBeenCalled();
+    expect(auth.getToken()).toBeNull();
+    expect(auth.getUser()).toBeNull();
+  });
+
+  it("gives an admin the SMS step too, then hands the session on", async () => {
+    handoff.handOffToAdmin.mockResolvedValue(undefined);
+    vi.spyOn(authApi, "login").mockResolvedValue({ twoStep: { ...twoStep, role: "ADMIN" } });
+    vi.spyOn(authApi, "phoneCheck").mockResolvedValue(checkSays("VERIFIED"));
+    vi.spyOn(authApi, "verify").mockResolvedValue({
+      token: "admin-jwt",
+      user: me("ADMIN"),
+      deviceToken: "device-9",
+      deviceTrustedUntil: "2026-11-21T00:00:00Z",
+    });
+    render(<LoginPage />);
+    await submitForm();
+    expect(await screen.findByText("Утсаа баталгаажуулах")).toBeTruthy();
+    await nextPoll();
+    await waitFor(() => expect(handoff.handOffToAdmin).toHaveBeenCalledWith("admin-jwt"));
+    expect(auth.getToken()).toBeNull();
+  });
+
+  it("shows why when the admin panel cannot be reached", async () => {
+    handoff.handOffToAdmin.mockRejectedValue(new Error("down"));
+    vi.spyOn(authApi, "login").mockResolvedValue({ token: "admin-jwt", user: me("ADMIN") });
+    render(<LoginPage />);
+    await submitForm();
+    expect(await screen.findByRole("alert")).toBeTruthy();
     expect(auth.getToken()).toBeNull();
   });
 

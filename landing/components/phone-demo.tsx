@@ -5,7 +5,6 @@ import {
   Check,
   Leaf,
   RotateCcw,
-  ShieldCheck,
   Signal,
   BatteryFull,
 } from "lucide-react";
@@ -27,15 +26,6 @@ export function PhoneDemo() {
   const [done, setDone] = useState(false);
   return (
     <div className="demo-composition">
-      <div className="floating-note">
-        <span className="note-icon">
-          <ShieldCheck size={18} aria-hidden />
-        </span>
-        <div>
-          <strong>{DEMO.note.title}</strong>
-          <span>{DEMO.note.text}</span>
-        </div>
-      </div>
       <div className="phone">
         <div className="phone-status" aria-hidden>
           <b>9:41</b>

@@ -1,11 +1,6 @@
-import { Target, MessageCircle, Clock3, ShieldCheck, Check } from "lucide-react";
+import { ShieldCheck, Check } from "lucide-react";
 import { BENEFITS, BENEFITS_HEADING, PRIVACY } from "@/lib/content";
-
-const icons = {
-  target: Target,
-  message: MessageCircle,
-  timer: Clock3,
-};
+import { revealOrder } from "@/lib/reveal";
 
 /** Why Uziy: three benefits on the left, the concrete privacy promises on the right. */
 export function Benefits() {
@@ -13,30 +8,20 @@ export function Benefits() {
     <section id="benefits" className="benefits-section">
       <div className="container benefits-layout">
         <div className="benefits-intro">
-          <h2>
-            {BENEFITS_HEADING.title}
-            <br />
-            <span className="muted-heading">{BENEFITS_HEADING.accent}</span>
-          </h2>
-          <p>{BENEFITS_HEADING.lead}</p>
+          <h2 data-reveal>{BENEFITS_HEADING.title}</h2>
+          <p data-reveal style={revealOrder(1)}>
+            {BENEFITS_HEADING.lead}
+          </p>
           <div className="benefit-list">
-            {BENEFITS.map((b) => {
-              const Icon = icons[b.icon];
-              return (
-                <article key={b.title}>
-                  <span className="benefit-icon">
-                    <Icon size={22} aria-hidden />
-                  </span>
-                  <div>
-                    <h3>{b.title}</h3>
-                    <p>{b.text}</p>
-                  </div>
-                </article>
-              );
-            })}
+            {BENEFITS.map((b, i) => (
+              <article key={b.title} data-reveal style={revealOrder(i + 2)}>
+                <h3>{b.title}</h3>
+                <p>{b.text}</p>
+              </article>
+            ))}
           </div>
         </div>
-        <aside id="privacy" className="privacy-panel" aria-labelledby="privacy-title">
+        <aside id="privacy" className="privacy-panel" aria-labelledby="privacy-title" data-reveal style={revealOrder(1)}>
           <span className="privacy-icon">
             <ShieldCheck size={26} aria-hidden />
           </span>

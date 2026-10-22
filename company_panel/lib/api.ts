@@ -123,6 +123,8 @@ interface RequestOptions {
   body?: unknown;
   /** Skip Authorization header even if a token exists (e.g. /auth/login). */
   anonymous?: boolean;
+  /** Use this token instead of the stored one (an admin's token is never stored here). */
+  token?: string;
 }
 
 export async function apiFetch<T>(path: string, opts: RequestOptions = {}): Promise<T> {
@@ -135,7 +137,7 @@ export async function apiFetch<T>(path: string, opts: RequestOptions = {}): Prom
     headers["Content-Type"] = "application/json";
 
   if (!opts.anonymous) {
-    const token = auth.getToken();
+    const token = opts.token ?? auth.getToken();
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
 
@@ -207,6 +209,18 @@ export const authApi = {
       body,
       anonymous: true,
     }),
+};
+
+/** A one-time code that carries an admin's session to the admin panel. */
+export interface HandoffCode {
+  code: string;
+  expiresAt: string;
+}
+
+export const handoffApi = {
+  /** `POST /admin/session-handoffs` with the admin's fresh token (201). */
+  create: (adminToken: string) =>
+    apiFetch<HandoffCode>("/admin/session-handoffs", { method: "POST", token: adminToken }),
 };
 
 export type CampaignStatus =

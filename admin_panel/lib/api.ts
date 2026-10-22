@@ -4,12 +4,6 @@
 // - Throws ApiError on non-2xx responses with the status code + parsed body.
 
 import { useMemo, useSyncExternalStore } from "react";
-import type {
-  ConsoleLoginBody,
-  ConsoleLoginResult,
-  PhoneCheck,
-  VerifiedLogin,
-} from "@uziy/ui";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
@@ -188,27 +182,15 @@ function safeJson(text: string): unknown {
 
 // --- High-level endpoints (thin wrappers so pages don't build URLs) --------
 
-/** `POST /auth/login`: a token (200), or on a browser the server does not recognise the SMS step (202). */
-export type LoginResult = ConsoleLoginResult<Me>;
-
-/** Also the `ConsoleLoginApi` the shared login flow (`@uziy/ui` useConsoleLogin) calls. */
+/**
+ * The admin panel has no sign-in form (owner, 2026-10-22): admins sign in on the company login page, which hands
+ * them over with a one-time code. This spends it for the admin panel's own session.
+ */
 export const authApi = {
-  login: (body: ConsoleLoginBody) =>
-    apiFetch<LoginResult>("/auth/login", {
+  redeemHandoff: (code: string) =>
+    apiFetch<AuthResponse>("/auth/session-handoffs/redeem", {
       method: "POST",
-      body,
-      anonymous: true,
-    }),
-  phoneCheck: (verificationId: string) =>
-    apiFetch<PhoneCheck>(
-      `/auth/phone-verifications/${encodeURIComponent(verificationId)}`,
-      { anonymous: true },
-    ),
-  /** Finishes the SMS step: the token, plus this browser's device token. */
-  verify: (body: { phoneNumber: string; verificationId: string }) =>
-    apiFetch<VerifiedLogin<Me>>("/auth/login/verify", {
-      method: "POST",
-      body,
+      body: { code },
       anonymous: true,
     }),
 };

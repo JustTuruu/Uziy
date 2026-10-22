@@ -132,30 +132,33 @@ describe("apiFetch", () => {
   });
 });
 
-describe("authApi.login", () => {
+describe("authApi.redeemHandoff", () => {
   const originalFetch = globalThis.fetch;
   afterEach(() => {
     globalThis.fetch = originalFetch;
+    window.localStorage.clear();
   });
 
-  it("POSTs to /auth/login and skips the Authorization header", async () => {
+  it("POSTs the code to /auth/session-handoffs/redeem without any token", async () => {
+    auth.setToken("stale");
     let captured: RequestInit | undefined;
     let capturedUrl: RequestInfo | URL | undefined;
     globalThis.fetch = vi.fn(async (url, init) => {
       capturedUrl = url;
       captured = init ?? {};
-      return new Response(
-        JSON.stringify({ token: "t", user: { id: 1 } }),
-        { status: 200, headers: { "content-type": "application/json" } },
-      );
+      return new Response(JSON.stringify({ token: "t", user: { id: 1 } }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
     }) as typeof fetch;
 
-    const res = await authApi.login({ phoneNumber: "88112233", password: "password" });
+    const res = await authApi.redeemHandoff("one-time");
 
-    expect(String(capturedUrl)).toContain("/auth/login");
+    expect(String(capturedUrl)).toMatch(/\/auth\/session-handoffs\/redeem$/);
     expect(captured!.method).toBe("POST");
+    expect(JSON.parse(String(captured!.body))).toEqual({ code: "one-time" });
     expect((captured!.headers as Record<string, string>).Authorization).toBeUndefined();
-    expect("token" in res && res.token).toBe("t");
+    expect(res.token).toBe("t");
   });
 });
 

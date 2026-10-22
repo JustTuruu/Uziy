@@ -44,13 +44,24 @@ Future<void> _confirm(WidgetTester tester, String password) async {
 }
 
 void main() {
-  testWidgets('says what is deleted, in the privacy page wording',
-      (tester) async {
+  testWidgets('says what is deleted in a few short lines', (tester) async {
     await _pump(tester, onDelete: (_) async {});
 
     expect(find.text(kDeleteTitle), findsOneWidget);
-    for (final fact in kDeleteAccountFacts) {
-      expect(find.text(fact), findsOneWidget);
+    for (final point in kDeleteSheetPoints) {
+      expect(find.text(point), findsOneWidget);
+    }
+    // The long privacy-page wording stays off the sheet.
+    expect(find.text(kDeleteFactAnswers), findsNothing);
+  });
+
+  test('every line of the sheet is short enough to read at a glance', () {
+    for (final line in [
+      kDeleteIntro,
+      ...kDeleteSheetPoints,
+      deleteBalanceWarning(123456)
+    ]) {
+      expect(line.length, lessThanOrEqualTo(45), reason: line);
     }
   });
 

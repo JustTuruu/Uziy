@@ -5,21 +5,26 @@ import '../../services/viewer_service.dart';
 import '../../widgets/ui.dart';
 import '../auth/auth_widgets.dart';
 import '../auth/login_fields.dart';
-import 'privacy_content.dart';
 import 'profile_widgets.dart';
 
 const String kDeleteTitle = 'Бүртгэлээ устгах уу?';
-const String kDeleteIntro = 'Устгасны дараа буцаах боломжгүй.';
+const String kDeleteIntro = 'Дараа нь буцааж сэргээх боломжгүй.';
+const String kDeletePointData = 'Таны мэдээлэл, бичсэн хариултууд устана.';
+const String kDeletePointPhone = 'Энэ дугаараар дахин бүртгүүлж болно.';
+
+/// The sheet's short summary, read at a glance; the full rules (anonymous
+/// choice answers, kept payout records, pending payouts) stay on the
+/// privacy page, and a pending payout is refused by the server anyway.
+const List<String> kDeleteSheetPoints = [kDeletePointData, kDeletePointPhone];
 const String kDeletePasswordLabel = 'Нууц үг';
-const String kDeletePasswordHint = 'Баталгаажуулахын тулд нууц үгээ оруулна уу';
+const String kDeletePasswordHint = 'Нууц үгээ бичнэ үү';
 const String kDeletePasswordRequired = 'Нууц үгээ оруулна уу';
 const String kDeleteConfirm = 'Устгах';
 const String kDeleteCancel = 'Болих';
 
 /// The warning shown when money is left in the wallet: it is forfeited.
 String deleteBalanceWarning(num balance) =>
-    'Таны хэтэвчинд ${formatTugrik(balance)} байна. Бүртгэлээ устгавал энэ '
-    'мөнгийг авах боломжгүй болно.';
+    'Хэтэвчинд буй ${formatTugrik(balance)} буцаагдахгүй.';
 
 /// Deletes the account with the typed password; throws [ApiException] with
 /// a message to show (wrong password, payout still being checked).
@@ -39,8 +44,8 @@ Future<bool> showDeleteAccountSheet(
   return result ?? false;
 }
 
-/// Says what deleting the account does ([kDeleteAccountFacts], the same
-/// wording as the privacy page), warns when [balance] would be forfeited,
+/// Says in two lines what deleting the account does ([kDeleteSheetPoints]),
+/// warns when [balance] would be forfeited,
 /// and asks for the password before calling [onDelete].
 class DeleteAccountSheet extends StatefulWidget {
   const DeleteAccountSheet({
@@ -128,7 +133,7 @@ class _DeleteAccountSheetState extends State<DeleteAccountSheet> {
                 ),
               ),
               const SizedBox(height: AppSpacing.xl),
-              for (final fact in kDeleteAccountFacts)
+              for (final point in kDeleteSheetPoints)
                 Padding(
                   padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                   child: Row(
@@ -137,7 +142,7 @@ class _DeleteAccountSheetState extends State<DeleteAccountSheet> {
                       ExcludeSemantics(
                         child: Text('•  ', style: secondary),
                       ),
-                      Expanded(child: Text(fact, style: secondary)),
+                      Expanded(child: Text(point, style: secondary)),
                     ],
                   ),
                 ),
