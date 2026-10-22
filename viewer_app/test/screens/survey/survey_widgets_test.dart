@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:viewer_app/models/survey_question.dart';
 import 'package:viewer_app/screens/survey/survey_widgets.dart';
+import 'package:viewer_app/services/viewer_service.dart';
 import 'package:viewer_app/widgets/ui.dart';
 
 /// Pumps [child] in the real app theme. [reduceMotion] emulates the OS
@@ -473,6 +476,69 @@ void main() {
       );
       expect(find.text('Өмнөх хариулт'), findsOneWidget);
       expect(find.text('13 тэмдэгт'), findsOneWidget);
+    });
+  });
+
+  group('free-text answer length (AnswerValidator.MAX_ANSWER_LENGTH)', () {
+    TextEditingValue type(String text) =>
+        const AnswerLengthFormatter().formatEditUpdate(
+          TextEditingValue.empty,
+          TextEditingValue(
+            text: text,
+            selection: TextSelection.collapsed(offset: text.length),
+          ),
+        );
+
+    test('is measured on exactly the JSON the app sends', () {
+      for (final text in ['Сайн', 'мөр\nхоёр', 'таб\t"ишлэл"\\', '😀']) {
+        expect(
+          answerJsonLength(text),
+          ViewerService.encodeAnswer(text).length,
+          reason: text,
+        );
+      }
+    });
+
+    test('an answer that fits is left alone', () {
+      final text = 'а' * (kMaxAnswerJsonLength - 2);
+      expect(type(text).text, text);
+      expect(isAnswerFull(text), isTrue);
+      expect(isAnswerFull('а' * 10), isFalse);
+    });
+
+    // Regression: a long answer was only refused at submit ('Хариулт хэт урт байна').
+    test('a long paste keeps as much as the backend takes', () {
+      for (final unit in ['а', '\n', '"', '😀', 'e\u0301']) {
+        final kept = type(unit * 3000).text;
+        expect(
+          answerJsonLength(kept),
+          lessThanOrEqualTo(kMaxAnswerJsonLength),
+          reason: 'unit ${jsonEncode(unit)}',
+        );
+        expect(
+          answerJsonLength(kept + unit),
+          greaterThan(kMaxAnswerJsonLength),
+          reason: 'as much as fits, unit ${jsonEncode(unit)}',
+        );
+        expect(kept.characters.every((c) => c == unit), isTrue);
+      }
+    });
+
+    testWidgets('the counter says when the answer is full', (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+      await _pump(
+        tester,
+        SingleChildScrollView(
+          child: SurveyTextField(controller: controller, onChanged: (_) {}),
+        ),
+      );
+
+      await tester.enterText(find.byType(TextField), 'б' * 5000);
+      await tester.pump();
+
+      expect(answerJsonLength(controller.text), kMaxAnswerJsonLength);
+      expect(find.text(kAnswerFullLabel), findsOneWidget);
     });
   });
 

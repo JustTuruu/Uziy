@@ -4,7 +4,7 @@ import mn.uziy.backend.domain.Role;
 import mn.uziy.backend.domain.UserEntity;
 import org.springframework.stereotype.Component;
 
-/** Pattern: Factory — builds new (unsaved) viewer and company {@link UserEntity} instances. */
+/** Pattern: Factory — builds new (unsaved) viewer, company and admin {@link UserEntity} instances. */
 @Component
 public class UserFactory {
 
@@ -24,6 +24,11 @@ public class UserFactory {
         UserEntity user = base(phoneNumber, passwordHash, Role.COMPANY);
         user.setCompanyName(companyName.strip());
         return user;
+    }
+
+    /** An admin account another admin opens (admins are never self-created). */
+    public UserEntity newAdmin(String phoneNumber, String passwordHash) {
+        return base(phoneNumber, passwordHash, Role.ADMIN);
     }
 
     private static UserEntity base(String phone, String passwordHash, Role role) {

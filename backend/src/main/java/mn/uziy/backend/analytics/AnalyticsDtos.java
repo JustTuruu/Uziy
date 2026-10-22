@@ -53,7 +53,7 @@ public final class AnalyticsDtos {
     }
 
     public record AnalyticsResponse(int days, Totals totals, List<CampaignPerformance> campaigns,
-                                    List<DailyViews> daily, List<Long> hourly, @Nullable Audience audience,
+                                    List<DailyViews> daily, @Nullable Audience audience,
                                     List<QuestionBreakdown> questions, List<SegmentBreakdown> segments) {
     }
 }

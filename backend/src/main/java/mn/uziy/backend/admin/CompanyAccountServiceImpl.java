@@ -3,6 +3,7 @@ package mn.uziy.backend.admin;
 import java.util.List;
 import mn.uziy.backend.auth.UserFactory;
 import mn.uziy.backend.common.ConflictException;
+import mn.uziy.backend.common.Messages;
 import mn.uziy.backend.common.event.DomainEventPublisher;
 import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
@@ -18,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class CompanyAccountServiceImpl implements CompanyAccountService {
 
-    static final String PHONE_TAKEN = "Энэ утасны дугаар өөр бүртгэлд ашиглагдаж байна";
+    static final String PHONE_TAKEN = Messages.ACCOUNT_PHONE_TAKEN;
     static final String ACTION_LIST = "VIEW_COMPANIES";
 
     private final UserRepository users;

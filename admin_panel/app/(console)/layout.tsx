@@ -6,9 +6,11 @@ import {
   Banknote,
   BarChart3,
   Bell,
+  Building2,
   LayoutDashboard,
   Percent,
   PlaySquare,
+  ShieldCheck,
   Users,
   Wallet,
 } from "lucide-react";
@@ -51,6 +53,11 @@ function buildNav(pendingPayouts: number, pendingCampaigns: number): NavItem[] {
       icon: <Users size={16} />,
     },
     {
+      href: "/companies",
+      label: "Компаниуд",
+      icon: <Building2 size={16} />,
+    },
+    {
       href: "/insights",
       label: "Статистик",
       icon: <BarChart3 size={16} />,
@@ -65,6 +72,11 @@ function buildNav(pendingPayouts: number, pendingCampaigns: number): NavItem[] {
       href: "/pricing",
       label: "Шимтгэл",
       icon: <Percent size={16} />,
+    },
+    {
+      href: "/admins",
+      label: "Админууд",
+      icon: <ShieldCheck size={16} />,
     },
   ];
 }

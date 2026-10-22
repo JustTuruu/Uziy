@@ -17,7 +17,7 @@ class AnalyticsControllerTest {
     void passesTheCallersIdTheWindowAndTheCampaignFilterToTheService() {
         AnalyticsService service = mock(AnalyticsService.class);
         var response = new AnalyticsResponse(14, new Totals(0, 0, 0, 0, 0, null),
-                List.of(), List.of(), List.of(), null, List.of(), List.of());
+                List.of(), List.of(), null, List.of(), List.of());
         when(service.analytics(500L, 14, 3L)).thenReturn(response);
 
         var out = new AnalyticsController(service).get(14, 3L, new JwtPrincipal(500L, Role.COMPANY));

@@ -3,7 +3,6 @@ package mn.uziy.backend.company;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import mn.uziy.backend.domain.CampaignEntity;
 import mn.uziy.backend.domain.CampaignPaymentEntity;
 import mn.uziy.backend.domain.CampaignStatus;
@@ -12,10 +11,13 @@ import mn.uziy.backend.domain.PaymentStatus;
 import mn.uziy.backend.domain.SurveyQuestionEntity;
 import mn.uziy.backend.pricing.PricingResult;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.json.JsonMapper;
 
 /** Pattern: Factory — builds new campaign, question and payment entities from validated input. */
 @Component
 public class CampaignFactory {
+
+    private static final JsonMapper JSON = JsonMapper.builder().build();
 
     /** A new campaign in AWAITING_PAYMENT; only P = C × N is charged, any remainder of B is not. */
     public CampaignEntity newCampaign(long companyId, CreateCampaignReq req, PricingResult pricing) {
@@ -76,9 +78,11 @@ public class CampaignFactory {
         return RatingScale.TYPE.equals(q.type()) ? RatingScale.LABELS : q.options();
     }
 
+    /**
+     * A real JSON encoder, never string gluing: escaping only quotes let a backslash, a line break or a tab
+     * that a company typed into an option produce invalid JSON, and the insert failed with a 500.
+     */
     private static String optionsJson(List<String> options) {
-        return options.stream()
-                .map(o -> "\"" + o.replace("\"", "\\\"") + "\"")
-                .collect(Collectors.joining(", ", "[", "]"));
+        return JSON.writeValueAsString(options);
     }
 }

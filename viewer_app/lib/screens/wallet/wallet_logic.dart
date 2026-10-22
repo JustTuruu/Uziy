@@ -148,8 +148,12 @@ class PayoutAmountFormatter extends TextInputFormatter {
     final caret = newValue.selection.isValid
         ? newValue.selection.extentOffset.clamp(0, newValue.text.length)
         : newValue.text.length;
-    var digitsBeforeCaret = _digitCount(newValue.text.substring(0, caret));
-    var digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    // A pasted '5,000.00' is five thousand, not 500,000: the field never shows a
+    // period itself, so a period with one or two digits after it is a fraction.
+    final whole = newValue.text.replaceFirst(_pastedFraction, '');
+    var digitsBeforeCaret =
+        _digitCount(whole.substring(0, caret.clamp(0, whole.length)));
+    var digits = whole.replaceAll(RegExp(r'[^0-9]'), '');
     final leadingZeros =
         digits.length - digits.replaceFirst(RegExp(r'^0+'), '').length;
     digits = digits.substring(leadingZeros);
@@ -167,6 +171,8 @@ class PayoutAmountFormatter extends TextInputFormatter {
       ),
     );
   }
+
+  static final RegExp _pastedFraction = RegExp(r'\.\d{1,2}$');
 
   static int _digitCount(String s) =>
       s.replaceAll(RegExp(r'[^0-9]'), '').length;

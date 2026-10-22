@@ -4,6 +4,12 @@
 // - Throws ApiError on non-2xx responses with the status code + parsed body.
 
 import { useMemo, useSyncExternalStore } from "react";
+import type {
+  ConsoleLoginBody,
+  ConsoleLoginResult,
+  PhoneCheck,
+  VerifiedLogin,
+} from "@uziy/ui";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
@@ -62,6 +68,7 @@ export const auth = {
     window.localStorage.setItem(TOKEN_KEY, token);
   },
 
+  /** Signs out. The browser's device token (`@uziy/ui` deviceTokenStore) stays: it is what skips the SMS next time. */
   clear(): void {
     if (typeof window === "undefined") return;
     window.localStorage.removeItem(TOKEN_KEY);
@@ -177,13 +184,25 @@ function safeJson(text: string): unknown {
 
 // --- High-level endpoints (thin wrappers so pages don't build URLs) --------
 
-export interface LoginBody {
-  phoneNumber: string;
-  password: string;
-}
+/** `POST /auth/login`: a token (200), or on a browser the server does not recognise the SMS step (202). */
+export type LoginResult = ConsoleLoginResult<Me>;
+
+/** Also the `ConsoleLoginApi` the shared login flow (`@uziy/ui` useConsoleLogin) calls. */
 export const authApi = {
-  login: (body: LoginBody) =>
-    apiFetch<AuthResponse>("/auth/login", {
+  login: (body: ConsoleLoginBody) =>
+    apiFetch<LoginResult>("/auth/login", {
+      method: "POST",
+      body,
+      anonymous: true,
+    }),
+  phoneCheck: (verificationId: string) =>
+    apiFetch<PhoneCheck>(
+      `/auth/phone-verifications/${encodeURIComponent(verificationId)}`,
+      { anonymous: true },
+    ),
+  /** Finishes the SMS step: the token, plus this browser's device token. */
+  verify: (body: { phoneNumber: string; verificationId: string }) =>
+    apiFetch<VerifiedLogin<Me>>("/auth/login/verify", {
       method: "POST",
       body,
       anonymous: true,
@@ -405,10 +424,8 @@ export interface AnalyticsReport {
   totals: AnalyticsTotals;
   campaigns: CampaignPerformance[];
   daily: DailyResponses[];
-  /** Responses per hour of the day, index 0..23, Ulaanbaatar time. */
-  hourly: number[];
   audience: AnalyticsAudience | null;
-  /** Only filled when one campaign is selected. */
+  /** Only filled when one campaign is selected; covers the campaign's whole life, whatever `days` is. */
   questions: QuestionBreakdown[];
   /** Only filled when one campaign is selected, and only for big-enough segments. */
   segments: SegmentBreakdown[];

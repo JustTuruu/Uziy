@@ -14,10 +14,12 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Optional;
 import java.util.UUID;
 import mn.uziy.backend.auth.LoginAttemptLimiter;
 import mn.uziy.backend.common.BadRequestException;
 import mn.uziy.backend.common.TooManyRequestsException;
+import mn.uziy.backend.common.event.DomainEventPublisher;
 import mn.uziy.backend.domain.Role;
 import mn.uziy.backend.domain.UserRepository;
 import mn.uziy.backend.phoneverify.PhoneVerificationPurpose;
@@ -36,8 +38,9 @@ class PasswordResetServiceTest {
     private static final Instant NOW = Instant.parse("2026-10-14T04:00:00Z");
     private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
     private final LoginAttemptLimiter loginLimiter = new LoginAttemptLimiter(clock);
+    private final DomainEventPublisher events = mock(DomainEventPublisher.class);
     private final PasswordResetServiceImpl service =
-            new PasswordResetServiceImpl(verifiedPhones, users, encoder, loginLimiter, clock);
+            new PasswordResetServiceImpl(verifiedPhones, users, encoder, loginLimiter, clock, events);
 
     private void viewerExists() {
         when(users.trySetPassword(eq(PHONE), eq(Role.VIEWER), any(), any())).thenReturn(1);
@@ -84,6 +87,26 @@ class PasswordResetServiceTest {
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage(VerifiedPhoneClaim.NOT_VERIFIED);
         verify(users, never()).trySetPassword(any(), any(), any(), any());
+    }
+
+    /** Observers (remembered browsers) must forget what the old password unlocked. */
+    @Test
+    void announcesTheResetWithTheAccountIdOnly() {
+        viewerExists();
+        when(encoder.encode("newpass1")).thenReturn("new-hash");
+        when(users.findIdByPhoneNumber(PHONE)).thenReturn(Optional.of(42L));
+
+        service.reset(req());
+
+        verify(events).publish(new PasswordReset(42L));
+    }
+
+    @Test
+    void aRefusedResetAnnouncesNothing() {
+        when(users.trySetPassword(eq(PHONE), eq(Role.VIEWER), any(), any())).thenReturn(0);
+
+        assertThatThrownBy(() -> service.reset(req())).isInstanceOf(BadRequestException.class);
+        verify(events, never()).publish(any());
     }
 
     /** No viewer with that phone (none, or a company/admin): refused, so the transaction gives the check back. */

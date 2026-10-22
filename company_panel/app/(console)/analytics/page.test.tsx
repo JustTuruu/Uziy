@@ -8,6 +8,8 @@ import {
   type AnalyticsReport,
   type CampaignPerformance,
 } from "@/lib/api";
+import { SMALL_GROUPS_HIDDEN, TOO_FEW_ANSWERS } from "@/lib/analytics";
+import { TEXT_ANSWERS_PRIVATE } from "@/lib/survey-results";
 import { formatTugrik } from "@/lib/utils";
 import AnalyticsPage from "./page";
 
@@ -63,7 +65,6 @@ function report(over: Partial<AnalyticsReport> = {}): AnalyticsReport {
       { date: "2026-10-06", responses: 0 },
       { date: "2026-10-07", responses: 6 },
     ],
-    hourly: Array.from({ length: 24 }, (_, h) => (h === 19 ? 12 : 0)),
     audience: {
       gender: [
         { label: "MALE", count: 4 },
@@ -145,6 +146,25 @@ describe("Company analytics page", () => {
     expect(screen.getByRole("region", { name: "Хот" })).toHaveTextContent("Улаанбаатар");
   });
 
+  it("takes audience shares of all responses and says small groups are hidden", async () => {
+    vi.spyOn(analyticsApi, "get").mockResolvedValue(
+      report({
+        totals: { ...report().totals, responses: 20 },
+        audience: {
+          gender: [],
+          ageBands: [{ label: "18–24", count: 15 }],
+          cities: [{ label: "Улаанбаатар", count: 10 }],
+        },
+      }),
+    );
+    render(<AnalyticsPage />);
+
+    const gender = await screen.findByRole("region", { name: "Хүйс" });
+    expect(gender).toHaveTextContent(SMALL_GROUPS_HIDDEN);
+    expect(screen.getByRole("region", { name: "Нас" })).toHaveTextContent("15 · 75%");
+    expect(screen.getByRole("region", { name: "Хот" })).toHaveTextContent("10 · 50%");
+  });
+
   it("explains why the audience is hidden when there are too few responses", async () => {
     vi.spyOn(analyticsApi, "get").mockResolvedValue(report({ audience: null }));
     render(<AnalyticsPage />);
@@ -210,6 +230,13 @@ describe("Company analytics page", () => {
               answered: 3,
               options: [],
             },
+            {
+              questionId: 9,
+              prompt: "Дахин авах уу?",
+              type: "SINGLE_CHOICE",
+              answered: 3,
+              options: [],
+            },
           ],
         }),
       );
@@ -223,7 +250,10 @@ describe("Company analytics page", () => {
     expect(
       within(screen.getByRole("region", { name: "Таалагдсан уу?" })).getByText("4 · 67%"),
     ).toBeInTheDocument();
-    expect(screen.getByText(/хувь хүний хариултыг харуулахгүй/)).toBeInTheDocument();
+    expect(screen.getByText(TEXT_ANSWERS_PRIVATE)).toBeInTheDocument();
+    expect(screen.getByRole("article", { name: "Дахин авах уу?" })).toHaveTextContent(
+      TOO_FEW_ANSWERS,
+    );
   });
 
   it("clicking a campaign name in the table selects it", async () => {
@@ -266,19 +296,22 @@ describe("Company analytics page", () => {
     expect(clear).toHaveBeenCalled();
   });
 
-  it("draws the hour-of-day chart next to the daily one", async () => {
+  /** Companies said the hour of day is not relevant to them (owner, 2026-10-22). */
+  it("has no hour-of-day chart or finding", async () => {
     vi.spyOn(analyticsApi, "get").mockResolvedValue(report());
     render(<AnalyticsPage />);
 
-    expect(await screen.findByRole("img", { name: "Цаг тутмын хариултын тоо" })).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "Өдөр тутмын хариултын тоо" })).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: "Өдөр тутмын хариултын тоо" })).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "Цаг тутмын хариултын тоо" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Хэдэн цагт хариулдаг вэ")).not.toBeInTheDocument();
+    expect(screen.queryByText(/цагт ирдэг/)).not.toBeInTheDocument();
   });
 
   it("writes the findings as sentences", async () => {
     vi.spyOn(analyticsApi, "get").mockResolvedValue(report());
     render(<AnalyticsPage />);
 
-    expect(await screen.findByText(/19:00–20:00 цагт ирдэг/)).toBeInTheDocument();
+    expect(await screen.findByText(/хоногт бюджет дуусна/)).toBeInTheDocument();
   });
 
   it("shows how long each campaign's budget lasts", async () => {
@@ -289,11 +322,23 @@ describe("Company analytics page", () => {
     expect(screen.getByText("4 хариулт үлдсэн")).toBeInTheDocument();
   });
 
+  const likedIt = {
+    questionId: 7,
+    prompt: "Таалагдсан уу?",
+    type: "SINGLE_CHOICE" as const,
+    answered: 10,
+    options: [
+      { label: "Тийм", count: 5 },
+      { label: "Үгүй", count: 5 },
+    ],
+  };
+
   it("compares who answered what once a campaign with big-enough segments is selected", async () => {
     vi.spyOn(analyticsApi, "get")
       .mockResolvedValueOnce(report())
       .mockResolvedValue(
         report({
+          questions: [likedIt],
           segments: [
             {
               questionId: 7,
@@ -302,7 +347,10 @@ describe("Company analytics page", () => {
                 { label: "MALE", count: 5 },
                 { label: "FEMALE", count: 5 },
               ],
-              options: [{ label: "Тийм", counts: [5, 0] }],
+              options: [
+                { label: "Тийм", counts: [5, 0] },
+                { label: "Үгүй", counts: [0, 5] },
+              ],
             },
           ],
         }),
@@ -312,15 +360,23 @@ describe("Company analytics page", () => {
 
     await pickCampaign("Шинэ 5G багц");
 
-    expect(await screen.findByText("Хэн ямар хариулт өгсөн бэ")).toBeInTheDocument();
-    expect(screen.getByRole("table", { name: "Таалагдсан уу?" })).toHaveTextContent("100%");
+    expect(await screen.findByText("Хэн юу гэж хариулсан")).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: /Таалагдсан уу\?/ })).toHaveTextContent("100%");
+    // Ages were not sent (too few per band), so the note says groups are hidden.
+    expect(screen.getByText(/5-аас цөөн хүнтэй бүлгийг нууцлалын үүднээс харуулахгүй/)).toBeInTheDocument();
+    expect(screen.getByText(/хугацааны шүүлтүүрээс хамаарахгүй/)).toBeInTheDocument();
   });
 
-  it("hides the segment card when no segment is big enough", async () => {
-    vi.spyOn(analyticsApi, "get").mockResolvedValue(report({ segments: [] }));
+  it("says so instead of a table when no group is big enough", async () => {
+    vi.spyOn(analyticsApi, "get")
+      .mockResolvedValueOnce(report())
+      .mockResolvedValue(report({ questions: [likedIt], segments: [] }));
     render(<AnalyticsPage />);
     await screen.findByText("Нийт хариулт");
 
-    expect(screen.queryByText("Хэн ямар хариулт өгсөн бэ")).not.toBeInTheDocument();
+    await pickCampaign("Шинэ 5G багц");
+
+    expect(await screen.findByText(/Бүлэг тус бүрээр харуулахад хариулт хүрэлцэхгүй/)).toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: /Таалагдсан уу\?/ })).not.toBeInTheDocument();
   });
 });

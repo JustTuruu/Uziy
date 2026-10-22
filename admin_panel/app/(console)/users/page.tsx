@@ -4,14 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, ShieldCheck, X } from "lucide-react";
-import {
-  Badge,
-  Button,
-  Card,
-  CardBody,
-  CardHeader,
-  PageHeader,
-} from "@uziy/ui";
+import { Badge, Button, Card, CardBody, CardHeader, PageHeader, TableScroll } from "@uziy/ui";
 import { UserFilterBar } from "@/components/users/user-filter-bar";
 import { adminApi, ApiError, auth, type AdminUser } from "@/lib/api";
 import {
@@ -110,124 +103,126 @@ export default function UsersPage() {
               Хэрэглэгчдийн жагсаалт ачаалж байна...
             </div>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--color-divider)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
-                  <th className="px-5 py-3 font-semibold">Утас</th>
-                  <th className="px-5 py-3 font-semibold">Профайл</th>
-                  <th className="px-5 py-3 font-semibold">Хот</th>
-                  <th className="px-5 py-3 font-semibold">Бүртгэсэн</th>
-                  <th className="px-5 py-3 font-semibold text-right">
-                    Үлдэгдэл
-                  </th>
-                  <th className="px-5 py-3 font-semibold text-right">Статус</th>
-                  <th className="px-5 py-3 font-semibold text-right">Үйлдэл</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((u) => (
-                  <tr
-                    key={u.id}
-                    className={`border-b border-[var(--color-divider)] last:border-0 ${
-                      u.role === "COMPANY"
-                        ? "hover:bg-[var(--color-surface-elevated)]/60"
-                        : ""
-                    }`}
-                  >
-                    <td className="px-5 py-3 font-mono text-[var(--color-text-primary)]">
-                      {u.phoneNumber}
-                    </td>
-                    <td className="px-5 py-3 text-[var(--color-text-secondary)]">
-                      {u.role === "COMPANY" ? (
-                        <Link
-                          href={`/companies/${u.id}`}
-                          className="inline-flex items-center gap-1 hover:text-[var(--color-text-primary)]"
-                        >
-                          <span className="font-semibold text-[var(--color-text-primary)]">
-                            {u.companyName ?? "—"}
-                          </span>
-                          <span className="text-[var(--color-text-muted)]">
-                            (Компани)
-                          </span>
-                          <ChevronRight
-                            size={12}
-                            className="text-[var(--color-text-muted)]"
-                          />
-                        </Link>
-                      ) : u.role === "ADMIN" ? (
-                        <span className="text-[var(--color-primary)]">
-                          Админ
-                        </span>
-                      ) : (
-                        <span>
-                          {u.gender === "MALE"
-                            ? "♂"
-                            : u.gender === "FEMALE"
-                              ? "♀"
-                              : ""}
-                          {u.age !== null ? ` · ${u.age} нас` : ""}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3 text-[var(--color-text-secondary)]">
-                      {u.city ?? "—"}
-                    </td>
-                    <td className="px-5 py-3 text-[var(--color-text-muted)]">
-                      {relativeTime(u.createdAt)}
-                    </td>
-                    <td className="px-5 py-3 text-right font-mono text-[var(--color-text-primary)]">
-                      {formatTugrik(u.balance)}
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <Badge tone={u.isVerified ? "success" : "neutral"}>
-                        {u.isVerified ? "Баталгаажсан" : "Баталгаажаагүй"}
-                      </Badge>
-                    </td>
-                    <td className="px-5 py-3">
-                      <div className="flex justify-end gap-2">
-                        {!u.isVerified && (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            leftIcon={<ShieldCheck size={12} />}
-                            onClick={() => verify(u.id)}
-                            disabled={pendingVerify.has(u.id)}
-                          >
-                            {pendingVerify.has(u.id)
-                              ? "Хадгалж байна..."
-                              : "Баталгаажуулах"}
-                          </Button>
-                        )}
-                      </div>
-                    </td>
+            <TableScroll>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--color-divider)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
+                    <th className="px-5 py-3 font-semibold">Утас</th>
+                    <th className="px-5 py-3 font-semibold">Профайл</th>
+                    <th className="px-5 py-3 font-semibold">Хот</th>
+                    <th className="px-5 py-3 font-semibold">Бүртгэсэн</th>
+                    <th className="px-5 py-3 font-semibold text-right">
+                      Үлдэгдэл
+                    </th>
+                    <th className="px-5 py-3 font-semibold text-right">Статус</th>
+                    <th className="px-5 py-3 font-semibold text-right">Үйлдэл</th>
                   </tr>
-                ))}
-                {filtered.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={7}
-                      className="px-5 py-10 text-center text-sm text-[var(--color-text-muted)]"
+                </thead>
+                <tbody>
+                  {filtered.map((u) => (
+                    <tr
+                      key={u.id}
+                      className={`border-b border-[var(--color-divider)] last:border-0 ${
+                        u.role === "COMPANY"
+                          ? "hover:bg-[var(--color-surface-elevated)]/60"
+                          : ""
+                      }`}
                     >
-                      {filtering ? (
-                        <div className="flex flex-col items-center gap-3">
-                          <span>Шүүлтэд тохирох хэрэглэгч олдсонгүй.</span>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            leftIcon={<X size={12} aria-hidden />}
-                            onClick={() => setFilters(NO_USER_FILTERS)}
+                      <td className="px-5 py-3 font-mono text-[var(--color-text-primary)]">
+                        {u.phoneNumber}
+                      </td>
+                      <td className="px-5 py-3 text-[var(--color-text-secondary)]">
+                        {u.role === "COMPANY" ? (
+                          <Link
+                            href={`/companies/${u.id}`}
+                            className="inline-flex items-center gap-1 hover:text-[var(--color-text-primary)]"
                           >
-                            Шүүлтийг цэвэрлэх
-                          </Button>
+                            <span className="font-semibold text-[var(--color-text-primary)]">
+                              {u.companyName ?? "—"}
+                            </span>
+                            <span className="text-[var(--color-text-muted)]">
+                              (Компани)
+                            </span>
+                            <ChevronRight
+                              size={12}
+                              className="text-[var(--color-text-muted)]"
+                            />
+                          </Link>
+                        ) : u.role === "ADMIN" ? (
+                          <span className="text-[var(--color-primary)]">
+                            Админ
+                          </span>
+                        ) : (
+                          <span>
+                            {u.gender === "MALE"
+                              ? "♂"
+                              : u.gender === "FEMALE"
+                                ? "♀"
+                                : ""}
+                            {u.age !== null ? ` · ${u.age} нас` : ""}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3 text-[var(--color-text-secondary)]">
+                        {u.city ?? "—"}
+                      </td>
+                      <td className="px-5 py-3 text-[var(--color-text-muted)]">
+                        {relativeTime(u.createdAt)}
+                      </td>
+                      <td className="px-5 py-3 text-right font-mono text-[var(--color-text-primary)]">
+                        {formatTugrik(u.balance)}
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <Badge tone={u.isVerified ? "success" : "neutral"}>
+                          {u.isVerified ? "Баталгаажсан" : "Баталгаажаагүй"}
+                        </Badge>
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex justify-end gap-2">
+                          {!u.isVerified && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              leftIcon={<ShieldCheck size={12} />}
+                              onClick={() => verify(u.id)}
+                              disabled={pendingVerify.has(u.id)}
+                            >
+                              {pendingVerify.has(u.id)
+                                ? "Хадгалж байна..."
+                                : "Баталгаажуулах"}
+                            </Button>
+                          )}
                         </div>
-                      ) : (
-                        "Хэрэглэгч олдсонгүй."
-                      )}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                      </td>
+                    </tr>
+                  ))}
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="px-5 py-10 text-center text-sm text-[var(--color-text-muted)]"
+                      >
+                        {filtering ? (
+                          <div className="flex flex-col items-center gap-3">
+                            <span>Шүүлтэд тохирох хэрэглэгч олдсонгүй.</span>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              leftIcon={<X size={12} aria-hidden />}
+                              onClick={() => setFilters(NO_USER_FILTERS)}
+                            >
+                              Шүүлтийг цэвэрлэх
+                            </Button>
+                          </div>
+                        ) : (
+                          "Хэрэглэгч олдсонгүй."
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </TableScroll>
           )}
         </CardBody>
       </Card>

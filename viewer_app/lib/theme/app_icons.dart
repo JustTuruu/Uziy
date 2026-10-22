@@ -32,6 +32,9 @@ abstract final class AppIcons {
   static const IconData warning = LucideIcons.triangleAlert;
   static const IconData watched = LucideIcons.circlePlay;
 
+  // Video player
+  static const IconData rewind = LucideIcons.rotateCcw;
+
   // Wallet history
   static const IconData payout = LucideIcons.landmark;
   static const IconData payoutReturned = LucideIcons.undo2;

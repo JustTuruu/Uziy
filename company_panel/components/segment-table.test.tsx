@@ -1,7 +1,8 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { segmentGrid } from "@/lib/survey-results";
 import type { SegmentBreakdown } from "@/lib/api";
-import { SegmentTable } from "./segment-table";
+import { SegmentTable, SegmentTintScale } from "./segment-table";
 
 const breakdown: SegmentBreakdown = {
   questionId: 1,
@@ -17,27 +18,39 @@ const breakdown: SegmentBreakdown = {
   ],
 };
 
+const grid = segmentGrid(breakdown, ["Үгүй", "Тийм"]);
+
 describe("SegmentTable", () => {
-  it("heads each column with the segment and how many answered", () => {
-    render(<SegmentTable breakdown={breakdown} />);
-    const table = screen.getByRole("table", { name: "Таалагдсан уу?" });
-    const head = within(table).getAllByRole("columnheader");
-    expect(head[1]).toHaveTextContent("Эрэгтэй");
-    expect(head[1]).toHaveTextContent("(5)");
-    expect(head[2]).toHaveTextContent("Эмэгтэй");
-    expect(head[3]).toHaveTextContent("18–24");
+  it("is a captioned table", () => {
+    render(<SegmentTable grid={grid} caption="Таалагдсан уу? — хэн юу гэж хариулсан" />);
+    expect(screen.getByRole("table", { name: "Таалагдсан уу? — хэн юу гэж хариулсан" })).toBeInTheDocument();
   });
 
-  it("writes each cell as the share of its segment who chose the option", () => {
-    render(<SegmentTable breakdown={breakdown} />);
+  it("groups the columns under Хүйс and Нас, each headed with its name and size", () => {
+    render(<SegmentTable grid={grid} caption="c" />);
+    const head = screen.getAllByRole("columnheader");
+    expect(head.map((h) => h.textContent)).toEqual(["Хүйс", "Нас", "Эрэгтэй5 хүн", "Эмэгтэй10 хүн", "18–2415 хүн"]);
+    expect(head[0]).toHaveAttribute("colspan", "2");
+    expect(head[0]).toHaveAttribute("scope", "colgroup");
+  });
+
+  it("writes each cell as the share of its group who chose the answer", () => {
+    render(<SegmentTable grid={grid} caption="c" />);
     const yes = screen.getByRole("row", { name: /Тийм/ });
-    expect(yes).toHaveTextContent("100%"); // 5 of 5 men
-    expect(yes).toHaveTextContent("20%"); // 2 of 10 women
-    expect(yes).toHaveTextContent("47%"); // 7 of 15
+    const cells = within(yes).getAllByRole("cell");
+    expect(cells.map((c) => c.textContent)).toEqual(["100%", "20%", "47%"]);
+    expect(within(cells[1]).getByTitle("2 / 10 хүн")).toBeInTheDocument();
   });
 
-  it("labels each row by its option", () => {
-    render(<SegmentTable breakdown={breakdown} />);
-    expect(screen.getByRole("rowheader", { name: "Үгүй" })).toBeInTheDocument();
+  it("keeps the row order it is given", () => {
+    render(<SegmentTable grid={grid} caption="c" />);
+    expect(screen.getAllByRole("rowheader").map((r) => r.textContent)).toEqual(["Үгүй", "Тийм"]);
+  });
+});
+
+describe("SegmentTintScale", () => {
+  it("is decoration only", () => {
+    const { container } = render(<SegmentTintScale />);
+    expect(container.firstElementChild).toHaveAttribute("aria-hidden", "true");
   });
 });

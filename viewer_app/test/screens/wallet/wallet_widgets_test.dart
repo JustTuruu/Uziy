@@ -510,12 +510,63 @@ void main() {
       // Seven blocks on the card (mark, title, chip, label, balance, number,
       // badge) plus the payout button.
       expect(find.byType(Skeleton), findsNWidgets(8));
-      final card = tester.getSize(find.byType(AspectRatio).first);
+      final card = tester.getSize(find.byType(IntrinsicHeight).first);
       expect(card.width / card.height,
           closeTo(WalletBalanceCard.aspectRatio, 0.01));
       expect(tester.takeException(), isNull);
       expect(find.bySemanticsLabel('Ачаалж байна'), findsOneWidget);
       handle.dispose();
+    });
+
+    /// Regression (2026-10-22): a fixed AspectRatio left 139pt for 154pt of
+    /// blocks on a 320pt phone (card 280 wide), so the placeholder overflowed.
+    testWidgets('grows instead of overflowing on a 320pt phone',
+        (tester) async {
+      await pumpWallet(tester, const WalletCardSkeleton(), width: 280);
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(tester.takeException(), isNull);
+      final card = tester.getSize(find.byType(IntrinsicHeight).first);
+      expect(card.height,
+          greaterThanOrEqualTo(card.width / WalletBalanceCard.aspectRatio));
+    });
+  });
+
+  group('PayoutHistoryRow at large text', () {
+    /// Regression (2026-10-22): '−250,000 ₮' took the whole row at 1.5x on a
+    /// 320pt phone, the bank name wrapped a letter per line and the row
+    /// overflowed. The amount now scales down within its own room.
+    testWidgets('a big amount scales down and leaves the title its room',
+        (tester) async {
+      await pumpWallet(
+        tester,
+        PayoutHistoryRow(
+          payout: PayoutRequest(
+            id: 8,
+            amount: 250000,
+            bank: 'Khan Bank',
+            status: PayoutStatus.rejected,
+            requestedAt: DateTime(2026, 10, 14, 10),
+            decidedAt: DateTime(2026, 10, 14, 11),
+            rejectReason: 'Дансны нэр таарахгүй байна',
+          ),
+          now: DateTime(2026, 10, 14, 12),
+        ),
+        width: 280,
+        textScale: 1.5,
+      );
+
+      expect(tester.takeException(), isNull);
+      final amount = find.textContaining('250,000');
+      expect(tester.getSize(amount).width, greaterThan(0));
+      final fitted =
+          find.ancestor(of: amount, matching: find.byType(FittedBox));
+      expect(tester.getSize(fitted).width,
+          lessThanOrEqualTo(kHistoryAmountMaxWidth));
+      final row = tester.getSize(find.byType(PayoutHistoryRow)).width;
+      // Icon tile, gaps and paddings take 82 of the row; the rest minus the
+      // capped amount is the title's.
+      expect(row - 82 - kHistoryAmountMaxWidth, greaterThanOrEqualTo(70));
     });
   });
 

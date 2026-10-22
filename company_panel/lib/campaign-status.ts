@@ -75,3 +75,10 @@ const COVER_EDITABLE: ReadonlySet<CampaignStatus> = new Set([
 export function canEditCover(status: CampaignStatus): boolean {
   return COVER_EDITABLE.has(status);
 }
+
+/** Asked in a dialog before a campaign is finished for good (a COMPLETED campaign cannot be resumed). */
+export const COMPLETE_CONFIRM = {
+  title: "Судалгааг дуусгах уу?",
+  message: "Дууссан судалгааг дахин идэвхжүүлэх боломжгүй.",
+  confirmLabel: "Дуусгах",
+} as const;

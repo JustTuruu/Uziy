@@ -124,6 +124,22 @@ class PasswordResetFlowIntegrationTest {
         mvc.perform(get("/viewer/me").header("Authorization", "Bearer " + newToken)).andExpect(status().isOk());
     }
 
+    /** A reset forgets every remembered browser of the account, in the same transaction. */
+    @Test
+    void aResetForgetsTheAccountsRememberedBrowsers() throws Exception {
+        String phone = "72000013";
+        viewer(phone);
+        long id = jdbc.queryForObject("SELECT id FROM users WHERE phone_number = ?", Long.class, phone);
+        jdbc.update("""
+                INSERT INTO trusted_devices (user_id, token_hash, created_at, expires_at, last_used_at)
+                VALUES (?, ?, now(), now() + INTERVAL '30 days', now())""", id, "f".repeat(64));
+
+        reset(phone, verifiedCheck(phone, "PASSWORD_RESET"), "newpass1").andExpect(status().isNoContent());
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM trusted_devices WHERE user_id = ?", Long.class, id))
+                .isZero();
+    }
+
     /** The reset changes the password only: the balance (and everything else) stays as the database has it. */
     @Test
     void aResetLeavesTheBalanceAlone() throws Exception {

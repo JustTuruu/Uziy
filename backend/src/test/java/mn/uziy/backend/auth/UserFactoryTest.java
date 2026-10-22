@@ -44,4 +44,14 @@ class UserFactoryTest {
         assertThat(u.getPhoneNumber()).isEqualTo("88112233");
         assertThat(u.getGender()).isNull();
     }
+
+    @Test
+    void anAdminHasOnlyAPhoneAndAPassword() {
+        UserEntity u = factory.newAdmin("88112233", "hash");
+        assertThat(u.getRole()).isEqualTo(Role.ADMIN);
+        assertThat(u.getPhoneNumber()).isEqualTo("88112233");
+        assertThat(u.getPasswordHash()).isEqualTo("hash");
+        assertThat(u.getCompanyName()).isNull();
+        assertThat(u.getGender()).isNull();
+    }
 }

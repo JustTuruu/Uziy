@@ -82,16 +82,4 @@ public interface ViewHistoryRepository extends JpaRepository<ViewHistoryEntity, 
     """)
     List<CampaignRecentViews> recentByCompany(@Param("companyId") long companyId,
                                               @Param("since") OffsetDateTime since);
-
-    /** Completed views per hour of the day (0..23, in {@code zone}) since {@code since}: rows of [hour, count]. */
-    @Query(value = """
-        SELECT CAST(date_part('hour', timezone(:zone, v.watched_at)) AS int) AS hour, COUNT(*)
-        FROM view_history v JOIN campaigns c ON c.id = v.campaign_id
-        WHERE c.company_id = :companyId
-          AND (CAST(:campaignId AS bigint) IS NULL OR c.id = :campaignId)
-          AND v.watched_at >= :since
-        GROUP BY hour ORDER BY hour
-    """, nativeQuery = true)
-    List<Object[]> hourlyCounts(@Param("companyId") long companyId, @Param("campaignId") Long campaignId,
-                                @Param("since") OffsetDateTime since, @Param("zone") String zone);
 }

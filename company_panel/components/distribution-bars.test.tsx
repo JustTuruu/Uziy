@@ -47,6 +47,23 @@ describe("DistributionBars", () => {
     expect(fills[1].style.width).toBe("50%");
   });
 
+  it("can draw each bar as its share of the total instead", () => {
+    const { container } = render(
+      <DistributionBars
+        title="t"
+        scale="share"
+        total={10}
+        slices={[
+          { label: "most", count: 4 },
+          { label: "few", count: 1 },
+        ]}
+      />,
+    );
+    const fills = container.querySelectorAll<HTMLElement>("div.h-2.rounded-full.bg-\\[var\\(--color-primary\\)\\]");
+    expect(fills[0].style.width).toBe("40%");
+    expect(fills[1].style.width).toBe("10%");
+  });
+
   it("translates labels with formatLabel", () => {
     render(
       <DistributionBars
@@ -61,6 +78,17 @@ describe("DistributionBars", () => {
   it("says so when there is nothing to show", () => {
     render(<DistributionBars title="t" slices={[]} />);
     expect(screen.getByText("Өгөгдөл алга.")).toBeInTheDocument();
+  });
+
+  it("can say why there is nothing to show", () => {
+    render(<DistributionBars title="t" slices={[]} emptyText="Нуусан." />);
+    expect(screen.getByText("Нуусан.")).toBeInTheDocument();
+    expect(screen.queryByText("Өгөгдөл алга.")).not.toBeInTheDocument();
+  });
+
+  it("takes shares of the given total when some groups are left out", () => {
+    render(<DistributionBars title="t" slices={[{ label: "A", count: 5 }]} total={20} />);
+    expect(screen.getByText("5 · 25%")).toBeInTheDocument();
   });
 
   it("is a labelled region", () => {

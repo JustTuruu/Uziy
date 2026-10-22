@@ -38,11 +38,13 @@ The API listens on http://localhost:8080.
 
 | Method + Path                           | Role    | Purpose                                                                                                                                            |
 | --------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `POST /auth/login`                      | anon    | Return JWT + `Me`                                                                                                                                  |
+| `POST /auth/login`                      | anon    | `{phoneNumber, password, deviceToken?}` → 200 JWT + `Me`. ADMIN/COMPANY without a remembered `deviceToken` get 202 `{twoStep}` (SMS step) instead |
+| `POST /auth/login/verify`               | anon    | ADMIN/COMPANY: `{phoneNumber, verificationId}` once the SMS check is VERIFIED → `{token, user, deviceToken, deviceTrustedUntil}` (browser remembered 30 days) |
 | `POST /auth/phone-verifications`        | anon    | `{phoneNumber}` → 201 `{verificationId, shortcode, smsText, smsUri, displayInstruction, status, expiresAt}`; 409 taken phone, 429 too soon |
 | `GET  /auth/phone-verifications/{id}`   | anon    | `{verificationId, status: PENDING\|VERIFIED\|EXPIRED, expiresAt}` — the app polls it every 3 s |
 | `POST /auth/register/viewer`            | anon    | Create viewer + return JWT; needs a VERIFIED `verificationId` (used once)                                                                                                                         |
-| `POST /auth/register/company`           | anon    | Create company + return JWT                                                                                                                        |
+| `POST /admin/companies`                 | ADMIN   | Create a company account (companies cannot self-register since 2026-10-22)                                                                                                                        |
+| `POST /admin/users/{id}/trusted-devices/forget` | ADMIN | 204; the account's remembered browsers must pass the SMS step again (404 unknown id) |
 | `GET  /viewer/me`                       | VIEWER  | Current user profile                                                                                                                               |
 | `GET  /viewer/feed`                     | VIEWER  | Home feed (spec §4B targeting SQL)                                                                                                                 |
 | `GET  /viewer/campaigns/{id}/questions` | VIEWER  | Survey for a campaign                                                                                                                              |

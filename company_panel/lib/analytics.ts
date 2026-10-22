@@ -1,4 +1,8 @@
-import type { AnalyticsReport, AnalyticsSlice, DailyResponses } from "./api";
+import type {
+  AnalyticsReport,
+  AnalyticsSlice,
+  DailyResponses,
+} from "./api";
 import { formatTugrik } from "./utils";
 
 /** Time windows offered above the charts. */
@@ -10,11 +14,17 @@ export const DAY_OPTIONS = [
 
 export const DEFAULT_DAYS = "30";
 
-/** Fewer responses than this and the backend withholds the audience (mirrors AnalyticsService.MIN_AUDIENCE_SAMPLE). */
-/** A segment needs this many answerers before its answers are shown (mirrors AnalyticsService.MIN_SEGMENT_SAMPLE). */
-export const MIN_SEGMENT_SAMPLE = 5;
+/** The widest window the backend accepts (AnalyticsService.MAX_DAYS). Question results ignore the window anyway. */
+export const MAX_DAYS = 90;
 
+/** Fewer responses than this and the backend withholds the audience (mirrors AnalyticsService.MIN_AUDIENCE_SAMPLE). */
 export const MIN_AUDIENCE_SAMPLE = 5;
+
+/**
+ * A segment, an audience slice or a question needs this many people before its
+ * figures are shown (mirrors AnalyticsService.MIN_SEGMENT_SAMPLE).
+ */
+export const MIN_SEGMENT_SAMPLE = 5;
 
 const GENDER_LABEL: Record<string, string> = {
   MALE: "Эрэгтэй",
@@ -35,6 +45,24 @@ export function share(count: number, total: number): number {
 /** Total of a list of slices. */
 export function sliceTotal(slices: readonly AnalyticsSlice[]): number {
   return slices.reduce((sum, s) => sum + s.count, 0);
+}
+
+/** Said where the backend left out groups of fewer than the minimum (or ones that could be worked out from the rest). */
+export const SMALL_GROUPS_HIDDEN = `Хувь хүнийг таних боломжгүй байлгахын тулд ${MIN_AUDIENCE_SAMPLE}-аас цөөн хүнтэй бүлгийг харуулахгүй.`;
+
+/** Said instead of a choice question's bars while fewer than the minimum answered it. */
+export const TOO_FEW_ANSWERS = `Дор хаяж ${MIN_SEGMENT_SAMPLE} хариулт цугларсны дараа харуулна.`;
+
+/**
+ * What the audience shares are taken of: every response of the selection, not
+ * just the slices listed — the backend leaves small groups out, and a share of
+ * the shown ones only would overstate them.
+ */
+export function audienceBase(
+  report: Pick<AnalyticsReport, "totals">,
+  selected: { responses: number } | null,
+): number {
+  return selected ? selected.responses : report.totals.responses;
 }
 
 /** "37%" — one decimal only below 10 so small shares stay readable. */
@@ -108,33 +136,6 @@ export function dailyPoints(daily: readonly DailyResponses[]): ChartPoint[] {
   return daily.map((d) => ({ key: d.date, label: shortDate(d.date), value: d.responses }));
 }
 
-/** "19:00" for hour 19. */
-export function hourLabel(hour: number): string {
-  return `${String(hour).padStart(2, "0")}:00`;
-}
-
-/** The 24 hourly counts as chart points, one per hour of the day. */
-export function hourlyPoints(hourly: readonly number[]): ChartPoint[] {
-  return hourly.map((count, hour) => ({
-    key: `h${hour}`,
-    label: hourLabel(hour),
-    value: count,
-  }));
-}
-
-/** The single busiest hour of the day, or null when there are no responses. */
-export function peakHour(
-  hourly: readonly number[],
-): { hour: number; responses: number; sharePercent: number } | null {
-  const total = hourly.reduce((a, b) => a + b, 0);
-  if (total === 0) return null;
-  let hour = 0;
-  hourly.forEach((count, h) => {
-    if (count > hourly[hour]) hour = h;
-  });
-  return { hour, responses: hourly[hour], sharePercent: share(hourly[hour], total) };
-}
-
 /**
  * How the latest seven days compare with the seven before, as a percentage
  * change; null when the series is shorter than fourteen days or the earlier
@@ -156,9 +157,6 @@ export interface Insight {
   text: string;
 }
 
-/** Fewer responses than this and "busiest hour" would just be noise. */
-export const MIN_INSIGHT_SAMPLE = 10;
-
 /** A budget that runs out within this many days is worth a warning. */
 export const BUDGET_WARNING_DAYS = 7;
 
@@ -166,25 +164,17 @@ export const BUDGET_WARNING_DAYS = 7;
 const MIN_RESPONSES_TO_COMPARE_COST = 3;
 
 /**
- * What a company should take away from the numbers, in order of use: when to
- * expect answers, whether it is speeding up or slowing down, which budget is
- * about to run dry, what the cheapest answers cost, which running campaign is
- * getting nothing. Empty until there is something worth saying.
+ * What a company should take away from the numbers, in order of use: whether
+ * it is speeding up or slowing down, which budget is about to run dry, what the
+ * cheapest answers cost, which running campaign is getting nothing. Empty until
+ * there is something worth saying. (The hour of day is left out on purpose:
+ * companies said it does not matter to them — owner, 2026-10-22.)
  */
 export function buildInsights(
   report: AnalyticsReport,
   selectedCampaignId: number | null,
 ): Insight[] {
   const out: Insight[] = [];
-
-  const totalByHour = report.hourly.reduce((a, b) => a + b, 0);
-  const peak = peakHour(report.hourly);
-  if (peak && totalByHour >= MIN_INSIGHT_SAMPLE) {
-    out.push({
-      tone: "info",
-      text: `Хариулт хамгийн их ${hourLabel(peak.hour)}–${hourLabel((peak.hour + 1) % 24)} цагт ирдэг (${peak.sharePercent}%).`,
-    });
-  }
 
   const change = weekOverWeek(report.daily);
   if (change !== null) {

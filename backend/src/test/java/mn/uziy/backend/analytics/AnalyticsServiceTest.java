@@ -334,21 +334,31 @@ class AnalyticsServiceTest {
         assertThat(service.analytics(COMPANY, 30, null).segments()).isEmpty();
     }
 
-    // ------- hours and pace --------------------------------------------------
-
     @Test
-    void theHourlySeriesAlwaysHasTwentyFourHoursWithZeroFill() {
+    void questionAndSegmentResultsCoverTheCampaignsWholeLifeWhateverTheWindow() {
         owns(campaign(1, 1000, 500, 10));
-        when(views.hourlyCounts(eq(COMPANY), isNull(), any(), eq("Asia/Ulaanbaatar"))).thenReturn(
-                rows(new Object[] {19, 5L}, new Object[] {0, 2L}));
+        List<Object[]> answers = List.<Object[]>of(new Object[] {7L, "\"A\"", "MALE", 25});
+        when(responses.answersOfCampaign(1L)).thenReturn(answers);
+        var breakdown = new AnalyticsDtos.QuestionBreakdown(7, "q", "SINGLE_CHOICE", 1, List.of());
+        when(answerCounter.count(any(), eq(answers), eq(AnalyticsService.MIN_SEGMENT_SAMPLE)))
+                .thenReturn(List.of(breakdown));
 
-        List<Long> hourly = service.analytics(COMPANY, 30, null).hourly();
+        AnalyticsResponse shortest = service.analytics(COMPANY, AnalyticsService.MIN_DAYS, 1L);
+        AnalyticsResponse longest = service.analytics(COMPANY, AnalyticsService.MAX_DAYS, 1L);
 
-        assertThat(hourly).hasSize(24);
-        assertThat(hourly.get(19)).isEqualTo(5);
-        assertThat(hourly.get(0)).isEqualTo(2);
-        assertThat(hourly.get(12)).isZero();
+        assertThat(shortest.questions()).containsExactly(breakdown);
+        assertThat(longest.questions()).isEqualTo(shortest.questions());
     }
+
+    /** Companies said the hour of day is not relevant to them (owner, 2026-10-22): it is no longer reported. */
+    @Test
+    void theReportHasNoHourOfDaySeries() {
+        assertThat(AnalyticsResponse.class.getRecordComponents())
+                .extracting(java.lang.reflect.RecordComponent::getName)
+                .doesNotContain("hourly");
+    }
+
+    // ------- pace --------------------------------------------------
 
     @Test
     void aRunningCampaignKnowsHowManyResponsesAreLeftAndHowLongTheyLast() {

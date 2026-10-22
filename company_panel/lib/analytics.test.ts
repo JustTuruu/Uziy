@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { AnalyticsReport, CampaignPerformance } from "./api";
 import {
+  audienceBase,
   axisTicks,
   buildInsights,
   dailyPoints,
-  hourLabel,
-  hourlyPoints,
-  peakHour,
   segmentTint,
   weekOverWeek,
   formatPercent,
@@ -123,29 +121,7 @@ describe("peakDay", () => {
   });
 });
 
-describe("hour helpers", () => {
-  it("formats an hour", () => {
-    expect(hourLabel(7)).toBe("07:00");
-    expect(hourLabel(19)).toBe("19:00");
-  });
-
-  it("makes 24 chart points from the hourly counts", () => {
-    const points = hourlyPoints(Array.from({ length: 24 }, (_, h) => h));
-    expect(points).toHaveLength(24);
-    expect(points[5]).toEqual({ key: "h5", label: "05:00", value: 5 });
-  });
-
-  it("finds the busiest hour and its share", () => {
-    const hourly = Array.from({ length: 24 }, () => 0);
-    hourly[19] = 6;
-    hourly[8] = 2;
-    expect(peakHour(hourly)).toEqual({ hour: 19, responses: 6, sharePercent: 75 });
-  });
-
-  it("has no busiest hour without responses", () => {
-    expect(peakHour(Array.from({ length: 24 }, () => 0))).toBeNull();
-  });
-
+describe("dailyPoints", () => {
   it("maps the daily series to labelled points", () => {
     expect(dailyPoints([{ date: "2026-10-07", responses: 3 }])).toEqual([
       { key: "2026-10-07", label: "10.07", value: 3 },
@@ -189,8 +165,6 @@ describe("buildInsights", () => {
   }
 
   function report(over: Partial<AnalyticsReport> = {}): AnalyticsReport {
-    const hourly = Array.from({ length: 24 }, () => 0);
-    hourly[19] = 12;
     return {
       days: 30,
       totals: {
@@ -203,7 +177,6 @@ describe("buildInsights", () => {
       },
       campaigns: [campaign()],
       daily: [],
-      hourly,
       audience: null,
       questions: [],
       segments: [],
@@ -211,22 +184,15 @@ describe("buildInsights", () => {
     };
   }
 
-  it("names the busiest hour once there are enough responses", () => {
-    const [first] = buildInsights(report(), null);
-    expect(first.text).toContain("19:00–20:00");
-    expect(first.text).toContain("100%");
-  });
-
-  it("stays quiet about the hour while the sample is tiny", () => {
-    const hourly = Array.from({ length: 24 }, () => 0);
-    hourly[3] = 2;
-    expect(buildInsights(report({ hourly }), null)).toEqual([]);
-  });
-
-  it("wraps from 23:00 to 00:00", () => {
-    const hourly = Array.from({ length: 24 }, () => 0);
-    hourly[23] = 12;
-    expect(buildInsights(report({ hourly }), null)[0].text).toContain("23:00–00:00");
+  /** Companies said the hour of day is not relevant to them (owner, 2026-10-22). */
+  it("never talks about the hour of day", () => {
+    const busy = Array.from({ length: 14 }, (_, i) => ({
+      date: `2026-10-${String(i + 1).padStart(2, "0")}`,
+      responses: 20,
+    }));
+    const texts = buildInsights(report({ daily: busy }), null).map((i) => i.text);
+    expect(texts.length).toBeGreaterThan(0);
+    expect(texts.join(" ")).not.toMatch(/цагт|\d{2}:00/);
   });
 
   it("reports the week-over-week change with the right tone", () => {
@@ -312,5 +278,14 @@ describe("segmentTint", () => {
   it("never leaves the 0..55 range", () => {
     expect(segmentTint(-10)).toBe(0);
     expect(segmentTint(250)).toBe(55);
+  });
+});
+
+describe("audienceBase", () => {
+  const report = { totals: { responses: 40 } } as Pick<AnalyticsReport, "totals">;
+
+  it("takes shares of every response of the selection, hidden groups included", () => {
+    expect(audienceBase(report, null)).toBe(40);
+    expect(audienceBase(report, { responses: 12 })).toBe(12);
   });
 });

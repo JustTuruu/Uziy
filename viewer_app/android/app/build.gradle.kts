@@ -23,15 +23,18 @@ val keystoreProperties = Properties().apply {
     }
 }
 val hasReleaseKey = keystorePropertiesFile.exists()
-val buildsPlayBundle = gradle.startParameter.taskNames.any { it.contains("bundleRelease", ignoreCase = true) }
-if (!hasReleaseKey) {
+val requestedTasks = gradle.startParameter.taskNames
+val buildsPlayBundle = requestedTasks.any { it.contains("bundleRelease", ignoreCase = true) }
+val buildsRelease = requestedTasks.any { it.contains("Release", ignoreCase = true) }
+if (!hasReleaseKey && buildsRelease) {
     if (buildsPlayBundle) {
         throw GradleException(
             "android/key.properties is missing: a Google Play App Bundle must be signed with the upload key. " +
                 "Copy android/key.properties.example to android/key.properties and fill it in (see RELEASE.md)."
         )
     }
-    logger.warn(
+    // logger.error, not warn: `flutter build` only shows Gradle's error stream.
+    logger.error(
         "WARNING: android/key.properties not found — the release build is signed with the DEBUG key. " +
             "Fine for a local test, never for Google Play (see RELEASE.md)."
     )

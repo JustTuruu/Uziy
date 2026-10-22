@@ -8,6 +8,11 @@ const ACTION_LABELS: Record<string, string> = {
   VIEW_SEGMENTS: "Сегмент харсан",
   EXPORT_CSV: "CSV татсан",
   VIEW_ACCESS_LOG: "Бүртгэл харсан",
+  VIEW_USERS: "Хэрэглэгчдийн жагсаалт харсан",
+  VIEW_USER: "Хэрэглэгчийн мэдээлэл харсан",
+  VIEW_COMPANIES: "Компаниудын жагсаалт харсан",
+  VIEW_PAYOUTS: "Мөнгө татах хүсэлтүүд харсан",
+  VIEW_PAYOUT_HISTORY: "Мөнгө татах түүх харсан",
 };
 
 export function actionLabel(action: string): string {
@@ -20,7 +25,7 @@ export function AccessLogTable({ entries }: { entries: AccessLogEntry[] }) {
     <Card>
       <CardHeader
         title="Хандалтын бүртгэл"
-        description="Статистикт хандсан, файл татсан бүр (сүүлийн 200)"
+        description="Статистик, хэрэглэгчийн болон мөнгө татах мэдээлэлд хандсан бүр (сүүлийн 200)"
       />
       <CardBody className="overflow-x-auto p-0">
         <table className="w-full text-sm">

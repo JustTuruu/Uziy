@@ -3,12 +3,13 @@ import { Onest } from "next/font/google";
 import "./globals.css";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3002";
-const TITLE = "Uziy — Танд хамаатай брэндүүд ба санал асуулга";
+const TITLE = "Uziy — Брэндүүдтэй танилцаж, санал бодлоо хэлээрэй";
 const DESCRIPTION =
-  "Танд хамаатай брэндүүдийн танилцуулгыг үзэж, санал бодлоо хэлээрэй.";
+  "Компаниуд шинэ бүтээгдэхүүнээ богино видеогоор танилцуулж, таны бодлыг 2–3 асуултаар асууна. Танд хамаатайг нь л харуулна.";
 
 const body = Onest({
-  subsets: ["cyrillic", "latin"],
+  // cyrillic-ext carries the Mongolian letters Ө ө Ү ү; without it they fell back to another font mid-word.
+  subsets: ["cyrillic", "cyrillic-ext", "latin"],
   variable: "--font-body",
   display: "swap",
 });

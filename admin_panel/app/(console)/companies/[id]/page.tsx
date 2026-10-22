@@ -13,15 +13,9 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
+import { ForgetDevicesAction } from "@/components/accounts/forget-devices-action";
 import { CampaignStatusBadge } from "@/components/campaign-status-badge";
-import {
-  Badge,
-  Card,
-  CardBody,
-  CardHeader,
-  PageHeader,
-  StatCard,
-} from "@uziy/ui";
+import { Badge, Card, CardBody, CardHeader, PageHeader, StatCard, TableScroll } from "@uziy/ui";
 import {
   adminApi,
   ApiError,
@@ -123,15 +117,21 @@ export default function AdminCompanyDetailPage() {
         title={user.companyName ?? "Нэргүй компани"}
         description={`${user.phoneNumber} · Бүртгэсэн: ${relativeTime(user.createdAt)}`}
         actions={
-          <Badge tone={user.isVerified ? "success" : "neutral"}>
-            {user.isVerified ? (
-              <span className="inline-flex items-center gap-1">
-                <ShieldCheck size={12} /> Баталгаажсан
-              </span>
-            ) : (
-              "Баталгаажаагүй"
-            )}
-          </Badge>
+          <div className="flex items-start gap-3">
+            <Badge tone={user.isVerified ? "success" : "neutral"}>
+              {user.isVerified ? (
+                <span className="inline-flex items-center gap-1">
+                  <ShieldCheck size={12} /> Баталгаажсан
+                </span>
+              ) : (
+                "Баталгаажаагүй"
+              )}
+            </Badge>
+            <ForgetDevicesAction
+              userId={user.id}
+              accountName={user.companyName ?? "Энэ компани"}
+            />
+          </div>
         }
       />
 
@@ -171,76 +171,78 @@ export default function AdminCompanyDetailPage() {
                 Энэ компани судалгаа үүсгээгүй байна.
               </div>
             ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--color-divider)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
-                    <th className="px-5 py-3 font-semibold">Гарчиг</th>
-                    <th className="px-5 py-3 font-semibold">Төрөл</th>
-                    <th className="px-5 py-3 font-semibold">Төлөв</th>
-                    <th className="px-5 py-3 font-semibold text-right">
-                      Үлдэгдэл
-                    </th>
-                    <th className="px-5 py-3 font-semibold text-right">
-                      Урамшуулал
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {campaigns.map((c) => (
-                    <tr
-                      key={c.id}
-                      className="border-b border-[var(--color-divider)] last:border-0 hover:bg-[var(--color-surface-elevated)]/60"
-                    >
-                      <td className="px-5 py-4">
-                        <Link
-                          href={`/campaigns/${c.id}`}
-                          className="flex items-center gap-3"
-                        >
-                          <div className="flex h-10 w-16 items-center justify-center rounded-md bg-gradient-to-br from-[#2c2c38] to-[#17171e]">
-                            {c.hasVideo ? (
-                              <Play size={14} className="text-white/70" />
-                            ) : (
-                              <ClipboardList
-                                size={14}
-                                className="text-white/70"
-                              />
-                            )}
-                          </div>
-                          <div>
-                            <div className="font-semibold text-[var(--color-text-primary)]">
-                              {c.title}
-                            </div>
-                            <div className="text-xs text-[var(--color-text-muted)]">
-                              {c.hasVideo
-                                ? `${c.durationSeconds} сек`
-                                : "Судалгаа"}
-                              {" · "}
-                              {relativeTime(c.createdAt)}
-                            </div>
-                          </div>
-                        </Link>
-                      </td>
-                      <td className="px-5 py-4 text-xs text-[var(--color-text-secondary)]">
-                        {c.hasVideo ? "Видеотой" : "Судалгаа зөвхөн"}
-                      </td>
-                      <td className="px-5 py-4">
-                        <CampaignStatusBadge status={c.status} />
-                      </td>
-                      <td className="px-5 py-4 text-right">
-                        <div className="font-mono text-[var(--color-text-primary)]">
-                          {formatTugrik(c.remainingBudget)}
-                        </div>
-                        <div className="text-xs text-[var(--color-text-muted)]">
-                          / {formatTugrik(c.totalBudget)}
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 text-right font-mono text-[var(--color-text-primary)]">
-                        {formatTugrik(c.rewardPerUser)}
-                      </td>
+              <TableScroll>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--color-divider)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
+                      <th className="px-5 py-3 font-semibold">Гарчиг</th>
+                      <th className="px-5 py-3 font-semibold">Төрөл</th>
+                      <th className="px-5 py-3 font-semibold">Төлөв</th>
+                      <th className="px-5 py-3 font-semibold text-right">
+                        Үлдэгдэл
+                      </th>
+                      <th className="px-5 py-3 font-semibold text-right">
+                        Урамшуулал
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {campaigns.map((c) => (
+                      <tr
+                        key={c.id}
+                        className="border-b border-[var(--color-divider)] last:border-0 hover:bg-[var(--color-surface-elevated)]/60"
+                      >
+                        <td className="px-5 py-4">
+                          <Link
+                            href={`/campaigns/${c.id}`}
+                            className="flex items-center gap-3"
+                          >
+                            <div className="flex h-10 w-16 items-center justify-center rounded-md bg-gradient-to-br from-[#2c2c38] to-[#17171e]">
+                              {c.hasVideo ? (
+                                <Play size={14} className="text-white/70" />
+                              ) : (
+                                <ClipboardList
+                                  size={14}
+                                  className="text-white/70"
+                                />
+                              )}
+                            </div>
+                            <div>
+                              <div className="font-semibold text-[var(--color-text-primary)]">
+                                {c.title}
+                              </div>
+                              <div className="text-xs text-[var(--color-text-muted)]">
+                                {c.hasVideo
+                                  ? `${c.durationSeconds} сек`
+                                  : "Судалгаа"}
+                                {" · "}
+                                {relativeTime(c.createdAt)}
+                              </div>
+                            </div>
+                          </Link>
+                        </td>
+                        <td className="px-5 py-4 text-xs text-[var(--color-text-secondary)]">
+                          {c.hasVideo ? "Видеотой" : "Судалгаа зөвхөн"}
+                        </td>
+                        <td className="px-5 py-4">
+                          <CampaignStatusBadge status={c.status} />
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <div className="font-mono text-[var(--color-text-primary)]">
+                            {formatTugrik(c.remainingBudget)}
+                          </div>
+                          <div className="text-xs text-[var(--color-text-muted)]">
+                            / {formatTugrik(c.totalBudget)}
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 text-right font-mono text-[var(--color-text-primary)]">
+                          {formatTugrik(c.rewardPerUser)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableScroll>
             )}
           </CardBody>
         </Card>

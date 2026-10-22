@@ -2,12 +2,11 @@ package mn.uziy.backend.auth;
 
 import java.time.Clock;
 import java.time.LocalDate;
-import mn.uziy.backend.adminlogin.AdminSecondStep;
 import mn.uziy.backend.common.ConflictException;
 import mn.uziy.backend.common.Messages;
 import mn.uziy.backend.common.UnauthorizedException;
 import mn.uziy.backend.common.event.DomainEventPublisher;
-import mn.uziy.backend.domain.Role;
+import mn.uziy.backend.consolelogin.ConsoleLoginGate;
 import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
 import mn.uziy.backend.phoneverify.PhoneVerificationPurpose;
@@ -32,14 +31,14 @@ public class AuthServiceImpl implements AuthService {
     private final VerifiedPhoneClaim verifiedPhones;
     private final LoginAttemptLimiter loginLimiter;
     private final Clock clock;
-    private final AdminSecondStep adminSecondStep;
+    private final ConsoleLoginGate consoleLogin;
 
     public AuthServiceImpl(UserRepository users, PasswordEncoder encoder, JwtService jwt,
                            UserFactory userFactory, MeMapper meMapper, DomainEventPublisher events,
                            VerifiedPhoneClaim verifiedPhones, LoginAttemptLimiter loginLimiter, Clock clock,
-                           AdminSecondStep adminSecondStep) {
+                           ConsoleLoginGate consoleLogin) {
         this.clock = clock;
-        this.adminSecondStep = adminSecondStep;
+        this.consoleLogin = consoleLogin;
         this.verifiedPhones = verifiedPhones;
         this.loginLimiter = loginLimiter;
         this.users = users;
@@ -50,7 +49,10 @@ public class AuthServiceImpl implements AuthService {
         this.events = events;
     }
 
-    /** The password is always proved first, so a wrong one never leads to an SMS for an admin's phone. */
+    /**
+     * The password is always proved first, so a wrong one never leads to an SMS. Viewers are then signed in; admins
+     * and companies are signed in only from a browser they proved their phone from, else they get the SMS step.
+     */
     @Override
     public LoginOutcome login(LoginReq req) {
         loginLimiter.requireNotLocked(req.phoneNumber());
@@ -61,8 +63,8 @@ public class AuthServiceImpl implements AuthService {
             throw new UnauthorizedException(INVALID_CREDENTIALS);
         }
         loginLimiter.recordSuccess(req.phoneNumber());
-        if (user.getRole() == Role.ADMIN) {
-            return new LoginOutcome.SecondStepRequired(adminSecondStep.open(user));
+        if (consoleLogin.appliesTo(user.getRole())) {
+            return consoleLogin.afterPassword(user, req.deviceToken());
         }
         return new LoginOutcome.SignedIn(respond(user));
     }

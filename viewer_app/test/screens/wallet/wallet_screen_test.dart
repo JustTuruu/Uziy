@@ -51,13 +51,23 @@ class _Backend {
   int get loads => api.callsTo('/viewer/me').length;
 }
 
-Future<void> _pumpWallet(WidgetTester tester) async {
+Future<void> _pumpWallet(
+  WidgetTester tester, {
   // Tall enough that the history below the card is built.
-  tester.view.physicalSize = const Size(430, 2400);
+  Size size = const Size(430, 2400),
+  double textScale = 1.0,
+}) async {
+  tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(MaterialApp(
     theme: AppTheme.light(),
+    builder: (context, app) => MediaQuery(
+      data: MediaQuery.of(context).copyWith(
+        textScaler: TextScaler.linear(textScale),
+      ),
+      child: app!,
+    ),
     home: const Scaffold(body: WalletScreen()),
   ));
   await tester.pumpAndSettle();
@@ -259,5 +269,54 @@ void main() {
         tester.widget<AppButton>(find.widgetWithText(AppButton, 'Мөнгө татах'));
     expect(button.variant, AppButtonVariant.tonal);
     await _close(tester);
+  });
+
+  group('a 320pt phone with large text', () {
+    void busyBackend() => FakeApi.install((call) => switch (call.path) {
+          '/viewer/me' => FakeReply(200, {
+              ..._me(balance: 1234567, verified: true),
+              'lastName': 'Оюун-Эрдэнэ',
+              'firstName': 'Төрболд-Очирхуяг',
+            }),
+          '/viewer/payouts' => FakeReply(200, [
+              {
+                ..._payout('REJECTED'),
+                'id': 8,
+                'amount': 250000,
+                'rejectReason':
+                    'Дансны эзэмшигчийн нэр бүртгэлтэй нэртэй таарахгүй байна',
+              },
+              _payout('PENDING'),
+            ]),
+          '/viewer/history' => FakeReply(200, [
+              for (var i = 0; i < 6; i++)
+                {
+                  'campaignId': i,
+                  'title':
+                      'Шинэ 5G багцын хэрэглэгчийн сэтгэл ханамжийн судалгаа $i',
+                  'companyName': 'Монголын Үндэсний Олон Нийтийн Радио Телевиз',
+                  'rewardPaid': 700,
+                  'watchedAt': '2026-10-1${i}T03:00:00Z',
+                },
+            ]),
+          _ => const FakeReply(404),
+        });
+
+    for (final scale in [1.3, 1.5]) {
+      testWidgets('lays out without overflow at ${scale}x', (tester) async {
+        busyBackend();
+        await _pumpWallet(tester, size: const Size(320, 568), textScale: scale);
+        expect(tester.takeException(), isNull);
+
+        await tester.dragUntilVisible(
+          find.text(kWalletHistoryTitle),
+          find.byType(Scrollable).first,
+          const Offset(0, -120),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        await _close(tester);
+      });
+    }
   });
 }

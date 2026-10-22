@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { DEMO } from "@/lib/content";
 import { PhoneDemo } from "./phone-demo";
 
 describe("landing survey preview", () => {
@@ -11,7 +12,7 @@ describe("landing survey preview", () => {
     await user.click(screen.getByRole("radio", { name: "Амт, чанар" }));
     await user.click(screen.getByRole("button", { name: "Санал өгөх" }));
     expect(screen.getByRole("status")).toHaveTextContent(
-      "Таны хариултыг хадгалаагүй",
+      DEMO.doneText,
     );
     await user.click(screen.getByRole("button", { name: "Дахин турших" }));
     expect(screen.getByRole("radio", { name: "Амт, чанар" })).not.toBeChecked();

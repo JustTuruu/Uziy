@@ -3,24 +3,25 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  ArrowLeft,
-  CircleCheck,
-  ClipboardList,
-  Hourglass,
-  Pause,
-  Play,
-} from "lucide-react";
+import { ArrowLeft, CircleCheck, Hourglass, Pause, Play } from "lucide-react";
 import { CampaignCoverCard } from "@/components/campaign-cover-card";
 import { CampaignPaymentCard } from "@/components/campaign-payment-card";
 import { CampaignStatusBadge } from "@/components/campaign-status-badge";
-import { Button, Card, CardBody, CardHeader, PageHeader, StatCard } from "@uziy/ui";
+import {
+  RESULTS_WHOLE_LIFE,
+  SurveyResults,
+  SurveyResultsError,
+  SurveyResultsSkeleton,
+} from "@/components/survey-results";
+import { Button, Card, CardBody, CardHeader, ConfirmDialog, PageHeader, StatCard } from "@uziy/ui";
 import { ApiError, auth, companyApi, type Campaign } from "@/lib/api";
 import { campaignInvoice } from "@/lib/billing";
 import {
+  COMPLETE_CONFIRM,
   companyStatusTransitions,
   type CompanySettableStatus,
 } from "@/lib/campaign-status";
+import { useCampaignResults } from "@/lib/use-campaign-results";
 import { formatDate, formatNumber, formatTugrik } from "@/lib/utils";
 
 export default function CampaignDetailPage() {
@@ -35,6 +36,8 @@ export default function CampaignDetailPage() {
   // Keeps the payment card (in its success state) on screen after paying,
   // even though the campaign itself has moved on to PENDING.
   const [justPaid, setJustPaid] = useState(false);
+  const [confirmingComplete, setConfirmingComplete] = useState(false);
+  const results = useCampaignResults(campaign ? campaign.id : null);
 
   useEffect(() => {
     if (!auth.getToken()) {
@@ -61,14 +64,6 @@ export default function CampaignDetailPage() {
 
   const setStatus = async (next: CompanySettableStatus) => {
     if (!campaign) return;
-    if (
-      next === "COMPLETED" &&
-      !window.confirm(
-        "Судалгааг дуусгах уу? Дууссан судалгааг дахин идэвхжүүлэх боломжгүй.",
-      )
-    ) {
-      return;
-    }
     setBusy(true);
     setActionError(null);
     try {
@@ -80,6 +75,7 @@ export default function CampaignDetailPage() {
       setActionError(e instanceof ApiError ? e.message : "Алдаа гарлаа");
     } finally {
       setBusy(false);
+      setConfirmingComplete(false);
     }
   };
 
@@ -159,7 +155,7 @@ export default function CampaignDetailPage() {
               <Button
                 variant="ghost"
                 leftIcon={<CircleCheck size={14} />}
-                onClick={() => setStatus("COMPLETED")}
+                onClick={() => setConfirmingComplete(true)}
                 disabled={busy}
               >
                 Дуусгах
@@ -206,6 +202,17 @@ export default function CampaignDetailPage() {
         onSaved={(thumbnailUrl) => setCampaign({ ...campaign, thumbnailUrl })}
       />
 
+      <ConfirmDialog
+        open={confirmingComplete}
+        title={COMPLETE_CONFIRM.title}
+        message={COMPLETE_CONFIRM.message}
+        confirmLabel={COMPLETE_CONFIRM.confirmLabel}
+        tone="danger"
+        busy={busy}
+        onConfirm={() => setStatus("COMPLETED")}
+        onCancel={() => setConfirmingComplete(false)}
+      />
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <StatCard
           label="Зарцуулсан"
@@ -228,20 +235,17 @@ export default function CampaignDetailPage() {
 
       <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <CardHeader
-            title="Судалгааны хариултууд"
-            description="Backend-д агрегатор нэмэгдэх хүртэл харагдахгүй"
-          />
-          <CardBody className="py-10 text-center text-sm text-[var(--color-text-muted)]">
-            {campaign.hasVideo ? (
-              <div className="flex items-center justify-center gap-2">
-                <Play size={16} /> Судалгааны agregate endpoint удахгүй.
-              </div>
+          <CardHeader title="Судалгааны хариултууд" description={RESULTS_WHOLE_LIFE} />
+          <CardBody>
+            {results.status === "ready" ? (
+              <SurveyResults
+                questions={results.report.questions}
+                segments={results.report.segments}
+              />
+            ) : results.status === "error" ? (
+              <SurveyResultsError message={results.message} onRetry={results.retry} />
             ) : (
-              <div className="flex items-center justify-center gap-2">
-                <ClipboardList size={16} /> Судалгааны agregate endpoint
-                удахгүй.
-              </div>
+              <SurveyResultsSkeleton />
             )}
           </CardBody>
         </Card>

@@ -350,6 +350,83 @@ void main() {
       );
       handle.dispose();
     });
+
+    test('fractionAt maps a touch to 0..1 of the track', () {
+      expect(WatchTimeline.fractionAt(50, 200), 0.25);
+      expect(WatchTimeline.fractionAt(-10, 200), 0);
+      expect(WatchTimeline.fractionAt(500, 200), 1);
+      expect(WatchTimeline.fractionAt(10, 0), 0);
+    });
+
+    testWidgets('a tap on the track reports where it landed', (tester) async {
+      final seeks = <double>[];
+      await _pump(
+        tester,
+        WatchTimeline(
+          progress: 0.8,
+          elapsedSeconds: 8,
+          totalSeconds: 10,
+          furthestProgress: 0.8,
+          onSeek: seeks.add,
+        ),
+      );
+      await tester.pumpAndSettle();
+      final box =
+          tester.getRect(find.byKey(const ValueKey('watch-timeline-track')));
+      await tester.tapAt(Offset(box.left + box.width / 2, box.center.dy));
+      expect(seeks.single, closeTo(0.5, 0.01));
+    });
+
+    testWidgets('a seekable track is still drawn across the full width',
+        (tester) async {
+      await _pump(
+        tester,
+        WatchTimeline(
+          progress: 0.5,
+          elapsedSeconds: 5,
+          totalSeconds: 10,
+          onSeek: (_) {},
+        ),
+      );
+      final paint = find.descendant(
+        of: find.byKey(const ValueKey('watch-timeline-track')),
+        matching: find.byType(CustomPaint),
+      );
+      expect(tester.getSize(paint.first).width, 360);
+    });
+
+    testWidgets('screen readers can step back by ten seconds', (tester) async {
+      final handle = tester.ensureSemantics();
+      final seeks = <double>[];
+      await _pump(
+        tester,
+        WatchTimeline(
+          progress: 0.5,
+          elapsedSeconds: 20,
+          totalSeconds: 40,
+          onSeek: seeks.add,
+        ),
+      );
+      await tester.pumpAndSettle();
+      final semantics = tester.widget<Semantics>(find
+          .descendant(
+            of: find.byType(WatchTimeline),
+            matching: find.byType(Semantics),
+          )
+          .first);
+      semantics.properties.onDecrease!();
+      expect(seeks.single, closeTo(0.25, 0.001));
+      handle.dispose();
+    });
+
+    testWidgets('without onSeek the track does not take touches',
+        (tester) async {
+      await _pump(
+        tester,
+        const WatchTimeline(progress: 0.5, elapsedSeconds: 5, totalSeconds: 10),
+      );
+      expect(find.byKey(const ValueKey('watch-timeline-track')), findsNothing);
+    });
   });
 
   group('RewardHintRow', () {

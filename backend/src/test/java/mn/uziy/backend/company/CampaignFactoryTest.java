@@ -16,7 +16,10 @@ import mn.uziy.backend.domain.TargetGender;
 import mn.uziy.backend.pricing.CampaignPricing;
 import mn.uziy.backend.pricing.PricingMode;
 import mn.uziy.backend.pricing.PricingResult;
+import mn.uziy.backend.analytics.AnswerCounter;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class CampaignFactoryTest {
 
@@ -66,11 +69,25 @@ class CampaignFactoryTest {
         assertThat(qs).hasSize(2);
         assertThat(qs.get(0).getCampaignId()).isEqualTo(7L);
         assertThat(qs.get(0).getPosition()).isEqualTo(1);
-        assertThat(qs.get(0).getOptionsJson()).isEqualTo("[\"A\", \"B\\\"q\"]");
+        assertThat(qs.get(0).getOptionsJson()).isEqualTo("[\"A\",\"B\\\"q\"]");
         assertThat(qs.get(0).isRequired()).isFalse();
         assertThat(qs.get(1).getPosition()).isEqualTo(2);
         assertThat(qs.get(1).getOptionsJson()).isEqualTo("[]");
         assertThat(qs.get(1).isRequired()).isTrue();
+    }
+
+    /**
+     * Regression: only quotes were escaped, so a backslash, Enter or Tab in a company-typed option made invalid
+     * JSON and the campaign insert failed (CLAUDE.md "Never hand-roll JSON", the last hand-rolled spot).
+     */
+    @ParameterizedTest(name = "option {0} survives the round trip")
+    @ValueSource(strings = {"C:\\temp", "мөр\nхоёр", "таб\tбайна", "\"ишлэл\"", "\\\"", "Тийм, сүүлийн сард", "😀 ₮"})
+    void anyTypedOptionIsStoredAsValidJsonAndReadsBackTheSame(String option) {
+        String json = factory.newQuestions(7L, List.of(
+                new CreateCampaignReq.NewQuestion("P", "SINGLE_CHOICE", List.of(option, "Б"), true)))
+                .get(0).getOptionsJson();
+
+        assertThat(AnswerCounter.strings(json)).containsExactly(option, "Б");
     }
 
     @Test
@@ -80,7 +97,7 @@ class CampaignFactoryTest {
                 new CreateCampaignReq.NewQuestion("Бусад?", RatingScale.TYPE)));
 
         assertThat(qs).extracting(SurveyQuestionEntity::getOptionsJson)
-                .containsOnly("[\"Маш муу\", \"Муу\", \"Дунд\", \"Сайн\", \"Маш сайн\"]");
+                .containsOnly("[\"Маш муу\",\"Муу\",\"Дунд\",\"Сайн\",\"Маш сайн\"]");
         assertThat(qs.get(0).getQType()).isEqualTo("RATING");
     }
 

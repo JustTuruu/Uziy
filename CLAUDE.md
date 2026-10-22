@@ -145,6 +145,9 @@ asked, say so and propose the compliant way instead of silently bending it.
 5. The company panel shows the **company's own name** (sidebar subtitle,
    footer, greeting) — never a hard-coded one; the admin sidebar shows the
    signed-in admin's phone.
+   **Sign-in page (2026-10-22)**: both `/login` pages are `@uziy/ui` `ConsoleLoginPage` (Template: brand panel with
+   headline, lead and `LoginHighlight`s beside a form card; under `lg` only the card + brand row). Each app passes
+   its own words, logo and `useConsoleLogin` state — never re-copy the layout into an app.
 6. `pnpm exec tsc --noEmit`, `pnpm exec eslint` and `pnpm exec vitest run`
    must be clean in the app(s) and in `packages/ui` before you say done.
    Install/run from the repo root (`pnpm install`; `pnpm -C <app> dev`).
@@ -480,15 +483,24 @@ campaigns (3–4 questions, every viewer, 500 ₮, paid + ACTIVE) to the LOCAL d
 `docker exec -i uziy-postgres psql -U uziy -d uziy < backend/dev/sample_surveys.sql`. Idempotent (skips existing titles).
 It is not a Flyway migration on purpose: it must never reach production.
 
-**There is no admin-create endpoint** — to make an admin, run:
+**Admin accounts (2026-10-22)**: a signed-in admin opens another admin's account on the admin panel's `/admins`
+page ('Админууд', under Тохиргоо): phone + temporary password, shown once to hand over. Backend `admin/`
+`AdminAccountController` → `AdminAccountServiceImpl`: `GET|POST /admin/admins` (`CreateAdminReq {phoneNumber,
+password}` → 201 `AdminAccountDto {id, phoneNumber, createdAt}`); a phone that already has ANY account is 409
+`Messages.ACCOUNT_PHONE_TAKEN` (an existing viewer/company is never promoted); event `AdminCreated` (ids only); the
+list read is written to `data_access_log` (`VIEW_ADMINS`). The new admin still passes the SMS second step at every
+login, so the phone must be one they hold. Any admin can add admins (no super-admin tier yet), and there is no
+remove/disable yet. Panel: the company and admin forms share `lib/account-form.ts` (`credentialsError`,
+`companyFormError`, `phoneDigits`, `generateTempPassword`; was `company-form.ts`) and
+`components/accounts/` (`CredentialFields`, `HandOverNotice`, `FormError`).
+**The very first admin** still has to be made in the database (admins are never self-created):
 
 ```
 docker exec uziy-postgres psql -U uziy -d uziy \
   -c "UPDATE users SET role='ADMIN' WHERE phone_number='XXXXXXXX'"
 ```
 
-This is intentional: admins should never be self-created. Add a proper
-super-admin bootstrap flow before shipping.
+Add a proper first-admin bootstrap before shipping.
 
 ### Profile menu pages (added 2026-10-07)
 
@@ -522,8 +534,15 @@ The app opens on Home for everyone — no forced login. Splash always goes to `/
 
 `landing/` — public marketing site for viewers (Next.js 16, port 3002, static, in the pnpm workspace).
 Hero + 4 steps + benefits + FAQ (native `<details>`) + a 'Компаниудад' block linking to the company panel.
-- Copy lives in `lib/content.ts` (Cyrillic, "Та"; reward 500–700 ₮, videos 30 s–2 min, min age 13 — keep in
-  step with `docs/SPEC.md`). Sections are `components/*`, framed by `Section`.
+- **Every visible sentence** lives in `lib/content.ts` (Cyrillic, "Та"; videos 30 s–2 min, 2–3 questions, min age 13,
+  phone proved by texting a code to 144773 — keep in step with the app). Components only render it, so the positioning
+  test covers the whole page. Sections: hero (+ interactive `PhoneDemo`), how it works (4 numbered steps), benefits +
+  a `#privacy` panel (companies never see name/phone, groups under 5 hidden, written answers not tied to a person,
+  in-app account deletion), for companies (accounts are created by Uziy: the button opens the company login; a
+  'Хамтран ажиллах' mailto appears only when `NEXT_PUBLIC_CONTACT_EMAIL` is set — never a made-up address), FAQ, download.
+- Copy + design pass (owner, 2026-10-22): no eyebrow labels above headings, no unicode arrows as icons (lucide only),
+  body text ≥ 14–16px (the sample-survey phone is 320px with ≥ 10px type — it is interactive), the font loads the
+  `cyrillic-ext` subset (Ө/Ү fell back to another font before; `app/layout.test.ts`).
 - Links are deploy-time config (`lib/links.ts`, see `.env.example`): `NEXT_PUBLIC_APP_STORE_URL`,
   `NEXT_PUBLIC_PLAY_STORE_URL`, `NEXT_PUBLIC_COMPANY_PANEL_URL`, `NEXT_PUBLIC_SITE_URL`. Empty store URL ⇒
   the store button is disabled and says 'Удахгүй' (no fake links).
@@ -557,8 +576,8 @@ A 4th question type `RATING`: the viewer drags a thumb across **Муу / Дун�
 - **Never hand-roll JSON** (bit us twice, 2026-10-12): `QuestionMapper.parseOptions` split options on commas, so
   'Тийм, сүүлийн сард' became two options and every submit answered 'Хариулт буруу байна'; the app's answer encoder
   only escaped quotes, so a text answer with Enter/Tab was invalid JSON. Both now use a real JSON codec
-  (Jackson / `jsonEncode`, `ViewerService.encodeAnswer`). Remaining hand-rolled spot: `CampaignFactory.optionsJson`
-  escapes only quotes (a backslash in a company-typed option would break the insert) — switch it to Jackson next time.
+  (Jackson / `jsonEncode`, `ViewerService.encodeAnswer`). `CampaignFactory.optionsJson` uses Jackson too (2026-10-22):
+  no JSON is hand-rolled anywhere any more — keep it that way.
 - **Fixed on the way**: the app's `QuestionType` parser did not know the backend's real `MULTI_CHOICE`, so
   multiple-choice questions silently opened as single choice. `QuestionType.fromWire` now maps the wire names.
 
@@ -573,14 +592,21 @@ no chart library, plain SVG/CSS, one hue, hover + keyboard tooltip, table view).
   answers are never returned. Native SQL lives in `ViewHistoryRepository` / `SurveyResponseRepository`;
   `AnswerCounter` (Jackson) counts choice answers; `AgeBands` groups ages. A `date` column comes back as
   `LocalDate` on Hibernate 7 (the integration test caught it).
-- **Insights** (`lib/analytics.ts` `buildInsights`, shown in `InsightsCard`): busiest hour, week-over-week
-  change, budgets that run out within 7 days at last week's pace, cheapest vs dearest answers, running
-  campaigns with no responses. **Hour-of-day chart** uses `hourly[24]` (Ulaanbaatar time). With a campaign
-  selected, `segments[]` answers "who chose what" (men/women/age bands as a heat-map `SegmentTable`); a
-  segment under `MIN_SEGMENT_SAMPLE` (5) answerers is never returned. Charts draw at their measured pixel
-  width (`useElementWidth`) so text never scales up on wide screens.
-- The campaign detail page still shows the old "agregate endpoint удахгүй" placeholder; it can now be fed
-  from `analyticsApi.get({days, campaignId})`.
+- **Insights** (`lib/analytics.ts` `buildInsights`, shown in `InsightsCard`): week-over-week change, budgets that
+  run out within 7 days at last week's pace, cheapest vs dearest answers, running campaigns with no responses.
+  **No hour-of-day data (owner, 2026-10-22: not relevant to companies)** — `hourly` was removed from the API and the
+  panel. With a campaign selected, `segments[]` answers "who chose what" (men/women/age bands); a segment under
+  `MIN_SEGMENT_SAMPLE` (5) answerers is never returned. Charts draw at their measured pixel width
+  (`useElementWidth`) so text never scales up on wide screens.
+- **Per-survey results (2026-10-22)**: `components/survey-results.tsx` (logic `lib/survey-results.ts`, data
+  `lib/use-campaign-results.ts`) is the ONE results view, used on `/campaigns/[id]` ('Судалгааны хариултууд') and on
+  `/analytics`: per question the answer bars (choices by count, ratings in scale order) and 'Хэн юу гэж хариулсан' —
+  answer × gender × age band, percent within each group (`SegmentTable`), with the small-group privacy note; text
+  questions say written answers are not shown. Question and segment results always cover the campaign's whole life
+  (the `days` window applies to the daily series only).
+- **No browser dialogs**: `window.confirm/alert/prompt` are never used in the panels — use `@uziy/ui` `ConfirmDialog`
+  (native modal `<dialog>`, focus kept inside, Esc/backdrop close, danger/primary tone, optional required text field,
+  busy state). Finishing a survey and rejecting a payout use it.
 
 ### Security audit & production readiness (added 2026-10-07)
 
@@ -619,6 +645,58 @@ Details and the open decisions: `docs/PRODUCTION_CHECKLIST.md` ("Second audit").
   accountNumber/token (`services/api_log.dart`); release builds refuse a non-https `API_BASE_URL`
   (`ApiService.ensureConfigured` in `main.dart`); the verify page opens only `sms:` links (`smsLaunchUri`); logout
   clears `MoneyMemory`. Android `allowBackup="false"`. Switching the keychain options signed existing iOS users out once.
+
+### Admin & company accounts (2026-10-22)
+
+- **Console login = password + phone check on an unknown browser (2026-10-22; owner: companies AND admins, 30 days)**:
+  `POST /auth/login {phoneNumber, password, deviceToken?}` — a viewer gets 200 `{token, user}` (deviceToken ignored); an
+  ADMIN/COMPANY with a valid device token gets the same 200; otherwise **202** `{twoStep: {verificationId, phoneNumber
+  (masked), role, shortcode, smsText, smsUri, displayInstruction, expiresAt}}` with no token (wrong password = 401, no SMS).
+  The person texts the code from the account's phone, then `POST /auth/login/verify {phoneNumber, verificationId}` →
+  `{token, user, deviceToken, deviceTrustedUntil}`. Purposes `ADMIN_LOGIN` / `COMPANY_LOGIN` (V17, V18) — role-bound, opened
+  only by the login, claimable 5 min. Packages `consolelogin/` (event `ConsoleSignedIn(userId, role, newDevice)`) and
+  `trusteddevice/`: table `trusted_devices` keeps ONLY the SHA-256 of the device token (+ browser family label), 30 days
+  (named constant), ≤ 10 per user (least recently used dropped), valid only if created after `credentials_changed_at`;
+  password reset, account deletion and `POST /admin/users/{id}/trusted-devices/forget` (admin, company detail page,
+  'Төхөөрөмжүүдийг мартах') delete them. Panels: the whole flow lives once in `@uziy/ui` (`console-login.ts`,
+  `console-login-step.tsx`); the device token is kept in localStorage `uziy.device` and survives logout. The per-phone
+  SMS limits (60 s cool-down, 5/hour) apply to these checks too. Locally the Docker backend uses real verify.mn (text from
+  the account's real phone); with `simulated` run the curl the backend logs.
+- **Companies are created by the admin only**: `POST|GET /admin/companies` (`admin/CompanyAccount*`, event
+  `CompanyCreated`); `POST /auth/register/company` is gone (404). Admin panel 'Компаниуд' page (temporary password shown once).
+- Admin payout history masks decided account numbers (`common/Masking`, `•••• 4567`); pending ones stay full.
+  Admin reads of users/payouts/companies write `data_access_log` (`VIEW_USERS`, `VIEW_USER`, `VIEW_PAYOUTS`,
+  `VIEW_PAYOUT_HISTORY`, `VIEW_COMPANIES`).
+- Admin users page: phone search + place list (`@uziy/ui/regions`) + company menu (`Select` gained `searchable`);
+  logic in `admin_panel/lib/user-filters.ts`.
+- Every data table in both panels sits in `@uziy/ui` `TableScroll` (scrolls sideways inside its card; without it a
+  wide table widened the whole page on a 1024px laptop). New tables must use it.
+
+### Account deletion & store readiness (2026-10-22)
+
+- `DELETE /viewer/me {password}` → 204 (package `account/`): personal data cleared in place (phone → `DEL-<id>` so the
+  number can register again; names, birth date, city, consent cleared; password unusable; tokens die via
+  `credentials_changed_at`), device tokens + phone checks + free-text answers deleted, choice answers kept anonymous,
+  decided payouts kept for accounting with holder name removed and the account masked; 409 while a payout is pending;
+  any balance is forfeited (the app warns). Event `ViewerDeleted`. App: Profile → 'Бүртгэл устгах'
+  (`delete_account_sheet.dart`); facts shared with the privacy page. Owner/accountant should confirm the retention choice.
+- Store config: ids above, version from pubspec, Android release signing from git-ignored `android/key.properties`
+  (template `key.properties.example`; no key ⇒ debug-signed APK with a warning, App Bundle refused), adaptive +
+  monochrome icons, iPhone-only, `PrivacyInfo.xcprivacy`, `ITSAppUsesNonExemptEncryption=false`, ATS local networking
+  added only to Debug builds by `ios/scripts/allow_local_networking_in_debug.sh`. `test/platform/store_config_test.dart`
+  guards it. Owner's manual steps (Apple/Play accounts, keys, Firebase files, privacy + deletion URLs, reviewer demo
+  account): **`viewer_app/RELEASE.md`**.
+
+### Error-prone spots hardened (2026-10-22)
+
+- Company analytics: `analytics/SmallGroupRule` hides slices under 5 AND the next smallest when the hidden remainder
+  would be 1–4 (no differencing); option counts only from 5 answers; panel shares are of all responses.
+- `company/TargetAgeRule`: age range ≥ 5 years (mirrored in `company_panel/lib/targeting.ts`).
+- Phone checks: per-phone Postgres advisory lock (`PhoneVerificationRepository.lockPhone`) makes the cool-down atomic.
+- `LoginAttemptLimiter`: bounded (50,000 phones, oldest evicted), no full scans.
+- App: free-text answers capped at the backend's JSON length as typed (`kMaxAnswerJsonLength`); a pasted '5,000.00'
+  payout is 5,000 not 500,000; `WalletCardSkeleton` and `PayoutHistoryRow` no longer overflow at 320pt / large text;
+  `test/screens/survey/survey_screen_test.dart` drives the whole survey at 320pt @1.3–1.5x.
 
 ### Error messages users read (added 2026-10-13)
 
@@ -690,7 +768,8 @@ gone — it only ever wrote codes to the server log.
 Registration offers **Улаанбаатар + all 21 aimags** by their official names; **Улаанбаатар requires a district** from
 its 9 (дүүрэг), an aimag takes an optional typed sum. A viewer's `city` must equal a campaign's `targetCity`
 character for character, so the SAME list lives in three places — change all three together:
-`backend common/MongolianRegions.java`, `viewer_app lib/models/regions.dart`, `company_panel lib/regions.ts`.
+`backend common/MongolianRegions.java`, `viewer_app lib/models/regions.dart`, `packages/ui/src/regions.ts` (`@uziy/ui/regions`,
+used by both panels; `company_panel/lib/regions.ts` only re-exports it; a test compares it with the Java file).
 - **Backend**: `auth/ViewerLocationRule` (called in `AuthServiceImpl.registerViewer` before the phone check is spent)
   → 400 'Аймаг эсвэл хотоо жагсаалтаас сонгоно уу' / 'Улаанбаатарт амьдардаг бол дүүргээ сонгоно уу' / 'Дүүргээ
   жагсаалтаас сонгоно уу'. `CampaignServiceImpl` refuses a `targetCity` that is not `ALL` or a listed city.
@@ -806,12 +885,12 @@ already completed).
   the refund + reason, data `{type: PAYOUT, payoutId, status}`. Flutter: `PushMessageParser` returns a sealed
   `PushLink` (`CampaignPush` | `PayoutPush`); `PushNavigator` opens the wallet for a payout (`walletRoute`,
   `PushNavigationTarget.go`). The Android channel id stays `campaigns`, its name is now 'Uziy мэдэгдэл'.
-- Owner setup steps: `docs/PUSH_SETUP.md`. Placeholder app ids still
-  `com.example.viewer_app` / `com.example.viewerApp`.
+- Owner setup steps: `docs/PUSH_SETUP.md`. App ids (2026-10-22): **`mn.uziy.viewer`** (iOS bundle id + Android
+  applicationId); debug builds are `mn.uziy.viewer.dev` (iOS) / applicationIdSuffix `.dev` (Android).
 - **iOS Debug signing (2026-10-13)**: the Debug configuration signs with `ios/Runner/RunnerDebug.entitlements`
   (no `aps-environment`) and bundle id `mn.uziy.viewer.dev`, so `flutter run` works on a real iPhone with a free
-  Apple ID ("Personal team" cannot sign Push, and `com.example.viewerApp` belongs to another team). Release/Profile
-  keep `Runner.entitlements` (push) and the placeholder id — set the real id with the paid team. On a real phone pass
+  Apple ID ("Personal team" cannot sign Push). Release signs with `Runner.entitlements` (`aps-environment`
+  production), Profile with `RunnerProfile.entitlements` (development) — both need the paid team. On a real phone pass
   `--dart-define=API_BASE_URL=http://<Mac LAN IP>:8080` (localhost is the phone itself); `viewer_app/tool/run_device.sh` does that
   (finds the Mac's Wi-Fi IP, checks the backend answers, then `flutter run`). Debug apps open only from `flutter run`/Xcode.
 
@@ -822,10 +901,8 @@ already completed).
 ### `pubspec.yaml`
 
 Dart SDK ≥ 3.4, Flutter ≥ 3.22. Deps: `go_router`, `flutter_riverpod`, `dio`,
-`flutter_secure_storage`, `intl` (`video_player`/`chewie`/`shared_preferences` were
-removed on 2026-10-06 as unused — re-add `video_player` + `chewie` when the real player lands).
-**Playback is still a placeholder** —
-`VideoPlayerScreen` renders a placeholder timer; wire the real player later.
+`flutter_secure_storage`, `intl`, `video_player` (re-added 2026-10-22 for real playback; `chewie` is NOT used —
+the screen draws its own controls).
 
 ### `lib/main.dart`
 
@@ -898,11 +975,21 @@ title + company name below. Tap → `/video/:id`.
 
 ### `lib/screens/home/video_player_screen.dart`
 
-**Placeholder playback** — a `Timer.periodic` advances `_elapsed` every 250 ms.
-The "Continue to survey" button is disabled until `_elapsed >= duration` —
-this is the full-watch gate the spec requires. Tap toggles paused state. When
-you wire the real `video_player`/`chewie` widget, replace the RadialGradient
-placeholder and drive `_elapsed` from the player's position stream.
+**Real playback (2026-10-22)** — the screen drives a `VideoPlayback` (`video_playback.dart`, Adapter + Strategy;
+`playbackFor(campaign)` picks it, injectable as `VideoPlayerScreen.playbackFactory` so tests use a fake):
+`NetworkVideoPlayback` wraps `VideoPlayerController.networkUrl` (MP4 or HLS); a campaign with no usable URL (old
+dev seeds) gets `TimedPlayback`, the former 250 ms clock. The campaign art is the poster under the video; the stage
+takes the video's own aspect ratio; a spinner shows while loading/buffering; a load failure shows `kVideoLoadError`
++ `kVideoRetry` (a new player). Leaving the app pauses it (only a tap resumes). The "Continue to survey" gate opens
+when the player reports completed or its position reaches `durationSeconds` (floored, so reachable) and stays open
+(`_watched` latch). **Rewind only (owner, 2026-10-22)**: the viewer may go back but never skip ahead — the
+`WatchTimeline` takes taps/drags (`onSeek`, shows the watched band `furthestProgress`) and the stage has a
+`RewindButton` (`kRewindStep` 10 s, `AppIcons.rewind`); every seek goes through `allowedSeek(target, _furthest)`
+(clamped to the furthest point actually played). A paused viewer stays paused after a seek; a rewind from the end
+plays again and the gate stays open. The stage's own node describes the picture/medallion (`ExcludeSemantics`), but
+the rewind and retry buttons keep their own screen-reader nodes. The player lives in the
+State, never in `_Stage`, so rotation does not dispose it. Tests: `test/screens/home/video_player_screen_test.dart`,
+`video_playback_test.dart`.
 
 ### `lib/screens/survey/survey_screen.dart`
 
@@ -1063,6 +1150,9 @@ the next session can uncomment once the backend exists.
   for that key — unchanged ⇒ appears at once (tab switches no longer replay), changed ⇒ an odometer
   (`OdometerText`) rolls only the digits that differ, rightmost first, up for more money / down for less. Without a
   key it still starts at 0 when `animateOnMount` (the survey reward sheet). At rest it is one plain `Text`.
+- **Sheets open over the tab bar (2026-10-22)**: a sheet opened from a tab (wallet, home, profile) must go through
+  `showAppSheet` + `AppSheetFrame` (`widgets/app_sheet.dart`): root navigator (otherwise the floating tab bar painted
+  over 'Нэрээ нэмэх' and covered its button) and one keyboard/home-indicator padding. `test/shell/shell_sheets_test.dart`.
 - **Keyboard closes on a tap outside a field (2026-10-14)**: `widgets/dismiss_keyboard_on_tap.dart` wraps the
   whole app once (`app.dart` builder). Do not add per-screen `GestureDetector(onTap: unfocus)` copies; scroll views
   may keep `keyboardDismissBehavior: onDrag` as well.
@@ -1090,7 +1180,6 @@ the next session can uncomment once the backend exists.
 | `splash_screen.dart`         | replace timer with real auth-token check                                |
 | `login_screen.dart`          | wire `AuthService.login`                                                |
 | `register_screen.dart`       | wire `AuthService.register`                                             |
-| `video_player_screen.dart`   | swap placeholder for real HLS player                                    |
 | `survey_screen.dart`         | POST to `/surveys/submit` — this triggers the atomic 3-step transaction |
 | `wallet_screen.dart`         | bind balance/history to real user state                                 |
 | `payout_request_screen.dart` | POST to `/payouts/request`                                              |
@@ -1120,9 +1209,8 @@ the next session can uncomment once the backend exists.
      JWT in a cookie or localStorage after `/auth/login`. Every page
      already consumes the same DTO shapes the backend returns.
    - In `viewer_app/`, fill in `api_service.dart` (set `baseUrl`) and
-     `auth_service.dart` (uncomment the Dio calls). Then swap the
-     placeholder timer in `video_player_screen.dart` for `video_player` +
-     `chewie` playing the real `.m3u8` URL.
+     `auth_service.dart` (uncomment the Dio calls). (Real video playback is
+     done, 2026-10-22.)
 4. **Video worker** (`video_worker/`). Small container running FFmpeg:
    accepts `POST /transcode` (or an S3/R2 event), outputs 480p/720p/1080p
    HLS `.m3u8` + `.ts` chunks, uploads to Cloudflare R2, then calls back

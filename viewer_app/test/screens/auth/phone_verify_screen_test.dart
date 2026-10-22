@@ -79,8 +79,10 @@ Future<void> _pump(
   SmsLauncher? launchSms,
   DateTime Function()? now,
   PendingRegistration? pending,
+  Size size = const Size(390, 1000),
+  double textScale = 1.0,
 }) async {
-  tester.view.physicalSize = const Size(390, 1000) * 3;
+  tester.view.physicalSize = size * 3;
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
   final router = GoRouter(
@@ -100,7 +102,16 @@ Future<void> _pump(
   );
   addTearDown(router.dispose);
   await tester.pumpWidget(
-    MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
+    MaterialApp.router(
+      theme: AppTheme.light(),
+      routerConfig: router,
+      builder: (context, app) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(textScale),
+        ),
+        child: app!,
+      ),
+    ),
   );
   router.push('/screen');
   await _settle(tester);
@@ -331,4 +342,19 @@ void main() {
 
     expect(find.text(kCodeExpiredTitle), findsOneWidget);
   });
+
+  for (final scale in [1.3, 1.5]) {
+    testWidgets('fits a 320pt phone at ${scale}x text, waiting and expired',
+        (tester) async {
+      var status = 'PENDING';
+      FakeApi.install((_) => _state(status));
+      await _pump(tester, size: const Size(320, 568), textScale: scale);
+      expect(tester.takeException(), isNull);
+      expect(find.text('482916'), findsOneWidget);
+
+      status = 'EXPIRED';
+      await _nextPoll(tester);
+      expect(tester.takeException(), isNull);
+    });
+  }
 }

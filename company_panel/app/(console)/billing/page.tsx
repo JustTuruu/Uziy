@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CalendarCheck, CreditCard, Hourglass, Receipt } from "lucide-react";
-import { Badge, Card, CardBody, CardHeader, PageHeader, StatCard } from "@uziy/ui";
+import { Badge, Card, CardBody, CardHeader, PageHeader, StatCard, TableScroll } from "@uziy/ui";
 import {
   ApiError,
   auth,
@@ -115,31 +115,33 @@ export default function BillingPage() {
               description="Төлбөр төлөгдсөний дараа админ шалгаж баталгаажуулна"
             />
             <CardBody className="p-0">
-              <table className="w-full text-sm">
-                <tbody>
-                  {awaitingPayment.map((c) => (
-                    <tr
-                      key={c.id}
-                      className="border-b border-[var(--color-divider)] last:border-0"
-                    >
-                      <td className="px-5 py-3 text-[var(--color-text-primary)]">
-                        {c.title}
-                      </td>
-                      <td className="px-5 py-3 text-right font-mono text-[var(--color-text-primary)]">
-                        {formatTugrik(c.totalBudget)}
-                      </td>
-                      <td className="px-5 py-3 text-right">
-                        <Link
-                          href={`/campaigns/${c.id}`}
-                          className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3 text-xs font-semibold text-[var(--color-on-primary)] hover:bg-[var(--color-primary-dark)]"
-                        >
-                          <CreditCard size={14} /> Төлөх
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <TableScroll>
+                <table className="w-full text-sm">
+                  <tbody>
+                    {awaitingPayment.map((c) => (
+                      <tr
+                        key={c.id}
+                        className="border-b border-[var(--color-divider)] last:border-0"
+                      >
+                        <td className="px-5 py-3 text-[var(--color-text-primary)]">
+                          {c.title}
+                        </td>
+                        <td className="px-5 py-3 text-right font-mono text-[var(--color-text-primary)]">
+                          {formatTugrik(c.totalBudget)}
+                        </td>
+                        <td className="px-5 py-3 text-right">
+                          <Link
+                            href={`/campaigns/${c.id}`}
+                            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3 text-xs font-semibold text-[var(--color-on-primary)] hover:bg-[var(--color-primary-dark)]"
+                          >
+                            <CreditCard size={14} /> Төлөх
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableScroll>
             </CardBody>
           </Card>
         </div>
@@ -164,48 +166,50 @@ export default function BillingPage() {
               </div>
             )}
             {!loading && payments && payments.length > 0 && (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--color-divider)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
-                    <th className="px-5 py-3 font-semibold">Дугаар</th>
-                    <th className="px-5 py-3 font-semibold">Судалгаа</th>
-                    <th className="px-5 py-3 font-semibold">Огноо</th>
-                    <th className="px-5 py-3 font-semibold text-right">Дүн</th>
-                    <th className="px-5 py-3 font-semibold text-right">Төлөв</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {payments.map((p) => (
-                    <tr
-                      key={p.id}
-                      className="border-b border-[var(--color-divider)] last:border-0"
-                    >
-                      <td className="px-5 py-3 font-mono text-[var(--color-text-primary)]">
-                        {p.reference}
-                      </td>
-                      <td className="px-5 py-3">
-                        <Link
-                          href={`/campaigns/${p.campaignId}`}
-                          className="text-[var(--color-text-primary)] hover:text-[var(--color-primary)] hover:underline"
-                        >
-                          {p.campaignTitle}
-                        </Link>
-                      </td>
-                      <td className="px-5 py-3 text-[var(--color-text-secondary)]">
-                        {formatDate(p.paidAt ?? p.createdAt)}
-                      </td>
-                      <td className="px-5 py-3 text-right font-mono text-[var(--color-text-primary)]">
-                        {formatTugrik(p.amount)}
-                      </td>
-                      <td className="px-5 py-3 text-right">
-                        <Badge tone={PAYMENT_STATUS_TONE[p.status] ?? "neutral"}>
-                          {PAYMENT_STATUS_LABEL[p.status] ?? p.status}
-                        </Badge>
-                      </td>
+              <TableScroll>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--color-divider)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
+                      <th className="px-5 py-3 font-semibold">Дугаар</th>
+                      <th className="px-5 py-3 font-semibold">Судалгаа</th>
+                      <th className="px-5 py-3 font-semibold">Огноо</th>
+                      <th className="px-5 py-3 font-semibold text-right">Дүн</th>
+                      <th className="px-5 py-3 font-semibold text-right">Төлөв</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {payments.map((p) => (
+                      <tr
+                        key={p.id}
+                        className="border-b border-[var(--color-divider)] last:border-0"
+                      >
+                        <td className="px-5 py-3 font-mono text-[var(--color-text-primary)]">
+                          {p.reference}
+                        </td>
+                        <td className="px-5 py-3">
+                          <Link
+                            href={`/campaigns/${p.campaignId}`}
+                            className="text-[var(--color-text-primary)] hover:text-[var(--color-primary)] hover:underline"
+                          >
+                            {p.campaignTitle}
+                          </Link>
+                        </td>
+                        <td className="px-5 py-3 text-[var(--color-text-secondary)]">
+                          {formatDate(p.paidAt ?? p.createdAt)}
+                        </td>
+                        <td className="px-5 py-3 text-right font-mono text-[var(--color-text-primary)]">
+                          {formatTugrik(p.amount)}
+                        </td>
+                        <td className="px-5 py-3 text-right">
+                          <Badge tone={PAYMENT_STATUS_TONE[p.status] ?? "neutral"}>
+                            {PAYMENT_STATUS_LABEL[p.status] ?? p.status}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableScroll>
             )}
           </CardBody>
         </Card>

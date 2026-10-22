@@ -16,12 +16,8 @@ enum GuestChoice { register, login }
 ///
 /// Uses the root navigator so the sheet covers the floating tab bar.
 Future<GuestChoice?> showGuestGateSheet(BuildContext context) {
-  return showModalBottomSheet<GuestChoice>(
-    context: context,
-    useRootNavigator: true,
-    isScrollControlled: true,
-    showDragHandle: true,
-    useSafeArea: true,
+  return showAppSheet<GuestChoice>(
+    context,
     builder: (_) => const GuestGateSheet(),
   );
 }

@@ -14,7 +14,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.ResultActions;
 
-/** Company accounts are opened by an admin, on Postgres, and the new company can log in with the password handed over. */
+/**
+ * Company accounts are opened by an admin, on Postgres, and the new company can log in with the password handed over
+ * (then proves its phone by SMS, like every console account on a new browser).
+ */
 class CompanyAccountIntegrationTest extends AbstractApiIntegrationTest {
 
     private ResultActions create(long admin, String name, String phone, String password) throws Exception {
@@ -25,7 +28,7 @@ class CompanyAccountIntegrationTest extends AbstractApiIntegrationTest {
     }
 
     @Test
-    void anAdminOpensACompanyAccountThatCanLogInAtOnce() throws Exception {
+    void anAdminOpensACompanyAccountWhosePasswordWorks() throws Exception {
         String phone = freshPhone();
 
         create(admin(), "Голомт Банк", phone, "temp-pass1").andExpect(status().isCreated())
@@ -36,9 +39,10 @@ class CompanyAccountIntegrationTest extends AbstractApiIntegrationTest {
 
         mvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"phoneNumber\":\"%s\",\"password\":\"temp-pass1\"}".formatted(phone)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.user.role").value("COMPANY"))
-                .andExpect(jsonPath("$.user.companyName").value("Голомт Банк"));
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.token").doesNotExist())
+                .andExpect(jsonPath("$.twoStep.role").value("COMPANY"))
+                .andExpect(jsonPath("$.twoStep.verificationId").isNotEmpty());
     }
 
     @Test
@@ -46,7 +50,7 @@ class CompanyAccountIntegrationTest extends AbstractApiIntegrationTest {
         String viewersPhone = phoneOf(viewer(0));
 
         create(admin(), "Squat", viewersPhone, "temp-pass1").andExpect(status().isConflict())
-                .andExpect(jsonPath("$.message").value(CompanyAccountServiceImpl.PHONE_TAKEN));
+                .andExpect(status().reason(CompanyAccountServiceImpl.PHONE_TAKEN));
 
         assertThat(jdbc.queryForObject("SELECT role FROM users WHERE phone_number = ?", String.class, viewersPhone))
                 .isEqualTo("VIEWER");
@@ -55,7 +59,7 @@ class CompanyAccountIntegrationTest extends AbstractApiIntegrationTest {
     @Test
     void anInvalidFormIs400WithAMongolianMessage() throws Exception {
         create(admin(), " ", freshPhone(), "temp-pass1").andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(mn.uziy.backend.common.FieldMessages.COMPANY_NAME_REQUIRED));
+                .andExpect(status().reason(mn.uziy.backend.common.FieldMessages.COMPANY_NAME_REQUIRED));
         create(admin(), "X", freshPhone(), "ө".repeat(37)).andExpect(status().isBadRequest());
     }
 

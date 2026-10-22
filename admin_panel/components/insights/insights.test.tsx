@@ -89,6 +89,12 @@ describe("<AccessLogTable>", () => {
     expect(screen.getByText("99990000")).toBeInTheDocument();
     expect(actionLabel("UNKNOWN")).toBe("UNKNOWN");
   });
+
+  it("names the admin reads of people and payouts the backend now logs", () => {
+    for (const action of ["VIEW_USERS", "VIEW_USER", "VIEW_COMPANIES", "VIEW_PAYOUTS", "VIEW_PAYOUT_HISTORY"]) {
+      expect(actionLabel(action)).toMatch(/[А-Яа-яӨөҮү]/);
+    }
+  });
 });
 
 describe("<QuestionExplorer>", () => {

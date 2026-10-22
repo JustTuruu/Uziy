@@ -25,9 +25,10 @@ public final class Bootstrap {
               (phone_number, password_hash, role, is_verified, created_at)
             VALUES (?, ?, 'ADMIN', TRUE, ?)
             ON CONFLICT (phone_number) DO UPDATE
-              SET role          = 'ADMIN',
-                  password_hash = EXCLUDED.password_hash,
-                  is_verified   = TRUE
+              SET role                   = 'ADMIN',
+                  password_hash          = EXCLUDED.password_hash,
+                  is_verified            = TRUE,
+                  credentials_changed_at = NOW()
             RETURNING id""";
 
     private Bootstrap() {
@@ -50,7 +51,8 @@ public final class Bootstrap {
 
     /**
      * Insert (or promote) an ADMIN user. Uses {@code ON CONFLICT (phone_number)} so
-     * running twice for the same phone just resets the password + role.
+     * running twice for the same phone just resets the password + role. A reset is a password change: it moves
+     * {@code credentials_changed_at}, so old tokens and remembered browsers stop working.
      */
     public static long makeAdmin(String phoneNumber, String password,
                                  String dbUrl, String dbUser, String dbPass) {

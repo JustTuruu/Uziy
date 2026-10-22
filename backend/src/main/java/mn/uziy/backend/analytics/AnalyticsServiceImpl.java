@@ -40,8 +40,6 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     public static final String CAMPAIGN_NOT_FOUND = Messages.CAMPAIGN_NOT_FOUND;
 
     /** The market's calendar: a view at 23:30 Ulaanbaatar time belongs to that day, not the UTC one. */
-    static final int HOURS_PER_DAY = 24;
-
     static final ZoneId MARKET_ZONE = ZoneId.of("Asia/Ulaanbaatar");
 
     private final CampaignRepository campaigns;
@@ -104,7 +102,6 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                 totalsOf(own, performance),
                 performance,
                 dailySeries(companyId, campaignId, days),
-                hourlySeries(companyId, campaignId, days),
                 selectedResponses >= MIN_AUDIENCE_SAMPLE ? audienceOf(companyId, campaignId, selectedResponses) : null,
                 campaignId == null ? List.of() : answerCounter.count(chosenQuestions, answers, MIN_SEGMENT_SAMPLE),
                 campaignId == null
@@ -196,16 +193,5 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                 SmallGroupRule.reportable(gender, responses, MIN_AUDIENCE_SAMPLE),
                 SmallGroupRule.reportable(AgeBands.group(byAge), responses, MIN_AUDIENCE_SAMPLE),
                 shownCities.subList(0, Math.min(MAX_CITIES, shownCities.size())));
-    }
-
-    /** Responses per hour of the day (index = hour, 24 entries) over the window, in market time. */
-    private List<Long> hourlySeries(long companyId, @Nullable Long campaignId, int days) {
-        LocalDate first = LocalDate.now(clock.withZone(MARKET_ZONE)).minusDays(days - 1L);
-        OffsetDateTime since = first.atStartOfDay(MARKET_ZONE).toOffsetDateTime();
-        long[] perHour = new long[HOURS_PER_DAY];
-        for (Object[] row : views.hourlyCounts(companyId, campaignId, since, MARKET_ZONE.getId())) {
-            perHour[((Number) row[0]).intValue()] = ((Number) row[1]).longValue();
-        }
-        return java.util.Arrays.stream(perHour).boxed().toList();
     }
 }

@@ -4,6 +4,12 @@
 // - Throws ApiError on non-2xx responses with the status code + parsed body.
 
 import { useMemo, useSyncExternalStore } from "react";
+import type {
+  ConsoleLoginBody,
+  ConsoleLoginResult,
+  PhoneCheck,
+  VerifiedLogin,
+} from "@uziy/ui";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
@@ -62,6 +68,7 @@ export const auth = {
     window.localStorage.setItem(TOKEN_KEY, token);
   },
 
+  /** Signs out. The browser's device token (`@uziy/ui` deviceTokenStore) stays: it is what skips the SMS next time. */
   clear(): void {
     if (typeof window === "undefined") return;
     window.localStorage.removeItem(TOKEN_KEY);
@@ -181,13 +188,25 @@ function safeJson(text: string): unknown {
 
 // --- High-level endpoints (thin wrappers so pages don't build URLs) --------
 
-export interface LoginBody {
-  phoneNumber: string;
-  password: string;
-}
+/** `POST /auth/login`: a token (200), or on a browser the server does not recognise the SMS step (202). */
+export type LoginResult = ConsoleLoginResult<Me>;
+
+/** Also the `ConsoleLoginApi` the shared login flow (`@uziy/ui` useConsoleLogin) calls. */
 export const authApi = {
-  login: (body: LoginBody) =>
-    apiFetch<AuthResponse>("/auth/login", {
+  login: (body: ConsoleLoginBody) =>
+    apiFetch<LoginResult>("/auth/login", {
+      method: "POST",
+      body,
+      anonymous: true,
+    }),
+  phoneCheck: (verificationId: string) =>
+    apiFetch<PhoneCheck>(
+      `/auth/phone-verifications/${encodeURIComponent(verificationId)}`,
+      { anonymous: true },
+    ),
+  /** Finishes the SMS step: the token, plus this browser's device token. */
+  verify: (body: { phoneNumber: string; verificationId: string }) =>
+    apiFetch<VerifiedLogin<Me>>("/auth/login/verify", {
       method: "POST",
       body,
       anonymous: true,
@@ -279,6 +298,11 @@ export const adminApi = {
   user: (id: number) => apiFetch<AdminUser>(`/admin/users/${id}`),
   verify: (id: number) =>
     apiFetch<AdminUser>(`/admin/users/${id}/verify`, { method: "PATCH" }),
+  /** The account's remembered browsers must pass the SMS step again (204). */
+  forgetTrustedDevices: (id: number) =>
+    apiFetch<null>(`/admin/users/${id}/trusted-devices/forget`, {
+      method: "POST",
+    }),
   campaigns: (opts?: { status?: CampaignStatus; companyId?: number }) => {
     const params = new URLSearchParams();
     if (opts?.status) params.set("status", opts.status);
@@ -328,6 +352,49 @@ export const adminApi = {
       method: "PATCH",
       body,
     }),
+};
+
+// --- Company accounts (made by the admin; companies cannot register) -------
+
+export interface CompanyAccount {
+  id: number;
+  companyName: string;
+  phoneNumber: string;
+  createdAt: string;
+  campaignCount: number;
+}
+
+export interface NewCompanyBody {
+  companyName: string;
+  phoneNumber: string;
+  /** Temporary password the admin hands over; never shown again after creation. */
+  password: string;
+}
+
+export const companiesApi = {
+  list: () => apiFetch<CompanyAccount[]>("/admin/companies"),
+  create: (body: NewCompanyBody) =>
+    apiFetch<CompanyAccount>("/admin/companies", { method: "POST", body }),
+};
+
+// --- Admin accounts (made by another admin; admins are never self-created) --
+
+export interface AdminAccount {
+  id: number;
+  phoneNumber: string;
+  createdAt: string;
+}
+
+export interface NewAdminBody {
+  phoneNumber: string;
+  /** Temporary password handed over; the new admin still proves the phone by SMS at every login. */
+  password: string;
+}
+
+export const adminsApi = {
+  list: () => apiFetch<AdminAccount[]>("/admin/admins"),
+  create: (body: NewAdminBody) =>
+    apiFetch<AdminAccount>("/admin/admins", { method: "POST", body }),
 };
 
 // --- Platform settings (public read; admin write) --------------------------

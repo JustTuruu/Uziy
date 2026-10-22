@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
+<!--
+  Release (App Store / TestFlight): push through the production APNs environment.
+  Profile builds use RunnerProfile.entitlements (development APNs); Debug uses RunnerDebug.entitlements (no push).
+-->
 <dict>
-	<!-- Switch to "production" for App Store / TestFlight builds. -->
 	<key>aps-environment</key>
-	<string>development</string>
+	<string>production</string>
 </dict>
 </plist>

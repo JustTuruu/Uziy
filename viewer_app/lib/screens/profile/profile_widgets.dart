@@ -50,11 +50,8 @@ void showLogoutFailedSnackBar(BuildContext context) => showProfileSnackBar(
 ///
 /// Uses the root navigator so the sheet covers the floating tab bar.
 Future<bool> showLogoutConfirmSheet(BuildContext context) async {
-  final result = await showModalBottomSheet<bool>(
-    context: context,
-    useRootNavigator: true,
-    isScrollControlled: true,
-    showDragHandle: true,
+  final result = await showAppSheet<bool>(
+    context,
     builder: (_) => const LogoutConfirmSheet(),
   );
   return result ?? false;
@@ -66,52 +63,49 @@ class LogoutConfirmSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.xl,
-          AppSpacing.xs,
-          AppSpacing.xl,
-          AppSpacing.xl,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const DangerIconBadge(icon: AppIcons.logout),
-            const SizedBox(height: AppSpacing.lg),
-            Semantics(
-              header: true,
-              child: Text(
-                'Гарах уу?',
-                textAlign: TextAlign.center,
-                style: context.textStyles.headline,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'Та дахин нэвтрэхдээ утасны дугаар, нууц үгээ оруулна.',
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.xl,
+        AppSpacing.xs,
+        AppSpacing.xl,
+        AppSpacing.xl,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const DangerIconBadge(icon: AppIcons.logout),
+          const SizedBox(height: AppSpacing.lg),
+          Semantics(
+            header: true,
+            child: Text(
+              'Гарах уу?',
               textAlign: TextAlign.center,
-              style: context.textStyles.body.copyWith(
-                color: context.colors.textSecondary,
-              ),
+              style: context.textStyles.headline,
             ),
-            const SizedBox(height: AppSpacing.xxl),
-            AppButton(
-              label: 'Гарах',
-              icon: AppIcons.logout,
-              variant: AppButtonVariant.danger,
-              haptic: true,
-              onPressed: () => Navigator.of(context).pop(true),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Та дахин нэвтрэхдээ утасны дугаар, нууц үгээ оруулна.',
+            textAlign: TextAlign.center,
+            style: context.textStyles.body.copyWith(
+              color: context.colors.textSecondary,
             ),
-            const SizedBox(height: AppSpacing.md),
-            AppButton(
-              label: 'Болих',
-              variant: AppButtonVariant.secondary,
-              onPressed: () => Navigator.of(context).pop(false),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: AppSpacing.xxl),
+          AppButton(
+            label: 'Гарах',
+            icon: AppIcons.logout,
+            variant: AppButtonVariant.danger,
+            haptic: true,
+            onPressed: () => Navigator.of(context).pop(true),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppButton(
+            label: 'Болих',
+            variant: AppButtonVariant.secondary,
+            onPressed: () => Navigator.of(context).pop(false),
+          ),
+        ],
       ),
     );
   }

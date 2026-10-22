@@ -300,10 +300,32 @@ void main() {
     });
 
     test('keeps digits only, drops leading zeros', () {
-      expect(type('12a3.4').text, '1,234');
+      expect(type('12a3-4').text, '1,234');
       expect(type('0005000').text, '5,000');
       expect(type('0').text, '');
       expect(type('').text, '');
+    });
+
+    // Regression: a pasted '5,000.00' (bank apps copy amounts like that) became 500,000 ₮.
+    test('a pasted amount with kopecks keeps only the whole tögrög', () {
+      for (final (pasted, expected) in [
+        ('5000.00', '5,000'),
+        ('5,000.00', '5,000'),
+        ('12,500.5', '12,500'),
+        ('₮ 7,000.00', '7,000'),
+      ]) {
+        expect(type(pasted).text, expected, reason: pasted);
+      }
+    });
+
+    test('deleting from a grouped amount is not mistaken for a fraction', () {
+      // Backspace on '12,500' leaves '12,50', on '1,000' leaves '1,00'.
+      expect(type('12,50').text, '1,250');
+      expect(type('1,00').text, '100');
+    });
+
+    test('a period typed at the end is simply dropped', () {
+      expect(type('5,000.').text, '5,000');
     });
 
     test('stops at the maximum length', () {

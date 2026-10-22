@@ -1,51 +1,47 @@
 import { ArrowDown, ArrowUpRight, Check } from "lucide-react";
+import { HERO } from "@/lib/content";
 import type { SiteLinks } from "@/lib/links";
 import { PhoneDemo } from "./phone-demo";
+
+/** Splits [title] around [accent] so the accent can be coloured; the full title stays one heading. */
+export function splitAccent(title: string, accent: string): [string, string, string] {
+  const at = title.indexOf(accent);
+  if (at < 0) return [title, "", ""];
+  return [title.slice(0, at), accent, title.slice(at + accent.length)];
+}
+
 export function Hero({ links }: { links: SiteLinks }) {
   const available = Boolean(links.appStore || links.playStore);
+  const [before, accent, after] = splitAccent(HERO.title, HERO.accent);
   return (
     <section id="top" className="hero container">
       <div className="hero-copy">
-        <p className="eyebrow">
-          <span className="status-dot" /> ТАНЫ САНАЛ. ШИНЭ БОЛОМЖ.
-        </p>
         <h1>
-          Зүгээр үзээд
-          <br />
-          өнгөрөх үү?
-          <br />
-          <span>
-            Санал бодлоо
-            <br />
-            хуваалцаарай.
-          </span>
+          {before}
+          <span>{accent}</span>
+          {after}
         </h1>
-        <p className="hero-description">
-          Сонирхолтой брэндүүдтэй танилцаж, богино асуултад хариулаарай. Илүү
-          сайн бүтээгдэхүүн таны саналаас эхэлнэ.
-        </p>
+        <p className="hero-description">{HERO.subtitle}</p>
         <div className="hero-actions">
           <a className="button button-primary" href="#download">
-            {available ? "Uziy апп татах" : "Апптай танилцах"}
-            <ArrowUpRight size={19} />
+            {available ? HERO.ctaReady : HERO.ctaSoon}
+            <ArrowUpRight size={19} aria-hidden />
           </a>
           <a className="text-link" href="#how">
-            Хэрхэн ажилладаг вэ? <ArrowDown size={16} />
+            {HERO.secondary} <ArrowDown size={16} aria-hidden />
           </a>
         </div>
-        <p className="hero-note">
-          <Check size={15} /> Богино видео <span>·</span> 2–3 асуулт{" "}
-          <span>·</span> Таны бодит санал
-        </p>
+        <ul className="hero-facts">
+          {HERO.facts.map((fact) => (
+            <li key={fact}>
+              <Check size={15} aria-hidden /> {fact}
+            </li>
+          ))}
+        </ul>
       </div>
       <div className="hero-stage">
         <div className="stage-orbit" aria-hidden />
-        <span className="stage-label">БРЭНД ↔ ТА</span>
         <PhoneDemo />
-        <div className="stage-caption">
-          <span>01 — ҮЗ. ХАРИУЛ. НӨЛӨӨЛ.</span>
-          <span>UZIY EXPERIENCE</span>
-        </div>
       </div>
     </section>
   );

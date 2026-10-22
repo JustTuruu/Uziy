@@ -117,6 +117,35 @@ void main() {
     expect(closed, isFalse);
   });
 
+  testWidgets('fits a small phone with 1.3x text and a balance',
+      (tester) async {
+    tester.view.physicalSize = const Size(320, 568) * 2;
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.dark(),
+      builder: (context, app) => MediaQuery(
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: const TextScaler.linear(1.3)),
+        child: app!,
+      ),
+      home: Scaffold(
+        body: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showDeleteAccountSheet(context,
+                balance: 123456, onDelete: (_) async {}),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text(kDeleteTitle), findsOneWidget);
+  });
+
   group('profile row', () {
     const user = AppUser(
       id: 7,

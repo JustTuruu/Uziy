@@ -23,9 +23,10 @@ public class AuthController {
     }
 
     /**
-     * Viewers and companies: 200 with {@link AuthResponse}, unchanged. An admin with the right password: <b>202
+     * Viewers: 200 with {@link AuthResponse}. Admins and companies with the right password: 200 as well when the
+     * request carries the {@code deviceToken} of a browser they proved their phone from; otherwise <b>202
      * Accepted</b> with {@code {"twoStep": {...}}} and no token — the phone must still be proved, see
-     * {@code mn.uziy.backend.adminlogin.AdminLoginController}. A wrong password: 401.
+     * {@code mn.uziy.backend.consolelogin.ConsoleLoginController}. A wrong password: 401.
      */
     @PostMapping("/login")
     public ResponseEntity<Object> login(@Valid @RequestBody LoginReq body) {

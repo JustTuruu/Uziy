@@ -70,9 +70,9 @@ registration.
 * **Rate limiting is thin.** Only login (per phone) and phone checks (per phone: 60 s cool-down, 5 per hour) are limited. Add per-IP limits at the
   gateway (Cloudflare / nginx) for login, registration and password reset; the in-memory login lock is per instance and
   lets an attacker lock a *known* phone for 15 min (a nuisance, not a breach).
-* **Open company registration** (`/auth/register/company`) has no verification — spam accounts are possible.
+* ~~Open company registration~~ — closed 2026-10-22: only the admin creates companies (`POST /admin/companies`).
 * **Tokens**: 24 h, no refresh, no revocation list; the web panels keep the JWT in `localStorage` (XSS would
-  steal it). Consider shorter tokens + httpOnly cookies. No 2FA for admins.
+  steal it). Consider shorter tokens + httpOnly cookies. Admins verify the phone at every login since 2026-10-22.
 * **Money is `DOUBLE PRECISION`** (as the spec chose). Whole-₮ rules keep it exact today; move to `NUMERIC`
   before any audit-grade accounting.
 * No account-deletion / data-export endpoint (the old privacy text that promised 30-day deletion was removed).

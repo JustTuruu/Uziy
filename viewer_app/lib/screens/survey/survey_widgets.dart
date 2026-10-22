@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../models/survey_question.dart';
 import '../../widgets/ui.dart';
@@ -81,6 +84,52 @@ String answerHintFor(QuestionType type) => switch (type) {
 /// Counter under the free-text answer: '12 тэмдэгт'. Counts user-perceived
 /// characters (grapheme clusters), not UTF-16 code units.
 String characterCountLabel(String text) => '${text.characters.length} тэмдэгт';
+
+/// Longest free-text answer the backend takes, measured like it does: on the
+/// JSON text that is sent (AnswerValidator.MAX_ANSWER_LENGTH, UTF-16 units).
+/// A longer answer used to be refused only at submit, after the video.
+const int kMaxAnswerJsonLength = 2000;
+
+/// Shown under the free-text answer once nothing more fits.
+const String kAnswerFullLabel = 'Хариулт хамгийн дээд урттаа хүрлээ';
+
+/// How many UTF-16 units of the JSON text [text] would take once sent — the
+/// same `jsonEncode` the app submits with (ViewerService.encodeAnswer).
+int answerJsonLength(String text) => jsonEncode(text).length;
+
+/// Whether [text] is as long as an answer can be.
+bool isAnswerFull(String text) =>
+    answerJsonLength(text) >= kMaxAnswerJsonLength;
+
+/// Keeps the free-text answer within [kMaxAnswerJsonLength]: typing stops at
+/// the limit, and a long paste keeps as much as fits (whole characters only).
+class AnswerLengthFormatter extends TextInputFormatter {
+  const AnswerLengthFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (answerJsonLength(newValue.text) <= kMaxAnswerJsonLength) {
+      return newValue;
+    }
+    // The two quotes, then each character's own escaped length.
+    var used = 2;
+    final kept = StringBuffer();
+    for (final c in newValue.text.characters) {
+      final cost = answerJsonLength(c) - 2;
+      if (used + cost > kMaxAnswerJsonLength) break;
+      used += cost;
+      kept.write(c);
+    }
+    final text = kept.toString();
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Progress
@@ -474,6 +523,7 @@ class SurveyTextField extends StatelessWidget {
           maxLines: 8,
           keyboardType: TextInputType.multiline,
           textCapitalization: TextCapitalization.sentences,
+          inputFormatters: const [AnswerLengthFormatter()],
           style: context.textStyles.body,
           decoration: InputDecoration(
             hintText: hintText,
@@ -485,13 +535,18 @@ class SurveyTextField extends StatelessWidget {
           alignment: Alignment.centerRight,
           child: ValueListenableBuilder<TextEditingValue>(
             valueListenable: controller,
-            builder: (context, value, _) => Text(
-              characterCountLabel(value.text),
-              style: context.textStyles.caption.copyWith(
-                color: context.colors.textTertiary,
-                fontFeatures: AppTextStyles.tabular,
-              ),
-            ),
+            builder: (context, value, _) {
+              final full = isAnswerFull(value.text);
+              return Text(
+                full ? kAnswerFullLabel : characterCountLabel(value.text),
+                style: context.textStyles.caption.copyWith(
+                  color: full
+                      ? context.colors.warning
+                      : context.colors.textTertiary,
+                  fontFeatures: AppTextStyles.tabular,
+                ),
+              );
+            },
           ),
         ),
       ],

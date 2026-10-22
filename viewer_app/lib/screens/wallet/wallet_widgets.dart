@@ -609,41 +609,50 @@ class WalletCardSkeleton extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Card outline with the balance card's layout blocked in.
-          AspectRatio(
-            aspectRatio: WalletBalanceCard.aspectRatio,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-              decoration: BoxDecoration(
-                color: context.colors.surface,
-                borderRadius: AppRadii.brXl,
-                border: Border.all(color: context.colors.border),
+          // Card outline with the balance card's layout blocked in. Like the
+          // real card it is at least ID-1 shaped and grows when its blocks
+          // need more room: a fixed AspectRatio overflowed on 320pt phones.
+          LayoutBuilder(
+            builder: (context, box) => ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: box.maxWidth / WalletBalanceCard.aspectRatio,
               ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+              child: IntrinsicHeight(
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+                  decoration: BoxDecoration(
+                    color: context.colors.surface,
+                    borderRadius: AppRadii.brXl,
+                    border: Border.all(color: context.colors.border),
+                  ),
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Skeleton(width: 70, height: 22),
+                      Row(
+                        children: [
+                          Skeleton(width: 70, height: 22),
+                          Spacer(),
+                          Skeleton(width: 60, height: 14),
+                        ],
+                      ),
+                      SizedBox(height: AppSpacing.md),
+                      Skeleton(width: 40, height: 30, radius: 6),
                       Spacer(),
-                      Skeleton(width: 60, height: 14),
+                      Skeleton(width: 90, height: 12),
+                      SizedBox(height: AppSpacing.sm),
+                      Skeleton(width: 160, height: 34, radius: 10),
+                      SizedBox(height: AppSpacing.sm + 2),
+                      Row(
+                        children: [
+                          Skeleton(width: 90, height: 14),
+                          Spacer(),
+                          Skeleton(
+                              width: 110, height: 26, radius: AppRadii.pill),
+                        ],
+                      ),
                     ],
                   ),
-                  SizedBox(height: AppSpacing.md),
-                  Skeleton(width: 40, height: 30, radius: 6),
-                  Spacer(),
-                  Skeleton(width: 90, height: 12),
-                  SizedBox(height: AppSpacing.sm),
-                  Skeleton(width: 160, height: 34, radius: 10),
-                  SizedBox(height: AppSpacing.sm + 2),
-                  Row(
-                    children: [
-                      Skeleton(width: 90, height: 14),
-                      Spacer(),
-                      Skeleton(width: 110, height: 26, radius: AppRadii.pill),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -1525,6 +1534,10 @@ class WalletTotalTile extends StatelessWidget {
   }
 }
 
+/// Widest the amount at the end of a payout history row may get; a longer
+/// one (a big sum at large text) scales down so the title keeps its room.
+const double kHistoryAmountMaxWidth = 120;
+
 /// One payout request in the history: bank, status · day · time, and the
 /// amount going out. A rejected one is struck through — it came back.
 class PayoutHistoryRow extends StatelessWidget {
@@ -1549,15 +1562,24 @@ class PayoutHistoryRow extends StatelessWidget {
         if (rejected && reason != null) reason,
         when,
       ].join(' · '),
-      trailing: Text(
-        formatTugrik(-payout.amount),
-        style: context.textStyles.body.copyWith(
-          color: rejected
-              ? context.colors.textTertiary
-              : context.colors.textPrimary,
-          fontWeight: FontWeight.w700,
-          fontFeatures: AppTextStyles.tabular,
-          decoration: rejected ? TextDecoration.lineThrough : null,
+      // A big sum at large text used to take the whole row and squeeze the
+      // bank name into one letter per line; now the amount scales down.
+      trailing: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: kHistoryAmountMaxWidth),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerRight,
+          child: Text(
+            formatTugrik(-payout.amount),
+            style: context.textStyles.body.copyWith(
+              color: rejected
+                  ? context.colors.textTertiary
+                  : context.colors.textPrimary,
+              fontWeight: FontWeight.w700,
+              fontFeatures: AppTextStyles.tabular,
+              decoration: rejected ? TextDecoration.lineThrough : null,
+            ),
+          ),
         ),
       ),
     );

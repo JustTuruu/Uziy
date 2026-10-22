@@ -13,7 +13,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import mn.uziy.backend.admin.CreateCompanyReq;
-import mn.uziy.backend.adminlogin.AdminLoginVerifyReq;
+import mn.uziy.backend.consolelogin.ConsoleLoginVerifyReq;
 import mn.uziy.backend.auth.LoginReq;
 import mn.uziy.backend.auth.RegisterViewerReq;
 import mn.uziy.backend.company.CreateCampaignReq;
@@ -44,7 +44,7 @@ class RequestValidationMessagesTest {
                 new LoginReq("123", ""),
                 new RegisterViewerReq("12", "123", " ", "1abc", null, null, "", huge, null),
                 new CreateCompanyReq(" ", "abc", "1"),
-                new AdminLoginVerifyReq("12", null),
+                new ConsoleLoginVerifyReq("12", null),
                 new ResetPasswordReq("1", null, "1"),
                 new StartPhoneVerificationReq("phone", null),
                 new CreatePayoutReq(0, "", "", ""),
@@ -119,10 +119,10 @@ class RequestValidationMessagesTest {
     }
 
     @Test
-    void theAdminSecondStepNeedsThePhoneAndTheCheck() {
-        assertThat(messages(new AdminLoginVerifyReq("12", null))).containsExactlyInAnyOrder(
+    void theConsoleSecondStepNeedsThePhoneAndTheCheck() {
+        assertThat(messages(new ConsoleLoginVerifyReq("12", null))).containsExactlyInAnyOrder(
                 FieldMessages.PHONE, FieldMessages.PHONE_NOT_VERIFIED);
-        assertThat(messages(new AdminLoginVerifyReq("88112233", UUID.randomUUID()))).isEmpty();
+        assertThat(messages(new ConsoleLoginVerifyReq("88112233", UUID.randomUUID()))).isEmpty();
     }
 
     @Test

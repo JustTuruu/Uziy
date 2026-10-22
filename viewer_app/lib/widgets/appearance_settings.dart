@@ -4,6 +4,7 @@ import '../theme/theme_controller.dart';
 import 'info_row.dart';
 import 'pressable.dart';
 import 'app_button.dart';
+import 'app_sheet.dart';
 import 'status_banner.dart';
 
 class AppearanceSettings extends StatelessWidget {
@@ -91,10 +92,8 @@ class ThemeModeButton extends StatelessWidget {
 
 Future<void> showAppearanceSettings(BuildContext context,
         {ThemeController? controller}) =>
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
+    showAppSheet<void>(
+      context,
       builder: (context) => AppearanceSheet(
         controller: controller ?? ThemeController.instance,
       ),
@@ -125,35 +124,32 @@ class _AppearanceSheetState extends State<AppearanceSheet> {
   }
 
   @override
-  Widget build(BuildContext context) => SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-          child: ListenableBuilder(
-            listenable: controller,
-            builder: (context, _) => Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text('Харагдах горим', style: context.textStyles.headline),
-                const SizedBox(height: 8),
-                Text('Өөрт тухтай өнгөний горимоо сонгоорой.',
-                    style: context.textStyles.bodySmall),
-                const SizedBox(height: 16),
-                ThemeModeChoices(
-                  selected: controller.mode,
-                  onSelected: _select,
-                ),
-                if (_saveFailed) ...[
-                  const SizedBox(height: 12),
-                  const StatusBanner(
-                      message: AppearanceSheet.saveFailedMessage),
-                ],
-                const SizedBox(height: 20),
-                AppButton(
-                    label: 'Боллоо',
-                    onPressed: () => Navigator.of(context).pop()),
+  Widget build(BuildContext context) => SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+        child: ListenableBuilder(
+          listenable: controller,
+          builder: (context, _) => Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Харагдах горим', style: context.textStyles.headline),
+              const SizedBox(height: 8),
+              Text('Өөрт тухтай өнгөний горимоо сонгоорой.',
+                  style: context.textStyles.bodySmall),
+              const SizedBox(height: 16),
+              ThemeModeChoices(
+                selected: controller.mode,
+                onSelected: _select,
+              ),
+              if (_saveFailed) ...[
+                const SizedBox(height: 12),
+                const StatusBanner(message: AppearanceSheet.saveFailedMessage),
               ],
-            ),
+              const SizedBox(height: 20),
+              AppButton(
+                  label: 'Боллоо',
+                  onPressed: () => Navigator.of(context).pop()),
+            ],
           ),
         ),
       );

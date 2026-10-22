@@ -106,9 +106,18 @@ void main() {
 
   testWidgets('amount field accepts digits only', (tester) async {
     await pumpPayout(tester);
-    await tester.enterText(_amountField, '12a3.4');
+    await tester.enterText(_amountField, '12a3-4');
     await tester.pump();
     expect(_amountText(tester), '1,234');
+  });
+
+  /// Regression (2026-10-22): a pasted '5,000.00' became 500,000 ₮.
+  testWidgets('a pasted amount with kopecks keeps the whole tögrög',
+      (tester) async {
+    await pumpPayout(tester);
+    await tester.enterText(_amountField, '5,000.00');
+    await tester.pump();
+    expect(_amountText(tester), '5,000');
   });
 
   /// The user's request (2026-10-14): the amount must be typable by hand,

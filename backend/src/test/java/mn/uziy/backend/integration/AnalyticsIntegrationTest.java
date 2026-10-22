@@ -220,12 +220,40 @@ class AnalyticsIntegrationTest {
     }
 
     @Test
-    void responsesAreCountedByHourOfDayInMarketTime() throws Exception {
+    void theReportNoLongerCarriesAnHourOfDaySeries() throws Exception {
         fixture();
 
         mvc.perform(get("/company/analytics").header("Authorization", bearer(company)))
-                .andExpect(jsonPath("$.hourly", hasSize(24)))
-                .andExpect(jsonPath("$.hourly[*]").value(org.hamcrest.Matchers.hasItem(6)));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hourly").doesNotExist());
+    }
+
+    /** The campaign page shows every answer a survey ever got, so the window must not cut its question results. */
+    @Test
+    void questionResultsIncludeAnswersOlderThanTheWindow() throws Exception {
+        long oldCo = insertUser("70100003", "COMPANY", null, null, null, "OldCo");
+        long oldCampaign = jdbc.queryForObject("""
+                INSERT INTO campaigns (company_id, title, duration_seconds, total_budget, remaining_budget,
+                    cost_per_view, reward_per_user, status, target_viewers, paid_at)
+                VALUES (?, 'Old', 30, 10000, 9000, 1000, 700, 'COMPLETED', 10, NOW() - INTERVAL '300 days')
+                RETURNING id""", Long.class, oldCo);
+        long question = jdbc.queryForObject("""
+                INSERT INTO survey_questions (campaign_id, position, prompt, q_type, options_json)
+                VALUES (?, 1, 'Old?', 'SINGLE_CHOICE', '["Yes","No"]'::jsonb) RETURNING id""",
+                Long.class, oldCampaign);
+        long viewer = insertUser("70200101", "VIEWER", "MALE", "1995-01-01", "Улаанбаатар", null);
+        long view = jdbc.queryForObject("""
+                INSERT INTO view_history (user_id, campaign_id, reward_paid, watched_at)
+                VALUES (?, ?, 700, NOW() - INTERVAL '200 days') RETURNING id""", Long.class, viewer, oldCampaign);
+        jdbc.update("INSERT INTO survey_responses (view_id, question_id, answer_json) VALUES (?, ?, '\"Yes\"'::jsonb)",
+                view, question);
+
+        mvc.perform(get("/company/analytics").param("days", "7").param("campaignId", String.valueOf(oldCampaign))
+                        .header("Authorization", bearer(oldCo)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.daily[*].responses").value(org.hamcrest.Matchers.everyItem(
+                        org.hamcrest.Matchers.is(0))))
+                .andExpect(jsonPath("$.questions[0].answered").value(1));
     }
 
     @Test

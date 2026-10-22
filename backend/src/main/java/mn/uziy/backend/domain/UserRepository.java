@@ -1,6 +1,7 @@
 package mn.uziy.backend.domain;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -14,6 +15,13 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     Optional<UserEntity> findByPhoneNumber(String phoneNumber);
 
     boolean existsByPhoneNumber(String phoneNumber);
+
+    /** The id of the account of {@code phoneNumber}, without loading the row. */
+    @Query("SELECT u.id FROM UserEntity u WHERE u.phoneNumber = :phone")
+    Optional<Long> findIdByPhoneNumber(@Param("phone") String phoneNumber);
+
+    /** Every account of {@code role}, newest first (ties broken by id so the order is stable). */
+    List<UserEntity> findByRoleOrderByCreatedAtDescIdDesc(Role role);
 
     /** The account's current role, or empty when it no longer exists. */
     @Query("SELECT new mn.uziy.backend.domain.AccountState(u.role, u.credentialsChangedAt) "

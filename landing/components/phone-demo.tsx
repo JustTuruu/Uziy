@@ -5,10 +5,23 @@ import {
   Check,
   Leaf,
   RotateCcw,
+  ShieldCheck,
   Signal,
   BatteryFull,
 } from "lucide-react";
-const options = ["Амт, чанар", "Орц, найрлага", "Сав баглаа боодол"];
+import { DEMO } from "@/lib/content";
+
+/** Multi-line copy ("…\n…") as lines with <br/> between them. */
+function Lines({ text }: { text: string }) {
+  return text.split("\n").map((line, i) => (
+    <span key={line}>
+      {i > 0 && <br />}
+      {line}
+    </span>
+  ));
+}
+
+/** A one-question sample survey in a phone frame; nothing is sent anywhere. */
 export function PhoneDemo() {
   const [answer, setAnswer] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -16,11 +29,11 @@ export function PhoneDemo() {
     <div className="demo-composition">
       <div className="floating-note">
         <span className="note-icon">
-          <Check size={18} />
+          <ShieldCheck size={18} aria-hidden />
         </span>
         <div>
-          <strong>Жижиг санал.</strong>
-          <span>Том өөрчлөлтийн эхлэл.</span>
+          <strong>{DEMO.note.title}</strong>
+          <span>{DEMO.note.text}</span>
         </div>
       </div>
       <div className="phone">
@@ -35,13 +48,11 @@ export function PhoneDemo() {
         <div className="phone-content">
           <div className="phone-brand">
             uziy<span>.</span>
-            <span className="demo-label">ТУРШИЛТ</span>
+            <span className="demo-label">{DEMO.sampleBadge}</span>
           </div>
           <div className="product-art" aria-hidden>
             <span className="product-label">
-              ӨДӨР БҮРД
-              <br />
-              ШИНЭ СОНГОЛТ.
+              <Lines text={DEMO.productTitle} />
             </span>
             <div className="product-can">
               <Leaf size={27} />
@@ -53,9 +64,7 @@ export function PhoneDemo() {
               <small>250 ml</small>
             </div>
             <span className="art-stamp">
-              Байгальд
-              <br />
-              ойрхон.
+              <Lines text={DEMO.productStamp} />
             </span>
           </div>
           <div className="demo-body">
@@ -64,8 +73,8 @@ export function PhoneDemo() {
                 <span className="success-icon">
                   <Check size={28} />
                 </span>
-                <h3>Таны санал үнэ цэнтэй.</h3>
-                <p>Энэ бол жишээ асуулга. Таны хариултыг хадгалаагүй.</p>
+                <h3>{DEMO.doneTitle}</h3>
+                <p>{DEMO.doneText}</p>
                 <button
                   className="demo-submit"
                   onClick={() => {
@@ -73,7 +82,7 @@ export function PhoneDemo() {
                     setAnswer(null);
                   }}
                 >
-                  Дахин турших <RotateCcw size={15} />
+                  {DEMO.retry} <RotateCcw size={15} aria-hidden />
                 </button>
               </div>
             ) : (
@@ -84,14 +93,12 @@ export function PhoneDemo() {
                 }}
               >
                 <div className="question-meta">
-                  <span>Таны сонголт</span>
-                  <span>01 / 01</span>
+                  <span>{DEMO.questionLabel}</span>
+                  <span>{DEMO.questionCount}</span>
                 </div>
                 <fieldset>
-                  <legend>
-                    Ундаа сонгохдоо юуг хамгийн түрүүнд хардаг вэ?
-                  </legend>
-                  {options.map((o) => (
+                  <legend>{DEMO.question}</legend>
+                  {DEMO.options.map((o) => (
                     <label className="demo-option" key={o}>
                       <input
                         type="radio"
@@ -109,18 +116,17 @@ export function PhoneDemo() {
                   className="demo-submit"
                   disabled={!answer}
                 >
-                  Санал өгөх <ArrowRight size={16} />
+                  {DEMO.submit} <ArrowRight size={16} aria-hidden />
                 </button>
               </form>
             )}
           </div>
           <p className="demo-disclaimer">
-            Зөвхөн танилцуулах зориулалттай жишээ
+            {DEMO.disclaimer}
           </p>
         </div>
         <div className="phone-home" aria-hidden />
       </div>
-      <span className="floating-tag">Таны бодол чухал ↗</span>
     </div>
   );
 }

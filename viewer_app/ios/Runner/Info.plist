@@ -5,17 +5,12 @@
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<!--
-	  App Transport Security exception for local dev only.
-	  NSAllowsLocalNetworking permits plain HTTP but ONLY to local hosts
-	  (localhost, 127.0.0.1, 192.168.*, 10.*, *.local) — so it does not
-	  weaken security for the production API at https://api.uziy.mn.
-	  Remove this block once the backend is deployed under HTTPS.
+	  No App Transport Security exception here: release builds may only use HTTPS. Debug builds get
+	  NSAllowsLocalNetworking added to the built plist by ios/scripts/allow_local_networking_in_debug.sh.
 	-->
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
-	</dict>
+	<!-- HTTPS (standard TLS) only: exempt encryption, no export compliance documents needed. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

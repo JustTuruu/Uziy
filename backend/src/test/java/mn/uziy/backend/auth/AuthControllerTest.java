@@ -5,7 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
-import mn.uziy.backend.adminlogin.AdminLoginChallenge;
+import mn.uziy.backend.consolelogin.ConsoleLoginChallenge;
 import mn.uziy.backend.domain.Gender;
 import mn.uziy.backend.domain.Role;
 import org.junit.jupiter.api.Test;
@@ -35,10 +35,10 @@ class AuthControllerTest {
     }
 
     @Test
-    void anAdminSecondStepAnswers202WithTheChallengeAndNoToken() {
+    void aConsoleSecondStepAnswers202WithTheChallengeAndNoToken() {
         LoginReq req = new LoginReq("88112233", "password");
-        AdminLoginChallenge challenge = new AdminLoginChallenge(new AdminLoginChallenge.TwoStep(
-                java.util.UUID.randomUUID(), "•••• 2233", "144773", "123456", "sms:144773", "SMS",
+        ConsoleLoginChallenge challenge = new ConsoleLoginChallenge(new ConsoleLoginChallenge.TwoStep(
+                java.util.UUID.randomUUID(), "•••• 2233", Role.COMPANY, "144773", "123456", "sms:144773", "SMS",
                 java.time.OffsetDateTime.parse("2026-10-22T04:05:00Z")));
         when(service.login(req)).thenReturn(new LoginOutcome.SecondStepRequired(challenge));
 

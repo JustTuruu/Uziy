@@ -155,7 +155,7 @@ describe("authApi.login", () => {
     expect(String(capturedUrl)).toContain("/auth/login");
     expect(captured!.method).toBe("POST");
     expect((captured!.headers as Record<string, string>).Authorization).toBeUndefined();
-    expect(res.token).toBe("t");
+    expect("token" in res && res.token).toBe("t");
   });
 });
 
@@ -231,3 +231,38 @@ describe("platformSettingsApi + adminApi.updateSettings", () => {
   });
 });
 
+
+describe("adminsApi", () => {
+  const originalFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    window.localStorage.clear();
+  });
+
+  it("lists with GET and creates with POST on /admin/admins, signed in", async () => {
+    auth.setToken("admin-tok");
+    const calls: { url: string; init: RequestInit }[] = [];
+    globalThis.fetch = vi.fn(async (url, init) => {
+      calls.push({ url: String(url), init: init ?? {} });
+      const body = init?.method === "POST" ? { id: 5, phoneNumber: "88112235", createdAt: "x" } : [];
+      return new Response(JSON.stringify(body), {
+        status: init?.method === "POST" ? 201 : 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const { adminsApi } = await import("./api");
+    expect(await adminsApi.list()).toEqual([]);
+    const created = await adminsApi.create({ phoneNumber: "88112235", password: "temp-pass1" });
+
+    expect(created.id).toBe(5);
+    expect(calls[0].url).toMatch(/\/admin\/admins$/);
+    expect(calls[0].init.method ?? "GET").toBe("GET");
+    expect(calls[1].init.method).toBe("POST");
+    expect(JSON.parse(String(calls[1].init.body))).toEqual({
+      phoneNumber: "88112235",
+      password: "temp-pass1",
+    });
+    expect((calls[1].init.headers as Record<string, string>).Authorization).toBe("Bearer admin-tok");
+  });
+});

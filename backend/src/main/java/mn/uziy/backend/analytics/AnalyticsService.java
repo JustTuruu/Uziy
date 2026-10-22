@@ -22,7 +22,9 @@ public interface AnalyticsService {
     int PACE_DAYS = 7;
 
     /**
-     * @param days window of the daily series, {@link #MIN_DAYS}..{@link #MAX_DAYS}
+     * @param days window of the daily series only, {@link #MIN_DAYS}..{@link #MAX_DAYS}; the audience, question
+     *        and segment results always cover the whole life of the selection, so a campaign's results page can
+     *        show every answer it ever got
      * @param campaignId limits the daily series, audience and question results to one campaign
      *        (the comparison table and totals always cover all)
      * @throws mn.uziy.backend.common.BadRequestException for a {@code days} outside the range

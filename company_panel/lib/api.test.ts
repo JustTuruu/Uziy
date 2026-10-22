@@ -7,6 +7,7 @@ import {
   GENERIC_ERROR_MESSAGE,
   NETWORK_ERROR_MESSAGE,
 } from "./api";
+import { DEVICE_TOKEN_KEY, isTwoStep } from "@uziy/ui";
 
 describe("auth (localStorage helpers)", () => {
   beforeEach(() => window.localStorage.clear());
@@ -36,6 +37,13 @@ describe("auth (localStorage helpers)", () => {
     auth.clear();
     expect(auth.getToken()).toBeNull();
     expect(auth.getUser()).toBeNull();
+  });
+
+  it("clear() keeps the browser's device token, so the next login skips the SMS", () => {
+    auth.setToken("x");
+    window.localStorage.setItem(DEVICE_TOKEN_KEY, "device-1");
+    auth.clear();
+    expect(window.localStorage.getItem(DEVICE_TOKEN_KEY)).toBe("device-1");
   });
 
   it("getUser returns null when JSON is corrupted", () => {
@@ -150,12 +158,42 @@ describe("authApi.login", () => {
       );
     }) as typeof fetch;
 
-    const res = await authApi.login({ phoneNumber: "88112233", password: "password" });
+    const res = await authApi.login({
+      phoneNumber: "88112233",
+      password: "password",
+      deviceToken: "device-1",
+    });
 
     expect(String(capturedUrl)).toContain("/auth/login");
     expect(captured!.method).toBe("POST");
     expect((captured!.headers as Record<string, string>).Authorization).toBeUndefined();
-    expect(res.token).toBe("t");
+    expect(JSON.parse(String(captured!.body))).toEqual({
+      phoneNumber: "88112233",
+      password: "password",
+      deviceToken: "device-1",
+    });
+    expect(isTwoStep(res)).toBe(false);
+  });
+
+  it("polls the phone check and finishes the SMS step at /auth/login/verify, without a token", async () => {
+    auth.setToken("old");
+    const urls: string[] = [];
+    const inits: RequestInit[] = [];
+    globalThis.fetch = vi.fn(async (url, init) => {
+      urls.push(String(url));
+      inits.push(init ?? {});
+      return new Response(JSON.stringify({}), { status: 200 });
+    }) as typeof fetch;
+
+    await authApi.phoneCheck("c0ffee00-0000-0000-0000-000000000001");
+    await authApi.verify({ phoneNumber: "88112233", verificationId: "c0ffee00-0000-0000-0000-000000000001" });
+
+    expect(urls[0]).toMatch(/\/auth\/phone-verifications\/c0ffee00-0000-0000-0000-000000000001$/);
+    expect(urls[1]).toMatch(/\/auth\/login\/verify$/);
+    expect(inits[1].method).toBe("POST");
+    for (const init of inits) {
+      expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
+    }
   });
 });
 

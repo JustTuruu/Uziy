@@ -45,6 +45,18 @@ describe("Admin console layout", () => {
     }
   });
 
+  it("links to the company accounts page", () => {
+    render(<AdminLayout>x</AdminLayout>);
+    expect(screen.getByRole("link", { name: "Компаниуд" }).getAttribute("href")).toBe(
+      "/companies",
+    );
+  });
+
+  it("links to the admin accounts page under settings", () => {
+    render(<AdminLayout>x</AdminLayout>);
+    expect(screen.getByRole("link", { name: "Админууд" }).getAttribute("href")).toBe("/admins");
+  });
+
   it("marks the current route and shows it in the breadcrumb", () => {
     path = "/users";
     render(<AdminLayout>x</AdminLayout>);

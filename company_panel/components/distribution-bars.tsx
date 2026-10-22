@@ -2,6 +2,8 @@ import { formatPercent, share, sliceTotal } from "@/lib/analytics";
 import type { AnalyticsSlice } from "@/lib/api";
 import { formatNumber } from "@/lib/utils";
 
+const NO_DATA = "Өгөгдөл алга.";
+
 /**
  * A ranking of labelled counts as horizontal bars with the value written
  * out beside each — a gender split, age bands, cities, the answers to a
@@ -9,6 +11,10 @@ import { formatNumber } from "@/lib/utils";
  *
  * The share is of the list's own total unless `total` is given (a question's
  * `answered`, where a multi-choice list adds up to more than 100%).
+ *
+ * Bars are drawn against the largest row (`scale="widest"`, a ranking) or as
+ * the share itself (`scale="share"`, so 40% fills 40% of the track — what a
+ * question's answers need, or a lone answer would look like everyone's).
  */
 export function DistributionBars({
   title,
@@ -16,6 +22,8 @@ export function DistributionBars({
   total,
   showTitle = true,
   formatLabel = (label) => label,
+  emptyText = NO_DATA,
+  scale = "widest",
 }: {
   /** Names the list; also its accessible name when [showTitle] is false. */
   title: string;
@@ -24,9 +32,14 @@ export function DistributionBars({
   slices: readonly AnalyticsSlice[];
   total?: number;
   formatLabel?: (label: string) => string;
+  /** Said instead of the bars when there are none (e.g. why they are withheld). */
+  emptyText?: string;
+  scale?: "widest" | "share";
 }) {
   const base = total ?? sliceTotal(slices);
   const widest = Math.max(1, ...slices.map((s) => s.count));
+  const fill = (count: number) =>
+    scale === "share" ? Math.min(100, share(count, base)) : (count / widest) * 100;
 
   return (
     <section aria-label={title}>
@@ -36,7 +49,7 @@ export function DistributionBars({
         </h3>
       )}
       {slices.length === 0 ? (
-        <p className="text-sm text-[var(--color-text-muted)]">Өгөгдөл алга.</p>
+        <p className="text-sm text-[var(--color-text-muted)]">{emptyText}</p>
       ) : (
         <ul className="space-y-3">
           {slices.map((s) => (
@@ -52,7 +65,7 @@ export function DistributionBars({
               <div className="h-2 rounded-full bg-[var(--color-surface-elevated)]">
                 <div
                   className="h-2 rounded-full bg-[var(--color-primary)]"
-                  style={{ width: `${(s.count / widest) * 100}%` }}
+                  style={{ width: `${fill(s.count)}%` }}
                 />
               </div>
             </li>

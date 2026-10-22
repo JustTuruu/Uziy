@@ -12,8 +12,8 @@ import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
 import java.time.OffsetDateTime;
-import mn.uziy.backend.adminlogin.AdminLoginChallenge;
-import mn.uziy.backend.adminlogin.AdminSecondStep;
+import mn.uziy.backend.consolelogin.ConsoleLoginChallenge;
+import mn.uziy.backend.consolelogin.ConsoleLoginGate;
 import mn.uziy.backend.common.UnauthorizedException;
 import mn.uziy.backend.common.event.DomainEventPublisher;
 import mn.uziy.backend.config.AppProperties;
@@ -39,13 +39,18 @@ class AuthServiceTest {
             new AppProperties.Push(false, "")));
     private final DomainEventPublisher events = mock(DomainEventPublisher.class);
     private final VerifiedPhoneClaim verifiedPhones = mock(VerifiedPhoneClaim.class);
-    private final AdminSecondStep adminSecondStep = mock(AdminSecondStep.class);
+    private final ConsoleLoginGate consoleLogin = mock(ConsoleLoginGate.class);
     private static final UUID CHECK = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private final AuthServiceImpl service = new AuthServiceImpl(users, encoder, jwt,
             new UserFactory(), new MeMapper(), events, verifiedPhones,
             new LoginAttemptLimiter(java.time.Clock.systemUTC()),
             java.time.Clock.fixed(java.time.Instant.parse("2026-10-22T04:00:00Z"), java.time.ZoneOffset.UTC),
-            adminSecondStep);
+            consoleLogin);
+
+    {
+        when(consoleLogin.appliesTo(Role.ADMIN)).thenReturn(true);
+        when(consoleLogin.appliesTo(Role.COMPANY)).thenReturn(true);
+    }
 
     private AuthResponse signedIn(LoginOutcome outcome) {
         assertThat(outcome).isInstanceOf(LoginOutcome.SignedIn.class);
@@ -84,42 +89,44 @@ class AuthServiceTest {
         assertThat(res.token()).isNotBlank();
         assertThat(res.user().id()).isEqualTo(1L);
         assertThat(res.user().role()).isEqualTo(Role.VIEWER);
-        org.mockito.Mockito.verifyNoInteractions(adminSecondStep);
+        org.mockito.Mockito.verify(consoleLogin, org.mockito.Mockito.never()).afterPassword(any(), any());
     }
 
+    /** A viewer's login never looks at a device token: the app has none, and the SMS step is for consoles only. */
     @Test
-    void aCompanyIsSignedInAtOnceAsBefore() {
-        when(users.findByPhoneNumber("88112233")).thenReturn(Optional.of(seedUser(Role.COMPANY)));
+    void aViewersDeviceTokenIsIgnored() {
+        when(users.findByPhoneNumber("88112233")).thenReturn(Optional.of(seedUser(Role.VIEWER)));
         when(encoder.matches("password", "hashed")).thenReturn(true);
 
-        AuthResponse res = signedIn(service.login(new LoginReq("88112233", "password")));
+        signedIn(service.login(new LoginReq("88112233", "password", "some-device-token")));
 
-        assertThat(res.user().role()).isEqualTo(Role.COMPANY);
-        org.mockito.Mockito.verifyNoInteractions(adminSecondStep);
+        org.mockito.Mockito.verify(consoleLogin, org.mockito.Mockito.never()).afterPassword(any(), any());
     }
 
-    @Test
-    void anAdminWithTheRightPasswordGetsTheSecondStepAndNoToken() {
-        UserEntity admin = seedUser(Role.ADMIN);
-        when(users.findByPhoneNumber("88112233")).thenReturn(Optional.of(admin));
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(value = Role.class, names = {"ADMIN", "COMPANY"})
+    void aConsoleAccountWithTheRightPasswordIsHandedToTheConsoleStepWithItsDeviceToken(Role role) {
+        UserEntity user = seedUser(role);
+        when(users.findByPhoneNumber("88112233")).thenReturn(Optional.of(user));
         when(encoder.matches("password", "hashed")).thenReturn(true);
-        AdminLoginChallenge challenge = new AdminLoginChallenge(new AdminLoginChallenge.TwoStep(CHECK, "•••• 2233",
-                "144773", "123456", "sms:144773?body=123456", "SMS илгээнэ үү", OffsetDateTime.parse("2026-10-22T04:05:00Z")));
-        when(adminSecondStep.open(admin)).thenReturn(challenge);
+        ConsoleLoginChallenge challenge = new ConsoleLoginChallenge(new ConsoleLoginChallenge.TwoStep(CHECK,
+                "•••• 2233", role, "144773", "123456", "sms:144773?body=123456", "SMS илгээнэ үү",
+                OffsetDateTime.parse("2026-10-22T04:05:00Z")));
+        when(consoleLogin.afterPassword(user, "device-1")).thenReturn(new LoginOutcome.SecondStepRequired(challenge));
 
-        LoginOutcome outcome = service.login(new LoginReq("88112233", "password"));
+        LoginOutcome outcome = service.login(new LoginReq("88112233", "password", "device-1"));
 
         assertThat(outcome).isEqualTo(new LoginOutcome.SecondStepRequired(challenge));
     }
 
     @Test
-    void aWrongAdminPasswordOpensNoPhoneCheck() {
-        when(users.findByPhoneNumber("88112233")).thenReturn(Optional.of(seedUser(Role.ADMIN)));
+    void aWrongConsolePasswordOpensNoPhoneCheckEvenWithADeviceToken() {
+        when(users.findByPhoneNumber("88112233")).thenReturn(Optional.of(seedUser(Role.COMPANY)));
         when(encoder.matches("wrong", "hashed")).thenReturn(false);
 
-        assertThat(statusOf(() -> service.login(new LoginReq("88112233", "wrong"))))
+        assertThat(statusOf(() -> service.login(new LoginReq("88112233", "wrong", "device-1"))))
                 .isEqualTo(HttpStatus.UNAUTHORIZED);
-        org.mockito.Mockito.verifyNoInteractions(adminSecondStep);
+        org.mockito.Mockito.verify(consoleLogin, org.mockito.Mockito.never()).afterPassword(any(), any());
     }
 
     @Test

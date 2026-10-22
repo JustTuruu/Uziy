@@ -12,7 +12,7 @@ public interface PhoneVerificationService {
     String ACCOUNT_NOT_FOUND = "Энэ дугаараар бүртгэл олдсонгүй. Дугаараа шалгах эсвэл бүртгүүлнэ үү";
     String TOO_SOON = "Түр хүлээгээд дахин оролдоно уу";
     String TOO_MANY = "Хэт олон удаа оролдлоо. Дараа дахин оролдоно уу";
-    /** An admin-login check is opened only by the login itself, never through the public endpoint. */
+    /** A console-login check is opened only by the login itself, never through the public endpoint. */
     String PURPOSE_NOT_OFFERED = "Энэ баталгаажуулалтыг эндээс эхлүүлэх боломжгүй";
 
     /**

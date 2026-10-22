@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.OffsetDateTime;
 import mn.uziy.backend.auth.LoginAttemptLimiter;
 import mn.uziy.backend.common.BadRequestException;
+import mn.uziy.backend.common.event.DomainEventPublisher;
 import mn.uziy.backend.domain.Role;
 import mn.uziy.backend.domain.UserRepository;
 import mn.uziy.backend.phoneverify.PhoneVerificationPurpose;
@@ -20,14 +21,17 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     private final PasswordEncoder encoder;
     private final LoginAttemptLimiter loginLimiter;
     private final Clock clock;
+    private final DomainEventPublisher events;
 
     public PasswordResetServiceImpl(VerifiedPhoneClaim verifiedPhones, UserRepository users,
-                                    PasswordEncoder encoder, LoginAttemptLimiter loginLimiter, Clock clock) {
+                                    PasswordEncoder encoder, LoginAttemptLimiter loginLimiter, Clock clock,
+                                    DomainEventPublisher events) {
         this.verifiedPhones = verifiedPhones;
         this.users = users;
         this.encoder = encoder;
         this.loginLimiter = loginLimiter;
         this.clock = clock;
+        this.events = events;
     }
 
     /**
@@ -46,5 +50,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         }
         // They just proved the phone: a lock from earlier wrong guesses must not keep them out.
         loginLimiter.recordSuccess(req.phoneNumber());
+        // Observers forget what the old password unlocked (e.g. remembered browsers), in this transaction.
+        users.findIdByPhoneNumber(req.phoneNumber()).ifPresent(id -> events.publish(new PasswordReset(id)));
     }
 }

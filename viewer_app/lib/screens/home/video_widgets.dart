@@ -223,6 +223,39 @@ class StageCloseButton extends StatelessWidget {
   }
 }
 
+// --- Rewind ------------------------------------------------------------------
+
+/// Round glass button on the stage that jumps back [kRewindStep]-worth (the
+/// screen decides how far). Sits on fixed dark video, so white ink.
+class RewindButton extends StatelessWidget {
+  const RewindButton({super.key, required this.onPressed});
+
+  final VoidCallback? onPressed;
+
+  static const semanticLabel = '10 секунд буцаах';
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: onPressed,
+      scale: 0.92,
+      semanticLabel: semanticLabel,
+      excludeSemantics: true,
+      child: SizedBox.square(
+        dimension: AppLayout.minTapTarget,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.black.withValues(alpha: 0.35),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+          ),
+          child: const Icon(AppIcons.rewind, size: 20, color: Colors.white),
+        ),
+      ),
+    );
+  }
+}
+
 // --- Play / pause medallion --------------------------------------------------
 
 enum _MedallionState { playing, paused, completed }
@@ -403,20 +436,42 @@ class PlayPauseMedallion extends StatelessWidget {
 /// Thin gold progress track with a glowing fill and knob, plus `m:ss`
 /// elapsed / total labels. The fill glides between the player's 250 ms ticks
 /// (instant under reduce-motion).
+///
+/// With [onSeek] the track can be tapped or dragged to go back: it reports the
+/// touched fraction (0..1) and the screen clamps it to what was already
+/// watched ([furthestProgress], drawn as a faint band), so it never skips
+/// ahead.
 class WatchTimeline extends StatelessWidget {
   const WatchTimeline({
     super.key,
     required this.progress,
     required this.elapsedSeconds,
     required this.totalSeconds,
+    this.furthestProgress = 0,
+    this.onSeek,
   });
 
-  /// Watched fraction, 0..1.
+  /// Playhead fraction, 0..1.
   final double progress;
   final num elapsedSeconds;
   final int totalSeconds;
 
+  /// How far the viewer has actually watched, 0..1.
+  final double furthestProgress;
+  final ValueChanged<double>? onSeek;
+
   static const semanticLabel = 'Үзсэн хугацаа';
+  static const seekHint = 'Буцааж үзэхийн тулд зүүн тийш гүйлгэнэ';
+
+  /// The track is drawn 14 pt tall but answers touches across this height.
+  static const double touchHeight = 32;
+
+  /// One screen-reader step (decrease / increase), in seconds.
+  static const int semanticStepSeconds = 10;
+
+  /// The fraction of the track under [dx] on a track [width] wide.
+  static double fractionAt(double dx, double width) =>
+      width <= 0 ? 0 : (dx / width).clamp(0.0, 1.0);
 
   /// What screen readers say after [semanticLabel]:
   /// `'3 сек, нийт 45 сек'`.
@@ -433,28 +488,69 @@ class WatchTimeline extends StatelessWidget {
       fontFeatures: AppTextStyles.tabular,
     );
 
+    final furthest =
+        furthestProgress.isFinite ? furthestProgress.clamp(0.0, 1.0) : 0.0;
+    final seek = onSeek;
+    final step = totalSeconds > 0 ? semanticStepSeconds / totalSeconds : 1.0;
+    final bar = SizedBox(
+      height: 14,
+      width: double.infinity,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(end: p),
+        duration: AppMotion.duration(
+          context,
+          const Duration(milliseconds: 260),
+        ),
+        builder: (context, value, _) => CustomPaint(
+          painter: _TimelinePainter(
+            progress: value,
+            furthest: furthest,
+            colors: context.colors,
+          ),
+        ),
+      ),
+    );
+    Widget track = bar;
+    if (seek != null) {
+      track = LayoutBuilder(
+        builder: (context, box) {
+          void at(Offset local) => seek(fractionAt(local.dx, box.maxWidth));
+          return GestureDetector(
+            key: const ValueKey('watch-timeline-track'),
+            behavior: HitTestBehavior.opaque,
+            onTapDown: (d) => at(d.localPosition),
+            onHorizontalDragStart: (d) => at(d.localPosition),
+            onHorizontalDragUpdate: (d) => at(d.localPosition),
+            child: SizedBox(
+              height: touchHeight,
+              child: Center(child: bar),
+            ),
+          );
+        },
+      );
+    }
+
     return Semantics(
       label: semanticLabel,
       value: spokenValue(elapsedSeconds, totalSeconds),
+      hint: seek == null ? null : seekHint,
+      increasedValue: seek == null
+          ? null
+          : spokenValue(
+              math.min(elapsedSeconds + semanticStepSeconds, totalSeconds),
+              totalSeconds),
+      decreasedValue: seek == null
+          ? null
+          : spokenValue(
+              math.max(elapsedSeconds - semanticStepSeconds, 0), totalSeconds),
+      onDecrease: seek == null ? null : () => seek((p - step).clamp(0.0, 1.0)),
+      onIncrease: seek == null ? null : () => seek((p + step).clamp(0.0, 1.0)),
       excludeSemantics: true,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(
-            height: 14,
-            child: TweenAnimationBuilder<double>(
-              tween: Tween<double>(end: p),
-              duration: AppMotion.duration(
-                context,
-                const Duration(milliseconds: 260),
-              ),
-              builder: (context, value, _) => CustomPaint(
-                painter:
-                    _TimelinePainter(progress: value, colors: context.colors),
-              ),
-            ),
-          ),
+          track,
           const SizedBox(height: AppSpacing.xs),
           Row(
             children: [
@@ -473,10 +569,17 @@ class WatchTimeline extends StatelessWidget {
 }
 
 class _TimelinePainter extends CustomPainter {
-  _TimelinePainter({required this.progress, required this.colors});
+  _TimelinePainter({
+    required this.progress,
+    required this.colors,
+    this.furthest = 0,
+  });
   final AppPalette colors;
 
   final double progress;
+
+  /// Already-watched band (can be ahead of the playhead after a rewind).
+  final double furthest;
 
   static const double _track = 4;
   static const double _knob = 5;
@@ -497,6 +600,14 @@ class _TimelinePainter extends CustomPainter {
       ),
       Paint()..color = colors.divider,
     );
+
+    final band = size.width * furthest;
+    if (band > 0) {
+      canvas.drawRRect(
+        RRect.fromLTRBR(0, cy - _track / 2, band, cy + _track / 2, radius),
+        Paint()..color = colors.primary.withValues(alpha: 0.3),
+      );
+    }
 
     final w = size.width * progress;
     if (w > 0) {
@@ -544,6 +655,7 @@ class _TimelinePainter extends CustomPainter {
   @override
   bool shouldRepaint(_TimelinePainter oldDelegate) =>
       oldDelegate.progress != progress ||
+      oldDelegate.furthest != furthest ||
       oldDelegate.colors.isDark != colors.isDark;
 }
 

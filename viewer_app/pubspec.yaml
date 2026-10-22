@@ -38,6 +38,7 @@ dependencies:
   lucide_icons_flutter: ^3.1.22
   # Opens the SMS app pre-filled for phone verification (verify.mn).
   url_launcher: ^6.3.3
+  video_player: ^2.14.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
  * rate-limited and a confirmed check is never asked about again.
  */
 @Service
-public class PhoneVerificationServiceImpl implements PhoneVerificationService, VerifiedPhoneClaim, AdminPhoneCheck {
+public class PhoneVerificationServiceImpl implements PhoneVerificationService, VerifiedPhoneClaim, LoginPhoneCheck {
 
     private static final Logger LOG = LoggerFactory.getLogger(PhoneVerificationServiceImpl.class);
 
@@ -63,8 +63,11 @@ public class PhoneVerificationServiceImpl implements PhoneVerificationService, V
     /** The password was proved by the caller (the login), so no account check here — only the SMS limits. */
     @Override
     @Transactional
-    public PhoneVerificationStartedRes openForAdminLogin(String phoneNumber) {
-        return open(phoneNumber, PhoneVerificationPurpose.ADMIN_LOGIN, lockAndRequireWithinLimits(phoneNumber));
+    public PhoneVerificationStartedRes openForLogin(String phoneNumber, PhoneVerificationPurpose purpose) {
+        if (!purpose.isLoginStep()) {
+            throw new IllegalArgumentException("not a login step: " + purpose);
+        }
+        return open(phoneNumber, purpose, lockAndRequireWithinLimits(phoneNumber));
     }
 
     private PhoneVerificationStartedRes open(String phoneNumber, PhoneVerificationPurpose purpose,
@@ -108,8 +111,8 @@ public class PhoneVerificationServiceImpl implements PhoneVerificationService, V
                     throw new NotFoundException(ACCOUNT_NOT_FOUND);
                 }
             }
-            // Only a correct admin password opens one (openForAdminLogin); a stranger must not text an admin's phone.
-            case ADMIN_LOGIN -> throw new BadRequestException(PURPOSE_NOT_OFFERED);
+            // Only a correct password opens one (openForLogin); a stranger must not get a console phone texted.
+            case ADMIN_LOGIN, COMPANY_LOGIN -> throw new BadRequestException(PURPOSE_NOT_OFFERED);
         }
     }
 

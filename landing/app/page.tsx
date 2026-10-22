@@ -17,16 +17,12 @@ export default function LandingPage() {
       <SiteHeader companyPanelUrl={siteLinks.companyPanel} />
       <main id="main-content" className="flex-1">
         <Hero links={siteLinks} />
-        <div className="brand-strip">
-          <div className="container">
-            <span>ТАНИЛЦУУЛГААС ЦААШ.</span>
-            <p>Таны бодол брэндийн дараагийн алхам.</p>
-            <span aria-hidden>↗</span>
-          </div>
-        </div>
         <HowItWorks />
         <Benefits />
-        <ForCompanies companyPanelUrl={siteLinks.companyPanel} />
+        <ForCompanies
+          companyPanelUrl={siteLinks.companyPanel}
+          contactEmail={siteLinks.contactEmail}
+        />
         <FaqList />
         <FinalCta links={siteLinks} />
       </main>

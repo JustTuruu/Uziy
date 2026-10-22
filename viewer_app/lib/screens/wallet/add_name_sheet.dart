@@ -15,14 +15,11 @@ const String kAddNameSaved = 'Нэр хадгалагдлаа';
 /// Saves the name; throws [ApiException] with a message to show.
 typedef SaveName = Future<void> Function(String lastName, String firstName);
 
-/// Opens [AddNameSheet]; true once the name was saved.
+/// Opens [AddNameSheet] over the tab bar; true once the name was saved.
 Future<bool?> showAddNameSheet(BuildContext context,
     {required SaveName onSave}) {
-  return showModalBottomSheet<bool>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    useSafeArea: true,
+  return showAppSheet<bool>(
+    context,
     builder: (_) => AddNameSheet(onSave: onSave),
   );
 }
@@ -73,52 +70,47 @@ class _AddNameSheetState extends State<AddNameSheet> {
   @override
   Widget build(BuildContext context) {
     final error = _error;
-    return Padding(
-      // Keeps the fields above the keyboard.
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.viewInsetsOf(context).bottom,
+    // showAppSheet keeps this above the keyboard and the home indicator.
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(
+        AppLayout.screenPadding,
+        0,
+        AppLayout.screenPadding,
+        AppSpacing.xxl,
       ),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(
-          AppLayout.screenPadding,
-          0,
-          AppLayout.screenPadding,
-          AppSpacing.xxl,
-        ),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Semantics(
-                header: true,
-                child: Text(kAddNameTitle, style: context.textStyles.title),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                kAddNameNote,
-                style: context.textStyles.bodySmall,
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              PersonNameFields(
-                lastName: _lastName,
-                firstName: _firstName,
-                onDone: _save,
-              ),
-              if (error != null) ...[
-                const SizedBox(height: AppSpacing.lg),
-                StatusBanner(message: error),
-              ],
-              const SizedBox(height: AppSpacing.xl),
-              AppButton(
-                label: kAddNameSave,
-                loading: _saving,
-                haptic: true,
-                onPressed: _save,
-              ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Semantics(
+              header: true,
+              child: Text(kAddNameTitle, style: context.textStyles.title),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              kAddNameNote,
+              style: context.textStyles.bodySmall,
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            PersonNameFields(
+              lastName: _lastName,
+              firstName: _firstName,
+              onDone: _save,
+            ),
+            if (error != null) ...[
+              const SizedBox(height: AppSpacing.lg),
+              StatusBanner(message: error),
             ],
-          ),
+            const SizedBox(height: AppSpacing.xl),
+            AppButton(
+              label: kAddNameSave,
+              loading: _saving,
+              haptic: true,
+              onPressed: _save,
+            ),
+          ],
         ),
       ),
     );

@@ -12,9 +12,9 @@ Firebase тохиргооны файлгүйгээр апп хэвийн ажи�
 ## 2. Android апп нэмэх
 
 1. Project settings → **Add app** → Android.
-2. Package name: `com.example.viewer_app`
-   (`viewer_app/android/app/build.gradle.kts` дахь `applicationId`; бодит id-аа
-   сольсон бол тэрийг ашиглана).
+2. Package name: `mn.uziy.viewer`
+   (`viewer_app/android/app/build.gradle.kts` дахь `applicationId`). Debug build
+   нь `mn.uziy.viewer.dev` — push-ийг debug дээр турших бол түүнийг ч бас нэмнэ.
 3. `google-services.json` татаад дараах замд хуулна:
 
    ```
@@ -26,8 +26,8 @@ Firebase тохиргооны файлгүйгээр апп хэвийн ажи�
 ## 3. iOS апп нэмэх
 
 1. Project settings → **Add app** → iOS.
-2. Bundle ID: `com.example.viewerApp`
-   (`PRODUCT_BUNDLE_IDENTIFIER`, Xcode дэх Runner target).
+2. Bundle ID: `mn.uziy.viewer`
+   (`PRODUCT_BUNDLE_IDENTIFIER`, Xcode дэх Runner target; Debug нь `mn.uziy.viewer.dev`).
 3. `GoogleService-Info.plist` татаад дараах замд хуулна:
 
    ```
@@ -42,8 +42,8 @@ Firebase тохиргооны файлгүйгээр апп хэвийн ажи�
    (`Runner.entitlements`, `Info.plist` дээр аль хэдийн нэмэгдсэн).
    Push нь **Apple Developer Program** (төлбөртэй) team шаардана; үнэгүй
    "Personal Team"-ээр бол device-д build хийхэд Push entitlement алдаа өгнө.
-6. App Store / TestFlight build-ийн өмнө `Runner.entitlements` дахь
-   `aps-environment`-ийг `production` болгоно.
+6. `aps-environment`: Release → `Runner.entitlements` (`production`), Profile →
+   `RunnerProfile.entitlements` (`development`), Debug → push байхгүй. Гараар солих шаардлагагүй.
 
 ## 4. APNs auth key-г Firebase-д оруулах (iOS)
 

@@ -12,7 +12,7 @@ Requires the seeded company `88112233` and platform settings. Uses current commi
 
 Stable payment references prevent duplicate insertion. Existing campaigns, answers and balances are not reset. This is deliberately outside Flyway and never runs automatically in production.
 
-Video campaigns share the public Big Buck Bunny trailer (https://media.w3.org/2010/05/bunny/trailer.mp4), verified at 33.003 seconds, and ask about different aspects of it. They are sample content, not genuine company advertisements. The Flutter video screen currently uses a timer placeholder, so adding the URL does not enable real video playback.
+Video campaigns share the public Big Buck Bunny trailer (https://media.w3.org/2010/05/bunny/trailer.mp4), verified at 33.003 seconds, and ask about different aspects of it. They are sample content, not genuine company advertisements. The Flutter video screen plays this file for real (since 2026-10-22).
 
 Run the integration check from any directory:
 

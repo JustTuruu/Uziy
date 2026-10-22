@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!--
+  Profile builds (`flutter run --profile` on a device signed with a development profile): push through the
+  development APNs environment. Release uses Runner.entitlements (production).
+-->
+<dict>
+	<key>aps-environment</key>
+	<string>development</string>
+</dict>
+</plist>

@@ -85,6 +85,9 @@ class BootstrapTest {
                 .as("password should be updated on re-run").isTrue();
         assertThat(encoder.matches("first-password", u.getPasswordHash()))
                 .as("old password should no longer verify").isFalse();
+        assertThat(u.getCredentialsChangedAt())
+                .as("a reset is a password change: old tokens and remembered browsers must stop working")
+                .isNotNull();
     }
 
     @Test

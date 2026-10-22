@@ -2,7 +2,7 @@ package mn.uziy.backend.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import mn.uziy.backend.adminlogin.AdminLoginChallenge;
+import mn.uziy.backend.consolelogin.ConsoleLoginChallenge;
 import mn.uziy.backend.auth.AuthController;
 import mn.uziy.backend.auth.AuthResponse;
 import mn.uziy.backend.auth.LoginReq;
@@ -54,14 +54,16 @@ class SeedLoginIntegrationTest {
     void seeded_admin_id_1_passes_the_password_step_with_password_password() {
         ResponseEntity<Object> res = auth.login(new LoginReq("99990000", "password"));
         assertThat(res.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-        assertThat(res.getBody()).isInstanceOf(AdminLoginChallenge.class);
+        assertThat(res.getBody()).isInstanceOf(ConsoleLoginChallenge.class);
+        assertThat(((ConsoleLoginChallenge) res.getBody()).twoStep().role()).isEqualTo(Role.ADMIN);
     }
 
+    /** A company proves its phone too on a browser it has not used before (owner, 2026-10-22). */
     @Test
-    void seeded_company_MobiCom_can_log_in_with_password_password() {
-        AuthResponse res = signedIn("88112233");
-        assertThat(res.user().role()).isEqualTo(Role.COMPANY);
-        assertThat(res.user().companyName()).isEqualTo("MobiCom");
+    void seeded_company_MobiCom_passes_the_password_step_with_password_password() {
+        ResponseEntity<Object> res = auth.login(new LoginReq("88112233", "password"));
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        assertThat(((ConsoleLoginChallenge) res.getBody()).twoStep().role()).isEqualTo(Role.COMPANY);
     }
 
     @Test

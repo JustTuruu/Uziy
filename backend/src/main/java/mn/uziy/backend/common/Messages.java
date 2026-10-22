@@ -14,6 +14,8 @@ public final class Messages {
     /** Viewer side: also used when the viewer is outside the audience, so targeting cannot be probed. */
     public static final String OFFER_NOT_FOUND = "Энэ урамшуулал олдсонгүй эсвэл дууссан байна";
     public static final String PHONE_TAKEN = "Энэ утасны дугаар аль хэдийн бүртгэлтэй байна. Нэвтэрч орно уу";
+    /** An admin opening a company or admin account on a phone that already has an account (of any role). */
+    public static final String ACCOUNT_PHONE_TAKEN = "Энэ утасны дугаар өөр бүртгэлд ашиглагдаж байна";
     public static final String INSUFFICIENT_BALANCE = "Хэтэвчний үлдэгдэл хүрэлцэхгүй байна";
     public static final String BUSY = "Түр завгүй байна. Дахин оролдоно уу";
 

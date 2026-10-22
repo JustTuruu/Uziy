@@ -4,8 +4,24 @@
     {
       "name": "admin-panel",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["-C", "admin_panel", "dev"],
+      "runtimeArgs": [
+        "-C",
+        "admin_panel",
+        "dev"
+      ],
       "port": 3001
+    },
+    {
+      "name": "company-panel-preview",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "-C",
+        "company_panel",
+        "dev",
+        "-p",
+        "3010"
+      ],
+      "port": 3010
     }
   ]
 }

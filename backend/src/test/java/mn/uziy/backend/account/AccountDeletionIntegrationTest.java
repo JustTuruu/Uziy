@@ -145,6 +145,22 @@ class AccountDeletionIntegrationTest extends AbstractApiIntegrationTest {
     }
 
     @Test
+    void deletionForgetsTheAccountsRememberedBrowsers() throws Exception {
+        String phone = freshPhone();
+        String token = register(phone);
+        long id = idOf(phone);
+        jdbc.update("""
+                INSERT INTO trusted_devices (user_id, token_hash, created_at, expires_at, last_used_at)
+                VALUES (?, ?, now(), now() + INTERVAL '30 days', now())""", id, UUID.randomUUID().toString()
+                .replace("-", "").repeat(2));
+
+        assertThat(deleteAccount(token, VIEWER_PASSWORD)).isEqualTo(204);
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM trusted_devices WHERE user_id = ?", Long.class, id))
+                .isZero();
+    }
+
+    @Test
     void theSamePhoneCanRegisterAgainAfterDeletion() throws Exception {
         String phone = freshPhone();
         String token = register(phone);

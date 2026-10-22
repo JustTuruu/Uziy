@@ -166,7 +166,7 @@ class CampaignServiceTest {
             assertThat(sq.getPrompt()).isEqualTo("P");
             assertThat(sq.getQType()).isEqualTo("SINGLE_CHOICE");
             assertThat(sq.getPosition()).isEqualTo(1);
-            assertThat(sq.getOptionsJson()).isEqualTo("[\"A\", \"B\"]");
+            assertThat(sq.getOptionsJson()).isEqualTo("[\"A\",\"B\"]");
         }
 
         @Test

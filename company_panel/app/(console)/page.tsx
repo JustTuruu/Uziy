@@ -13,14 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import { CampaignStatusBadge } from "@/components/campaign-status-badge";
-import {
-  Button,
-  Card,
-  CardBody,
-  CardHeader,
-  PageHeader,
-  StatCard,
-} from "@uziy/ui";
+import { Button, Card, CardBody, CardHeader, PageHeader, StatCard, TableScroll } from "@uziy/ui";
 import {
   ApiError,
   auth,
@@ -164,90 +157,92 @@ export default function CompanyDashboard() {
               </div>
             )}
             {campaigns && campaigns.length > 0 && (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--color-divider)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
-                    <th className="px-5 py-3 font-semibold">Гарчиг</th>
-                    <th className="px-5 py-3 font-semibold">Төрөл</th>
-                    <th className="px-5 py-3 font-semibold">Төлөв</th>
-                    <th className="px-5 py-3 font-semibold text-right">
-                      Үлдэгдэл
-                    </th>
-                    <th className="px-5 py-3 font-semibold text-right">
-                      Урамшуулал
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {campaigns.slice(0, 5).map((c) => (
-                    <tr
-                      key={c.id}
-                      className="border-b border-[var(--color-divider)] last:border-0 hover:bg-[var(--color-surface-elevated)]/60"
-                    >
-                      <td className="px-5 py-4">
-                        <Link
-                          href={`/campaigns/${c.id}`}
-                          className="flex items-center gap-3"
-                        >
-                          <div className="flex h-10 w-16 items-center justify-center rounded-md bg-gradient-to-br from-[#2c2c38] to-[#17171e]">
-                            {c.hasVideo ? (
-                              <Play
-                                size={14}
-                                className="text-white/70"
-                                fill="currentColor"
-                              />
-                            ) : (
-                              <ClipboardList
-                                size={14}
-                                className="text-white/70"
-                              />
+              <TableScroll>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--color-divider)] text-left text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
+                      <th className="px-5 py-3 font-semibold">Гарчиг</th>
+                      <th className="px-5 py-3 font-semibold">Төрөл</th>
+                      <th className="px-5 py-3 font-semibold">Төлөв</th>
+                      <th className="px-5 py-3 font-semibold text-right">
+                        Үлдэгдэл
+                      </th>
+                      <th className="px-5 py-3 font-semibold text-right">
+                        Урамшуулал
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {campaigns.slice(0, 5).map((c) => (
+                      <tr
+                        key={c.id}
+                        className="border-b border-[var(--color-divider)] last:border-0 hover:bg-[var(--color-surface-elevated)]/60"
+                      >
+                        <td className="px-5 py-4">
+                          <Link
+                            href={`/campaigns/${c.id}`}
+                            className="flex items-center gap-3"
+                          >
+                            <div className="flex h-10 w-16 items-center justify-center rounded-md bg-gradient-to-br from-[#2c2c38] to-[#17171e]">
+                              {c.hasVideo ? (
+                                <Play
+                                  size={14}
+                                  className="text-white/70"
+                                  fill="currentColor"
+                                />
+                              ) : (
+                                <ClipboardList
+                                  size={14}
+                                  className="text-white/70"
+                                />
+                              )}
+                            </div>
+                            <div>
+                              <div className="font-semibold text-[var(--color-text-primary)]">
+                                {c.title}
+                              </div>
+                              <div className="text-xs text-[var(--color-text-muted)]">
+                                {c.hasVideo
+                                  ? `${c.durationSeconds} сек`
+                                  : "Судалгаа"}
+                                {" · "}
+                                {c.targetCity === "ALL" ? "Бүх" : c.targetCity}
+                              </div>
+                            </div>
+                          </Link>
+                        </td>
+                        <td className="px-5 py-4 text-xs text-[var(--color-text-secondary)]">
+                          {c.hasVideo ? "Видеотой" : "Судалгаа зөвхөн"}
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-2">
+                            <CampaignStatusBadge status={c.status} />
+                            {c.status === "AWAITING_PAYMENT" && (
+                              <Link
+                                href={`/campaigns/${c.id}`}
+                                className="text-xs font-semibold text-[var(--color-primary)] hover:underline"
+                              >
+                                Төлөх
+                              </Link>
                             )}
                           </div>
-                          <div>
-                            <div className="font-semibold text-[var(--color-text-primary)]">
-                              {c.title}
-                            </div>
-                            <div className="text-xs text-[var(--color-text-muted)]">
-                              {c.hasVideo
-                                ? `${c.durationSeconds} сек`
-                                : "Судалгаа"}
-                              {" · "}
-                              {c.targetCity === "ALL" ? "Бүх" : c.targetCity}
-                            </div>
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <div className="font-mono text-[var(--color-text-primary)]">
+                            {formatTugrik(c.remainingBudget)}
                           </div>
-                        </Link>
-                      </td>
-                      <td className="px-5 py-4 text-xs text-[var(--color-text-secondary)]">
-                        {c.hasVideo ? "Видеотой" : "Судалгаа зөвхөн"}
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-2">
-                          <CampaignStatusBadge status={c.status} />
-                          {c.status === "AWAITING_PAYMENT" && (
-                            <Link
-                              href={`/campaigns/${c.id}`}
-                              className="text-xs font-semibold text-[var(--color-primary)] hover:underline"
-                            >
-                              Төлөх
-                            </Link>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 text-right">
-                        <div className="font-mono text-[var(--color-text-primary)]">
-                          {formatTugrik(c.remainingBudget)}
-                        </div>
-                        <div className="text-xs text-[var(--color-text-muted)]">
-                          / {formatTugrik(c.totalBudget)}
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 text-right font-mono text-[var(--color-text-primary)]">
-                        {formatTugrik(c.rewardPerUser)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          <div className="text-xs text-[var(--color-text-muted)]">
+                            / {formatTugrik(c.totalBudget)}
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 text-right font-mono text-[var(--color-text-primary)]">
+                          {formatTugrik(c.rewardPerUser)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableScroll>
             )}
           </CardBody>
         </Card>
