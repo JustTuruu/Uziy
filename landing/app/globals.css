@@ -295,37 +295,105 @@ p {
   position: relative;
   margin-top: 12px;
 }
+/* A real handset: a thin titanium rim, a black glass bezel, then the screen. */
 [data-ui] .phone {
   position: relative;
   width: 320px;
-  background: #fcfdf9;
-  border: 6px solid #263c30;
-  border-radius: 37px;
-  box-shadow: 18px 24px 40px #293e3024;
+  padding: 10px;
+  background: #0b0d0c;
+  border-radius: 56px;
+  box-shadow:
+    inset 0 0 0 1.5px #2c322f,
+    0 0 0 2px #6f7a72,
+    0 0 0 3.5px #2f3832,
+    0 0 0 4px #9aa59c,
+    6px 10px 16px #1d2c2333,
+    28px 44px 70px #1d2c2340;
   transform: rotate(4deg);
+}
+[data-ui] .phone-key {
+  position: absolute;
+  width: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #4c5650, #a5b0a7 55%, #59635c);
+}
+.phone-key-action {
+  left: -7px;
+  top: 112px;
+  height: 30px;
+}
+.phone-key-volume-up {
+  left: -7px;
+  top: 166px;
+  height: 54px;
+}
+.phone-key-volume-down {
+  left: -7px;
+  top: 232px;
+  height: 54px;
+}
+.phone-key-side {
+  right: -7px;
+  top: 190px;
+  height: 84px;
+}
+.phone-screen {
+  position: relative;
+  background: #fcfdf9;
+  border-radius: 46px;
   overflow: hidden;
 }
+/* Glass catches the light along one edge; it never takes a tap. */
+[data-ui] .phone-screen:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    118deg,
+    #ffffff38 0%,
+    #ffffff0d 22%,
+    transparent 40%
+  );
+  pointer-events: none;
+}
 .phone-status {
-  height: 36px;
+  position: relative;
+  height: 50px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 18px;
-  font-size: 11px;
+  padding: 2px 26px 0 30px;
+  font-size: 14px;
+  letter-spacing: -0.2px;
+  color: #0b0d0c;
 }
 .phone-status > span:last-child {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  gap: 5px;
 }
 .phone-island {
   position: absolute;
-  top: 8px;
+  top: 11px;
   left: 50%;
   transform: translateX(-50%);
-  width: 66px;
-  height: 17px;
-  background: #263c30;
+  width: 96px;
+  height: 28px;
+  background: #050606;
   border-radius: 20px;
+}
+/* The front camera lens at the island's right end. */
+.phone-island:after {
+  content: "";
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #3b4d6b 0 18%, #141a24 45%, #070809 70%);
 }
 .phone-content {
   padding: 8px 13px 0;
@@ -490,11 +558,11 @@ legend {
   margin: 9px 0;
 }
 .phone-home {
-  height: 4px;
-  width: 80px;
-  background: #263c30;
-  border-radius: 4px;
-  margin: 8px auto;
+  height: 5px;
+  width: 112px;
+  background: #0b0d0c;
+  border-radius: 5px;
+  margin: 6px auto 9px;
 }
 
 .demo-success {
@@ -1083,7 +1151,19 @@ a.store-button:hover {
     min-height: 607px;
   }
   [data-ui] .phone {
-    width: 262px;
+    width: 272px;
+    padding: 8px;
+    border-radius: 48px;
+  }
+  .phone-screen {
+    border-radius: 40px;
+  }
+  .phone-status {
+    padding-inline: 22px 18px;
+  }
+  .phone-island {
+    width: 82px;
+    height: 24px;
   }
   
   
