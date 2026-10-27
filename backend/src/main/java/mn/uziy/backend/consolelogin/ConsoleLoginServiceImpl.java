@@ -6,6 +6,7 @@ import mn.uziy.backend.auth.LoginOutcome;
 import mn.uziy.backend.auth.MeMapper;
 import mn.uziy.backend.common.BadRequestException;
 import mn.uziy.backend.common.event.DomainEventPublisher;
+import mn.uziy.backend.config.AppProperties;
 import mn.uziy.backend.domain.Role;
 import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
@@ -26,6 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
  * and to the role's own purpose ({@code ADMIN_LOGIN} / {@code COMPANY_LOGIN}), can be spent once and runs out (the
  * purpose's claim window, the provider's own expiry). A proved browser is then remembered ({@link DeviceTrust}) and
  * skips this step next time; the password is always asked.
+ *
+ * <p>The step is off unless {@code uziy.console-login.phone-check} is true (owner, 2026-10-26): then every role
+ * is signed in by the password alone and no phone check is ever opened for a login.
  */
 @Service
 public class ConsoleLoginServiceImpl implements ConsoleLoginGate, ConsoleLoginService {
@@ -41,11 +45,13 @@ public class ConsoleLoginServiceImpl implements ConsoleLoginGate, ConsoleLoginSe
     private final MeMapper meMapper;
     private final ConsoleLoginMapper mapper;
     private final DomainEventPublisher events;
+    private final boolean phoneCheck;
 
     public ConsoleLoginServiceImpl(LoginPhoneCheck phoneChecks, VerifiedPhoneClaim verifiedPhones,
                                    DeviceTrust devices, UserRepository users, LoginAttemptLimiter loginLimiter,
                                    JwtService jwt, MeMapper meMapper, ConsoleLoginMapper mapper,
-                                   DomainEventPublisher events) {
+                                   DomainEventPublisher events, AppProperties props) {
+        this.phoneCheck = props.consoleLogin().phoneCheck();
         this.phoneChecks = phoneChecks;
         this.verifiedPhones = verifiedPhones;
         this.devices = devices;
@@ -59,7 +65,7 @@ public class ConsoleLoginServiceImpl implements ConsoleLoginGate, ConsoleLoginSe
 
     @Override
     public boolean appliesTo(Role role) {
-        return PhoneVerificationPurpose.loginStepFor(role).isPresent();
+        return phoneCheck && PhoneVerificationPurpose.loginStepFor(role).isPresent();
     }
 
     @Override

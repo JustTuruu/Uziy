@@ -61,6 +61,10 @@ uziy:
     verify-mn:
       base-url: ${VERIFY_MN_BASE_URL:https://api.verify.mn}
       api-key: ${VERIFY_MN_API_KEY:}
+  console-login:
+    # false -> admins and companies sign in with the password alone (owner, 2026-10-26).
+    # true  -> on an unknown browser they also text a code from the account's phone (see phone-verification).
+    phone-check: ${CONSOLE_LOGIN_PHONE_CHECK:false}
   cors:
     allowed-origins:
       - http://localhost:3000 # company_panel

@@ -24,7 +24,7 @@ class ProductionReadinessCheckTest {
     private ProductionReadinessCheck check(String secret, boolean simulated, String phoneVerification,
                                            List<String> origins) {
         var props = new AppProperties(new AppProperties.Jwt(secret, 24), new AppProperties.Cors(origins),
-                new AppProperties.Payments(simulated), new AppProperties.Push(false, ""));
+                new AppProperties.Payments(simulated), new AppProperties.Push(false, ""), new AppProperties.ConsoleLogin(false));
         return new ProductionReadinessCheck(props, users, phoneVerification);
     }
 

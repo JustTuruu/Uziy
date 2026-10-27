@@ -10,7 +10,7 @@ import com.jayway.jsonpath.JsonPath;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.UUID;
-import mn.uziy.backend.security.AbstractApiIntegrationTest;
+import mn.uziy.backend.security.AbstractPhoneCheckedConsoleLoginIntegrationTest;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -26,7 +26,7 @@ import org.springframework.test.web.servlet.ResultActions;
  * from before a password change or an admin's "forget" — is simply the SMS step again (202), with nothing said about
  * why.
  */
-class TrustedDeviceLoginIntegrationTest extends AbstractApiIntegrationTest {
+class TrustedDeviceLoginIntegrationTest extends AbstractPhoneCheckedConsoleLoginIntegrationTest {
 
     private static final String CHROME = "Mozilla/5.0 (Macintosh) AppleWebKit/537.36 Chrome/141.0 Safari/537.36";
 

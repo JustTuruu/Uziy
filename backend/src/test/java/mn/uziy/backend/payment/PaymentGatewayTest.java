@@ -17,7 +17,7 @@ class PaymentGatewayTest {
         return new SimulatedPaymentGateway(
                 new AppProperties(new AppProperties.Jwt("", 24), new AppProperties.Cors(List.of()),
                         new AppProperties.Payments(on),
-            new AppProperties.Push(false, "")));
+            new AppProperties.Push(false, ""), new AppProperties.ConsoleLogin(false)));
     }
 
     @Test

@@ -51,12 +51,21 @@ class ConsoleLoginServiceTest {
     private final DeviceTrust devices = mock(DeviceTrust.class);
     private final UserRepository users = mock(UserRepository.class);
     private final LoginAttemptLimiter limiter = new LoginAttemptLimiter(Clock.systemUTC());
-    private final JwtService jwt = new JwtService(new AppProperties(
-            new AppProperties.Jwt("a".repeat(64), 1), new AppProperties.Cors(List.of()),
-            new AppProperties.Payments(false), new AppProperties.Push(false, "")));
+    private final JwtService jwt = new JwtService(props(false));
     private final DomainEventPublisher events = mock(DomainEventPublisher.class);
-    private final ConsoleLoginServiceImpl service = new ConsoleLoginServiceImpl(phoneChecks, verifiedPhones, devices,
-            users, limiter, jwt, new MeMapper(), new ConsoleLoginMapper(), events);
+    private final ConsoleLoginServiceImpl service = serviceWithPhoneCheck(true);
+
+    private static AppProperties props(boolean phoneCheck) {
+        return new AppProperties(
+                new AppProperties.Jwt("a".repeat(64), 1), new AppProperties.Cors(List.of()),
+                new AppProperties.Payments(false), new AppProperties.Push(false, ""),
+                new AppProperties.ConsoleLogin(phoneCheck));
+    }
+
+    private ConsoleLoginServiceImpl serviceWithPhoneCheck(boolean on) {
+        return new ConsoleLoginServiceImpl(phoneChecks, verifiedPhones, devices,
+                users, limiter, jwt, new MeMapper(), new ConsoleLoginMapper(), events, props(on));
+    }
 
     private static UserEntity user(Role role) {
         UserEntity u = new UserEntity();
@@ -78,6 +87,25 @@ class ConsoleLoginServiceTest {
 
     private static PhoneVerificationPurpose purposeOf(Role role) {
         return role == Role.ADMIN ? PhoneVerificationPurpose.ADMIN_LOGIN : PhoneVerificationPurpose.COMPANY_LOGIN;
+    }
+
+    @Test
+    void withThePhoneCheckOffNoRoleTakesTheStep() {
+        ConsoleLoginServiceImpl off = serviceWithPhoneCheck(false);
+        for (Role role : Role.values()) {
+            assertThat(off.appliesTo(role)).isFalse();
+        }
+        verifyNoInteractions(phoneChecks);
+    }
+
+    @Test
+    void withThePhoneCheckOffTheVerifyStepIsRefused() {
+        when(users.findByPhoneNumber(PHONE)).thenReturn(Optional.of(user(Role.ADMIN)));
+
+        assertThatThrownBy(() -> serviceWithPhoneCheck(false)
+                .verify(new ConsoleLoginVerifyReq(PHONE, CHECK), CHROME))
+                .isInstanceOf(BadRequestException.class);
+        verifyNoInteractions(verifiedPhones, devices);
     }
 
     @Test

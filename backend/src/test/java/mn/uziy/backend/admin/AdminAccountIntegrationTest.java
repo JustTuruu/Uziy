@@ -37,9 +37,9 @@ class AdminAccountIntegrationTest extends AbstractApiIntegrationTest {
                 .isEqualTo("ADMIN");
         mvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"phoneNumber\":\"%s\",\"password\":\"temp-pass1\"}".formatted(phone)))
-                .andExpect(status().isAccepted())
-                .andExpect(jsonPath("$.token").doesNotExist())
-                .andExpect(jsonPath("$.twoStep.verificationId").isNotEmpty());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty())
+                .andExpect(jsonPath("$.user.role").value("ADMIN"));
     }
 
     @Test

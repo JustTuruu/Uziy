@@ -36,7 +36,7 @@ class AuthServiceTest {
     private final PasswordEncoder encoder = mock(PasswordEncoder.class);
     private final JwtService jwt = new JwtService(new AppProperties(
             new AppProperties.Jwt("a".repeat(64), 1), new AppProperties.Cors(java.util.List.of()), new AppProperties.Payments(false),
-            new AppProperties.Push(false, "")));
+            new AppProperties.Push(false, ""), new AppProperties.ConsoleLogin(false)));
     private final DomainEventPublisher events = mock(DomainEventPublisher.class);
     private final VerifiedPhoneClaim verifiedPhones = mock(VerifiedPhoneClaim.class);
     private final ConsoleLoginGate consoleLogin = mock(ConsoleLoginGate.class);

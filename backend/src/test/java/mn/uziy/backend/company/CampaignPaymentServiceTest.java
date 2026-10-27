@@ -57,7 +57,7 @@ class CampaignPaymentServiceTest {
                 new PaymentGatewaySelector(List.of(new SimulatedPaymentGateway(
                         new AppProperties(new AppProperties.Jwt("", 24), new AppProperties.Cors(List.of()),
                                 new AppProperties.Payments(simulated),
-                                new AppProperties.Push(false, ""))))),
+                                new AppProperties.Push(false, ""), new AppProperties.ConsoleLogin(false))))),
                 new CampaignFactory(), new CampaignMapper(), new PaymentMapper(), events, clock);
     }
 

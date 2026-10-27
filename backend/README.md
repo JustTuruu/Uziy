@@ -38,8 +38,8 @@ The API listens on http://localhost:8080.
 
 | Method + Path                           | Role    | Purpose                                                                                                                                            |
 | --------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `POST /auth/login`                      | anon    | `{phoneNumber, password, deviceToken?}` → 200 JWT + `Me`. ADMIN/COMPANY without a remembered `deviceToken` get 202 `{twoStep}` (SMS step) instead |
-| `POST /auth/login/verify`               | anon    | ADMIN/COMPANY: `{phoneNumber, verificationId}` once the SMS check is VERIFIED → `{token, user, deviceToken, deviceTrustedUntil}` (browser remembered 30 days) |
+| `POST /auth/login`                      | anon    | `{phoneNumber, password, deviceToken?}` → 200 JWT + `Me`. Only with `CONSOLE_LOGIN_PHONE_CHECK=true`: ADMIN/COMPANY without a remembered `deviceToken` get 202 `{twoStep}` (SMS step) instead |
+| `POST /auth/login/verify`               | anon    | Only with the phone check on — ADMIN/COMPANY: `{phoneNumber, verificationId}` once the SMS check is VERIFIED → `{token, user, deviceToken, deviceTrustedUntil}` (browser remembered 30 days) |
 | `POST /auth/phone-verifications`        | anon    | `{phoneNumber}` → 201 `{verificationId, shortcode, smsText, smsUri, displayInstruction, status, expiresAt}`; 409 taken phone, 429 too soon |
 | `GET  /auth/phone-verifications/{id}`   | anon    | `{verificationId, status: PENDING\|VERIFIED\|EXPIRED, expiresAt}` — the app polls it every 3 s |
 | `POST /auth/register/viewer`            | anon    | Create viewer + return JWT; needs a VERIFIED `verificationId` (used once)                                                                                                                         |

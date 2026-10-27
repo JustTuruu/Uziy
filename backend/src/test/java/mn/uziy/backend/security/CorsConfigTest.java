@@ -30,7 +30,7 @@ class CorsConfigTest {
                     "http://localhost:3001",
                     "http://localhost:8080")),
             new AppProperties.Payments(false),
-            new AppProperties.Push(false, ""));
+            new AppProperties.Push(false, ""), new AppProperties.ConsoleLogin(false));
 
     private final SecurityConfig config = new SecurityConfig(
             new JwtAuthFilter(new JwtService(props), org.mockito.Mockito.mock(mn.uziy.backend.domain.UserRepository.class)), props);

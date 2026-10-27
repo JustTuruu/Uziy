@@ -13,7 +13,8 @@ public record AppProperties(
         @DefaultValue Jwt jwt,
         @DefaultValue Cors cors,
         @DefaultValue Payments payments,
-        @DefaultValue Push push) {
+        @DefaultValue Push push,
+        @DefaultValue ConsoleLogin consoleLogin) {
 
     /** JWT signing secret and token lifetime. */
     public record Jwt(@DefaultValue("") String secret, @DefaultValue("24") long ttlHours) {
@@ -52,5 +53,13 @@ public record AppProperties(
                 credentialsPath = "";
             }
         }
+    }
+
+    /**
+     * {@code phoneCheck = false} (default; owner, 2026-10-26) → admins and companies sign in with the password
+     * alone. {@code true} → on a browser the server does not know they must also text a code from the account's
+     * phone ({@code POST /auth/login/verify}), and the proved browser is remembered for 30 days.
+     */
+    public record ConsoleLogin(@DefaultValue("false") boolean phoneCheck) {
     }
 }

@@ -2,6 +2,7 @@ package mn.uziy.backend.trusteddevice;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import mn.uziy.backend.security.AbstractApiIntegrationTest;
@@ -64,7 +65,9 @@ class TrustedDeviceServiceIntegrationTest extends AbstractApiIntegrationTest {
     void aPasswordChangeMakesEveryOlderBrowserAStrangerEvenIfItsRowIsLeft() {
         long company = company();
         String before = trust.trust(company, null).secret();
-        jdbc.update("UPDATE users SET credentials_changed_at = now() WHERE id = ?", company);
+        // The app's clock, as a real password change uses: Postgres' now() in the Docker VM can run a few ms
+        // ahead of the JVM, and then the browser trusted right after looked older than the change (flaky).
+        jdbc.update("UPDATE users SET credentials_changed_at = ? WHERE id = ?", OffsetDateTime.now(), company);
         String after = trust.trust(company, null).secret();
 
         assertThat(trust.recognises(company, before)).isFalse();

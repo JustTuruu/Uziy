@@ -675,7 +675,13 @@ Details and the open decisions: `docs/PRODUCTION_CHECKLIST.md` ("Second audit").
 
 ### Admin & company accounts (2026-10-22)
 
-- **Console login = password + phone check on an unknown browser (2026-10-22; owner: companies AND admins, 30 days)**:
+- **Console phone check is OFF by default (owner, 2026-10-26)**: `uziy.console-login.phone-check`
+  (`CONSOLE_LOGIN_PHONE_CHECK`, `AppProperties.ConsoleLogin`, default `false`) — admins and companies sign in with the
+  password alone (200 + token). `ConsoleLoginServiceImpl.appliesTo` is false for every role then, so no check is opened
+  and `/auth/login/verify` refuses. Turn it on (true) to get the flow below back; its tests run with it on through
+  `AbstractPhoneCheckedConsoleLoginIntegrationTest`. The panels need no change: a 200 just signs in.
+- **Console login = password + phone check on an unknown browser (2026-10-22; owner: companies AND admins, 30 days;
+  only when the switch above is on)**:
   `POST /auth/login {phoneNumber, password, deviceToken?}` — a viewer gets 200 `{token, user}` (deviceToken ignored); an
   ADMIN/COMPANY with a valid device token gets the same 200; otherwise **202** `{twoStep: {verificationId, phoneNumber
   (masked), role, shortcode, smsText, smsUri, displayInstruction, expiresAt}}` with no token (wrong password = 401, no SMS).

@@ -8,7 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import java.util.UUID;
-import mn.uziy.backend.security.AbstractApiIntegrationTest;
+import mn.uziy.backend.security.AbstractPhoneCheckedConsoleLoginIntegrationTest;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.Test;
@@ -21,7 +21,7 @@ import org.springframework.test.web.servlet.ResultActions;
  * after an SMS "arrives" for a check the login opened for that account's phone and role. Viewers log in as before.
  * Remembered browsers are covered by {@code TrustedDeviceLoginIntegrationTest}.
  */
-class ConsoleLoginIntegrationTest extends AbstractApiIntegrationTest {
+class ConsoleLoginIntegrationTest extends AbstractPhoneCheckedConsoleLoginIntegrationTest {
 
     private ResultActions json(String path, String body) throws Exception {
         return mvc.perform(post(path).contentType(MediaType.APPLICATION_JSON).content(body));
