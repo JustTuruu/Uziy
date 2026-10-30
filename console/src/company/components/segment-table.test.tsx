@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { segmentGrid } from "@/lib/survey-results";
-import type { SegmentBreakdown } from "@/lib/api";
+import { segmentGrid } from "@company/lib/survey-results";
+import type { SegmentBreakdown } from "@company/lib/api";
 import { SegmentTable, SegmentTintScale } from "./segment-table";
 
 const breakdown: SegmentBreakdown = {

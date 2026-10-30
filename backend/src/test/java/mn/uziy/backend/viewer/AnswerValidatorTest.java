@@ -137,4 +137,27 @@ class AnswerValidatorTest {
         accepts(mixed, a(1, "\"x\""));
         accepts(mixed, a(1, "\"x\""), a(2, ""));
     }
+
+    private static SurveyQuestionEntity quiz(long id) {
+        SurveyQuestionEntity q = q(id, "QUIZ", "[\"Улаан\",\"Цэнхэр\"]", true);
+        q.setCorrectAnswer("Цэнхэр");
+        return q;
+    }
+
+    @Test
+    void aQuizIsAcceptedOnlyWithItsCorrectOption() {
+        accepts(List.of(quiz(1)), a(1, "\"Цэнхэр\""));
+        refuses(AnswerValidator.WRONG_QUIZ_ANSWER, List.of(quiz(1)), a(1, "\"Улаан\""));
+    }
+
+    @Test
+    void aQuizAnswerMustBeAListedString() {
+        refuses(AnswerValidator.BAD_ANSWER, List.of(quiz(1)), a(1, "\"Ногоон\""));
+        refuses(AnswerValidator.BAD_ANSWER, List.of(quiz(1)), a(1, "[\"Цэнхэр\"]"));
+    }
+
+    @Test
+    void aSkippedQuizIsMissing() {
+        refuses(AnswerValidator.MISSING_ANSWER, List.of(quiz(1)), a(1, ""));
+    }
 }

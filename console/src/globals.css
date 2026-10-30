@@ -1,7 +1,8 @@
 @import "tailwindcss";
 @import "../../packages/ui/src/theme.css";
-/* White console look + Rubik sizes, shared with the admin panel. */
+/* White console look + Rubik sizes. */
 @import "../../packages/ui/src/theme-light.css";
+@import "../../packages/ui/src/fonts.css";
 
 /* Tailwind must scan the shared components for class names. */
 @source "../../packages/ui/src";

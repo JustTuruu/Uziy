@@ -25,11 +25,12 @@ const TYPE_LABEL: Record<QuestionType, string> = {
   MULTI_CHOICE: "Олон сонголттой",
   RATING: "Үнэлгээ",
   TEXT: "Чөлөөт хариулт",
+  QUIZ: "Зөв хариулттай",
 };
 
-/** The question type as the company reads it. */
-export function questionTypeLabel(type: QuestionType): string {
-  return TYPE_LABEL[type] ?? type;
+/** The question type as the company reads it; the backend sends it as a plain string. */
+export function questionTypeLabel(type: string): string {
+  return TYPE_LABEL[type as QuestionType] ?? type;
 }
 
 /** What a question's section shows. */

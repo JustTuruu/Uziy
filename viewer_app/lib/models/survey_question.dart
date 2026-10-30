@@ -4,7 +4,12 @@ enum QuestionType {
   text,
 
   /// 3-point Муу / Дунд / Сайн mood slider; answered with one of its labels.
-  rating;
+  rating,
+
+  /// A question about the video with one correct option, picked like a single
+  /// choice. The app never knows which option is right: it asks the server
+  /// (`/check`) and the viewer may try again until they find it.
+  quiz;
 
   /// The backend's wire names (`SINGLE_CHOICE`, `MULTI_CHOICE`, ...); an
   /// unknown type falls back to single choice so the survey still opens.
@@ -12,6 +17,7 @@ enum QuestionType {
         'MULTI_CHOICE' || 'MULTIPLE_CHOICE' => multipleChoice,
         'TEXT' => text,
         'RATING' => rating,
+        'QUIZ' => quiz,
         _ => singleChoice,
       };
 }

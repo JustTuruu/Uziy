@@ -1,5 +1,5 @@
 import { Card, CardBody, CardHeader } from "@uziy/ui";
-import type { InsightGroup } from "@/lib/api";
+import type { InsightGroup } from "@admin/lib/api";
 import { groupFractions, peopleLabel } from "./insight-format";
 import { ShareBar } from "./share-bar";
 

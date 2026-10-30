@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import mn.uziy.backend.common.BadRequestException;
+import mn.uziy.backend.company.QuizQuestion;
 import mn.uziy.backend.domain.SurveyQuestionEntity;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
@@ -27,11 +28,13 @@ public class AnswerValidator {
     public static final String BAD_ANSWER = "Хариулт буруу байна";
     public static final String ANSWER_TOO_LONG = "Хариулт хэт урт байна";
     public static final String MISSING_ANSWER = "Бүх заавал хариулах асуултад хариулна уу";
+    public static final String WRONG_QUIZ_ANSWER = "Видеоны тухай асуултад буруу хариулсан байна. Дахин оролдоно уу";
 
     private static final String TEXT = "TEXT";
     private static final String SINGLE_CHOICE = "SINGLE_CHOICE";
     private static final String MULTI_CHOICE = "MULTI_CHOICE";
     private static final String RATING = "RATING";
+    private static final String QUIZ = QuizQuestion.TYPE;
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
@@ -93,6 +96,13 @@ public class AnswerValidator {
                 require(node.isString());
                 require(node.asString().isEmpty() || optionsOf(q).contains(node.asString()));
             }
+            // A quiz is paid only for its one correct option (the viewer may retry until they find it).
+            case QUIZ -> {
+                require(node.isString() && optionsOf(q).contains(node.asString()));
+                if (!isCorrect(q, node.asString())) {
+                    throw new BadRequestException(WRONG_QUIZ_ANSWER);
+                }
+            }
             case MULTI_CHOICE -> {
                 require(node.isArray());
                 Set<String> options = optionsOf(q);
@@ -102,6 +112,11 @@ public class AnswerValidator {
             }
             default -> throw new BadRequestException(BAD_ANSWER);
         }
+    }
+
+    /** Whether {@code picked} is the stored correct option of a QUIZ question. */
+    public static boolean isCorrect(SurveyQuestionEntity q, String picked) {
+        return QUIZ.equals(q.getQType()) && picked.equals(q.getCorrectAnswer());
     }
 
     private static Set<String> optionsOf(SurveyQuestionEntity q) {

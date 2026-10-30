@@ -1,7 +1,5 @@
-"use client";
-
 import { ImageUploadCard } from "@uziy/ui";
-import { adminApi, mediaUrl } from "@/lib/api";
+import { adminApi, mediaUrl } from "@admin/lib/api";
 
 /** The admin's cover editor for any survey: the shared card wired to the admin routes. */
 export function CampaignImageEditor({

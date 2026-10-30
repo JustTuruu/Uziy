@@ -22,6 +22,12 @@ spring:
     baseline-on-migrate: true
     locations: classpath:db/migration
 
+# The API description (/v3/api-docs) is never served; OpenApiContractTest switches it on for itself to write
+# docs/api/openapi.json, the file the clients are generated from and checked against.
+springdoc:
+  api-docs:
+    enabled: false
+
 server:
   port: ${PORT:8080}
   error:
@@ -67,6 +73,5 @@ uziy:
     phone-check: ${CONSOLE_LOGIN_PHONE_CHECK:false}
   cors:
     allowed-origins:
-      - http://localhost:3000 # company_panel
-      - http://localhost:3001 # admin_panel (super admin)
+      - http://localhost:3000 # console (company + admin)
       - http://localhost:8080

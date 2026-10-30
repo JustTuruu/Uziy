@@ -1,10 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { adminApi, type AdminUser } from "@/lib/api";
-import AdminCompanyDetailPage from "./page";
+import { adminApi, type AdminUser } from "@admin/lib/api";
+import AdminCompanyDetailPage from "./company-detail-page";
 
 const router = { replace: vi.fn(), push: vi.fn(), refresh: vi.fn() };
-vi.mock("next/navigation", () => ({
+vi.mock("@shared/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@shared/navigation")>()),
   useRouter: () => router,
   useParams: () => ({ id: "12" }),
 }));

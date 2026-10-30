@@ -1,19 +1,20 @@
-"use client";
-
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link } from "@shared/navigation";
+import { useRouter } from "@shared/navigation";
 import { useEffect, useState } from "react";
 import { Check, ClipboardList, Play, X } from "lucide-react";
-import { CampaignStatusBadge } from "@/components/campaign-status-badge";
+import { ApproveCampaignDialog } from "@admin/components/approve-campaign-dialog";
+import { CampaignStatusBadge } from "@admin/components/campaign-status-badge";
 import { Button, Card, CardBody, CardHeader, PageHeader, TableScroll } from "@uziy/ui";
-import { adminApi, ApiError, auth, type Campaign } from "@/lib/api";
-import { formatTugrik, relativeTime } from "@/lib/utils";
+import { adminApi, ApiError, auth, type Campaign } from "@admin/lib/api";
+import { formatTugrik, relativeTime } from "@admin/lib/utils";
 
 export default function AdminCampaignsPage() {
   const router = useRouter();
   const [all, setAll] = useState<Campaign[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [decidingId, setDecidingId] = useState<number | null>(null);
+  /** The campaign whose approval (and commission) is being confirmed. */
+  const [approving, setApproving] = useState<Campaign | null>(null);
 
   useEffect(() => {
     if (!auth.getToken()) {
@@ -33,10 +34,10 @@ export default function AdminCampaignsPage() {
       });
   }, [router]);
 
-  const decide = async (id: number, decision: "ACTIVE" | "REJECTED") => {
+  const decide = async (id: number, decision: "ACTIVE" | "REJECTED", commissionPercent?: number) => {
     setDecidingId(id);
     try {
-      const updated = await adminApi.moderate(id, decision);
+      const updated = await adminApi.moderate(id, decision, commissionPercent);
       setAll((prev) =>
         prev ? prev.map((c) => (c.id === id ? updated : c)) : prev,
       );
@@ -44,6 +45,7 @@ export default function AdminCampaignsPage() {
       setError(e instanceof ApiError ? e.message : "Алдаа гарлаа");
     } finally {
       setDecidingId(null);
+      setApproving(null);
     }
   };
 
@@ -52,6 +54,12 @@ export default function AdminCampaignsPage() {
 
   return (
     <>
+      <ApproveCampaignDialog
+        campaign={approving}
+        busy={decidingId !== null}
+        onApprove={(percent) => approving && decide(approving.id, "ACTIVE", percent)}
+        onCancel={() => setApproving(null)}
+      />
       <PageHeader
         title="Судалгаа"
         description="Шинэ видео агуулга, зорилтот тохиргоог шалгаж баталгаажуулна"
@@ -106,7 +114,7 @@ export default function AdminCampaignsPage() {
                     >
                       <td className="px-5 py-4">
                         <Link
-                          href={`/campaigns/${c.id}`}
+                          href={`/admin/campaigns/${c.id}`}
                           className="flex items-center gap-3"
                         >
                           <div className="flex h-10 w-16 items-center justify-center rounded-md bg-gradient-to-br from-[#2c2c38] to-[#17171e]">
@@ -167,7 +175,7 @@ export default function AdminCampaignsPage() {
                             size="sm"
                             variant="success"
                             leftIcon={<Check size={12} />}
-                            onClick={() => decide(c.id, "ACTIVE")}
+                            onClick={() => setApproving(c)}
                             disabled={decidingId === c.id}
                           >
                             Баталгаажуулах
@@ -207,7 +215,7 @@ export default function AdminCampaignsPage() {
                     >
                       <td className="px-5 py-3">
                         <Link
-                          href={`/campaigns/${c.id}`}
+                          href={`/admin/campaigns/${c.id}`}
                           className="flex items-center gap-2"
                         >
                           {c.hasVideo ? (

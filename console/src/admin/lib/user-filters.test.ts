@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AIMAGS, CAPITAL, EVERYWHERE_LABEL } from "@uziy/ui/regions";
-import type { AdminUser } from "@/lib/api";
+import type { AdminUser } from "@admin/lib/api";
 import {
   ALL_COMPANIES_LABEL,
   ANY,

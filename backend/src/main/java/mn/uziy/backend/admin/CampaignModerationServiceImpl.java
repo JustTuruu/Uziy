@@ -15,6 +15,9 @@ import mn.uziy.backend.domain.CampaignActor;
 import mn.uziy.backend.domain.CampaignEntity;
 import mn.uziy.backend.domain.CampaignRepository;
 import mn.uziy.backend.domain.CampaignStatus;
+import mn.uziy.backend.domain.PlatformSettings;
+import mn.uziy.backend.domain.PlatformSettingsRepository;
+import mn.uziy.backend.pricing.PricingResult;
 import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
 import mn.uziy.backend.domain.ViewHistoryRepository;
@@ -35,18 +38,23 @@ public class CampaignModerationServiceImpl implements CampaignModerationService 
     private final ViewHistoryRepository history;
     private final AdminCampaignMapper mapper;
     private final ModerationStrategyRegistry strategies;
+    private final CampaignCommission commission;
+    private final PlatformSettingsRepository settings;
     private final DomainEventPublisher events;
     private final Clock clock;
 
     public CampaignModerationServiceImpl(CampaignRepository campaigns, UserRepository users,
                                          ViewHistoryRepository history, AdminCampaignMapper mapper,
-                                         ModerationStrategyRegistry strategies, DomainEventPublisher events,
+                                         ModerationStrategyRegistry strategies, CampaignCommission commission,
+                                         PlatformSettingsRepository settings, DomainEventPublisher events,
                                          Clock clock) {
         this.campaigns = campaigns;
         this.users = users;
         this.history = history;
         this.mapper = mapper;
         this.strategies = strategies;
+        this.commission = commission;
+        this.settings = settings;
         this.events = events;
         this.clock = clock;
     }
@@ -78,9 +86,12 @@ public class CampaignModerationServiceImpl implements CampaignModerationService 
 
     @Override
     @Transactional
-    public CampaignDto moderate(long campaignId, CampaignStatus decision) {
+    public CampaignDto moderate(long campaignId, CampaignStatus decision, @Nullable Integer commissionPercent) {
         ModerationStrategy strategy = strategies.find(decision)
                 .orElseThrow(() -> new BadRequestException(INVALID_DECISION_MESSAGE));
+        if (commissionPercent != null && decision != CampaignStatus.ACTIVE) {
+            throw new BadRequestException(CampaignCommission.ONLY_ON_APPROVAL_MESSAGE);
+        }
         CampaignEntity c = campaigns.findById(campaignId)
                 .orElseThrow(() -> new NotFoundException(NOT_FOUND_MESSAGE));
         CampaignStatus from = c.getStatus();
@@ -90,8 +101,18 @@ public class CampaignModerationServiceImpl implements CampaignModerationService 
         if (!from.canTransitionTo(decision, CampaignActor.ADMIN)) {
             throw new ConflictException(ALREADY_MODERATED_MESSAGE);
         }
+        Integer fromPercent = c.getCommissionPercent();
+        PricingResult split = commissionPercent == null ? null : commission.resplit(c,
+                commissionPercent, PlatformSettings.current(settings).getMinRewardPerViewer());
+        if (split != null) {
+            commission.apply(c, split);
+        }
         strategy.apply(c, OffsetDateTime.now(clock));
         CampaignEntity saved = campaigns.save(c);
+        if (split != null) {
+            events.publish(new CampaignCommissionSet(saved.getId(), fromPercent, split.commissionPercent(),
+                    split.rewardPerViewer()));
+        }
         events.publish(new CampaignStatusChanged(saved.getId(), from, decision, CampaignActor.ADMIN));
         return mapper.toDto(saved);
     }

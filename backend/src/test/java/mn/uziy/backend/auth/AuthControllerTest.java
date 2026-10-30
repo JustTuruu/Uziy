@@ -19,7 +19,7 @@ class AuthControllerTest {
     private final AuthController controller = new AuthController(service);
 
     private AuthResponse response(Role role) {
-        return new AuthResponse("t", new Me(1L, "88112233", role, null, null, null, 0.0, false, null, null, null));
+        return new AuthResponse("t", new Me(1L, "88112233", role, null, null, null, null, 0.0, false, null, null, null));
     }
 
     @Test

@@ -204,6 +204,22 @@ class CampaignServiceTest {
         }
 
         @Test
+        void eachKindIsPricedWithItsOwnDefaultCommission() {
+            settings(platformSettings, 35, 20, 100);
+            AtomicReference<CampaignEntity> saved = captureSave();
+
+            campaignSvc.create(companyId, videoReq(500_000.0, 1_000, null, 45));
+            assertThat(saved.get().getCommissionPercent()).isEqualTo(35);
+
+            campaignSvc.create(companyId, new CreateCampaignReq(
+                    "Судалгаа", null, false, null, null, null, null, null, 500_000.0, 1_000, null,
+                    List.of(new CreateCampaignReq.NewQuestion("Тийм үү?", "SINGLE_CHOICE",
+                            List.of("Тийм", "Үгүй"), null))));
+            assertThat(saved.get().getCommissionPercent()).isEqualTo(20);
+            assertThat(saved.get().getRewardPerUser()).isEqualTo(400.0);
+        }
+
+        @Test
         void bothTargetViewersAndRewardPerUserIs400() {
             assertBadRequest(CompanyMessages.EXACTLY_ONE_DRIVER_MESSAGE,
                     () -> campaignSvc.create(companyId, videoReq(1_000, 700.0)));
@@ -356,6 +372,16 @@ class CampaignServiceTest {
                     100_000.0, 100, null, null);
             assertBadRequest(CompanyMessages.NO_QUESTIONS_MESSAGE,
                     () -> campaignSvc.create(companyId, body));
+        }
+
+        @Test
+        void aQuizOnASurveyOnlyCampaignIsRefused() {
+            CreateCampaignReq body = new CreateCampaignReq(
+                    "quiz-without-video", null, false, null, null, null, null, null,
+                    100_000.0, 100, null,
+                    List.of(new CreateCampaignReq.NewQuestion("Ямар өнгө?", QuizQuestion.TYPE,
+                            List.of("Улаан", "Цэнхэр"), true, "Улаан")));
+            assertBadRequest(QuizQuestion.NEEDS_VIDEO, () -> campaignSvc.create(companyId, body));
         }
     }
 

@@ -52,7 +52,10 @@ public class CampaignFactory {
             e.setPrompt(q.prompt());
             e.setQType(q.type());
             e.setOptionsJson(optionsJson(optionsOf(q)));
-            e.setRequired(q.required());
+            boolean quiz = QuizQuestion.isQuiz(q.type());
+            // A quiz is the proof of watching, so it can never be skipped.
+            e.setRequired(quiz || q.required());
+            e.setCorrectAnswer(quiz ? q.correctAnswer() : null);
             result.add(e);
         }
         return result;

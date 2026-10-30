@@ -1,12 +1,13 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, companyApi, type Campaign, type PayCampaignResponse } from "@/lib/api";
-import { formatTugrik } from "@/lib/utils";
+import { ApiError, companyApi, type Campaign, type PayCampaignResponse } from "@company/lib/api";
+import { formatTugrik } from "@company/lib/utils";
 import { CampaignPaymentCard } from "./campaign-payment-card";
 
 const replace = vi.fn();
-vi.mock("next/navigation", () => ({
+vi.mock("@shared/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@shared/navigation")>()),
   useRouter: () => ({ replace, push: vi.fn(), refresh: vi.fn() }),
 }));
 
@@ -30,6 +31,7 @@ function campaign(over: Partial<Campaign> = {}): Campaign {
     paidAt: null,
     status: "AWAITING_PAYMENT",
     createdAt: "2026-09-28T10:00:00Z",
+    thumbnailUrl: null,
     ...over,
   };
 }
@@ -62,8 +64,9 @@ describe("<CampaignPaymentCard>", () => {
     expect(screen.getByText("Шинэ 5G багц")).toBeInTheDocument();
     expect(screen.getByText(formatTugrik(999_570))).toBeInTheDocument();
     expect(screen.getByText(formatTugrik(699_000))).toBeInTheDocument(); // 1,398 × 500
-    expect(screen.getByText(formatTugrik(300_570))).toBeInTheDocument();
-    expect(screen.getByText("Платформын шимтгэл (30%)")).toBeInTheDocument();
+    // The platform's commission is never shown to the company (owner, 2026-10-30).
+    expect(screen.queryByText(formatTugrik(300_570))).not.toBeInTheDocument();
+    expect(screen.queryByText(/шимтгэл/i)).not.toBeInTheDocument();
     expect(
       screen.getByText("Туршилтын горим: одоогоор бодит төлбөр хийгдэхгүй"),
     ).toBeInTheDocument();

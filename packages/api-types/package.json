@@ -1,0 +1,22 @@
+{
+  "name": "@uziy/api-types",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TypeScript types of the Uziy API, generated from docs/api/openapi.json (never edit src/schema.ts by hand).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "node scripts/generate.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "openapi-typescript": "7.13.0",
+    "typescript": "^5",
+    "vitest": "^5.0.2"
+  },
+  "packageManager": "pnpm@10.17.1"
+}

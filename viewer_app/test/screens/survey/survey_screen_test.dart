@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:viewer_app/routes/app_router.dart' show Routes;
+import 'package:viewer_app/screens/survey/quiz_logic.dart';
 import 'package:viewer_app/screens/survey/survey_screen.dart';
 import 'package:viewer_app/screens/survey/survey_widgets.dart';
 import 'package:viewer_app/services/api_service.dart';
@@ -280,5 +281,69 @@ void main() {
     await tester.tap(find.text('Нүүр хуудас руу буцах'));
     await _settle(tester);
     expect(find.text('home-page'), findsOneWidget);
+  });
+
+  group('a quiz about the video', () {
+    const quizId = 21;
+    const checkPath = '/viewer/campaigns/$_campaignId/questions/$quizId/check';
+    const quiz = FakeReply(200, [
+      {
+        'id': quizId,
+        'prompt': 'Видеонд ямар өнгийн машин гарсан бэ?',
+        'type': 'QUIZ',
+        'options': ['Улаан', 'Цэнхэр'],
+        'required': true,
+      },
+    ]);
+
+    FakeReply quizBackend(RecordedCall call) {
+      if (call.path == _questionsPath) return quiz;
+      if (call.path == checkPath) {
+        final picked = (call.body as Map)['answer'];
+        return FakeReply(200, {'correct': picked == 'Цэнхэр'});
+      }
+      return _rewarded;
+    }
+
+    testWidgets('a wrong pick is marked and the viewer tries again',
+        (tester) async {
+      final api = FakeApi.install(quizBackend);
+      await _pump(tester);
+
+      await _tapOption(tester, 'Улаан');
+      await _tapCta(tester);
+
+      expect(find.text(kQuizWrongMessage), findsOneWidget);
+      expect(_ctaEnabled(tester), isFalse,
+          reason: 'the known wrong pick cannot be sent');
+      expect(api.callsTo(_submitPath), isEmpty);
+      final wrongTile = tester.widget<OptionTile>(find.ancestor(
+          of: find.text('Улаан'), matching: find.byType(OptionTile)));
+      expect(wrongTile.wrong, isTrue);
+
+      await _tapOption(tester, 'Цэнхэр');
+      expect(find.text(kQuizWrongMessage), findsNothing);
+      await _tapCta(tester);
+
+      expect(api.callsTo(checkPath).map((c) => (c.body as Map)['answer']),
+          ['Улаан', 'Цэнхэр']);
+      final body = api.callsTo(_submitPath).single.body as Map;
+      expect(jsonDecode((body['answers'] as List).single['answerJson']),
+          'Цэнхэр');
+      expect(find.text('Дууссан'), findsOneWidget);
+    });
+
+    testWidgets('a failed check says so and judges nothing', (tester) async {
+      FakeApi.install((c) => c.path == checkPath
+          ? const FakeReply(503, {'message': 'Сервер завгүй байна'})
+          : quizBackend(c));
+      await _pump(tester);
+
+      await _tapOption(tester, 'Улаан');
+      await _tapCta(tester);
+
+      expect(find.text('Сервер завгүй байна'), findsOneWidget);
+      expect(_ctaEnabled(tester), isTrue, reason: 'the pick may be tried again');
+    });
   });
 }

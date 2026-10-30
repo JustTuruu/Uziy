@@ -1,7 +1,5 @@
-"use client";
-
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link } from "@shared/navigation";
+import { useRouter } from "@shared/navigation";
 import { useEffect, useState } from "react";
 import { CalendarCheck, CreditCard, Hourglass, Receipt } from "lucide-react";
 import { Badge, Card, CardBody, CardHeader, PageHeader, StatCard, TableScroll } from "@uziy/ui";
@@ -11,14 +9,14 @@ import {
   companyApi,
   type Campaign,
   type Payment,
-} from "@/lib/api";
+} from "@company/lib/api";
 import {
   PAYMENT_STATUS_LABEL,
   PAYMENT_STATUS_TONE,
   summarizeCampaignBudgets,
   summarizePayments,
-} from "@/lib/billing";
-import { formatDate, formatTugrik } from "@/lib/utils";
+} from "@company/lib/billing";
+import { formatDate, formatTugrik } from "@company/lib/utils";
 
 /**
  * Company billing: one payment per campaign, no account balance / top-up.

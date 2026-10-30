@@ -74,11 +74,13 @@ class PlatformSettingsServiceTest {
         when(repo.findById(1)).thenReturn(Optional.of(seed()));
         ArgumentCaptor<PlatformSettingsEntity> saved = stubSave();
 
-        PlatformSettingsDto dto = service.update(new UpdatePlatformSettingsReq(35, 250), admin.userId());
+        PlatformSettingsDto dto = service.update(new UpdatePlatformSettingsReq(35, 25, 250), admin.userId());
 
         assertThat(dto.commissionPercent()).isEqualTo(35);
+        assertThat(dto.surveyCommissionPercent()).isEqualTo(25);
         assertThat(dto.minRewardPerViewer()).isEqualTo(250);
         assertThat(saved.getValue().getCommissionPercent()).isEqualTo(35);
+        assertThat(saved.getValue().getSurveyCommissionPercent()).isEqualTo(25);
         assertThat(saved.getValue().getMinRewardPerViewer()).isEqualTo(250);
         assertThat(saved.getValue().getUpdatedBy()).isEqualTo(1L);
         assertThat(saved.getValue().getUpdatedAt()).isEqualTo(OffsetDateTime.now(CLOCK));
@@ -89,7 +91,7 @@ class PlatformSettingsServiceTest {
     void commissionBounds1And90AreAccepted(int commission) {
         when(repo.findById(1)).thenReturn(Optional.of(seed()));
         stubSave();
-        assertThat(service.update(new UpdatePlatformSettingsReq(commission, 1), admin.userId()).commissionPercent())
+        assertThat(service.update(new UpdatePlatformSettingsReq(commission, 25, 1), admin.userId()).commissionPercent())
                 .isEqualTo(commission);
     }
 
@@ -98,7 +100,7 @@ class PlatformSettingsServiceTest {
     void commissionOutside1To90Is400(int commission) {
         when(repo.findById(1)).thenReturn(Optional.of(seed()));
         var ex = assertFailsWithHttp(
-                () -> service.update(new UpdatePlatformSettingsReq(commission, 100), admin.userId()));
+                () -> service.update(new UpdatePlatformSettingsReq(commission, 25, 100), admin.userId()));
         assertThat(ex.statusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(ex.reason()).isEqualTo(PlatformSettingsServiceImpl.COMMISSION_RANGE_MESSAGE);
         verify(repo, never()).save(any());
@@ -109,7 +111,7 @@ class PlatformSettingsServiceTest {
     void minimumRewardBelow1Is400(int minReward) {
         when(repo.findById(1)).thenReturn(Optional.of(seed()));
         var ex = assertFailsWithHttp(
-                () -> service.update(new UpdatePlatformSettingsReq(30, minReward), admin.userId()));
+                () -> service.update(new UpdatePlatformSettingsReq(30, 25, minReward), admin.userId()));
         assertThat(ex.statusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(ex.reason()).isEqualTo(PlatformSettingsServiceImpl.MIN_REWARD_MESSAGE);
         verify(repo, never()).save(any());
@@ -119,10 +121,28 @@ class PlatformSettingsServiceTest {
     void missingFieldsAre400() {
         when(repo.findById(1)).thenReturn(Optional.of(seed()));
         var a = assertFailsWithHttp(
-                () -> service.update(new UpdatePlatformSettingsReq(null, 100), admin.userId()));
+                () -> service.update(new UpdatePlatformSettingsReq(null, 25, 100), admin.userId()));
         assertThat(a.statusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         var b = assertFailsWithHttp(
-                () -> service.update(new UpdatePlatformSettingsReq(30, null), admin.userId()));
+                () -> service.update(new UpdatePlatformSettingsReq(30, 25, null), admin.userId()));
         assertThat(b.statusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 91})
+    void aSurveyCommissionOutside1To90Is400Too(int survey) {
+        when(repo.findById(1)).thenReturn(Optional.of(seed()));
+        var ex = assertFailsWithHttp(
+                () -> service.update(new UpdatePlatformSettingsReq(30, survey, 100), admin.userId()));
+        assertThat(ex.reason()).isEqualTo(PlatformSettingsServiceImpl.COMMISSION_RANGE_MESSAGE);
+        verify(repo, never()).save(any());
+    }
+
+    @Test
+    void aMissingSurveyCommissionIs400() {
+        when(repo.findById(1)).thenReturn(Optional.of(seed()));
+        var ex = assertFailsWithHttp(
+                () -> service.update(new UpdatePlatformSettingsReq(30, null, 100), admin.userId()));
+        assertThat(ex.statusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 }

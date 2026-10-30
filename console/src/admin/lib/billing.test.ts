@@ -25,6 +25,7 @@ function campaign(over: Partial<Campaign> = {}): Campaign {
     paidAt: null,
     status: "AWAITING_PAYMENT",
     createdAt: "2026-09-28T10:00:00Z",
+    thumbnailUrl: null,
     ...over,
   };
 }

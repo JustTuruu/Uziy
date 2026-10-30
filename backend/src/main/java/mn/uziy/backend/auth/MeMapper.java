@@ -15,6 +15,7 @@ public class MeMapper {
                 u.getGender(),
                 u.getAge(),
                 u.getCity(),
+                u.getDistrict(),
                 u.getBalance(),
                 u.isVerified(),
                 u.getCompanyName(),

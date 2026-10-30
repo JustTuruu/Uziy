@@ -1,5 +1,3 @@
-"use client";
-
 import { Button } from "@uziy/ui";
 
 /** What the admin hands over after opening an account; the password is shown here once and never again. */

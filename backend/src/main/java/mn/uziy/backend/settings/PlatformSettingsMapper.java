@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 public class PlatformSettingsMapper {
 
     public PlatformSettingsDto toDto(PlatformSettingsEntity e) {
-        return new PlatformSettingsDto(e.getCommissionPercent(), e.getMinRewardPerViewer(), e.getUpdatedAt());
+        return new PlatformSettingsDto(e.getCommissionPercent(), e.getSurveyCommissionPercent(),
+                e.getMinRewardPerViewer(), e.getUpdatedAt());
     }
 }

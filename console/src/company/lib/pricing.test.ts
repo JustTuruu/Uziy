@@ -208,18 +208,24 @@ describe("pricingErrorMessage", () => {
 });
 
 describe("describePricing", () => {
-  it("explains VIEWERS mode as budget ÷ viewers minus commission", () => {
+  it("explains VIEWERS mode as budget ÷ viewers, with the reward as an estimate", () => {
     expect(describePricing(viewers(1_000_000, 1_000))).toBe(
-      `${formatTugrik(1_000_000)} ÷ 1,000 үзэгч = ${formatTugrik(1_000)} / үзэгч → ` +
-        `платформын 30% шимтгэлийн дараа үзэгч бүр ${formatTugrik(700)} авна.`,
+      `${formatTugrik(1_000_000)} ÷ 1,000 үзэгч = ${formatTugrik(1_000)} / үзэгч. ` +
+        `Үзэгч бүр ойролцоогоор ${formatTugrik(700)} урамшуулал авна.`,
     );
   });
 
-  it("explains REWARD mode as reward + commission → reach", () => {
+  it("explains REWARD mode as cost per viewer → reach", () => {
     const text = describePricing(reward(1_000_000, 500));
-    expect(text).toContain(`Үзэгч бүр ${formatTugrik(500)} авна`);
-    expect(text).toContain(`нэг үзэгчийн зардал ${formatTugrik(715)}`);
+    expect(text).toContain(`Нэг үзэгчийн зардал ${formatTugrik(715)}`);
     expect(text).toContain("= 1,398 үзэгч.");
+    expect(text).toContain(`ойролцоогоор ${formatTugrik(500)} урамшуулал`);
+  });
+
+  it("never names the platform's commission (owner, 2026-10-30)", () => {
+    for (const text of [describePricing(viewers(1_000_000, 1_000)), describePricing(reward(1_000_000, 500))]) {
+      expect(text).not.toMatch(/шимтгэл|%/);
+    }
   });
 
   it("stays quiet when inputs are missing or the budget is too small", () => {

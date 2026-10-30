@@ -1,11 +1,14 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, companiesApi, type CompanyAccount } from "@/lib/api";
-import CompaniesPage from "./page";
+import { ApiError, companiesApi, type CompanyAccount } from "@admin/lib/api";
+import CompaniesPage from "./companies-page";
 
 const router = { replace: vi.fn(), push: vi.fn(), refresh: vi.fn() };
-vi.mock("next/navigation", () => ({ useRouter: () => router }));
+vi.mock("@shared/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@shared/navigation")>()),
+  useRouter: () => router,
+}));
 
 function company(id: number, name: string, campaignCount = 0): CompanyAccount {
   return {
@@ -42,7 +45,7 @@ describe("Companies page", () => {
     expect(await screen.findByText("Бүх компани (2)")).toBeTruthy();
     const row = screen.getByRole("link", { name: "MobiCom" }).closest("tr")!;
     expect(within(row).getByText("3")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "UniTel" })).toHaveAttribute("href", "/companies/2");
+    expect(screen.getByRole("link", { name: "UniTel" })).toHaveAttribute("href", "/admin/companies/2");
   });
 
   it("creates a company and shows the temporary password once", async () => {

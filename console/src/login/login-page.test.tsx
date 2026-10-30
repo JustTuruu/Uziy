@@ -2,13 +2,16 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CONSOLE_LOGIN_POLL_MS, DEVICE_TOKEN_KEY } from "@uziy/ui";
-import { ApiError, auth, authApi, type Me } from "@/lib/api";
-import LoginPage from "./page";
+import { ApiError, auth } from "@shared/api/http";
+import { authApi } from "@shared/api/auth-api";
+import type { Me } from "@shared/api/types";
+import LoginPage from "./login-page";
 
 const router = { replace: vi.fn(), push: vi.fn(), refresh: vi.fn() };
-vi.mock("next/navigation", () => ({ useRouter: () => router }));
-const handoff = vi.hoisted(() => ({ handOffToAdmin: vi.fn() }));
-vi.mock("@/lib/admin-handoff", () => handoff);
+vi.mock("@shared/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@shared/navigation")>()),
+  useRouter: () => router,
+}));
 
 function me(role: Me["role"]): Me {
   return {
@@ -21,6 +24,9 @@ function me(role: Me["role"]): Me {
     balance: 0,
     isVerified: true,
     companyName: "MobiCom",
+    district: null,
+    lastName: null,
+    firstName: null,
   };
 }
 
@@ -55,7 +61,6 @@ async function submitForm() {
 describe("Company login", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    handoff.handOffToAdmin.mockReset();
     router.push.mockReset();
     window.localStorage.clear();
     vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -164,22 +169,18 @@ describe("Company login", () => {
     expect(await screen.findByText("Энэ дансаар самбарт нэвтрэх эрхгүй байна")).toBeTruthy();
     expect(router.push).not.toHaveBeenCalled();
     expect(auth.getToken()).toBeNull();
-    expect(handoff.handOffToAdmin).not.toHaveBeenCalled();
   });
 
-  it("hands a signed-in ADMIN to the admin panel and stores nothing here", async () => {
-    handoff.handOffToAdmin.mockResolvedValue(undefined);
+  it("signs an ADMIN in here too and opens the admin area", async () => {
     vi.spyOn(authApi, "login").mockResolvedValue({ token: "admin-jwt", user: me("ADMIN") });
     render(<LoginPage />);
     await submitForm();
-    await waitFor(() => expect(handoff.handOffToAdmin).toHaveBeenCalledWith("admin-jwt"));
-    expect(router.push).not.toHaveBeenCalled();
-    expect(auth.getToken()).toBeNull();
-    expect(auth.getUser()).toBeNull();
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/admin"));
+    expect(auth.getToken()).toBe("admin-jwt");
+    expect(auth.getUser()?.role).toBe("ADMIN");
   });
 
-  it("gives an admin the SMS step too, then hands the session on", async () => {
-    handoff.handOffToAdmin.mockResolvedValue(undefined);
+  it("gives an admin the SMS step too, then opens the admin area", async () => {
     vi.spyOn(authApi, "login").mockResolvedValue({ twoStep: { ...twoStep, role: "ADMIN" } });
     vi.spyOn(authApi, "phoneCheck").mockResolvedValue(checkSays("VERIFIED"));
     vi.spyOn(authApi, "verify").mockResolvedValue({
@@ -192,17 +193,8 @@ describe("Company login", () => {
     await submitForm();
     expect(await screen.findByText("Утсаа баталгаажуулах")).toBeTruthy();
     await nextPoll();
-    await waitFor(() => expect(handoff.handOffToAdmin).toHaveBeenCalledWith("admin-jwt"));
-    expect(auth.getToken()).toBeNull();
-  });
-
-  it("shows why when the admin panel cannot be reached", async () => {
-    handoff.handOffToAdmin.mockRejectedValue(new Error("down"));
-    vi.spyOn(authApi, "login").mockResolvedValue({ token: "admin-jwt", user: me("ADMIN") });
-    render(<LoginPage />);
-    await submitForm();
-    expect(await screen.findByRole("alert")).toBeTruthy();
-    expect(auth.getToken()).toBeNull();
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/admin"));
+    expect(auth.getToken()).toBe("admin-jwt");
   });
 
   it("says accounts are made by Uziy and how to ask for one, with no sign-up", () => {

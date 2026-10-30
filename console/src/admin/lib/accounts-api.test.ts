@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DEVICE_TOKEN_KEY } from "@uziy/ui";
-import { adminApi, auth, companiesApi } from "./api";
+import { adminApi, companiesApi } from "./api";
 
 const originalFetch = globalThis.fetch;
 
@@ -18,16 +17,6 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
-
-describe("auth", () => {
-  it("keeps the browser's device token when signing out", () => {
-    auth.setToken("jwt");
-    window.localStorage.setItem(DEVICE_TOKEN_KEY, "device-1");
-    auth.clear();
-    expect(auth.getToken()).toBeNull();
-    expect(window.localStorage.getItem(DEVICE_TOKEN_KEY)).toBe("device-1");
-  });
-});
 
 describe("adminApi.forgetTrustedDevices", () => {
   it("POSTs the forget action for the account with the admin's token", async () => {

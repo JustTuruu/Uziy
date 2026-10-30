@@ -1,21 +1,16 @@
+import { aMe } from "@shared/test/fixtures";
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { auth, type Me } from "@/lib/api";
-import CompanyLayout from "./layout";
+import { auth, type Me } from "@company/lib/api";
+import CompanyLayout from "./company-layout";
 
-vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
+vi.mock("@shared/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@shared/navigation")>()),
+  usePathname: () => "/",
+}));
 
-const company = (companyName: string | null): Me => ({
-  id: 1,
-  phoneNumber: "88112233",
-  role: "COMPANY",
-  gender: null,
-  age: null,
-  city: null,
-  balance: 0,
-  isVerified: true,
-  companyName,
-});
+const company = (companyName: string | null): Me =>
+  aMe({ phoneNumber: "88112233", role: "COMPANY", companyName });
 
 describe("Company console layout", () => {
   beforeEach(() => window.localStorage.clear());

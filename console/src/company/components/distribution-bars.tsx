@@ -1,6 +1,6 @@
-import { formatPercent, share, sliceTotal } from "@/lib/analytics";
-import type { AnalyticsSlice } from "@/lib/api";
-import { formatNumber } from "@/lib/utils";
+import { formatPercent, share, sliceTotal } from "@company/lib/analytics";
+import type { AnalyticsSlice } from "@company/lib/api";
+import { formatNumber } from "@company/lib/utils";
 
 const NO_DATA = "Өгөгдөл алга.";
 

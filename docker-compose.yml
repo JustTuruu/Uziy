@@ -4,8 +4,7 @@
 #   docker compose logs -f backend   # backend log (prints the dev SMS curl)
 #   docker compose down              # stop (data is kept)
 #
-#   company panel  http://localhost:3000
-#   admin panel    http://localhost:3001
+#   console        http://localhost:3000   (companies at /, admins at /admin; one sign-in page)
 #   backend API    http://localhost:8080
 #   pgAdmin        http://localhost:5050
 #
@@ -19,13 +18,6 @@ name: uziy
 
 include:
   - backend/docker-compose.yml # postgres + pgadmin
-
-x-panel: &panel
-  restart: unless-stopped
-  depends_on:
-    backend:
-      # A panel that answers can log in straight away.
-      condition: service_healthy
 
 services:
   backend:
@@ -54,34 +46,17 @@ services:
       retries: 12
       start_period: 30s
 
-  company:
-    <<: *panel
+  console:
+    restart: unless-stopped
+    depends_on:
+      backend:
+        # A console that answers can sign in straight away.
+        condition: service_healthy
     build:
       context: .
-      dockerfile: docker/next-panel.Dockerfile
+      dockerfile: docker/console.Dockerfile
       args:
-        APP: company_panel
-        NEXT_PUBLIC_API_BASE_URL: ${API_BASE_URL:-http://localhost:8080}
-        NEXT_PUBLIC_COMPANY_PANEL_URL: ${COMPANY_PANEL_URL:-http://localhost:3000}
-        NEXT_PUBLIC_ADMIN_PANEL_URL: ${ADMIN_PANEL_URL:-http://localhost:3001}
-    container_name: uziy-company
-    environment:
-      PORT: "3000"
+        VITE_API_BASE_URL: ${API_BASE_URL:-http://localhost:8080}
+    container_name: uziy-console
     ports:
       - "3000:3000"
-
-  admin:
-    <<: *panel
-    build:
-      context: .
-      dockerfile: docker/next-panel.Dockerfile
-      args:
-        APP: admin_panel
-        NEXT_PUBLIC_API_BASE_URL: ${API_BASE_URL:-http://localhost:8080}
-        NEXT_PUBLIC_COMPANY_PANEL_URL: ${COMPANY_PANEL_URL:-http://localhost:3000}
-        NEXT_PUBLIC_ADMIN_PANEL_URL: ${ADMIN_PANEL_URL:-http://localhost:3001}
-    container_name: uziy-admin
-    environment:
-      PORT: "3001"
-    ports:
-      - "3001:3001"

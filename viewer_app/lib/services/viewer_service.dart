@@ -138,6 +138,26 @@ class ViewerService {
     }
   }
 
+  /// POST /viewer/campaigns/{id}/questions/{questionId}/check — whether
+  /// [answer] is the correct option of a quiz question.
+  Future<bool> checkQuizAnswer({
+    required int campaignId,
+    required int questionId,
+    required String answer,
+  }) async {
+    const fallback = 'Хариултыг шалгаж чадсангүй';
+    try {
+      final r = await _dio.post<Map<String, dynamic>>(
+        '/viewer/campaigns/$campaignId/questions/$questionId/check',
+        data: {'answer': answer},
+      );
+      _check(r, fallback);
+      return r.data!['correct'] as bool;
+    } on DioException catch (e) {
+      throw _map(e, fallback);
+    }
+  }
+
   /// POST /viewer/campaigns/{id}/submit — the atomic reward transaction.
   Future<RewardResult> submitSurvey({
     required int campaignId,

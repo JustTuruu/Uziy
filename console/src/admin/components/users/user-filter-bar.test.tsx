@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { SelectOption } from "@uziy/ui";
-import { ANY, NO_USER_FILTERS, type UserFilters } from "@/lib/user-filters";
+import { ANY, NO_USER_FILTERS, type UserFilters } from "@admin/lib/user-filters";
 import { UserFilterBar } from "./user-filter-bar";
 
 const CITIES: SelectOption[] = [

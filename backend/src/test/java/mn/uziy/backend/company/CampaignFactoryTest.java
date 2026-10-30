@@ -115,4 +115,18 @@ class CampaignFactoryTest {
         assertThat(p.getCreatedAt()).isEqualTo(at);
         assertThat(p.getPaidAt()).isEqualTo(at);
     }
+
+    @Test
+    void aQuizKeepsItsCorrectAnswerAndIsAlwaysRequired() {
+        List<SurveyQuestionEntity> saved = factory.newQuestions(9L, List.of(
+                new CreateCampaignReq.NewQuestion("Ямар өнгө?", QuizQuestion.TYPE, List.of("Улаан", "Цэнхэр"),
+                        false, "Цэнхэр"),
+                new CreateCampaignReq.NewQuestion("Тийм үү?", "SINGLE_CHOICE", List.of("Тийм", "Үгүй"), false,
+                        "Тийм")));
+
+        assertThat(saved.get(0).getCorrectAnswer()).isEqualTo("Цэнхэр");
+        assertThat(saved.get(0).isRequired()).isTrue();
+        assertThat(saved.get(1).getCorrectAnswer()).as("only a quiz stores a correct answer").isNull();
+        assertThat(saved.get(1).isRequired()).isFalse();
+    }
 }

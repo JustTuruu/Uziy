@@ -1,6 +1,4 @@
-"use client";
-
-import { useRouter } from "next/navigation";
+import { useRouter } from "@shared/navigation";
 import { useEffect, useState } from "react";
 import { Check, ShieldAlert, X } from "lucide-react";
 import {
@@ -13,8 +11,8 @@ import {
   PageHeader,
   TableScroll,
 } from "@uziy/ui";
-import { adminApi, ApiError, auth, type Payout } from "@/lib/api";
-import { formatTugrik, relativeTime } from "@/lib/utils";
+import { adminApi, ApiError, auth, type Payout } from "@admin/lib/api";
+import { formatTugrik, relativeTime } from "@admin/lib/utils";
 
 /** The reject dialog's wording; the reason is shown to the viewer, so it must say what to fix. */
 const REJECT_DIALOG = {

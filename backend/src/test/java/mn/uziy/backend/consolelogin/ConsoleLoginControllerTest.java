@@ -18,7 +18,7 @@ class ConsoleLoginControllerTest {
         ConsoleLoginService service = mock(ConsoleLoginService.class);
         ConsoleLoginVerifyReq req = new ConsoleLoginVerifyReq("99001122", UUID.randomUUID());
         ConsoleLoginVerifiedRes res = new ConsoleLoginVerifiedRes("t",
-                new Me(1L, "99001122", Role.COMPANY, null, null, null, 0.0, false, "MobiCom", null, null),
+                new Me(1L, "99001122", Role.COMPANY, null, null, null, null, 0.0, false, "MobiCom", null, null),
                 "device", OffsetDateTime.parse("2026-11-21T04:00:00Z"));
         when(service.verify(req, "Chrome/141.0")).thenReturn(res);
 

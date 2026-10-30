@@ -1,6 +1,4 @@
-"use client";
-
-import { useRouter } from "next/navigation";
+import { useRouter } from "@shared/navigation";
 import { useEffect, useState } from "react";
 import { MAX_DAYS } from "./analytics";
 import { ApiError, GENERIC_ERROR_MESSAGE, analyticsApi, auth, type AnalyticsReport } from "./api";

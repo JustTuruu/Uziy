@@ -1,9 +1,7 @@
-"use client";
-
 import { useState } from "react";
 import { MonitorX } from "lucide-react";
 import { Button, ConfirmDialog, DEVICE_TRUST_DAYS } from "@uziy/ui";
-import { adminApi, ApiError, GENERIC_ERROR_MESSAGE } from "@/lib/api";
+import { adminApi, ApiError, GENERIC_ERROR_MESSAGE } from "@admin/lib/api";
 
 export const FORGET_DEVICES_COPY = {
   action: "Төхөөрөмжүүдийг мартах",

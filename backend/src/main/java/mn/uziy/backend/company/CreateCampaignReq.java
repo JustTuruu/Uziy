@@ -68,20 +68,27 @@ public record CreateCampaignReq(
 
     /**
      * @param type SINGLE_CHOICE | MULTI_CHOICE | TEXT | RATING (options are ignored: {@link RatingScale})
+     *             | QUIZ (needs {@code correctAnswer}: {@link QuizQuestion})
+     * @param correctAnswer the option a QUIZ question accepts; ignored for every other type
      */
     public record NewQuestion(
             @NotNull(message = QUESTION_REQUIRED) @Size(max = MAX_PROMPT, message = QUESTION_TOO_LONG) String prompt,
             @NotNull(message = QUESTION_TYPE_REQUIRED) @Size(max = 20, message = QUESTION_TYPE_REQUIRED) String type,
             @Size(max = MAX_OPTIONS, message = TOO_MANY_OPTIONS) List<@Size(max = MAX_OPTION_LENGTH, message = OPTION_TOO_LONG) String> options,
-            Boolean required) {
+            Boolean required,
+            @Nullable @Size(max = MAX_OPTION_LENGTH, message = OPTION_TOO_LONG) String correctAnswer) {
 
         public NewQuestion {
             options = options == null ? List.of() : List.copyOf(options);
             required = required == null || required;
         }
 
+        public NewQuestion(String prompt, String type, List<String> options, Boolean required) {
+            this(prompt, type, options, required, null);
+        }
+
         public NewQuestion(String prompt, String type) {
-            this(prompt, type, null, null);
+            this(prompt, type, null, null, null);
         }
     }
 }

@@ -47,7 +47,6 @@ class AccessControlMatrixIntegrationTest extends AbstractApiIntegrationTest {
                 ep(HttpMethod.POST, "/admin/companies", "ADMIN"),
                 ep(HttpMethod.GET, "/admin/admins", "ADMIN"),
                 ep(HttpMethod.POST, "/admin/admins", "ADMIN"),
-                ep(HttpMethod.POST, "/admin/session-handoffs", "ADMIN"),
                 ep(HttpMethod.GET, "/admin/campaigns", "ADMIN"),
                 ep(HttpMethod.GET, "/admin/campaigns/1", "ADMIN"),
                 ep(HttpMethod.PATCH, "/admin/campaigns/1/moderate?decision=ACTIVE", "ADMIN"),
@@ -74,6 +73,7 @@ class AccessControlMatrixIntegrationTest extends AbstractApiIntegrationTest {
                 ep(HttpMethod.GET, "/viewer/history", "VIEWER"),
                 ep(HttpMethod.GET, "/viewer/campaigns/1/questions", "VIEWER"),
                 ep(HttpMethod.POST, "/viewer/campaigns/1/submit", "VIEWER"),
+                ep(HttpMethod.POST, "/viewer/campaigns/1/questions/1/check", "VIEWER"),
                 ep(HttpMethod.POST, "/viewer/payouts", "VIEWER"),
                 ep(HttpMethod.GET, "/viewer/payouts", "VIEWER"),
                 ep(HttpMethod.POST, "/viewer/devices", "VIEWER"),
@@ -155,7 +155,6 @@ class AccessControlMatrixIntegrationTest extends AbstractApiIntegrationTest {
                 new Endpoint(HttpMethod.POST, "/auth/phone-verifications", "-", "{\"phoneNumber\":\"" + freshPhone() + "\"}"),
                 ep(HttpMethod.GET, "/auth/phone-verifications/" + java.util.UUID.randomUUID(), "-"),
                 ep(HttpMethod.POST, "/auth/phone-verifications/simulated-sms/unknown", "-"),
-                new Endpoint(HttpMethod.POST, "/auth/session-handoffs/redeem", "-", "{\"code\":\"unknown\"}"),
                 new Endpoint(HttpMethod.POST, "/auth/login/verify", "-", "{\"phoneNumber\":\"" + freshPhone()
                         + "\",\"verificationId\":\"" + java.util.UUID.randomUUID() + "\"}"));
         return open.stream().map(e -> DynamicTest.dynamicTest(e.toString(), () ->

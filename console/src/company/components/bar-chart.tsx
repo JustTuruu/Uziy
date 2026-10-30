@@ -1,9 +1,7 @@
-"use client";
-
 import { useState } from "react";
-import { axisTicks, labelIndexes, niceCeil } from "@/lib/analytics";
-import { useElementWidth } from "@/lib/use-element-width";
-import { formatNumber } from "@/lib/utils";
+import { axisTicks, labelIndexes, niceCeil } from "@company/lib/analytics";
+import { useElementWidth } from "@company/lib/use-element-width";
+import { formatNumber } from "@company/lib/utils";
 
 export interface BarPoint {
   /** Stable identity of the bar (a date, an hour). */

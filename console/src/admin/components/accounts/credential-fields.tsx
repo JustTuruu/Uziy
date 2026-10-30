@@ -1,5 +1,3 @@
-"use client";
-
 import { KeyRound } from "lucide-react";
 import { Button, Input } from "@uziy/ui";
 import {
@@ -8,7 +6,7 @@ import {
   generateTempPassword,
   phoneDigits,
   type AccountCredentials,
-} from "@/lib/account-form";
+} from "@admin/lib/account-form";
 
 /**
  * The phone + temporary password half of every "open an account" form (companies, admins), so both look and

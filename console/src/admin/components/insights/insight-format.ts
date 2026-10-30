@@ -1,4 +1,4 @@
-import type { InsightGroup } from "@/lib/api";
+import type { InsightGroup } from "@admin/lib/api";
 
 /** How a hidden (too small) group is shown, e.g. "< 50". */
 export function hiddenLabel(minGroupSize: number): string {

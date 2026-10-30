@@ -1,7 +1,5 @@
-"use client";
-
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link } from "@shared/navigation";
+import { useRouter } from "@shared/navigation";
 import { useEffect, useState } from "react";
 import {
   ClipboardList,
@@ -12,7 +10,7 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
-import { CampaignStatusBadge } from "@/components/campaign-status-badge";
+import { CampaignStatusBadge } from "@company/components/campaign-status-badge";
 import {
   Button,
   Card,
@@ -28,9 +26,9 @@ import {
   companyApi,
   useStoredUser,
   type Campaign,
-} from "@/lib/api";
-import { summarizeCampaignBudgets } from "@/lib/billing";
-import { formatTugrik } from "@/lib/utils";
+} from "@company/lib/api";
+import { summarizeCampaignBudgets } from "@company/lib/billing";
+import { formatTugrik } from "@company/lib/utils";
 
 export default function CompanyDashboard() {
   const router = useRouter();

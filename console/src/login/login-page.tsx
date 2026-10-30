@@ -1,11 +1,10 @@
-"use client";
-
-import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@shared/navigation";
 import { BarChart3, Crosshair, PlayCircle } from "lucide-react";
 import { ConsoleLoginPage, useConsoleLogin, type LoginHighlight, type SignedIn } from "@uziy/ui";
-import { auth, authApi, GENERIC_ERROR_MESSAGE, type Me } from "@/lib/api";
-import { handOffToAdmin } from "@/lib/admin-handoff";
+import { auth, GENERIC_ERROR_MESSAGE } from "@shared/api/http";
+import { authApi } from "@shared/api/auth-api";
+import type { Me } from "@shared/api/types";
+import { homeFor } from "@shared/session";
 
 const NOT_CONSOLE_ACCOUNT = "Энэ дансаар самбарт нэвтрэх эрхгүй байна";
 const SALES_EMAIL = "sales@uziy.mn";
@@ -30,28 +29,24 @@ const HIGHLIGHTS: readonly LoginHighlight[] = [
 
 export default function LoginPage() {
   const router = useRouter();
-  // The one sign-in page (owner, 2026-10-22): companies stay here, admins are handed to the admin panel by role.
-  // An admin's token is never stored on this site.
+  // The one sign-in page (owner, 2026-10-22): companies land on their dashboard, admins under /admin — one app,
+  // so both keep their session here.
   const login = useConsoleLogin<Me>({
     api: authApi,
     roles: ["COMPANY", "ADMIN"],
     notRoleMessage: NOT_CONSOLE_ACCOUNT,
     genericError: GENERIC_ERROR_MESSAGE,
-    onSignedIn: async (res: SignedIn<Me>) => {
-      if (res.user.role === "ADMIN") {
-        await handOffToAdmin(res.token);
-        return;
-      }
+    onSignedIn: (res: SignedIn<Me>) => {
       auth.setToken(res.token);
       auth.setUser(res.user);
-      router.push("/");
+      router.push(homeFor(res.user.role));
     },
   });
 
   return (
     <ConsoleLoginPage
       login={login}
-      logo={<Image src="/logo.png" alt="" width={28} height={28} priority className="h-7 w-7 object-contain" />}
+      logo={<img src="/logo.png" alt="" width={28} height={28} className="h-7 w-7 object-contain" />}
       consoleName="Компанийн самбар"
       headline={
         <>

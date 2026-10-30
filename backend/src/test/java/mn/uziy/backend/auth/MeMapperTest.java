@@ -20,6 +20,7 @@ class MeMapperTest {
         u.setGender(Gender.MALE);
         u.setBirthDate(LocalDate.now().minusYears(30).minusDays(1));
         u.setCity("Улаанбаатар");
+        u.setDistrict("Сүхбаатар");
         u.setBalance(1200.0);
         u.setLastName("Оюун-Эрдэнэ");
         u.setFirstName("Төрболд");
@@ -32,6 +33,7 @@ class MeMapperTest {
         assertThat(me.gender()).isEqualTo(Gender.MALE);
         assertThat(me.age()).isEqualTo(30);
         assertThat(me.city()).isEqualTo("Улаанбаатар");
+        assertThat(me.district()).as("the profile's Дүүрэг row reads it").isEqualTo("Сүхбаатар");
         assertThat(me.balance()).isEqualTo(1200.0);
         assertThat(me.isVerified()).isFalse();
         assertThat(me.companyName()).isNull();

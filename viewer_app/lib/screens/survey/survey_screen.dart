@@ -10,6 +10,7 @@ import '../../services/viewer_service.dart';
 import '../../widgets/ui.dart';
 import 'mood_logic.dart';
 import 'mood_slider.dart';
+import 'quiz_logic.dart';
 import 'survey_widgets.dart';
 
 class SurveyScreen extends StatefulWidget {
@@ -41,6 +42,13 @@ class _SurveyScreenState extends State<SurveyScreen> {
   bool _forward = true;
   bool _submitting = false;
   String? _submitError;
+
+  /// Quiz picks the server confirmed or refused (see [QuizChecks]).
+  final QuizChecks _quiz = QuizChecks();
+  bool _checkingQuiz = false;
+
+  /// The check itself failed (network, server); the pick is not judged.
+  String? _quizError;
 
   int get _campaignId => int.tryParse(widget.campaignId) ?? 0;
 
@@ -95,7 +103,8 @@ class _SurveyScreenState extends State<SurveyScreen> {
   bool _canAdvance() {
     if (_questions == null) return false;
     final q = _current;
-    return canAdvance(q, _answers[q.id]);
+    final answer = _answers[q.id];
+    return canAdvance(q, answer) && !_quiz.isWrongPick(q, answer);
   }
 
   void _goTo(int index) {
@@ -106,11 +115,51 @@ class _SurveyScreenState extends State<SurveyScreen> {
     });
   }
 
-  void _next() {
+  Future<void> _next() async {
+    final q = _current;
+    final answer = _answers[q.id];
+    if (_quiz.needsCheck(q, answer) && !await _checkQuiz(q, answer as String)) {
+      return;
+    }
+    if (!mounted) return;
     if (_isLast) {
       _submit();
     } else {
       _goTo(_index + 1);
+    }
+  }
+
+  /// Asks the server whether [answer] is the quiz's correct option; a wrong
+  /// one is marked and the viewer stays to try another.
+  Future<bool> _checkQuiz(SurveyQuestion q, String answer) async {
+    setState(() {
+      _checkingQuiz = true;
+      _quizError = null;
+    });
+    try {
+      final correct = await ViewerService.instance.checkQuizAnswer(
+        campaignId: _campaignId,
+        questionId: q.id,
+        answer: answer,
+      );
+      if (!mounted) return false;
+      setState(() {
+        _checkingQuiz = false;
+        if (correct) {
+          _quiz.markCorrect(q.id, answer);
+        } else {
+          _quiz.markWrong(q.id, answer);
+        }
+      });
+      if (!correct) HapticFeedback.heavyImpact();
+      return correct;
+    } on ApiException catch (e) {
+      if (!mounted) return false;
+      setState(() {
+        _checkingQuiz = false;
+        _quizError = e.message;
+      });
+      return false;
     }
   }
 
@@ -431,20 +480,18 @@ class _SurveyScreenState extends State<SurveyScreen> {
   List<Widget> _buildAnswerInput(SurveyQuestion q) {
     switch (q.type) {
       case QuestionType.singleChoice:
+        return _singleChoiceTiles(q);
+
+      case QuestionType.quiz:
+        final error = _quiz.isWrongPick(q, _answers[q.id])
+            ? kQuizWrongMessage
+            : _quizError;
         return [
-          for (var i = 0; i < q.options.length; i++)
+          ..._singleChoiceTiles(q),
+          if (error != null)
             Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: FadeSlideIn(
-                index: i,
-                offset: 12,
-                child: OptionTile(
-                  label: q.options[i],
-                  index: i,
-                  selected: _answers[q.id] == q.options[i],
-                  onTap: () => setState(() => _answers[q.id] = q.options[i]),
-                ),
-              ),
+              padding: const EdgeInsets.only(top: AppSpacing.sm),
+              child: StatusBanner(message: error),
             ),
         ];
 
@@ -503,6 +550,29 @@ class _SurveyScreenState extends State<SurveyScreen> {
     }
   }
 
+  /// One pickable tile per option. On a quiz, options already found wrong
+  /// stay marked, and picking another clears a failed check's message.
+  List<Widget> _singleChoiceTiles(SurveyQuestion q) => [
+        for (var i = 0; i < q.options.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: FadeSlideIn(
+              index: i,
+              offset: 12,
+              child: OptionTile(
+                label: q.options[i],
+                index: i,
+                selected: _answers[q.id] == q.options[i],
+                wrong: _quiz.isWrong(q.id, q.options[i]),
+                onTap: () => setState(() {
+                  _answers[q.id] = q.options[i];
+                  _quizError = null;
+                }),
+              ),
+            ),
+          ),
+      ];
+
   Widget _buildActionBar(Duration motion) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -530,7 +600,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
               // phones with large text).
               compactLabel: _isLast ? 'Илгээх' : null,
               haptic: true,
-              loading: _submitting,
+              loading: _submitting || _checkingQuiz,
               onPressed: _canAdvance() ? _next : null,
             ),
           ),

@@ -1,0 +1,14 @@
+/*
+ * Console UI font (owner, 2026-10-21: softer and easier on the eyes). Rubik has
+ * rounded corners, a tall x-height, tabular figures for money columns, and
+ * covers Mongolian Ө/Ү (cyrillic-ext) and the ₮ sign (latin-ext). @fontsource
+ * ships the files with the app, so the browser never calls Google; every
+ * subset is listed with its unicode-range and only the ones a page uses load.
+ * theme-light.css puts --font-rubik first in --font-sans. Import this file
+ * once, from the app's globals.css.
+ */
+@import "@fontsource-variable/rubik";
+
+:root {
+  --font-rubik: "Rubik Variable";
+}

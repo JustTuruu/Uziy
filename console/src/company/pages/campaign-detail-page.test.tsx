@@ -8,13 +8,14 @@ import {
   companyApi,
   type AnalyticsReport,
   type Campaign,
-} from "@/lib/api";
-import { MAX_DAYS } from "@/lib/analytics";
-import CampaignDetailPage from "./page";
+} from "@company/lib/api";
+import { MAX_DAYS } from "@company/lib/analytics";
+import CampaignDetailPage from "./campaign-detail-page";
 
 const router = { replace: vi.fn(), push: vi.fn(), refresh: vi.fn() };
 const params = { id: "42" };
-vi.mock("next/navigation", () => ({
+vi.mock("@shared/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@shared/navigation")>()),
   useRouter: () => router,
   useParams: () => params,
 }));
@@ -39,6 +40,7 @@ function campaign(over: Partial<Campaign> = {}): Campaign {
     paidAt: null,
     status: "ACTIVE",
     createdAt: "2026-09-28T10:00:00Z",
+    thumbnailUrl: null,
     ...over,
   };
 }

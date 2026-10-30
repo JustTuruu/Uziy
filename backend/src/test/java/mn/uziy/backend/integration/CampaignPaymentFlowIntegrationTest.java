@@ -231,7 +231,7 @@ class CampaignPaymentFlowIntegrationTest {
         assertThat(viewer.feed(principal(VIEWER, Role.VIEWER)).stream().noneMatch(i -> i.id() == id)).isTrue();
 
         authAs(ADMIN, Role.ADMIN);
-        var unpaid = assertFailsWithHttp(() -> admin.moderate(id, CampaignStatus.ACTIVE));
+        var unpaid = assertFailsWithHttp(() -> admin.moderate(id, CampaignStatus.ACTIVE, null));
         assertThat(unpaid.statusCode()).isEqualTo(HttpStatus.CONFLICT);
 
         authAs(MOBICOM, Role.COMPANY);
@@ -280,7 +280,7 @@ class CampaignPaymentFlowIntegrationTest {
 
         // 6. Admin approves; the detail carries the snapshot + paidAt.
         authAs(ADMIN, Role.ADMIN);
-        CampaignDto approved = admin.moderate(id, CampaignStatus.ACTIVE);
+        CampaignDto approved = admin.moderate(id, CampaignStatus.ACTIVE, null);
         assertThat(approved.status()).isEqualTo(CampaignStatus.ACTIVE);
         var detail = admin.getCampaign(id);
         assertThat(detail.campaign().commissionPercent()).isEqualTo(30);
@@ -338,7 +338,7 @@ class CampaignPaymentFlowIntegrationTest {
     @Test
     void new_campaigns_use_the_commission_the_admin_set() {
         authAs(ADMIN, Role.ADMIN);
-        settings.update(new UpdatePlatformSettingsReq(35, 100), principal(ADMIN, Role.ADMIN));
+        settings.update(new UpdatePlatformSettingsReq(35, 30, 100), principal(ADMIN, Role.ADMIN));
         try {
             CampaignDto created = createAsMobiCom(createReq("Интеграцийн тест", 500_000.0, 1_000, null));
             assertThat(created.costPerView()).isEqualTo(500.0);
@@ -346,7 +346,7 @@ class CampaignPaymentFlowIntegrationTest {
             assertThat(created.commissionPercent()).isEqualTo(35);
         } finally {
             authAs(ADMIN, Role.ADMIN);
-            settings.update(new UpdatePlatformSettingsReq(30, 100), principal(ADMIN, Role.ADMIN));
+            settings.update(new UpdatePlatformSettingsReq(30, 30, 100), principal(ADMIN, Role.ADMIN));
         }
     }
 

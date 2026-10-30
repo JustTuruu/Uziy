@@ -1,9 +1,9 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { TOO_FEW_ANSWERS } from "@/lib/analytics";
-import type { QuestionBreakdown } from "@/lib/api";
-import { MULTI_CHOICE_NOTE, SEGMENT_LEGEND } from "@/lib/survey-results";
+import { TOO_FEW_ANSWERS } from "@company/lib/analytics";
+import type { QuestionBreakdown } from "@company/lib/api";
+import { MULTI_CHOICE_NOTE, SEGMENT_LEGEND } from "@company/lib/survey-results";
 import {
   NO_ANSWERS_TO_QUESTION,
   NO_QUESTIONS,

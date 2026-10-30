@@ -1,5 +1,3 @@
-"use client";
-
 import { Search, X } from "lucide-react";
 import {
   Button,
@@ -13,7 +11,7 @@ import {
   NO_USER_FILTERS,
   type UserFilters,
   type VerificationFilter,
-} from "@/lib/user-filters";
+} from "@admin/lib/user-filters";
 
 const VERIFICATION_OPTIONS = [
   { value: "ALL", label: "Бүгд" },

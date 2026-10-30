@@ -7,14 +7,17 @@ import {
   auth,
   type AnalyticsReport,
   type CampaignPerformance,
-} from "@/lib/api";
-import { SMALL_GROUPS_HIDDEN, TOO_FEW_ANSWERS } from "@/lib/analytics";
-import { TEXT_ANSWERS_PRIVATE } from "@/lib/survey-results";
-import { formatTugrik } from "@/lib/utils";
-import AnalyticsPage from "./page";
+} from "@company/lib/api";
+import { SMALL_GROUPS_HIDDEN, TOO_FEW_ANSWERS } from "@company/lib/analytics";
+import { TEXT_ANSWERS_PRIVATE } from "@company/lib/survey-results";
+import { formatTugrik } from "@company/lib/utils";
+import AnalyticsPage from "./analytics-page";
 
 const router = { replace: vi.fn(), push: vi.fn(), refresh: vi.fn() };
-vi.mock("next/navigation", () => ({ useRouter: () => router }));
+vi.mock("@shared/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@shared/navigation")>()),
+  useRouter: () => router,
+}));
 
 function performance(over: Partial<CampaignPerformance> = {}): CampaignPerformance {
   return {

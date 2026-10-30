@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 
 /** Custom properties declared in the first block that matches [selector]. */
@@ -128,13 +129,20 @@ describe("light console type", () => {
     expect(admin["--font-sans"]).toContain("sans-serif");
   });
 
-  it("loads the Rubik subsets Mongolian text and ₮ need", () => {
-    const layout = readFileSync(path.join(__dirname, "fonts.ts"), "utf8");
-    expect(layout).toMatch(/Rubik\(\{/);
-    expect(layout).toContain('variable: "--font-rubik"');
-    // Ө / Ү live in cyrillic-ext, the ₮ sign in latin-ext.
+  it("defines --font-rubik from the self-hosted Rubik", () => {
+    const fonts = readFileSync(path.join(__dirname, "fonts.css"), "utf8");
+    expect(fonts).toContain('@import "@fontsource-variable/rubik";');
+    expect(fonts).toMatch(/--font-rubik:\s*"Rubik Variable"/);
+  });
+
+  it("ships the Rubik subsets Mongolian text and ₮ need", () => {
+    const css = readFileSync(
+      createRequire(import.meta.url).resolve("@fontsource-variable/rubik/index.css"),
+      "utf8",
+    );
+    // Ө / Ү (U+04E8, U+04AE) live in cyrillic-ext, the ₮ sign (U+20AE) in latin-ext.
     for (const subset of ["cyrillic", "cyrillic-ext", "latin", "latin-ext"]) {
-      expect(layout).toContain(`"${subset}"`);
+      expect(css).toContain(`/* rubik-${subset}-wght-normal */`);
     }
   });
 });

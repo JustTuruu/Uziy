@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
-import { TEMP_PASSWORD_LENGTH, type AccountCredentials } from "@/lib/account-form";
+import { TEMP_PASSWORD_LENGTH, type AccountCredentials } from "@admin/lib/account-form";
 import { CredentialFields } from "./credential-fields";
 
 function Harness() {

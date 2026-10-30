@@ -1,5 +1,3 @@
-"use client";
-
 import { useMemo } from "react";
 import { CircleAlert } from "lucide-react";
 import { NumericInput } from "@uziy/ui";
@@ -10,8 +8,8 @@ import {
   pricingErrorMessage,
   type PricingMode,
   type PricingResult,
-} from "@/lib/pricing";
-import { cn, formatNumber, formatTugrik, parseIntInput } from "@/lib/utils";
+} from "@company/lib/pricing";
+import { cn, formatNumber, formatTugrik, parseIntInput } from "@company/lib/utils";
 
 /**
  * Raw state of the budget step. Only the DRIVER field's text matters (the
@@ -28,6 +26,20 @@ export interface BudgetFieldsValue {
 export interface PricingSettings {
   commissionPercent: number;
   minRewardPerViewer: number;
+}
+
+/**
+ * The settings a new campaign of this kind is previewed with: its kind's default commission (owner, 2026-10-30).
+ * The admin sets the campaign's own commission when approving it, so this is only an estimate.
+ */
+export function pricingSettingsFor(
+  settings: { commissionPercent: number; surveyCommissionPercent: number; minRewardPerViewer: number },
+  hasVideo: boolean,
+): PricingSettings {
+  return {
+    commissionPercent: hasVideo ? settings.commissionPercent : settings.surveyCommissionPercent,
+    minRewardPerViewer: settings.minRewardPerViewer,
+  };
 }
 
 export const DEFAULT_BUDGET_FIELDS: BudgetFieldsValue = {
@@ -57,7 +69,8 @@ const COMPUTED_HINT = "Автоматаар тооцоолсон";
 /**
  * Total budget + two linked fields: "how many viewers" and "how much each
  * viewer gets". Typing in either one makes it the driver and the other is
- * recomputed; a summary shows the platform commission and the amount due.
+ * recomputed; a summary shows the reach, the reward and the amount due. The platform's commission is never shown
+ * to the company (owner, 2026-10-30).
  */
 export function CampaignBudgetFields({
   value,
@@ -144,7 +157,7 @@ export function CampaignBudgetFields({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <SummaryTile
           label="Нэг үзэгчид олгох урамшуулал"
           value={ok ? formatTugrik(pricing.rewardPerViewer) : "—"}
@@ -152,11 +165,6 @@ export function CampaignBudgetFields({
         <SummaryTile
           label="Хүрэх үзэгчийн тоо"
           value={ok ? formatNumber(pricing.targetViewers) : "—"}
-        />
-        <SummaryTile
-          label={`Платформын шимтгэл (${settings.commissionPercent}%)`}
-          value={ok ? formatTugrik(pricing.commissionTotal) : "—"}
-          tone="warn"
         />
         <SummaryTile
           label="Төлөх дүн"

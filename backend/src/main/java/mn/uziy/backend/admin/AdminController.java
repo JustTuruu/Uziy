@@ -63,7 +63,9 @@ public class AdminController {
     }
 
     @PatchMapping("/campaigns/{id}/moderate")
-    public CampaignDto moderate(@PathVariable("id") long id, @RequestParam("decision") CampaignStatus decision) {
-        return moderation.moderate(id, decision);
+    public CampaignDto moderate(@PathVariable("id") long id, @RequestParam("decision") CampaignStatus decision,
+                                @RequestParam(name = "commissionPercent", required = false)
+                                @Nullable Integer commissionPercent) {
+        return moderation.moderate(id, decision, commissionPercent);
     }
 }

@@ -5,6 +5,7 @@ import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 
 import '../../widgets/ui.dart';
+import 'video_playback.dart' show kRewindStep;
 
 // Presentational pieces of the video player screen.
 //
@@ -103,6 +104,15 @@ double sidePanelWidth(double screenWidth) {
   final preferred = (screenWidth * 0.42).clamp(260.0, 400.0);
   return math.min(preferred, screenWidth / 2);
 }
+
+/// Screens whose shorter side is at least this are tablets: they keep the
+/// side panel in landscape instead of going full screen.
+const double kTabletShortestSide = 600;
+
+/// A phone held sideways shows only the video, edge to edge, with its
+/// controls over it (owner, 2026-10-30: the framed stage looked odd there).
+bool useImmersiveVideo(Size screen) =>
+    screen.width > screen.height && screen.shortestSide < kTabletShortestSide;
 
 /// Short screens (iPhone SE, landscape phones) get a tighter panel rhythm.
 bool useCompactPanel(Size screen) => screen.height < 700;
@@ -226,13 +236,80 @@ class StageCloseButton extends StatelessWidget {
 // --- Rewind ------------------------------------------------------------------
 
 /// Round glass button on the stage that jumps back [kRewindStep]-worth (the
-/// screen decides how far). Sits on fixed dark video, so white ink.
+/// screen decides how far). The step's seconds sit inside the arrow.
 class RewindButton extends StatelessWidget {
   const RewindButton({super.key, required this.onPressed});
 
   final VoidCallback? onPressed;
 
-  static const semanticLabel = '10 секунд буцаах';
+  static final String semanticLabel = '${kRewindStep.inSeconds} секунд буцаах';
+
+  @override
+  Widget build(BuildContext context) {
+    return StageGlassButton(
+      onPressed: onPressed,
+      semanticLabel: semanticLabel,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          const Icon(AppIcons.rewind, size: 24, color: Colors.white),
+          Text(
+            '${kRewindStep.inSeconds}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              height: 1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Switches between the framed stage and the full-screen sideways video.
+class FullscreenButton extends StatelessWidget {
+  const FullscreenButton({
+    super.key,
+    required this.active,
+    required this.onPressed,
+  });
+
+  /// True while the video is full screen: the button then leaves it.
+  final bool active;
+  final VoidCallback? onPressed;
+
+  static const enterLabel = 'Бүтэн дэлгэцээр үзэх';
+  static const exitLabel = 'Бүтэн дэлгэцээс гарах';
+
+  @override
+  Widget build(BuildContext context) {
+    return StageGlassButton(
+      onPressed: onPressed,
+      semanticLabel: active ? exitLabel : enterLabel,
+      child: Icon(
+        active ? AppIcons.exitFullscreen : AppIcons.fullscreen,
+        size: 20,
+        color: Colors.white,
+      ),
+    );
+  }
+}
+
+/// The round see-through button every control on the video uses. Sits on
+/// fixed dark video, so white ink.
+class StageGlassButton extends StatelessWidget {
+  const StageGlassButton({
+    super.key,
+    required this.onPressed,
+    required this.semanticLabel,
+    required this.child,
+  });
+
+  final VoidCallback? onPressed;
+  final String semanticLabel;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
@@ -249,7 +326,7 @@ class RewindButton extends StatelessWidget {
             color: Colors.black.withValues(alpha: 0.35),
             border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
           ),
-          child: const Icon(AppIcons.rewind, size: 20, color: Colors.white),
+          child: Center(child: child),
         ),
       ),
     );

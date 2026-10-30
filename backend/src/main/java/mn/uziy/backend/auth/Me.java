@@ -11,6 +11,7 @@ public record Me(
         @Nullable Gender gender,
         @Nullable Integer age,
         @Nullable String city,
+        @Nullable String district,
         double balance,
         boolean isVerified,
         @Nullable String companyName,

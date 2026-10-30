@@ -1,6 +1,6 @@
 import type { SelectOption } from "@uziy/ui";
 import { CITIES, EVERYWHERE_LABEL } from "@uziy/ui/regions";
-import type { AdminUser } from "@/lib/api";
+import type { AdminUser } from "@admin/lib/api";
 
 /**
  * The users page's filters (owner, 2026-10-22): the admin types only the

@@ -190,4 +190,22 @@ describe("<ConfirmDialog>", () => {
     await userEvent.keyboard("{Escape}");
     expect(screen.getByRole("alertdialog")).toBeInTheDocument();
   });
+
+  it("keeps the confirm button disabled while the caller says so", async () => {
+    const onConfirm = vi.fn();
+    render(
+      <ConfirmDialog
+        open
+        title="Батлах"
+        confirmLabel="Батлах"
+        confirmDisabled
+        onConfirm={onConfirm}
+        onCancel={() => {}}
+      />,
+    );
+    const confirm = screen.getByRole("button", { name: "Батлах", hidden: true });
+    expect(confirm).toBeDisabled();
+    await userEvent.click(confirm);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
 });

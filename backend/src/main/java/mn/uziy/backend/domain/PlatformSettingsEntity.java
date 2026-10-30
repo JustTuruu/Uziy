@@ -29,6 +29,10 @@ public class PlatformSettingsEntity {
     private int commissionPercent = 30;
 
     /** Floor for a single viewer's reward, whole ₮, >= 1 (DB CHECK). */
+    /** Default commission of a survey-only campaign; {@code commissionPercent} is the video campaigns' one. */
+    @Column(name = "survey_commission_percent", nullable = false)
+    private int surveyCommissionPercent = 30;
+
     @Column(name = "min_reward_per_viewer", nullable = false)
     private int minRewardPerViewer = 100;
 
@@ -46,6 +50,17 @@ public class PlatformSettingsEntity {
 
     public int getCommissionPercent() { return commissionPercent; }
     public void setCommissionPercent(int commissionPercent) { this.commissionPercent = commissionPercent; }
+
+    public int getSurveyCommissionPercent() { return surveyCommissionPercent; }
+    public void setSurveyCommissionPercent(int surveyCommissionPercent) { this.surveyCommissionPercent = surveyCommissionPercent; }
+
+    /**
+     * The default commission a new campaign is priced with (owner, 2026-10-30: per kind). The admin sets the
+     * campaign's own percentage when approving it.
+     */
+    public int commissionPercentFor(boolean hasVideo) {
+        return hasVideo ? commissionPercent : surveyCommissionPercent;
+    }
 
     public int getMinRewardPerViewer() { return minRewardPerViewer; }
     public void setMinRewardPerViewer(int minRewardPerViewer) { this.minRewardPerViewer = minRewardPerViewer; }

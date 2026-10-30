@@ -1,8 +1,6 @@
-"use client";
-
 import { ImageUploadCard } from "@uziy/ui";
-import { companyApi, mediaUrl, type Campaign } from "@/lib/api";
-import { canEditCover } from "@/lib/campaign-status";
+import { companyApi, mediaUrl, type Campaign } from "@company/lib/api";
+import { canEditCover } from "@company/lib/campaign-status";
 
 export const COVER_LOCKED_NOTE =
   "Судалгаа батлагдсан тул зургийг өөрчлөх боломжгүй. Өөрчлөх шаардлагатай бол бидэнтэй холбогдоно уу.";

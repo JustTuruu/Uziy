@@ -1,7 +1,9 @@
 /**
- * HTTP security headers shared by every Next.js app in the workspace, so the
- * panels and the landing page cannot drift apart. Pure functions: each app's
- * next.config.ts calls `securityHeaderRoutes(...)` from `headers()`.
+ * HTTP security headers shared by every web app in the workspace, so the
+ * console and the landing page cannot drift apart. Pure functions: the landing
+ * page's next.config.ts calls `securityHeaderRoutes(...)` from `headers()`; the
+ * console's Vite config sends `securityHeaders(...)` from its dev server and
+ * writes them for nginx with `nginxHeaderLines(...)`.
  *
  * Why these headers:
  * - The admin panel approves payouts and campaigns with one click, so no page
@@ -12,7 +14,7 @@
  *   the backend API.
  */
 
-/** Where the panels' lib/api.ts sends requests when NEXT_PUBLIC_API_BASE_URL is unset. */
+/** Where the console sends requests when its API base URL is unset. */
 export const DEFAULT_API_BASE_URL = "http://localhost:8080";
 
 /** Path pattern that matches every route, `/` included (zero or more segments). */
@@ -42,8 +44,15 @@ export type SecurityHeaderOptions = {
    * images). Omit it for an app that talks to no API (the landing page).
    */
   apiOrigin?: string;
-  /** True under `next dev`: React/HMR need eval and a websocket. */
+  /** True on a dev server: React/HMR need eval and a websocket. */
   dev: boolean;
+  /**
+   * Whether the page needs inline scripts. Next's bootstrap does (default true);
+   * a Vite production build has none, so the console passes false and an
+   * injected `<script>` cannot run at all. A dev server always allows them
+   * (Vite's React refresh preamble is inline).
+   */
+  inlineScripts?: boolean;
   /** Defaults to {@link PANEL_REFERRER_POLICY}. */
   referrerPolicy?: ReferrerPolicy;
 };
@@ -66,20 +75,22 @@ export function apiOriginOf(baseUrl: string | undefined): string {
 export function contentSecurityPolicy({
   apiOrigin,
   dev,
-}: Pick<SecurityHeaderOptions, "apiOrigin" | "dev">): string {
+  inlineScripts = true,
+}: Pick<SecurityHeaderOptions, "apiOrigin" | "dev" | "inlineScripts">): string {
   const api = apiOrigin ? [apiOrigin] : [];
+  const inline = dev || inlineScripts ? ["'unsafe-inline'"] : [];
   // React uses eval only in development (server error stacks); never in production.
   const devScripts = dev ? ["'unsafe-eval'"] : [];
   // The dev server's hot reload talks over a websocket.
   const devConnect = dev ? ["ws:"] : [];
   const directives: [string, string[]][] = [
     ["default-src", ["'self'"]],
-    ["script-src", ["'self'", "'unsafe-inline'", ...devScripts]],
+    ["script-src", ["'self'", ...inline, ...devScripts]],
     ["style-src", ["'self'", "'unsafe-inline'"]],
-    // data:/blob: for next/image placeholders and the local cover preview;
+    // data:/blob: for image placeholders and the local cover preview;
     // the API serves campaign cover images.
     ["img-src", ["'self'", "data:", "blob:", ...api]],
-    // next/font self-hosts every font under /_next/static.
+    // Fonts are self-hosted (next/font, @fontsource) and served by the app itself.
     ["font-src", ["'self'", "data:"]],
     ["connect-src", ["'self'", ...api, ...devConnect]],
     ["frame-ancestors", ["'none'"]],
@@ -118,4 +129,12 @@ export function securityHeaders(options: SecurityHeaderOptions): SecurityHeader[
 /** The whole `headers()` result: the security headers on every route. */
 export function securityHeaderRoutes(options: SecurityHeaderOptions) {
   return [{ source: ALL_ROUTES, headers: securityHeaders(options) }];
+}
+
+/**
+ * The headers as nginx `add_header` lines (`always`, so error pages carry them
+ * too). Values never contain a double quote, so quoting them is safe.
+ */
+export function nginxHeaderLines(headers: SecurityHeader[]): string {
+  return headers.map(({ key, value }) => `add_header ${key} "${value}" always;`).join("\n") + "\n";
 }

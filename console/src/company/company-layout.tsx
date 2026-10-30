@@ -1,6 +1,4 @@
-"use client";
-
-import { usePathname } from "next/navigation";
+import { SidebarLink, usePathname } from "@shared/navigation";
 import {
   BarChart3,
   CreditCard,
@@ -16,8 +14,8 @@ import {
   Topbar,
   type NavItem,
 } from "@uziy/ui";
-import { auth, useStoredUser } from "@/lib/api";
-import { formatPhone } from "@/lib/utils";
+import { auth, useStoredUser } from "@company/lib/api";
+import { formatPhone } from "@company/lib/utils";
 
 const nav: NavItem[] = [
   {
@@ -61,6 +59,8 @@ export default function CompanyLayout({
         brand="Uziy"
         subtitle={me?.companyName || "Компани"}
         items={nav}
+        pathname={pathname}
+        linkComponent={SidebarLink}
         footer={
           <SidebarUser
             initials={(me?.companyName || "К").slice(0, 2).toUpperCase()}

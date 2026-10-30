@@ -8,21 +8,28 @@ import {
   platformSettingsApi,
   type Campaign,
   type CreateCampaignBody,
-} from "@/lib/api";
-import { AGE_RANGE_TOO_NARROW_MESSAGE } from "@/lib/targeting";
-import { formatTugrik } from "@/lib/utils";
-import NewCampaignPage from "./page";
+} from "@company/lib/api";
+import { AGE_RANGE_TOO_NARROW_MESSAGE } from "@company/lib/targeting";
+import { formatTugrik } from "@company/lib/utils";
+import NewCampaignPage from "./new-campaign-page";
 
 const replace = vi.fn();
 const push = vi.fn();
 // Stable object, like Next's real router — effects depend on it.
 const router = { replace, push, refresh: vi.fn() };
-vi.mock("next/navigation", () => ({
+vi.mock("@shared/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@shared/navigation")>()),
   useRouter: () => router,
+}));
+// happy-dom cannot decode a video; the wizard only needs its length.
+vi.mock("@company/lib/video", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@company/lib/video")>()),
+  readVideoDuration: vi.fn(async () => 30),
 }));
 
 const settings = {
   commissionPercent: 30,
+  surveyCommissionPercent: 30,
   minRewardPerViewer: 100,
   updatedAt: "2026-09-28T10:00:00Z",
 };
@@ -47,6 +54,7 @@ function serverCampaign(over: Partial<Campaign> = {}): Campaign {
     paidAt: null,
     status: "AWAITING_PAYMENT",
     createdAt: "2026-09-28T10:00:00Z",
+    thumbnailUrl: null,
     ...over,
   };
 }
@@ -103,9 +111,7 @@ describe("New campaign wizard — pricing and payment", () => {
 
     await budgetToReview();
     expect(screen.getByText("Хүрэх үзэгч").nextSibling).toHaveTextContent("1,000");
-    expect(screen.getByText("Платформын шимтгэл (30%)").nextSibling).toHaveTextContent(
-      formatTugrik(300_000),
-    );
+    expect(screen.queryByText(/шимтгэл/i)).not.toBeInTheDocument();
     expect(screen.getByText("Төлөх дүн").nextSibling).toHaveTextContent(
       formatTugrik(1_000_000),
     );
@@ -193,6 +199,13 @@ describe("New campaign wizard — pricing and payment", () => {
     ]);
   });
 
+  it("previews a survey-only campaign with the survey default commission", async () => {
+    vi.spyOn(platformSettingsApi, "get").mockResolvedValue({ ...settings, surveyCommissionPercent: 20 });
+    await toBudgetStep();
+    // 1,000,000 ₮ ÷ 1,000 viewers = 1,000 ₮ each; at 20 % the viewer gets 800 ₮.
+    expect(await screen.findByLabelText(/Нэг үзэгчид олгох урамшуулал/)).toHaveValue("800");
+  });
+
   it("blocks 'Дараах' on the budget step while pricing has an error", async () => {
     vi.spyOn(platformSettingsApi, "get").mockResolvedValue(settings);
     await toBudgetStep();
@@ -264,5 +277,77 @@ describe("New campaign wizard — pricing and payment", () => {
     await userEvent.type(max, "35");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(next()).toBeEnabled();
+  });
+});
+
+describe("New campaign wizard — a quiz about the video", () => {
+  /** Walks a video campaign to its survey step with a 30 s video picked. */
+  async function toVideoSurveyStep() {
+    render(<NewCampaignPage />);
+    await userEvent.type(screen.getByLabelText("Судалгааны гарчиг"), "5G сурталчилгаа");
+    await userEvent.click(next()); // → video
+    const file = new File(["x"], "spot.mp4", { type: "video/mp4" });
+    await userEvent.upload(document.getElementById("video-input") as HTMLInputElement, file);
+    await waitFor(() => expect(next()).toBeEnabled());
+    await userEvent.click(next()); // → targeting
+    await userEvent.click(next()); // → budget
+    await screen.findByLabelText(/Хүрэх үзэгчийн тоо/);
+    await userEvent.click(next()); // → survey
+  }
+
+  async function chooseQuiz() {
+    await userEvent.type(screen.getByLabelText("Асуулт 1"), "Видеонд ямар өнгийн утас гарсан бэ?");
+    await userEvent.click(screen.getByRole("combobox", { name: "Хариултын төрөл" }));
+    await userEvent.click(screen.getByRole("option", { name: /Зөв хариулттай/ }));
+    await userEvent.type(screen.getByPlaceholderText("Хариулт 1"), "Улаан");
+    await userEvent.type(screen.getByPlaceholderText("Хариулт 2"), "Цэнхэр");
+  }
+
+  it("sends the option marked correct with the quiz", async () => {
+    vi.spyOn(platformSettingsApi, "get").mockResolvedValue(settings);
+    const create = vi
+      .spyOn(companyApi, "create")
+      .mockResolvedValue(serverCampaign({ hasVideo: true, durationSeconds: 30 }));
+
+    await toVideoSurveyStep();
+    await chooseQuiz();
+    await userEvent.click(screen.getByLabelText("Хариулт 2 зөв"));
+    await userEvent.click(next()); // → review
+    await userEvent.click(screen.getByRole("button", { name: "Үүсгэх" }));
+
+    const body = create.mock.calls[0][0] as CreateCampaignBody;
+    expect(body.questions).toEqual([
+      {
+        prompt: "Видеонд ямар өнгийн утас гарсан бэ?",
+        type: "QUIZ",
+        options: ["Улаан", "Цэнхэр"],
+        required: true,
+        correctAnswer: "Цэнхэр",
+      },
+    ]);
+  });
+
+  it("asks for the correct answer before creating", async () => {
+    vi.spyOn(platformSettingsApi, "get").mockResolvedValue(settings);
+    const create = vi.spyOn(companyApi, "create");
+
+    await toVideoSurveyStep();
+    await chooseQuiz();
+    await userEvent.click(next()); // → review
+    await userEvent.click(screen.getByRole("button", { name: "Үүсгэх" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Асуулт 1: Зөв хариулттай асуултын зөв хариултыг сонгоно уу",
+    );
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("does not offer a quiz to a survey without a video", async () => {
+    vi.spyOn(platformSettingsApi, "get").mockResolvedValue(settings);
+    await toBudgetStep();
+    await screen.findByLabelText(/Хүрэх үзэгчийн тоо/);
+    await userEvent.click(next()); // → survey
+    await userEvent.click(screen.getByRole("combobox", { name: "Хариултын төрөл" }));
+    expect(screen.queryByRole("option", { name: /Зөв хариулттай/ })).not.toBeInTheDocument();
   });
 });

@@ -27,7 +27,6 @@ class CorsConfigTest {
             new AppProperties.Jwt("x".repeat(64), 1),
             new AppProperties.Cors(List.of(
                     "http://localhost:3000",
-                    "http://localhost:3001",
                     "http://localhost:8080")),
             new AppProperties.Payments(false),
             new AppProperties.Push(false, ""), new AppProperties.ConsoleLogin(false));
@@ -47,12 +46,12 @@ class CorsConfigTest {
     }
 
     @Test
-    void allowedOriginsIncludeBothConsolesAnd8080() {
+    void allowedOriginsIncludeTheConsoleAnd8080() {
         MockHttpServletRequest req = new MockHttpServletRequest("GET", "/x");
         req.addHeader("Origin", "http://localhost:3000");
         CorsConfiguration cfg = cfgFor(req);
         assertThat(cfg.getAllowedOrigins()).contains(
-                "http://localhost:3000", "http://localhost:3001", "http://localhost:8080");
+                "http://localhost:3000", "http://localhost:8080");
     }
 
     @Test

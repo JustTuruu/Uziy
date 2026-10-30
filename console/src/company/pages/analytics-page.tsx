@@ -1,14 +1,12 @@
-"use client";
-
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link } from "@shared/navigation";
+import { useRouter } from "@shared/navigation";
 import { useEffect, useState } from "react";
 import { Coins, MessageSquareText, Wallet, Zap } from "lucide-react";
-import { CampaignStatusBadge } from "@/components/campaign-status-badge";
-import { BarChart, PointsTable } from "@/components/bar-chart";
-import { InsightsCard } from "@/components/insights-card";
-import { DistributionBars } from "@/components/distribution-bars";
-import { RESULTS_WHOLE_LIFE, SurveyResults } from "@/components/survey-results";
+import { CampaignStatusBadge } from "@company/components/campaign-status-badge";
+import { BarChart, PointsTable } from "@company/components/bar-chart";
+import { InsightsCard } from "@company/components/insights-card";
+import { DistributionBars } from "@company/components/distribution-bars";
+import { RESULTS_WHOLE_LIFE, SurveyResults } from "@company/components/survey-results";
 import { Button, Card, CardBody, CardHeader, PageHeader, SegmentedControl, Select, StatCard, TableScroll } from "@uziy/ui";
 import {
   DAY_OPTIONS,
@@ -21,9 +19,9 @@ import {
   formatPercent,
   genderLabel,
   peakDay,
-} from "@/lib/analytics";
-import { ApiError, analyticsApi, auth, type AnalyticsReport } from "@/lib/api";
-import { formatNumber, formatTugrik } from "@/lib/utils";
+} from "@company/lib/analytics";
+import { ApiError, analyticsApi, auth, type AnalyticsReport } from "@company/lib/api";
+import { formatNumber, formatTugrik } from "@company/lib/utils";
 
 const ALL_CAMPAIGNS = "";
 

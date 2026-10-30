@@ -1,5 +1,5 @@
 import { Card, CardBody, CardHeader } from "@uziy/ui";
-import type { AccessLogEntry } from "@/lib/api";
+import type { AccessLogEntry } from "@admin/lib/api";
 
 const ACTION_LABELS: Record<string, string> = {
   VIEW_OVERVIEW: "Самбар харсан",

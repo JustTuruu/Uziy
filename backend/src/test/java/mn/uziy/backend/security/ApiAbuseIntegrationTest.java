@@ -404,6 +404,33 @@ class ApiAbuseIntegrationTest extends AbstractApiIntegrationTest {
     }
 
     @Test
+    void aQuizPaysOnlyForTheCorrectOptionAndNeverRevealsIt() throws Exception {
+        long campaign = activeCampaign(company());
+        long q = jdbc.queryForObject("""
+                INSERT INTO survey_questions (campaign_id, position, prompt, q_type, options_json, required,
+                    correct_answer)
+                VALUES (?, 1, 'Q', 'QUIZ', CAST('["Red","Blue"]' AS jsonb), TRUE, 'Blue') RETURNING id""",
+                Long.class, campaign);
+        long viewer = viewer(0);
+        String check = "/viewer/campaigns/" + campaign + "/questions/" + q + "/check";
+
+        String questions = mvc.perform(get("/viewer/campaigns/" + campaign + "/questions")
+                .header("Authorization", bearer(viewer))).andReturn().getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+        String wrongCheck = mvc.perform(post(check).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"answer\":\"Red\"}").header("Authorization", bearer(viewer)))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        int wrongSubmit = status(post("/viewer/campaigns/" + campaign + "/submit"), viewer, answerBody(q, "\"Red\""));
+        int rightSubmit = status(post("/viewer/campaigns/" + campaign + "/submit"), viewer, answerBody(q, "\"Blue\""));
+
+        assertThat(questions).doesNotContain("correct");
+        assertThat(wrongCheck).isEqualTo("{\"correct\":false}");
+        assertThat(wrongSubmit).isEqualTo(400);
+        assertThat(rightSubmit).isEqualTo(200);
+        assertThat(balanceOf(viewer)).isEqualTo(70.0);
+    }
+
+    @Test
     void parallelSubmissionsPayTheRewardExactlyOnce() throws Exception {
         long company = company();
         long campaign = activeCampaign(company);

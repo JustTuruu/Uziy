@@ -1,6 +1,6 @@
 import { Badge } from "@uziy/ui";
-import type { CampaignStatus } from "@/lib/api";
-import { campaignStatusLabel, campaignStatusTone } from "@/lib/campaign-status";
+import type { CampaignStatus } from "@company/lib/api";
+import { campaignStatusLabel, campaignStatusTone } from "@company/lib/campaign-status";
 
 export function CampaignStatusBadge({
   status,

@@ -149,6 +149,27 @@ void main() {
     });
   });
 
+  group('quiz check', () {
+    test('reads whether the pick is correct', () async {
+      _reply(200, const {'correct': true});
+      expect(
+          await svc.checkQuizAnswer(campaignId: 1, questionId: 2, answer: 'A'),
+          isTrue);
+      _reply(200, const {'correct': false});
+      expect(
+          await svc.checkQuizAnswer(campaignId: 1, questionId: 2, answer: 'B'),
+          isFalse);
+    });
+
+    test('a refused check carries the backend message', () async {
+      _reply(404, const {'message': 'Асуулт олдсонгүй'});
+      final e = await _catch(() =>
+          svc.checkQuizAnswer(campaignId: 1, questionId: 2, answer: 'A'));
+      expect(e.statusCode, 404);
+      expect(e.message, 'Асуулт олдсонгүй');
+    });
+  });
+
   group('history', () {
     test('parses the list the backend sends', () async {
       _reply(200, [

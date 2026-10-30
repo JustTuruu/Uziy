@@ -5,6 +5,7 @@ import {
   PANEL_REFERRER_POLICY,
   apiOriginOf,
   contentSecurityPolicy,
+  nginxHeaderLines,
   securityHeaderRoutes,
   securityHeaders,
 } from "./security-headers";
@@ -115,5 +116,36 @@ describe("securityHeaderRoutes", () => {
       { source: ALL_ROUTES, headers: securityHeaders({ apiOrigin: API, dev: false }) },
     ]);
     expect(ALL_ROUTES).toBe("/:path*");
+  });
+});
+
+describe("a page without inline scripts (the console)", () => {
+  it("allows no inline script in production", () => {
+    const csp = contentSecurityPolicy({ apiOrigin: API, dev: false, inlineScripts: false });
+    expect(directive(csp, "script-src")).toEqual(["'self'"]);
+  });
+
+  it("still allows them on the dev server for the React refresh preamble", () => {
+    const csp = contentSecurityPolicy({ apiOrigin: API, dev: true, inlineScripts: false });
+    expect(directive(csp, "script-src")).toContain("'unsafe-inline'");
+  });
+});
+
+describe("nginxHeaderLines", () => {
+  it("writes one always-sent add_header line per header", () => {
+    const lines = nginxHeaderLines([
+      { key: "X-Frame-Options", value: "DENY" },
+      { key: "Content-Security-Policy", value: "default-src 'self'" },
+    ]);
+    expect(lines).toBe(
+      'add_header X-Frame-Options "DENY" always;\n' +
+        'add_header Content-Security-Policy "default-src \'self\'" always;\n',
+    );
+  });
+
+  it("never sees a double quote in a real header value", () => {
+    for (const { value } of securityHeaders({ apiOrigin: API, dev: false })) {
+      expect(value).not.toContain('"');
+    }
   });
 });

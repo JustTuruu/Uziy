@@ -31,6 +31,17 @@ class VideoPlayerScreen extends StatefulWidget {
   State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
 }
 
+/// Full screen turns the phone sideways either way round.
+const List<DeviceOrientation> kFullscreenOrientations = [
+  DeviceOrientation.landscapeLeft,
+  DeviceOrientation.landscapeRight,
+];
+
+/// Leaving full screen stands the phone upright again.
+const List<DeviceOrientation> kUprightOrientations = [
+  DeviceOrientation.portraitUp,
+];
+
 /// Copy for a video that cannot be loaded.
 const String kVideoLoadError = 'Видеог ачаалж чадсангүй';
 const String kVideoRetry = 'Дахин оролдох';
@@ -56,6 +67,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   // the sponsor's video; each tap brings it back for a moment.
   bool _controlsRevealed = true;
   Timer? _hideControls;
+
+  /// The viewer asked for the full-screen sideways video. A phone that is
+  /// simply turned sideways shows it too ([useImmersiveVideo]).
+  bool _fullscreen = false;
+
+  /// Whether the last frame was full screen, so the system bars are hidden
+  /// or shown only when that changes.
+  bool _immersiveShown = false;
   static const _hideAfterStart = Duration(milliseconds: 1500);
   static const _hideAfterTap = Duration(seconds: 2);
 
@@ -156,6 +175,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _hideControls?.cancel();
+    // The rest of the app turns freely again, with its bars back.
+    SystemChrome.setPreferredOrientations(const []);
+    if (_immersiveShown) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    }
     _playback
       ..removeListener(_onPlayback)
       ..dispose();
@@ -208,6 +232,31 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         extra: _campaign,
       );
 
+  /// Full screen turns the phone sideways; leaving it turns it upright and
+  /// keeps it there (a phone still held sideways would otherwise go straight
+  /// back to full screen). Closing the screen frees the rotation again.
+  Future<void> _toggleFullscreen(bool immersive) async {
+    HapticFeedback.selectionClick();
+    final enter = !immersive;
+    setState(() {
+      _fullscreen = enter;
+      _controlsRevealed = true;
+    });
+    await SystemChrome.setPreferredOrientations(
+        enter ? kFullscreenOrientations : kUprightOrientations);
+    if (!_paused) _scheduleHideControls(_hideAfterTap);
+  }
+
+  /// Hides the status and navigation bars while the video is full screen.
+  void _syncSystemBars(bool immersive) {
+    if (immersive == _immersiveShown) return;
+    _immersiveShown = immersive;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SystemChrome.setEnabledSystemUIMode(
+          immersive ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final duration = _campaign.durationSeconds;
@@ -218,7 +267,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     // Landscape (rotated phones, split screen, tablets): stage on the left,
     // the info panel as a side sheet on the right.
     final screen = MediaQuery.sizeOf(context);
+    final immersive = _fullscreen || useImmersiveVideo(screen);
     final side = useSidePanel(screen);
+    _syncSystemBars(immersive);
 
     final topBar = FadeSlideIn(
       key: _topBarKey,
@@ -244,6 +295,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       showControls: _controlsRevealed || _paused || atEnd,
       onToggle: _togglePause,
       onRewind: canSeek && _furthest > Duration.zero ? _rewind : null,
+      immersive: immersive,
+      onFullscreen: () => _toggleFullscreen(immersive),
     );
     final panel = _BottomPanel(
       key: _panelKey,
@@ -257,6 +310,42 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       side: side,
       onContinue: watched ? _goToSurvey : null,
     );
+
+    if (immersive) {
+      final controlsShown = _controlsRevealed || _paused || atEnd;
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        // Dark controls over the video in either app theme.
+        child: Theme(
+          data: AppTheme.dark(),
+          child: Scaffold(
+            backgroundColor: Colors.black,
+            body: Stack(
+              fit: StackFit.expand,
+              children: [
+                stage,
+                _ImmersiveControls(
+                  shown: controlsShown,
+                  title: _campaign.title,
+                  timeline: WatchTimeline(
+                    progress: progress,
+                    elapsedSeconds: _elapsed,
+                    totalSeconds: duration,
+                    furthestProgress: _furthestFraction,
+                    onSeek: canSeek ? _seekToFraction : null,
+                  ),
+                  onRewind: canSeek && _furthest > Duration.zero
+                      ? _rewind
+                      : null,
+                  onExit: () => _toggleFullscreen(immersive),
+                  onContinue: watched ? _goToSurvey : null,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
@@ -420,12 +509,19 @@ class _Stage extends StatelessWidget {
     required this.showControls,
     required this.onToggle,
     this.onRewind,
+    this.immersive = false,
+    this.onFullscreen,
   });
 
   final Campaign campaign;
 
   /// Jumps back; null hides the button (nothing watched yet, or no player).
   final VoidCallback? onRewind;
+
+  /// Full screen: the video fills the screen edge to edge, without the frame,
+  /// and its buttons live in [_ImmersiveControls] instead.
+  final bool immersive;
+  final VoidCallback? onFullscreen;
 
   /// The player's picture; null until there is one (the art shows instead).
   final Widget? video;
@@ -470,13 +566,20 @@ class _Stage extends StatelessWidget {
         excludeFromSemantics: true,
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppLayout.screenPadding,
-            vertical: AppSpacing.md,
-          ),
+          padding: immersive
+              ? EdgeInsets.zero
+              : const EdgeInsets.symmetric(
+                  horizontal: AppLayout.screenPadding,
+                  vertical: AppSpacing.md,
+                ),
           child: LayoutBuilder(
             builder: (context, box) {
-              final frame = stageFrameSize(box.biggest, aspect: aspect);
+              final frame = stageFrameSize(
+                box.biggest,
+                aspect: aspect,
+                maxWidth: immersive ? double.infinity : kStageMaxWidth,
+              );
+              final radius = immersive ? BorderRadius.zero : AppRadii.brLg;
               if (frame.isEmpty) return const SizedBox.shrink();
               final medallion =
                   (frame.shortestSide * 0.42).clamp(40.0, 84.0).toDouble();
@@ -488,19 +591,21 @@ class _Stage extends StatelessWidget {
                   size: frame,
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      borderRadius: AppRadii.brLg,
-                      boxShadow: [
-                        ...AppShadows.glow(
-                          glowColor,
-                          strength: 0.7,
-                          blur: 40,
-                          offset: const Offset(0, 12),
-                        ),
-                        ...AppShadows.floating,
-                      ],
+                      borderRadius: radius,
+                      boxShadow: immersive
+                          ? null
+                          : [
+                              ...AppShadows.glow(
+                                glowColor,
+                                strength: 0.7,
+                                blur: 40,
+                                offset: const Offset(0, 12),
+                              ),
+                              ...AppShadows.floating,
+                            ],
                     ),
                     child: ClipRRect(
-                      borderRadius: AppRadii.brLg,
+                      borderRadius: radius,
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
@@ -527,14 +632,15 @@ class _Stage extends StatelessWidget {
                               ),
                             ),
                           ),
-                          DecoratedBox(
-                            decoration: BoxDecoration(
-                              borderRadius: AppRadii.brLg,
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.1),
+                          if (!immersive)
+                            DecoratedBox(
+                              decoration: BoxDecoration(
+                                borderRadius: radius,
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.1),
+                                ),
                               ),
                             ),
-                          ),
                           if (failed)
                             _LoadFailed(onRetry: onRetry)
                           else if (loading)
@@ -574,20 +680,24 @@ class _Stage extends StatelessWidget {
                                 ),
                               ),
                             ),
-                          if (onRewind != null && !failed)
+                          if (!immersive && onRewind != null && !failed)
                             Positioned(
                               left: AppSpacing.sm,
                               bottom: AppSpacing.sm,
-                              child: IgnorePointer(
-                                ignoring: !showControls,
-                                child: AnimatedOpacity(
-                                  opacity: showControls ? 1 : 0,
-                                  duration: AppMotion.duration(
-                                    context,
-                                    AppDurations.medium,
-                                  ),
-                                  curve: AppMotion.standard,
-                                  child: RewindButton(onPressed: onRewind),
+                              child: _FadingControl(
+                                shown: showControls,
+                                child: RewindButton(onPressed: onRewind),
+                              ),
+                            ),
+                          if (!immersive && onFullscreen != null && !failed)
+                            Positioned(
+                              right: AppSpacing.sm,
+                              bottom: AppSpacing.sm,
+                              child: _FadingControl(
+                                shown: showControls,
+                                child: FullscreenButton(
+                                  active: false,
+                                  onPressed: onFullscreen,
                                 ),
                               ),
                             ),
@@ -600,6 +710,130 @@ class _Stage extends StatelessWidget {
             },
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// A control over the video that fades out with the medallion and cannot be
+/// tapped while hidden.
+class _FadingControl extends StatelessWidget {
+  const _FadingControl({required this.shown, required this.child});
+
+  final bool shown;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      ignoring: !shown,
+      child: AnimatedOpacity(
+        opacity: shown ? 1 : 0,
+        duration: AppMotion.duration(context, AppDurations.medium),
+        curve: AppMotion.standard,
+        child: child,
+      ),
+    );
+  }
+}
+
+/// Over the full-screen video: leave full screen and the title at the top;
+/// rewind, the timeline and (once watched) the way to the survey at the
+/// bottom. Fades with the medallion; the survey button stays once it is open,
+/// so the viewer never has to hunt for it.
+class _ImmersiveControls extends StatelessWidget {
+  const _ImmersiveControls({
+    required this.shown,
+    required this.title,
+    required this.timeline,
+    required this.onRewind,
+    required this.onExit,
+    required this.onContinue,
+  });
+
+  final bool shown;
+  final String title;
+  final Widget timeline;
+  final VoidCallback? onRewind;
+  final VoidCallback onExit;
+  final VoidCallback? onContinue;
+
+  static const continueLabel = 'Судалгаа руу';
+
+  /// The button keeps its label and arrow centred, so it needs a set width.
+  static const double continueWidth = 200;
+
+  @override
+  Widget build(BuildContext context) {
+    final shade = Colors.black.withValues(alpha: 0.55);
+    final cont = onContinue;
+    return SafeArea(
+      minimum: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _FadingControl(
+            shown: shown,
+            child: Row(
+              children: [
+                FullscreenButton(active: true, onPressed: onExit),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.textStyles.titleSmall
+                        .copyWith(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: _FadingControl(
+                  shown: shown,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: shade,
+                      borderRadius: AppRadii.brLg,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.sm,
+                      ),
+                      child: Row(
+                        children: [
+                          if (onRewind != null) ...[
+                            RewindButton(onPressed: onRewind),
+                            const SizedBox(width: AppSpacing.md),
+                          ],
+                          Expanded(child: timeline),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              if (cont != null) ...[
+                const SizedBox(width: AppSpacing.md),
+                SizedBox(
+                  width: continueWidth,
+                  child: AppButton(
+                    label: continueLabel,
+                    onPressed: cont,
+                    trailingIcon: AppIcons.next,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
       ),
     );
   }

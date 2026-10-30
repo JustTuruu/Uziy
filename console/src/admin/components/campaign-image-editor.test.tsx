@@ -2,8 +2,8 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CampaignImageEditor } from "./campaign-image-editor";
-import { adminApi } from "@/lib/api";
-vi.mock("@/lib/api", () => ({ adminApi: { uploadImage: vi.fn(), removeImage: vi.fn() }, mediaUrl: (s: string) => `http://localhost:8080${s}` }));
+import { adminApi } from "@admin/lib/api";
+vi.mock("@admin/lib/api", () => ({ adminApi: { uploadImage: vi.fn(), removeImage: vi.fn() }, mediaUrl: (s: string) => `http://localhost:8080${s}` }));
 beforeEach(() => {
   vi.clearAllMocks();
   URL.createObjectURL = vi.fn(() => "blob:preview");

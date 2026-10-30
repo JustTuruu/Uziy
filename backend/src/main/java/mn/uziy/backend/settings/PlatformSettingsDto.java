@@ -4,6 +4,7 @@ import java.time.OffsetDateTime;
 
 public record PlatformSettingsDto(
         int commissionPercent,
+        int surveyCommissionPercent,
         int minRewardPerViewer,
         OffsetDateTime updatedAt) {
 }

@@ -181,19 +181,19 @@ export function describePricing(p: PricingResult): string | null {
   ) {
     return null;
   }
+  // The company never sees the platform's commission (owner, 2026-10-30), and the admin fixes the final reward
+  // when approving the campaign, so the reward is an estimate.
   if (p.mode === "VIEWERS") {
     return (
       `${formatTugrik(p.budget)} ÷ ${formatNumber(p.targetViewers)} үзэгч = ` +
-      `${formatTugrik(p.costPerViewer)} / үзэгч → платформын ` +
-      `${p.commissionPercent}% шимтгэлийн дараа үзэгч бүр ` +
-      `${formatTugrik(p.rewardPerViewer)} авна.`
+      `${formatTugrik(p.costPerViewer)} / үзэгч. Үзэгч бүр ойролцоогоор ` +
+      `${formatTugrik(p.rewardPerViewer)} урамшуулал авна.`
     );
   }
   return (
-    `Үзэгч бүр ${formatTugrik(p.rewardPerViewer)} авна → платформын ` +
-    `${p.commissionPercent}% шимтгэлтэй нийлээд нэг үзэгчийн зардал ` +
-    `${formatTugrik(p.costPerViewer)} → ${formatTugrik(p.budget)} ÷ ` +
-    `${formatTugrik(p.costPerViewer)} = ${formatNumber(p.targetViewers)} үзэгч.`
+    `Нэг үзэгчийн зардал ${formatTugrik(p.costPerViewer)} → ${formatTugrik(p.budget)} ÷ ` +
+    `${formatTugrik(p.costPerViewer)} = ${formatNumber(p.targetViewers)} үзэгч. Үзэгч бүр ойролцоогоор ` +
+    `${formatTugrik(p.rewardPerViewer)} урамшуулал авна.`
   );
 }
 

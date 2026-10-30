@@ -38,6 +38,7 @@ void main() {
     expect(typeOf('MULTIPLE_CHOICE'), QuestionType.multipleChoice);
     expect(typeOf('TEXT'), QuestionType.text);
     expect(typeOf('RATING'), QuestionType.rating);
+    expect(typeOf('QUIZ'), QuestionType.quiz);
   });
 
   test('MULTI_CHOICE, the name the backend really sends, is a multiple choice',

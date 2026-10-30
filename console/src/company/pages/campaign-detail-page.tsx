@@ -1,28 +1,26 @@
-"use client";
-
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { Link } from "@shared/navigation";
+import { useParams, useRouter } from "@shared/navigation";
 import { useEffect, useState } from "react";
 import { ArrowLeft, CircleCheck, Hourglass, Pause, Play } from "lucide-react";
-import { CampaignCoverCard } from "@/components/campaign-cover-card";
-import { CampaignPaymentCard } from "@/components/campaign-payment-card";
-import { CampaignStatusBadge } from "@/components/campaign-status-badge";
+import { CampaignCoverCard } from "@company/components/campaign-cover-card";
+import { CampaignPaymentCard } from "@company/components/campaign-payment-card";
+import { CampaignStatusBadge } from "@company/components/campaign-status-badge";
 import {
   RESULTS_WHOLE_LIFE,
   SurveyResults,
   SurveyResultsError,
   SurveyResultsSkeleton,
-} from "@/components/survey-results";
+} from "@company/components/survey-results";
 import { Button, Card, CardBody, CardHeader, ConfirmDialog, PageHeader, StatCard } from "@uziy/ui";
-import { ApiError, auth, companyApi, type Campaign } from "@/lib/api";
-import { campaignInvoice } from "@/lib/billing";
+import { ApiError, auth, companyApi, type Campaign } from "@company/lib/api";
+import { campaignInvoice } from "@company/lib/billing";
 import {
   COMPLETE_CONFIRM,
   companyStatusTransitions,
   type CompanySettableStatus,
-} from "@/lib/campaign-status";
-import { useCampaignResults } from "@/lib/use-campaign-results";
-import { formatDate, formatNumber, formatTugrik } from "@/lib/utils";
+} from "@company/lib/campaign-status";
+import { useCampaignResults } from "@company/lib/use-campaign-results";
+import { formatDate, formatNumber, formatTugrik } from "@company/lib/utils";
 
 export default function CampaignDetailPage() {
   const router = useRouter();
@@ -281,14 +279,6 @@ export default function CampaignDetailPage() {
             <CardBody className="space-y-3 text-sm">
               <KV k="Нийт төсөв" v={formatTugrik(invoice.payable)} />
               <KV k="Үзэгчдэд олгох" v={formatTugrik(invoice.rewardsTotal)} />
-              <KV
-                k={
-                  invoice.commissionPercent === null
-                    ? "Платформын шимтгэл"
-                    : `Платформын шимтгэл (${invoice.commissionPercent}%)`
-                }
-                v={formatTugrik(invoice.commissionTotal)}
-              />
               <KV
                 k="Төлсөн огноо"
                 v={

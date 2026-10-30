@@ -1,11 +1,14 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { auth, insightsApi, type InsightsOverview } from "@/lib/api";
-import InsightsPage from "./page";
+import { auth, insightsApi, type InsightsOverview } from "@admin/lib/api";
+import InsightsPage from "./insights-page";
 
 const router = { replace: vi.fn(), push: vi.fn(), refresh: vi.fn() };
-vi.mock("next/navigation", () => ({ useRouter: () => router }));
+vi.mock("@shared/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@shared/navigation")>()),
+  useRouter: () => router,
+}));
 
 const overview: InsightsOverview = {
   minGroupSize: 50,

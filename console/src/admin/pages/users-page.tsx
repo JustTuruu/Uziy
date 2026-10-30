@@ -1,12 +1,10 @@
-"use client";
-
-import { useRouter } from "next/navigation";
+import { useRouter } from "@shared/navigation";
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { Link } from "@shared/navigation";
 import { ChevronRight, ShieldCheck, X } from "lucide-react";
 import { Badge, Button, Card, CardBody, CardHeader, PageHeader, TableScroll } from "@uziy/ui";
-import { UserFilterBar } from "@/components/users/user-filter-bar";
-import { adminApi, ApiError, auth, type AdminUser } from "@/lib/api";
+import { UserFilterBar } from "@admin/components/users/user-filter-bar";
+import { adminApi, ApiError, auth, type AdminUser } from "@admin/lib/api";
 import {
   cityOptions,
   companyOptions,
@@ -14,8 +12,8 @@ import {
   hasActiveFilters,
   NO_USER_FILTERS,
   resultCountLabel,
-} from "@/lib/user-filters";
-import { formatTugrik, relativeTime } from "@/lib/utils";
+} from "@admin/lib/user-filters";
+import { formatTugrik, relativeTime } from "@admin/lib/utils";
 
 export default function UsersPage() {
   const router = useRouter();
@@ -134,7 +132,7 @@ export default function UsersPage() {
                       <td className="px-5 py-3 text-[var(--color-text-secondary)]">
                         {u.role === "COMPANY" ? (
                           <Link
-                            href={`/companies/${u.id}`}
+                            href={`/admin/companies/${u.id}`}
                             className="inline-flex items-center gap-1 hover:text-[var(--color-text-primary)]"
                           >
                             <span className="font-semibold text-[var(--color-text-primary)]">

@@ -1,7 +1,5 @@
-"use client";
-
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { Link } from "@shared/navigation";
+import { useParams, useRouter } from "@shared/navigation";
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -13,8 +11,8 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-import { ForgetDevicesAction } from "@/components/accounts/forget-devices-action";
-import { CampaignStatusBadge } from "@/components/campaign-status-badge";
+import { ForgetDevicesAction } from "@admin/components/accounts/forget-devices-action";
+import { CampaignStatusBadge } from "@admin/components/campaign-status-badge";
 import { Badge, Card, CardBody, CardHeader, PageHeader, StatCard, TableScroll } from "@uziy/ui";
 import {
   adminApi,
@@ -22,9 +20,9 @@ import {
   auth,
   type AdminUser,
   type Campaign,
-} from "@/lib/api";
-import { summarizeCampaignBudgets } from "@/lib/billing";
-import { formatTugrik, relativeTime } from "@/lib/utils";
+} from "@admin/lib/api";
+import { summarizeCampaignBudgets } from "@admin/lib/billing";
+import { formatTugrik, relativeTime } from "@admin/lib/utils";
 
 export default function AdminCompanyDetailPage() {
   const router = useRouter();
@@ -194,7 +192,7 @@ export default function AdminCompanyDetailPage() {
                       >
                         <td className="px-5 py-4">
                           <Link
-                            href={`/campaigns/${c.id}`}
+                            href={`/admin/campaigns/${c.id}`}
                             className="flex items-center gap-3"
                           >
                             <div className="flex h-10 w-16 items-center justify-center rounded-md bg-gradient-to-br from-[#2c2c38] to-[#17171e]">
@@ -254,7 +252,7 @@ export default function AdminCompanyDetailPage() {
 function BackLink() {
   return (
     <Link
-      href="/users"
+      href="/admin/users"
       className="mb-4 inline-flex items-center gap-1 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
     >
       <ArrowLeft size={12} /> Хэрэглэгчид

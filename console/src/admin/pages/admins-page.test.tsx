@@ -1,11 +1,14 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, adminsApi, type AdminAccount } from "@/lib/api";
-import AdminsPage from "./page";
+import { ApiError, adminsApi, type AdminAccount } from "@admin/lib/api";
+import AdminsPage from "./admins-page";
 
 const router = { replace: vi.fn(), push: vi.fn(), refresh: vi.fn() };
-vi.mock("next/navigation", () => ({ useRouter: () => router }));
+vi.mock("@shared/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@shared/navigation")>()),
+  useRouter: () => router,
+}));
 
 function admin(id: number): AdminAccount {
   return { id, phoneNumber: `8811223${id}`, createdAt: "2026-10-20T04:00:00Z" };

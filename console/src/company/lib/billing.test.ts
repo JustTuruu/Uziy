@@ -27,6 +27,7 @@ function campaign(over: Partial<Campaign> = {}): Campaign {
     paidAt: null,
     status: "AWAITING_PAYMENT",
     createdAt: "2026-09-28T10:00:00Z",
+    thumbnailUrl: null,
     ...over,
   };
 }
@@ -47,14 +48,12 @@ function payment(over: Partial<Payment> = {}): Payment {
 }
 
 describe("campaignInvoice", () => {
-  it("splits the payable amount into viewer rewards and platform commission", () => {
+  it("shows what is paid and what the viewers get, never the platform's cut", () => {
     expect(campaignInvoice(campaign())).toEqual({
       payable: 1_000_000,
       targetViewers: 1_000,
       rewardPerViewer: 700,
       rewardsTotal: 700_000,
-      commissionTotal: 300_000,
-      commissionPercent: 30,
     });
   });
 
@@ -70,8 +69,6 @@ describe("campaignInvoice", () => {
     );
     expect(inv.payable).toBe(999_570);
     expect(inv.rewardsTotal).toBe(699_000);
-    expect(inv.commissionTotal).toBe(300_570);
-    expect(inv.rewardsTotal + inv.commissionTotal).toBe(inv.payable);
   });
 
   it("derives reach for legacy rows without targetViewers", () => {
@@ -79,7 +76,6 @@ describe("campaignInvoice", () => {
       campaign({ targetViewers: null, commissionPercent: null, costPerView: 800 }),
     );
     expect(inv.targetViewers).toBe(1_250);
-    expect(inv.commissionPercent).toBeNull();
   });
 });
 

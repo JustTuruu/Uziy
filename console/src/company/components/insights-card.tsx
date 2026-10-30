@@ -1,6 +1,6 @@
 import { CircleAlert, Info, TrendingUp } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@uziy/ui";
-import type { Insight } from "@/lib/analytics";
+import type { Insight } from "@company/lib/analytics";
 
 const TONE = {
   info: { icon: Info, color: "var(--color-accent)" },

@@ -1,278 +1,29 @@
-// Thin fetch client for the Spring Boot backend.
-// - Reads NEXT_PUBLIC_API_BASE_URL at build time; falls back to localhost:8080 for dev.
-// - Stores the JWT in localStorage (client-side only) and forwards it on every call.
-// - Throws ApiError on non-2xx responses with the status code + parsed body.
+// The admin area's calls to the backend. The plumbing every area shares (token, fetch, errors, sign-in) lives in
+// @shared/api; it is re-exported here so the admin pages import one module. Pattern: Facade.
+// Response shapes come from the generated @uziy/api-types — never retype a DTO by hand.
 
-import { useMemo, useSyncExternalStore } from "react";
+import type { Schema } from "@uziy/api-types";
+import { apiFetch } from "@shared/api/http";
+import type { PlatformSettings } from "@shared/api/platform-settings";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+export {
+  ApiError,
+  GENERIC_ERROR_MESSAGE,
+  NETWORK_ERROR_MESSAGE,
+  apiFetch,
+  auth,
+  mediaUrl,
+  useStoredUser,
+} from "@shared/api/http";
+export { platformSettingsApi, type PlatformSettings } from "@shared/api/platform-settings";
+export type { AuthResponse, Me } from "@shared/api/types";
 
-const TOKEN_KEY = "uziy.jwt";
-const USER_KEY = "uziy.user";
-
-type Role = "VIEWER" | "COMPANY" | "ADMIN";
-type Gender = "MALE" | "FEMALE";
-
-export interface Me {
-  id: number;
-  phoneNumber: string;
-  role: Role;
-  gender: Gender | null;
-  age: number | null;
-  city: string | null;
-  balance: number;
-  isVerified: boolean;
-  companyName: string | null;
-}
-
-export interface AuthResponse {
-  token: string;
-  user: Me;
-}
-
-/**
- * The backend words every error in Mongolian (`message`); these are only for when it could not be reached or
- * sent nothing to read — never the browser's English ("Failed to fetch") or the HTTP status text.
- */
-export const NETWORK_ERROR_MESSAGE =
-  "Сервертэй холбогдож чадсангүй. Интернэт холболтоо шалгаад дахин оролдоно уу";
-export const GENERIC_ERROR_MESSAGE = "Алдаа гарлаа. Дахин оролдоно уу";
-
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-    public body: unknown,
-  ) {
-    super(message);
-    this.name = "ApiError";
-  }
-}
-
-/** Token / current-user storage (localStorage-backed, browser only). */
-export const auth = {
-  getToken(): string | null {
-    if (typeof window === "undefined") return null;
-    return window.localStorage.getItem(TOKEN_KEY);
-  },
-
-  setToken(token: string): void {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(TOKEN_KEY, token);
-  },
-
-  /** Signs out. The browser's device token (`@uziy/ui` deviceTokenStore) stays: it is what skips the SMS next time. */
-  clear(): void {
-    if (typeof window === "undefined") return;
-    window.localStorage.removeItem(TOKEN_KEY);
-    window.localStorage.removeItem(USER_KEY);
-  },
-
-  setUser(me: Me): void {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(USER_KEY, JSON.stringify(me));
-  },
-
-  getUser(): Me | null {
-    if (typeof window === "undefined") return null;
-    const raw = window.localStorage.getItem(USER_KEY);
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw) as Me;
-    } catch {
-      return null;
-    }
-  },
-};
-
-function subscribeToStorage(onChange: () => void): () => void {
-  window.addEventListener("storage", onChange);
-  return () => window.removeEventListener("storage", onChange);
-}
-
-/**
- * The signed-in user from localStorage, or null (also null during SSR and the
- * first hydration pass, so server and client markup match). Read it with this
- * hook instead of `auth.getUser()` + an effect.
- */
-export function useStoredUser(): Me | null {
-  const raw = useSyncExternalStore(
-    subscribeToStorage,
-    () => window.localStorage.getItem(USER_KEY),
-    () => null,
-  );
-  return useMemo(() => {
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw) as Me;
-    } catch {
-      return null;
-    }
-  }, [raw]);
-}
-
-interface RequestOptions {
-  method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
-  body?: unknown;
-  /** Skip Authorization header even if a token exists (e.g. /auth/login). */
-  anonymous?: boolean;
-  /** "text": return the body as a string (e.g. a CSV download) instead of parsed JSON. */
-  responseType?: "json" | "text";
-}
-
-export async function apiFetch<T>(
-  path: string,
-  opts: RequestOptions = {},
-): Promise<T> {
-  const url = `${API_BASE_URL}${path}`;
-  const headers: Record<string, string> = {};
-
-  const multipart = opts.body instanceof FormData;
-  if (opts.body !== undefined && !multipart)
-    headers["Content-Type"] = "application/json";
-
-  if (!opts.anonymous) {
-    const token = auth.getToken();
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      method: opts.method ?? "GET",
-      headers,
-      body: multipart
-        ? (opts.body as FormData)
-        : opts.body === undefined
-          ? undefined
-          : JSON.stringify(opts.body),
-      credentials: "omit",
-    });
-  } catch {
-    throw new ApiError(NETWORK_ERROR_MESSAGE, 0, null);
-  }
-
-  const text = await res.text();
-  const parsed = text ? safeJson(text) : null;
-
-  if (!res.ok) {
-    throw new ApiError(messageOf(parsed), res.status, parsed);
-  }
-
-  return (opts.responseType === "text" ? text : parsed) as T;
-}
-
-/** The backend's own `message`, or the generic sentence when there is none. */
-function messageOf(body: unknown): string {
-  if (body && typeof body === "object" && "message" in body) {
-    const message = (body as { message?: unknown }).message;
-    if (typeof message === "string" && message.trim()) return message;
-  }
-  return GENERIC_ERROR_MESSAGE;
-}
-
-function safeJson(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return text;
-  }
-}
-
-// --- High-level endpoints (thin wrappers so pages don't build URLs) --------
-
-/**
- * The admin panel has no sign-in form (owner, 2026-10-22): admins sign in on the company login page, which hands
- * them over with a one-time code. This spends it for the admin panel's own session.
- */
-export const authApi = {
-  redeemHandoff: (code: string) =>
-    apiFetch<AuthResponse>("/auth/session-handoffs/redeem", {
-      method: "POST",
-      body: { code },
-      anonymous: true,
-    }),
-};
-
-export type CampaignStatus =
-  | "AWAITING_PAYMENT"
-  | "PENDING"
-  | "ACTIVE"
-  | "PAUSED"
-  | "COMPLETED"
-  | "REJECTED";
-
-export interface Campaign {
-  thumbnailUrl?: string | null;
-  id: number;
-  title: string;
-  videoUrl: string;
-  durationSeconds: number;
-  hasVideo: boolean;
-  targetGender: "ALL" | Gender;
-  minAge: number;
-  maxAge: number;
-  targetCity: string;
-  /** What the company is charged (= cost per viewer × target viewers). */
-  totalBudget: number;
-  remainingBudget: number;
-  /** What one viewer costs the company (reward + platform commission). */
-  costPerView: number;
-  rewardPerUser: number;
-  /** How many viewers the campaign reaches; null only on very old rows. */
-  targetViewers: number | null;
-  /** Commission % snapshotted at creation; null for legacy campaigns. */
-  commissionPercent: number | null;
-  paidAt: string | null;
-  status: CampaignStatus;
-  createdAt: string;
-}
-
-export interface AdminStats {
-  totalUsers: number;
-  totalCampaigns: number;
-  activeCampaigns: number;
-  pendingCampaigns: number;
-  pendingPayouts: number;
-  commissionRate: number;
-}
-
-export interface AdminUser {
-  id: number;
-  phoneNumber: string;
-  role: Role;
-  gender: Gender | null;
-  age: number | null;
-  city: string | null;
-  balance: number;
-  isVerified: boolean;
-  companyName: string | null;
-  createdAt: string;
-}
-
-export interface Payout {
-  id: number;
-  userId: number;
-  userPhone: string;
-  amount: number;
-  bank: string;
-  accountNumber: string;
-  accountName: string;
-  status: "PENDING" | "APPROVED" | "REJECTED";
-  isFirstPayout: boolean;
-  requestedAt: string;
-  decidedAt: string | null;
-  rejectReason: string | null;
-}
-
-export interface AdminCampaignDetail {
-  campaign: Campaign;
-  companyId: number;
-  companyName: string | null;
-  completedViews: number;
-  spentBudget: number;
-}
+export type Campaign = Schema<"CampaignDto">;
+export type CampaignStatus = Campaign["status"];
+export type AdminStats = Schema<"AdminStats">;
+export type AdminUser = Schema<"UserDto">;
+export type Payout = Schema<"PayoutDto">;
+export type AdminCampaignDetail = Schema<"CampaignDetailDto">;
 
 export const adminApi = {
   stats: () => apiFetch<AdminStats>("/admin/stats"),
@@ -309,10 +60,14 @@ export const adminApi = {
     apiFetch<{ thumbnailUrl: null }>(`/admin/campaigns/${id}/image`, {
       method: "DELETE",
     }),
-  moderate: (id: number, decision: "ACTIVE" | "REJECTED") =>
-    apiFetch<Campaign>(`/admin/campaigns/${id}/moderate?decision=${decision}`, {
-      method: "PATCH",
-    }),
+  /** Approving may set the campaign's own commission; what the company paid is re-split at it. */
+  moderate: (id: number, decision: "ACTIVE" | "REJECTED", commissionPercent?: number) =>
+    apiFetch<Campaign>(
+      `/admin/campaigns/${id}/moderate?decision=${decision}${
+        commissionPercent === undefined ? "" : `&commissionPercent=${commissionPercent}`
+      }`,
+      { method: "PATCH" },
+    ),
   pendingPayouts: () => apiFetch<Payout[]>("/admin/payouts"),
   payoutHistory: () => apiFetch<Payout[]>("/admin/payouts/history"),
   decidePayout: (
@@ -326,8 +81,10 @@ export const adminApi = {
       }`,
       { method: "PATCH" },
     ),
+  /** `commissionPercent` is the video campaigns' default, `surveyCommissionPercent` the survey-only one. */
   updateSettings: (body: {
     commissionPercent: number;
+    surveyCommissionPercent: number;
     minRewardPerViewer: number;
   }) =>
     apiFetch<PlatformSettings>("/admin/platform-settings", {
@@ -338,13 +95,7 @@ export const adminApi = {
 
 // --- Company accounts (made by the admin; companies cannot register) -------
 
-export interface CompanyAccount {
-  id: number;
-  companyName: string;
-  phoneNumber: string;
-  createdAt: string;
-  campaignCount: number;
-}
+export type CompanyAccount = Schema<"CompanyAccountDto">;
 
 export interface NewCompanyBody {
   companyName: string;
@@ -361,11 +112,7 @@ export const companiesApi = {
 
 // --- Admin accounts (made by another admin; admins are never self-created) --
 
-export interface AdminAccount {
-  id: number;
-  phoneNumber: string;
-  createdAt: string;
-}
+export type AdminAccount = Schema<"AdminAccountDto">;
 
 export interface NewAdminBody {
   phoneNumber: string;
@@ -379,54 +126,12 @@ export const adminsApi = {
     apiFetch<AdminAccount>("/admin/admins", { method: "POST", body }),
 };
 
-// --- Platform settings (public read; admin write) --------------------------
-
-export interface PlatformSettings {
-  /** Platform's cut of every campaign budget, whole percent 1..90. */
-  commissionPercent: number;
-  /** Smallest reward a viewer may receive, whole ₮. */
-  minRewardPerViewer: number;
-  updatedAt: string;
-}
-
-export const platformSettingsApi = {
-  get: () =>
-    apiFetch<PlatformSettings>("/platform-settings", { anonymous: true }),
-};
-
-export function mediaUrl(path: string): string {
-  return new URL(path, API_BASE_URL).toString();
-}
-
 // --- Anonymous statistics (super admin only) --------------------------------
 
 /** A group's size, or null when it is under the minimum and must not be shown. */
-export interface InsightGroup {
-  label: string;
-  people: number | null;
-}
-
-export interface InsightsOverview {
-  minGroupSize: number;
-  viewers: number;
-  consentingViewers: number;
-  consentPercent: number;
-  byGender: InsightGroup[];
-  byAgeBand: InsightGroup[];
-  byCity: InsightGroup[];
-  reportableQuestions: number;
-}
-
-export interface InsightQuestion {
-  questionId: number;
-  prompt: string;
-  type: string;
-  surveyTitle: string;
-  companyName: string;
-  /** Consenting respondents, rounded down to tens. */
-  respondents: number;
-  reportable: boolean;
-}
+export type InsightGroup = Schema<"Group">;
+export type InsightsOverview = Schema<"Overview">;
+export type InsightQuestion = Schema<"QuestionSummary">;
 
 export interface InsightFilter {
   gender?: "MALE" | "FEMALE" | null;
@@ -434,43 +139,11 @@ export interface InsightFilter {
   city?: string | null;
 }
 
-export interface OptionShare {
-  option: string;
-  percent: number;
-}
-
-export interface InsightDistribution {
-  questionId: number;
-  prompt: string;
-  type: string;
-  filter: InsightFilter;
-  suppressed: boolean;
-  people: number | null;
-  shares: OptionShare[];
-}
-
-export interface InsightSegmentRow {
-  dimension: string;
-  label: string;
-  suppressed: boolean;
-  people: number | null;
-  shares: OptionShare[];
-}
-
-export interface InsightSegments {
-  questionId: number;
-  prompt: string;
-  options: string[];
-  rows: InsightSegmentRow[];
-}
-
-export interface AccessLogEntry {
-  id: number;
-  adminPhone: string;
-  action: string;
-  detail: string;
-  at: string;
-}
+export type OptionShare = Schema<"OptionShare">;
+export type InsightDistribution = Schema<"Distribution">;
+export type InsightSegmentRow = Schema<"SegmentRow">;
+export type InsightSegments = Schema<"Segments">;
+export type AccessLogEntry = Schema<"AccessLogEntry">;
 
 /** `?gender=…&ageBand=…&city=…` for the filters that are set; "" when none. */
 export function insightFilterQuery(filter: InsightFilter): string {

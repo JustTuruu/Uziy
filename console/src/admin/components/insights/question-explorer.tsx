@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { Download } from "lucide-react";
 import { Badge, Button, Card, CardBody, CardHeader, Select } from "@uziy/ui";
@@ -9,7 +7,7 @@ import {
   type InsightFilter,
   type InsightQuestion,
   type InsightSegments,
-} from "@/lib/api";
+} from "@admin/lib/api";
 import { hiddenLabel, peopleLabel } from "./insight-format";
 import { ShareBar } from "./share-bar";
 

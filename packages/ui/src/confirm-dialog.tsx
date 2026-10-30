@@ -40,6 +40,8 @@ export interface ConfirmDialogProps {
   /** While the action runs: both buttons are disabled and the dialog cannot be dismissed. */
   busy?: boolean;
   input?: ConfirmDialogInput;
+  /** Keeps the confirm button disabled, e.g. while a value in `message` is invalid. */
+  confirmDisabled?: boolean;
   /** Called with the trimmed text of `input` (an empty string when there is none). */
   onConfirm: (value: string) => void;
   onCancel: () => void;
@@ -82,6 +84,7 @@ export function ConfirmDialog({
   tone = "primary",
   busy = false,
   input,
+  confirmDisabled = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -172,6 +175,7 @@ export function ConfirmDialog({
           tone={tone}
           busy={busy}
           input={input}
+          confirmDisabled={confirmDisabled}
           onConfirm={onConfirm}
           onCancel={cancel}
         />
@@ -191,6 +195,7 @@ function DialogContent({
   tone,
   busy,
   input,
+  confirmDisabled,
   onConfirm,
   onCancel,
 }: Omit<ConfirmDialogProps, "open" | "cancelLabel" | "tone" | "busy"> & {
@@ -202,7 +207,7 @@ function DialogContent({
 }) {
   const [value, setValue] = useState("");
   const trimmed = value.trim();
-  const canConfirm = !busy && !(input?.required && trimmed === "");
+  const canConfirm = !busy && !confirmDisabled && !(input?.required && trimmed === "");
   const Icon = tone === "danger" ? TriangleAlert : CircleHelp;
   const iconColor =
     tone === "danger" ? "var(--color-danger)" : "var(--color-primary)";

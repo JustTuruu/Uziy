@@ -1,6 +1,6 @@
-import { segmentTint } from "@/lib/analytics";
-import type { SegmentGrid } from "@/lib/survey-results";
-import { formatNumber } from "@/lib/utils";
+import { segmentTint } from "@company/lib/analytics";
+import type { SegmentGrid } from "@company/lib/survey-results";
+import { formatNumber } from "@company/lib/utils";
 
 /** The tints shown in the legend, so a reader knows what "darker" means. */
 const LEGEND_STEPS = [0, 25, 50, 75, 100] as const;

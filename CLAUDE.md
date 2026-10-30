@@ -106,7 +106,26 @@ asked, say so and propose the compliant way instead of silently bending it.
    updated in the same change. Controller path/query params get explicit names.
 6. `./gradlew test` must be green before you say a backend task is done.
 
-### 0.3 Frontend rules (Next.js 16 / React 19 / Tailwind 4 — `company_panel`, `admin_panel`)
+### 0.3 Frontend rules (Vite 8 / React 19 / TanStack Router / Tailwind 4 — `console`; Next.js 16 only in `landing`)
+
+0. **One console app (owner, 2026-10-30; replaced `company_panel` + `admin_panel`)**: `console/` is a Vite SPA on
+   port 3000. Companies use the root (`/`, `/campaigns`, `/campaigns/new`, `/campaigns/$id`, `/analytics`, `/billing`,
+   `/settings`), admins `/admin/*` (`/admin`, `/admin/payouts`, `/admin/campaigns[/$id]`, `/admin/users`,
+   `/admin/companies[/$id]`, `/admin/insights`, `/admin/finance`, `/admin/pricing`, `/admin/admins`). Routes are
+   code-based in `src/router.tsx` (pages lazy-loaded per area); each area's layout route has a `beforeLoad` guard
+   (`src/shared/session.ts` `areaRedirect`: no session → `/login`, other role → its own home). Layout:
+   `src/company/{pages,components,lib}`, `src/admin/{pages,components,lib}`, `src/login/`, `src/shared/`
+   (`api/http.ts` fetch + token + `useStoredUser`, `api/auth-api.ts`, `api/platform-settings.ts`, `api/types.ts`,
+   `navigation.tsx`, `session.ts`, `test/fixtures.ts` builders `aMe`/`aCampaign`). Aliases `@shared/*`,
+   `@company/*`, `@admin/*`. Pages never import the router: they use the Adapter in `@shared/navigation`
+   (`useRouter().push/replace`, `usePathname`, `useParams`, `Link href`); tests mock that module with
+   `importOriginal` so `Link` stays real. Each area's `lib/api.ts` is a Facade re-exporting the shared plumbing.
+   `VITE_API_BASE_URL` (build time) replaces `NEXT_PUBLIC_API_BASE_URL`. Data fetching is still per-page
+   `useEffect` loading; TanStack Query is NOT adopted yet (a separate refactor — ask before starting it).
+0b. **DTO types are generated, never retyped** (2026-10-30): `packages/api-types` (`@uziy/api-types`, `Schema<"CampaignDto">`)
+   is generated from `docs/api/openapi.json` by `pnpm -C packages/api-types generate`; its test fails when the
+   committed `src/schema.ts` is stale. Request bodies with richer TS than the backend can say (`CreateCampaignBody`
+   union, `QuestionType`, `InsightFilter`) stay hand-written next to the calls.
 
 1. **One UI kit.** All shared look-and-feel lives in `packages/ui` (`@uziy/ui`):
    `Button`, `IconButton`, `SegmentedControl`, `Card*`, `Badge`, `Input`,
@@ -131,36 +150,38 @@ asked, say so and propose the compliant way instead of silently bending it.
    uses `--color-on-primary` / `--color-on-success` / `--color-on-danger` (never a hex); the sidebar uses
    `--color-sidebar`, floating menus `--shadow-popover`. `packages/ui/src/theme-light.test.ts` checks WCAG AA for the
    light palette, the type scale and that the dark defaults did not move; each app's `app/theme.test.ts` checks it
-   imports the light theme and the shared font. Overlays on fixed dark artwork (campaign thumbnails) use fixed white
+   imports the light theme and the shared font (`console/src/theme.test.ts`). Overlays on fixed dark artwork (campaign thumbnails) use fixed white
    ink (`text-white`) and put badges on `--color-surface`.
    **Console type (owner, 2026-10-21: softer, a bit larger)**: the font is **Rubik**, defined once in
-   `packages/ui/src/fonts.ts` (`consoleFont`, exported as `@uziy/ui/fonts`, a Next "font definitions file";
-   self-hosted, subsets latin/latin-ext/cyrillic/cyrillic-ext — Ө/Ү and ₮ need the -ext ones; tabular figures); both
-   layouts put `consoleFont.variable` on `<html>`. Never call `next/font/google` in an app. Small sizes are tokens in `theme.css` — `text-4xs` 9 / `text-3xs` 10 /
+   `packages/ui/src/fonts.css` (`@uziy/ui/fonts.css`: `@fontsource-variable/rubik`, self-hosted, every subset by
+   unicode-range — Ө/Ү and ₮ need the -ext ones; it sets `--font-rubik`); the console's `globals.css` imports it.
+   Never load a font from Google or define it a second time. Small sizes are tokens in `theme.css` — `text-4xs` 9 / `text-3xs` 10 /
    `text-2xs` 11 / `text-ui` 13px (the dark defaults); `theme-light.css` raises them and Tailwind's
    `--text-xs`/`--text-sm` by 1px. Never write `text-[11px]`-style sizes in the kit; use the tokens. A new size step must also be added to
    `EXTRA_TEXT_SIZES` in `packages/ui/src/cn.ts`, or tailwind-merge takes it for a colour and drops it.
 4. **Whole-number inputs** use `NumericInput`; never `type="number"` +
    `Number(value)`.
-5. The company panel shows the **company's own name** (sidebar subtitle,
+5. The company area shows the **company's own name** (sidebar subtitle,
    footer, greeting) — never a hard-coded one; the admin sidebar shows the
    signed-in admin's phone.
-   **One sign-in page (owner, 2026-10-22)**: companies AND admins sign in on `company_panel` `/login`
-   (`useConsoleLogin({ roles: ["COMPANY", "ADMIN"] })`; `onSignedIn` may be async and a rejection shows as the form
-   error). An ADMIN is never stored there: `lib/admin-handoff.ts` `handOffToAdmin(token)` trades the fresh token for a
-   one-time code (`POST /admin/session-handoffs`, 201 `{code, expiresAt}`) and leaves for
-   `NEXT_PUBLIC_ADMIN_PANEL_URL/login/handoff#code=…` (fragment, never query). The admin panel's `/login/handoff`
-   strips the fragment, spends the code (`POST /auth/session-handoffs/redeem {code}` → `AuthResponse`; 400
-   `Messages.HANDOFF_INVALID`) and opens `/`. Admin `/login` only redirects to `NEXT_PUBLIC_COMPANY_PANEL_URL/login`
-   (`lib/handoff.ts`). Backend `handoff/` (`SessionHandoffServiceImpl`): 32 random bytes via `DeviceSecrets`, only the
-   SHA-256 stored (`session_handoffs`, V19), lives 60 s, spent once by a conditional UPDATE, refused if the account is
-   no longer ADMIN; event `SessionHandedOff`. Both URLs are Docker build args (`COMPANY_PANEL_URL`, `ADMIN_PANEL_URL`).
-   **Sign-in page look (2026-10-22)**: the company `/login` is `@uziy/ui` `ConsoleLoginPage` (Template: brand panel with
+   **One sign-in page**: companies AND admins sign in on `/login` (`src/login/login-page.tsx`,
+   `useConsoleLogin({ roles: ["COMPANY", "ADMIN"] })`); both keep their token here and land on `homeFor(role)`
+   (`/` or `/admin`). The 2026-10-22 cross-app session handoff (one-time codes, `handoff/`, `session_handoffs`) was
+   removed with the merge (2026-10-30; V21 drops the table). The `@uziy/ui` `Sidebar` knows no router: pass it
+   `pathname` and `linkComponent={SidebarLink}`; an area's home item sets `exact: true`.
+   **Sign-in page look (2026-10-22)**: `/login` is `@uziy/ui` `ConsoleLoginPage` (Template: brand panel with
    headline, lead and `LoginHighlight`s beside a form card; under `lg` only the card + brand row). The app passes its
    own words, logo and `useConsoleLogin` state — never re-copy the layout into an app.
-6. `pnpm exec tsc --noEmit`, `pnpm exec eslint` and `pnpm exec vitest run`
-   must be clean in the app(s) and in `packages/ui` before you say done.
-   Install/run from the repo root (`pnpm install`; `pnpm -C <app> dev`).
+6. `pnpm exec tsc --noEmit`, `pnpm exec eslint .` and `pnpm exec vitest run`
+   must be clean in `console`, `packages/ui` and `packages/api-types` (plus `landing` when touched) before you say
+   done. Run pnpm from inside a package (each pins `pnpm@10.17.1`; at the repo root corepack picks pnpm 12, which
+   applies other lockfile policies). `pnpm -C console dev` (port 3000), `pnpm -C console build`.
+7. **Security headers**: `@uziy/ui/security-headers` is the one source. The console's Vite config sends them from
+   the dev/preview server and writes `build/nginx/security-headers.conf` on build (`nginxHeaderLines`); production
+   CSP has `script-src 'self'` with no `'unsafe-inline'` (`inlineScripts: false`) — never add an inline script to
+   `index.html`. A new external origin goes there.
+8. **Young dependencies**: new packages are pinned to releases at least two weeks old; `pnpm-workspace.yaml`
+   `overrides` holds transitive pins (seroval, @redocly/openapi-core, uri-js-replace — 2026-10-30).
 
 ### 0.4 Mobile rules (Flutter `viewer_app`)
 
@@ -260,6 +281,8 @@ rewarded-video-platform/
 
 **Decisions locked in during subsequent sessions:**
 
+- **(2026-10-30) The two panels are ONE app again: `console/`** (Vite SPA, see "`console/`" below and §0.3). The
+  2026-10-01 note that follows is history.
 - **(2026-10-01) Company panel and Super Admin panel are now SEPARATE apps**:
   `company_panel/` (port 3000, routes at `/`, `/campaigns`, `/billing`, …) and
   `admin_panel/` (Super Admin only, port 3001, routes at `/`, `/payouts`,
@@ -283,105 +306,66 @@ rewarded-video-platform/
   says "Rewarded Video" as a placeholder; rename when the marketing pass
   happens.
 
-### `admin_panel/` — Next.js 16 + React 19 + Tailwind 4 + TS
+### `console/` — Vite 8 + React 19 + TanStack Router + Tailwind 4 + TS (2026-10-30)
 
-Serves BOTH the Company panel and the Super Admin panel from one codebase.
-Route roots: `/login`, `/company/*`, `/admin/*`.
+The company console and the super-admin console in one SPA (rules in §0.3 items 0, 0b, 5–8). Run:
+`pnpm -C console dev` → http://localhost:3000 (`/login`; companies land on `/`, admins on `/admin`). In Docker:
+`docker/console.Dockerfile` builds it and serves `dist/` with nginx (`docker/console-nginx.conf`: SPA fallback,
+1-year cache for `/assets/`, the generated security headers on every location); compose service `console`,
+container `uziy-console`, build arg `API_BASE_URL` → `VITE_API_BASE_URL`.
 
-```
-admin_panel/
-├── package.json                      Next 16, React 19, Tailwind 4, lucide-react
-├── tsconfig.json
-├── next.config.ts
-├── AGENTS.md                         auto-generated warning from Next 16
-├── app/
-│   ├── layout.tsx                    root <html lang="mn"> + globals
-│   ├── globals.css                   dark theme, CSS vars mirroring viewer_app
-│   ├── page.tsx                      redirects to /login
-│   ├── login/
-│   │   └── page.tsx                  role picker (Company vs Admin) + login
-│   ├── company/
-│   │   ├── layout.tsx                sidebar + shell for company role
-│   │   ├── page.tsx                  dashboard: stats + campaign table
-│   │   ├── campaigns/
-│   │   │   ├── page.tsx              grid of campaign cards
-│   │   │   ├── new/page.tsx          5-step wizard (video → targeting →
-│   │   │   │                         budget+cost calculator → survey builder
-│   │   │   │                         → review). Cost-per-view is derived
-│   │   │   │                         from targeting precision, per spec §6.
-│   │   │   │                         Video length is NOT typed — it's read
-│   │   │   │                         from the picked MP4's metadata
-│   │   │   │                         (lib/video.ts); "Дараах" stays disabled
-│   │   │   │                         until a readable 5–180 s video is picked.
-│   │   │   └── [id]/page.tsx         detail: stats + survey response bars
-│   │   ├── analytics/page.tsx        placeholder — "coming soon"
-│   │   ├── billing/page.tsx          balance card + invoices
-│   │   └── settings/page.tsx         profile + password
-│   └── admin/
-│       ├── layout.tsx                sidebar w/ pending-count badges
-│       ├── page.tsx                  dashboard: GMV/commission/users +
-│       │                             live pending payout & pending campaign
-│       │                             lists
-│       ├── payouts/page.tsx          approval queue. Anti-fraud gate from
-│       │                             spec §4A — approve/reject actions;
-│       │                             first-payout badge highlights users
-│       │                             about to be flipped is_verified=TRUE.
-│       ├── users/page.tsx            searchable/filterable list w/
-│       │                             verify/ban actions
-│       ├── campaigns/page.tsx        moderation queue: approve/reject
-│       │                             pending campaigns
-│       └── finance/page.tsx          monthly GMV/commission/payout ledger
-├── components/
-│   ├── sidebar.tsx                   Sidebar + ContentShell (client comp
-│   │                                 because of usePathname active state)
-│   ├── page-header.tsx               title + description + actions row
-│   ├── stat-card.tsx                 label / value / trend / icon
-│   └── ui/
-│       ├── button.tsx                variants: primary/secondary/ghost/
-│       │                             danger/success; sizes sm/md/lg
-│       ├── card.tsx                  Card + CardHeader + CardBody
-│       ├── input.tsx                 Input, Textarea, Select — dark theme;
-│       │                             NumericInput for every whole-number
-│       │                             field (money/age/seconds): text state,
-│       │                             clearable, strips leading zeros. Never
-│       │                             use type="number" + Number(value) —
-│       │                             an emptied field snaps to "0".
-│       └── badge.tsx                 tones: neutral/success/danger/warning/
-│                                     info/primary (using color-mix)
-└── lib/
-    ├── utils.ts                      cn(), formatTugrik(), formatNumber(),
-    │                                 relativeTime(), formatDuration() (m:ss),
-    │                                 sanitizeIntInput()/parseIntInput()
-    │                                 backing NumericInput
-    ├── video.ts                      readVideoDuration(file) — browser-side
-    │                                 metadata read (floors seconds so the
-    │                                 viewer full-watch gate is reachable);
-    │                                 MIN/MAX_VIDEO_SECONDS, status copy
-    └── mock-data.ts                  Campaign, User, Payout, SurveyResponse
-                                      types + fixtures used by every page
-                                      until the backend is wired
-```
+### OpenAPI contract (2026-10-30)
 
-**How to run the console:**
+The backend describes its API with springdoc (`api/OpenApiConfig`, `api/RequiredResponseFields`: response records
+list every component as required and `@Nullable` ones as `T | null`, matching Jackson which writes nulls; `*Req`
+records and records nested in them keep the bean-validation rule). `/v3/api-docs` is OFF everywhere
+(`springdoc.api-docs.enabled: false`; `TokenAndExposureIntegrationTest` checks it stays unreachable);
+`api/OpenApiContractTest` switches it on for itself and fails when `docs/api/openapi.json` differs. After any
+route/DTO change: `./gradlew updateOpenApi` → `pnpm -C packages/api-types generate` → `tsc` in the console →
+`flutter test test/contract` (`viewer_app/test/contract/openapi_contract_test.dart` checks every key a Dart
+`fromJson` reads exists, and a key read without a null check is required and never null; models are still
+hand-written by choice, owner 2026-10-30). It already caught `Me` missing `district` (the profile's Дүүрэг row was
+always empty); `Me` now sends it.
 
-```
-cd admin_panel
-pnpm install   # already done during scaffold
-pnpm dev       # http://localhost:3000 → redirects to /login
-```
+### Commission per campaign, set at approval (owner, 2026-10-30)
 
-Every route (13 total) has been warm-compiled with a curl smoke test — all
-return 200. `pnpm exec tsc --noEmit` passes cleanly.
+The platform's cut is no longer one fixed percentage for every campaign.
+- **Defaults per kind**: `platform_settings.commission_percent` is the video campaigns' default and
+  `survey_commission_percent` (V22) the survey-only one (`PlatformSettingsEntity.commissionPercentFor(hasVideo)`;
+  `PlatformSettingsDto`/`UpdatePlatformSettingsReq` gained `surveyCommissionPercent`, required). A new campaign is
+  priced with its kind's default — `CampaignServiceImpl.price` — and the company pays that (flow unchanged: create →
+  pay → admin approves).
+- **The admin sets the campaign's own commission when approving**: `PATCH /admin/campaigns/{id}/moderate?decision=ACTIVE
+  &commissionPercent=40` (optional; with REJECTED it is a 400). `admin/CampaignCommission` re-splits what was paid:
+  the cost per viewer C and the reach N stay (so the paid total and the budget accounting do not move), the reward
+  becomes R = floor(C × (100 − c) / 100) via `CampaignPricing.forViewers(C × N, N, c, min)`; a percentage that drops R
+  under the minimum reward, one outside 1–90 (`pricing/CommissionRange`) or a legacy campaign without a snapshot is
+  refused and the campaign stays PENDING. Event `CampaignCommissionSet(campaignId, fromPercent, toPercent,
+  rewardPerViewer)`. The approval push is sent after commit, so it already shows the new reward.
+- **Console**: admin `/admin/pricing` edits both defaults; approving (queue and campaign page) opens
+  `components/approve-campaign-dialog.tsx` (starts at the campaign's percentage, previews the reward and the
+  platform's income with `lib/commission.ts` `splitAt`, which mirrors the backend; `@uziy/ui` `ConfirmDialog` gained
+  `confirmDisabled`). **The company never sees the commission** — no percentage or commission amount in the wizard,
+  invoice or campaign page; the wizard previews with `pricingSettingsFor(settings, hasVideo)` and calls the reward
+  "ойролцоогоор" because approval may change it. It is still derivable (paid total − rewards) and the campaign JSON
+  still carries `commissionPercent`; only the UI hides it.
 
-**Design tokens live in `app/globals.css`** as CSS custom properties
-(`--color-primary`, `--color-surface`, etc.) that mirror the Flutter
-`AppColors` palette. Do NOT bake colors directly into Tailwind classes — use
-`bg-[var(--color-primary)]` so viewer_app and admin_panel stay visually
-consistent.
+### Quiz question — "зөв хариулттай" (2026-10-30)
 
-**All mock data lives in one place** (`lib/mock-data.ts`) and the "current
-user" is hardcoded to company-100 (MobiCom) / an admin. Swap these for real
-session data once the backend + auth are wired.
+A 5th question type `QUIZ`: a question about the video with exactly one correct option. Owner: optional for the
+company; the viewer retries until they pick the right one, and the reward is paid only then.
+- **Backend**: `company/QuizQuestion` (only on a video campaign, ≥ 2 different non-blank options, `correctAnswer` one of
+  them) checked in `CampaignServiceImpl.validateShape`; `CampaignFactory` stores `survey_questions.correct_answer`
+  (V20, with a CHECK) and forces `required`. The correct answer is NEVER in `QuestionDto`. `POST
+  /viewer/campaigns/{id}/questions/{questionId}/check {answer}` → `{correct}` (`viewer/QuizController` →
+  `QuizCheckServiceImpl`; 404 unless the campaign is ACTIVE and it is that campaign's QUIZ, 400 for an unlisted
+  answer). `AnswerValidator` refuses a wrong pick at submit (`WRONG_QUIZ_ANSWER`). Analytics count it like a choice.
+- **Console**: the wizard offers 'Зөв хариулттай (видеоны тухай)' only for a video campaign; the company marks the
+  correct option with a radio; `lib/survey.ts` `quizError` mirrors the backend rule. Admins do NOT yet see questions
+  when moderating a campaign (an older gap).
+- **App**: `QuestionType.quiz`; `screens/survey/quiz_logic.dart` `QuizChecks`; the survey checks a quiz pick on
+  'Дараах' / 'Илгээх' (`ViewerService.checkQuizAnswer`), a wrong pick is marked on its `OptionTile(wrong: true)` with
+  `kQuizWrongMessage` and cannot be sent again; a failed check shows its message and judges nothing.
 
 ### `backend/` — Spring Boot 4 + Java 17 + PostgreSQL
 
@@ -460,8 +444,8 @@ docker compose up -d postgres
 
 **Or the whole stack in Docker (2026-10-21)** — from the repo root: `docker compose up -d --build` starts
 postgres + pgAdmin (included from `backend/docker-compose.yml`), the backend (`backend/Dockerfile`, :8080, healthcheck
-on `/actuator/health`) and both panels (one shared `docker/next-panel.Dockerfile`, build arg `APP`; company :3000,
-admin :3001; `NEXT_PUBLIC_API_BASE_URL` is baked at build time, default `http://localhost:8080`, override with
+on `/actuator/health`) and the console (`docker/console.Dockerfile`, nginx on :3000 since 2026-10-30;
+`VITE_API_BASE_URL` is baked at build time, default `http://localhost:8080`, override with
 `API_BASE_URL=… docker compose build`). The backend container reads `backend/.env` if present; `DB_URL` etc. are set by
 compose. Both compose files are project **`uziy`**; the DB volumes are pinned to their old names
 (`backend_uziy_pgdata`, `backend_uziy_pgadmin`) so existing data was kept. Images are production builds: code changes
@@ -1017,8 +1001,13 @@ takes the video's own aspect ratio; a spinner shows while loading/buffering; a l
 when the player reports completed or its position reaches `durationSeconds` (floored, so reachable) and stays open
 (`_watched` latch). **Rewind only (owner, 2026-10-22)**: the viewer may go back but never skip ahead — the
 `WatchTimeline` takes taps/drags (`onSeek`, shows the watched band `furthestProgress`) and the stage has a
-`RewindButton` (`kRewindStep` 10 s, `AppIcons.rewind`); every seek goes through `allowedSeek(target, _furthest)`
-(clamped to the furthest point actually played). A paused viewer stays paused after a seek; a rewind from the end
+`RewindButton` (`kRewindStep` 5 s since 2026-10-30, was 10; the seconds are drawn inside the arrow); every seek goes through `allowedSeek(target, _furthest)`
+(clamped to the furthest point actually played). **Full screen (owner, 2026-10-30)**: the stage's `FullscreenButton`
+turns the phone sideways (`kFullscreenOrientations`) and shows only the video edge to edge with `_ImmersiveControls`
+over it (exit + title; rewind, timeline and, once watched, 'Судалгаа руу'); a phone simply held sideways gets the
+same view (`useImmersiveVideo`: landscape and shortest side < 600, tablets keep the side panel). Leaving full screen
+locks the phone upright for this screen; closing the screen frees rotation (`setPreferredOrientations([])`) and
+restores the system bars. All controls share `StageGlassButton`. A paused viewer stays paused after a seek; a rewind from the end
 plays again and the gate stays open. The stage's own node describes the picture/medallion (`ExcludeSemantics`), but
 the rewind and retry buttons keep their own screen-reader nodes. The player lives in the
 State, never in `_Stage`, so rotation does not dispose it. Tests: `test/screens/home/video_player_screen_test.dart`,
@@ -1231,16 +1220,9 @@ the next session can uncomment once the backend exists.
    Confirm splash → login → register (terms checkbox) → home → video →
    survey → reward sheet works end-to-end. iOS 26 on iPhone 16 Pro is
    already known-working.
-2. **Run the console.** From `admin_panel/`:
-   ```
-   pnpm dev
-   ```
-   Open http://localhost:3000 → pick a role → hit /company or /admin.
+2. **Run the console.** `pnpm -C console dev` → http://localhost:3000/login (companies land on `/`, admins on
+   `/admin`). Both areas are already wired to the backend.
 3. **Wire the frontends to the backend.**
-   - In `admin_panel/`, replace `lib/mock-data.ts` reads with a
-     `lib/api.ts` client that hits `http://localhost:8080`, and store the
-     JWT in a cookie or localStorage after `/auth/login`. Every page
-     already consumes the same DTO shapes the backend returns.
    - In `viewer_app/`, fill in `api_service.dart` (set `baseUrl`) and
      `auth_service.dart` (uncomment the Dio calls). (Real video playback is
      done, 2026-10-22.)

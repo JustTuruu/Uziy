@@ -145,6 +145,7 @@ public class CampaignServiceImpl implements CampaignService {
         } else if (req.questions().isEmpty()) {
             throw new BadRequestException(NO_QUESTIONS_MESSAGE);
         }
+        QuizQuestion.check(req.hasVideo(), req.questions());
     }
 
     private PricingResult price(CreateCampaignReq req, PricingMode mode) {
@@ -154,7 +155,7 @@ public class CampaignServiceImpl implements CampaignService {
         PricingResult pricing = CampaignPricing.compute(
                 mode,
                 wholeTugrik(req.totalBudget()),
-                settings.getCommissionPercent(),
+                settings.commissionPercentFor(req.hasVideo()),
                 minReward,
                 viewers == null ? null : viewers.longValue(),
                 mode == PricingMode.REWARD ? Long.valueOf(wholeTugrik(req.rewardPerUser())) : null);

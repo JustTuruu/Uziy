@@ -1,9 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { auth, companyApi, type Campaign } from "@/lib/api";
-import CampaignsPage from "./page";
+import { auth, companyApi, type Campaign } from "@company/lib/api";
+import CampaignsPage from "./campaigns-page";
 
-vi.mock("next/navigation", () => ({
+vi.mock("@shared/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@shared/navigation")>()),
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
 

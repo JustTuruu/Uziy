@@ -1,7 +1,5 @@
-"use client";
-
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link } from "@shared/navigation";
+import { useRouter } from "@shared/navigation";
 import { useState } from "react";
 import {
   CircleAlert,
@@ -19,9 +17,9 @@ import {
   type Campaign,
   type PayCampaignResponse,
   type Payment,
-} from "@/lib/api";
-import { campaignInvoice } from "@/lib/billing";
-import { formatNumber, formatTugrik } from "@/lib/utils";
+} from "@company/lib/api";
+import { campaignInvoice } from "@company/lib/billing";
+import { formatNumber, formatTugrik } from "@company/lib/utils";
 
 type Phase = "idle" | "paying" | "paid" | "error";
 
@@ -131,14 +129,6 @@ export function CampaignPaymentCard({
             label="Үзэгчдэд олгох нийт урамшуулал"
             sub={`${formatNumber(invoice.targetViewers)} үзэгч × ${formatTugrik(invoice.rewardPerViewer)}`}
             value={formatTugrik(invoice.rewardsTotal)}
-          />
-          <Row
-            label={
-              invoice.commissionPercent === null
-                ? "Платформын шимтгэл"
-                : `Платформын шимтгэл (${invoice.commissionPercent}%)`
-            }
-            value={formatTugrik(invoice.commissionTotal)}
           />
         </div>
 

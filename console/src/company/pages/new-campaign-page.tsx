@@ -1,6 +1,4 @@
-"use client";
-
-import { useRouter } from "next/navigation";
+import { useRouter } from "@shared/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
@@ -20,10 +18,11 @@ import {
   CampaignBudgetFields,
   DEFAULT_BUDGET_FIELDS,
   pricingFromFields,
+  pricingSettingsFor,
   type BudgetFieldsValue,
-} from "@/components/campaign-budget-fields";
-import { CampaignCoverCard } from "@/components/campaign-cover-card";
-import { CampaignPaymentCard } from "@/components/campaign-payment-card";
+} from "@company/components/campaign-budget-fields";
+import { CampaignCoverCard } from "@company/components/campaign-cover-card";
+import { CampaignPaymentCard } from "@company/components/campaign-payment-card";
 import {
   Button,
   Card,
@@ -44,23 +43,28 @@ import {
   type Campaign,
   type PlatformSettings,
   type QuestionType,
-} from "@/lib/api";
-import { RATING_LABELS, takesOptions } from "@/lib/survey";
-import { ageRangeError } from "@/lib/targeting";
+} from "@company/lib/api";
+import {
+  RATING_LABELS,
+  questionTypeOptions,
+  quizError,
+  takesOptions,
+} from "@company/lib/survey";
+import { ageRangeError } from "@company/lib/targeting";
 import {
   CAPITAL,
   EVERYWHERE,
   EVERYWHERE_LABEL,
   TARGET_CITY_OPTIONS,
-} from "@/lib/regions";
-import { pricingErrorMessage, pricingRequestFields } from "@/lib/pricing";
+} from "@company/lib/regions";
+import { pricingErrorMessage, pricingRequestFields } from "@company/lib/pricing";
 import {
   cn,
   formatDuration,
   formatNumber,
   formatTugrik,
   parseIntInput,
-} from "@/lib/utils";
+} from "@company/lib/utils";
 import {
   MAX_VIDEO_SECONDS,
   MIN_VIDEO_SECONDS,
@@ -68,7 +72,7 @@ import {
   isVideoLengthAllowed,
   readVideoDuration,
   type VideoLengthStatus,
-} from "@/lib/video";
+} from "@company/lib/video";
 
 type CampaignKind = "VIDEO" | "SURVEY_ONLY";
 type Step =
@@ -80,18 +84,18 @@ type Step =
   | "review"
   | "payment";
 
-const QUESTION_TYPE_OPTIONS = [
-  { value: "SINGLE_CHOICE", label: "Ганц сонголт" },
-  { value: "MULTI_CHOICE", label: "Олон сонголт" },
-  { value: "TEXT", label: "Чөлөөт текст" },
-  { value: "RATING", label: `Үнэлгээ (${RATING_LABELS.join(" · ")})` },
-];
-
 interface SurveyQ {
   id: number;
   prompt: string;
   type: QuestionType;
   options: string[];
+  /** QUIZ only: which of `options` the viewer must pick. */
+  correctIndex: number | null;
+}
+
+/** A blank question, as the survey step starts and as "Асуулт нэмэх" adds. */
+function blankQuestion(id: number): SurveyQ {
+  return { id, prompt: "", type: "SINGLE_CHOICE", options: ["", ""], correctIndex: null };
 }
 
 type TargetGender = "ALL" | "MALE" | "FEMALE";
@@ -170,9 +174,9 @@ export default function NewCampaignPage() {
   const pricing = useMemo(
     () =>
       platformSettings
-        ? pricingFromFields(budgetFields, platformSettings)
+        ? pricingFromFields(budgetFields, pricingSettingsFor(platformSettings, kind === "VIDEO"))
         : null,
-    [budgetFields, platformSettings],
+    [budgetFields, platformSettings, kind],
   );
 
   // Set once the campaign exists on the server (status AWAITING_PAYMENT);
@@ -182,14 +186,7 @@ export default function NewCampaignPage() {
   // Step: survey. Seed with one empty question so the user sees the form
   // structure — but no pre-filled text: they should type their own prompt and
   // answers, guided only by placeholders.
-  const [questions, setQuestions] = useState<SurveyQ[]>([
-    {
-      id: 1,
-      prompt: "",
-      type: "SINGLE_CHOICE",
-      options: ["", ""],
-    },
-  ]);
+  const [questions, setQuestions] = useState<SurveyQ[]>([blankQuestion(1)]);
 
   useEffect(() => {
     if (!auth.getToken()) {
@@ -304,7 +301,13 @@ export default function NewCampaignPage() {
         setSubmitError(`Асуулт ${i + 1}: асуултын текстийг бөглөнө үү`);
         return;
       }
-      if (takesOptions(q.type)) {
+      if (q.type === "QUIZ") {
+        const error = quizError(kind === "VIDEO", q.options, q.correctIndex);
+        if (error) {
+          setSubmitError(`Асуулт ${i + 1}: ${error}`);
+          return;
+        }
+      } else if (takesOptions(q.type)) {
         const filled = q.options.filter((o) => o.trim().length > 0);
         if (filled.length < 2) {
           setSubmitError(
@@ -340,6 +343,9 @@ export default function NewCampaignPage() {
           type: q.type,
           options: takesOptions(q.type) ? q.options.filter(Boolean) : [],
           required: true,
+          ...(q.type === "QUIZ" && q.correctIndex !== null
+            ? { correctAnswer: q.options[q.correctIndex] }
+            : {}),
         })),
       });
       setCreated(campaign);
@@ -551,7 +557,7 @@ export default function NewCampaignPage() {
                 <CampaignBudgetFields
                   value={budgetFields}
                   onChange={setBudgetFields}
-                  settings={platformSettings}
+                  settings={pricingSettingsFor(platformSettings, kind === "VIDEO")}
                 />
               ) : loadError ? (
                 <div
@@ -598,12 +604,7 @@ export default function NewCampaignPage() {
                   onClick={() =>
                     setQuestions((qs) => [
                       ...qs,
-                      {
-                        id: (qs.at(-1)?.id ?? 0) + 1,
-                        prompt: "",
-                        type: "SINGLE_CHOICE",
-                        options: ["", ""],
-                      },
+                      blankQuestion((qs.at(-1)?.id ?? 0) + 1),
                     ])
                   }
                 >
@@ -635,7 +636,7 @@ export default function NewCampaignPage() {
                       />
                       <Select
                         label="Хариултын төрөл"
-                        options={QUESTION_TYPE_OPTIONS}
+                        options={questionTypeOptions(kind === "VIDEO")}
                         value={q.type}
                         onValueChange={(type) =>
                           setQuestions((qs) =>
@@ -654,28 +655,59 @@ export default function NewCampaignPage() {
                         </p>
                       )}
 
+                      {q.type === "QUIZ" && (
+                        <p className="rounded-lg border border-[var(--color-divider)] bg-[var(--color-surface)] p-3 text-xs text-[var(--color-text-secondary)]">
+                          Видеоны тухай асуулт. Үзэгч зөв хариултыг сонгосны дараа л урамшуулал авна; буруу сонговол
+                          дахин оролдоно. Зөв хариулт үзэгчид харагдахгүй.
+                        </p>
+                      )}
+
                       {takesOptions(q.type) && (
                         <div className="rounded-lg border border-[var(--color-divider)] bg-[var(--color-surface)] p-3">
                           <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
-                            Хариултын сонголтууд
+                            {q.type === "QUIZ"
+                              ? "Хариултууд · зөвийг нь тэмдэглэнэ үү"
+                              : "Хариултын сонголтууд"}
                           </div>
                           <div className="space-y-2">
                             {q.options.map((opt, oi) => (
-                              <Input
-                                key={oi}
-                                value={opt}
-                                placeholder={`Хариулт ${oi + 1}`}
-                                onChange={(e) =>
-                                  setQuestions((qs) =>
-                                    qs.map((x) => {
-                                      if (x.id !== q.id) return x;
-                                      const next = [...x.options];
-                                      next[oi] = e.target.value;
-                                      return { ...x, options: next };
-                                    }),
-                                  )
-                                }
-                              />
+                              <div key={oi} className="flex items-center gap-3">
+                                <div className="flex-1">
+                                  <Input
+                                    value={opt}
+                                    placeholder={`Хариулт ${oi + 1}`}
+                                    onChange={(e) =>
+                                      setQuestions((qs) =>
+                                        qs.map((x) => {
+                                          if (x.id !== q.id) return x;
+                                          const next = [...x.options];
+                                          next[oi] = e.target.value;
+                                          return { ...x, options: next };
+                                        }),
+                                      )
+                                    }
+                                  />
+                                </div>
+                                {q.type === "QUIZ" && (
+                                  <label className="flex shrink-0 items-center gap-1.5 text-xs text-[var(--color-text-secondary)]">
+                                    <input
+                                      type="radio"
+                                      name={`correct-${q.id}`}
+                                      aria-label={`Хариулт ${oi + 1} зөв`}
+                                      checked={q.correctIndex === oi}
+                                      onChange={() =>
+                                        setQuestions((qs) =>
+                                          qs.map((x) =>
+                                            x.id === q.id ? { ...x, correctIndex: oi } : x,
+                                          ),
+                                        )
+                                      }
+                                      className="h-4 w-4 accent-[var(--color-primary)]"
+                                    />
+                                    Зөв
+                                  </label>
+                                )}
+                              </div>
                             ))}
                             <Button
                               variant="ghost"
@@ -765,16 +797,8 @@ export default function NewCampaignPage() {
                 value={pricingOk ? formatNumber(pricing.targetViewers) : "—"}
               />
               <ReviewRow
-                label="Нэг үзэгчид олгох урамшуулал"
+                label="Нэг үзэгчид олгох урамшуулал (ойролцоогоор)"
                 value={pricingOk ? formatTugrik(pricing.rewardPerViewer) : "—"}
-              />
-              <ReviewRow
-                label={
-                  pricing
-                    ? `Платформын шимтгэл (${pricing.commissionPercent}%)`
-                    : "Платформын шимтгэл"
-                }
-                value={pricingOk ? formatTugrik(pricing.commissionTotal) : "—"}
               />
               <ReviewRow
                 label="Төлөх дүн"

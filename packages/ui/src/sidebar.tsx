@@ -1,10 +1,5 @@
-"use client";
-
 import { LogOut } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { cn } from "./cn";
 
 export interface NavItem {
@@ -14,29 +9,63 @@ export interface NavItem {
   badge?: number;
   /** Group heading shown above this item (and the items after it). */
   section?: string;
+  /**
+   * Active only on exactly this path, not below it — for an area's home page
+   * (`/admin`) whose sibling pages (`/admin/payouts`) live under it.
+   */
+  exact?: boolean;
+}
+
+/** What the sidebar needs from the app's router to draw a link. */
+export interface NavLinkProps {
+  href: string;
+  className?: string;
+  "aria-current"?: "page";
+  children: ReactNode;
+}
+
+/**
+ * Pattern: Strategy — the kit knows no router; the app passes its own link
+ * (client-side navigation). Without one, plain anchors are used.
+ */
+export type NavLinkComponent = ComponentType<NavLinkProps>;
+
+function PlainLink({ href, children, ...rest }: NavLinkProps) {
+  return (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  );
 }
 
 interface Props {
   brand: string;
   subtitle: string;
   items: NavItem[];
+  /** The current path, from the app's router. */
+  pathname: string;
+  linkComponent?: NavLinkComponent;
   footer?: ReactNode;
 }
 
-export function isActive(pathname: string, href: string): boolean {
-  return (
-    pathname === href || (href !== "/" && pathname.startsWith(href + "/"))
-  );
+export function isActive(pathname: string, href: string, exact = false): boolean {
+  if (pathname === href) return true;
+  return !exact && href !== "/" && pathname.startsWith(href + "/");
 }
 
-export function Sidebar({ brand, subtitle, items, footer }: Props) {
-  const pathname = usePathname();
-
+export function Sidebar({
+  brand,
+  subtitle,
+  items,
+  pathname,
+  linkComponent: Link = PlainLink,
+  footer,
+}: Props) {
   return (
     <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col border-r border-[var(--color-divider)] bg-[var(--color-sidebar)]">
       <div className="flex h-14 items-center gap-2.5 border-b border-[var(--color-divider)] px-4">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white shadow-[0_0_0_1px_rgb(255_255_255/0.08)]">
-          <Image
+          <img
             src="/logo.png"
             alt="Uziy"
             width={32}
@@ -56,7 +85,7 @@ export function Sidebar({ brand, subtitle, items, footer }: Props) {
 
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         {items.map((item, i) => {
-          const active = isActive(pathname, item.href);
+          const active = isActive(pathname, item.href, item.exact);
           return (
             <div key={item.href}>
               {item.section && (
@@ -127,7 +156,7 @@ export function Topbar({
   pathname: string;
   right?: ReactNode;
 }) {
-  const current = items.find((i) => isActive(pathname, i.href));
+  const current = items.find((i) => isActive(pathname, i.href, i.exact));
   const sub = current && pathname !== current.href;
   return (
     <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-4 border-b border-[var(--color-divider)] bg-[color-mix(in_oklab,var(--color-background)_80%,transparent)] px-8 backdrop-blur-md">

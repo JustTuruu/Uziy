@@ -1,7 +1,5 @@
-"use client";
-
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { SidebarLink, usePathname } from "@shared/navigation";
 import {
   Banknote,
   BarChart3,
@@ -22,59 +20,60 @@ import {
   Topbar,
   type NavItem,
 } from "@uziy/ui";
-import { adminApi, auth, useStoredUser } from "@/lib/api";
-import { formatPhone } from "@/lib/utils";
+import { adminApi, auth, useStoredUser } from "@admin/lib/api";
+import { formatPhone } from "@admin/lib/utils";
 
 /** Sidebar entries; the badges are the live pending counts from the backend. */
 function buildNav(pendingPayouts: number, pendingCampaigns: number): NavItem[] {
   return [
     {
-      href: "/",
+      href: "/admin",
+      exact: true,
       label: "Хяналтын самбар",
       icon: <LayoutDashboard size={16} />,
       section: "Ерөнхий",
     },
     {
-      href: "/payouts",
+      href: "/admin/payouts",
       label: "Мөнгө татах",
       icon: <Wallet size={16} />,
       badge: pendingPayouts,
       section: "Хяналт",
     },
     {
-      href: "/campaigns",
+      href: "/admin/campaigns",
       label: "Судалгаа",
       icon: <PlaySquare size={16} />,
       badge: pendingCampaigns,
     },
     {
-      href: "/users",
+      href: "/admin/users",
       label: "Хэрэглэгчид",
       icon: <Users size={16} />,
     },
     {
-      href: "/companies",
+      href: "/admin/companies",
       label: "Компаниуд",
       icon: <Building2 size={16} />,
     },
     {
-      href: "/insights",
+      href: "/admin/insights",
       label: "Статистик",
       icon: <BarChart3 size={16} />,
     },
     {
-      href: "/finance",
+      href: "/admin/finance",
       label: "Санхүү",
       icon: <Banknote size={16} />,
       section: "Тохиргоо",
     },
     {
-      href: "/pricing",
+      href: "/admin/pricing",
       label: "Шимтгэл",
       icon: <Percent size={16} />,
     },
     {
-      href: "/admins",
+      href: "/admin/admins",
       label: "Админууд",
       icon: <ShieldCheck size={16} />,
     },
@@ -110,6 +109,8 @@ export default function AdminLayout({
         brand="Uziy"
         subtitle="Админ"
         items={nav}
+        pathname={pathname}
+        linkComponent={SidebarLink}
         footer={
           <SidebarUser
             initials="SA"

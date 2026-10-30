@@ -12,6 +12,7 @@ class PlatformSettingsMapperTest {
     void mapsAllFields() {
         PlatformSettingsEntity e = new PlatformSettingsEntity();
         e.setCommissionPercent(33);
+        e.setSurveyCommissionPercent(20);
         e.setMinRewardPerViewer(150);
         OffsetDateTime at = OffsetDateTime.now();
         e.setUpdatedAt(at);
@@ -19,6 +20,7 @@ class PlatformSettingsMapperTest {
         PlatformSettingsDto dto = new PlatformSettingsMapper().toDto(e);
 
         assertThat(dto.commissionPercent()).isEqualTo(33);
+        assertThat(dto.surveyCommissionPercent()).isEqualTo(20);
         assertThat(dto.minRewardPerViewer()).isEqualTo(150);
         assertThat(dto.updatedAt()).isEqualTo(at);
     }

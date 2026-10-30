@@ -1,7 +1,5 @@
-"use client";
-
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { Link } from "@shared/navigation";
+import { useParams, useRouter } from "@shared/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -12,8 +10,9 @@ import {
   Play,
   X,
 } from "lucide-react";
-import { CampaignImageEditor } from "@/components/campaign-image-editor";
-import { CampaignStatusBadge } from "@/components/campaign-status-badge";
+import { ApproveCampaignDialog } from "@admin/components/approve-campaign-dialog";
+import { CampaignImageEditor } from "@admin/components/campaign-image-editor";
+import { CampaignStatusBadge } from "@admin/components/campaign-status-badge";
 import {
   Button,
   Card,
@@ -22,14 +21,14 @@ import {
   PageHeader,
   StatCard,
 } from "@uziy/ui";
-import { adminApi, ApiError, auth, type AdminCampaignDetail } from "@/lib/api";
-import { campaignInvoice } from "@/lib/billing";
+import { adminApi, ApiError, auth, type AdminCampaignDetail } from "@admin/lib/api";
+import { campaignInvoice } from "@admin/lib/billing";
 import {
   formatDate,
   formatNumber,
   formatTugrik,
   relativeTime,
-} from "@/lib/utils";
+} from "@admin/lib/utils";
 
 export default function AdminCampaignDetailPage() {
   const router = useRouter();
@@ -39,6 +38,7 @@ export default function AdminCampaignDetailPage() {
   const [data, setData] = useState<AdminCampaignDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [approving, setApproving] = useState(false);
 
   const reload = useCallback(() => {
     if (!Number.isFinite(id)) return; // shown as `invalidId` below
@@ -67,15 +67,16 @@ export default function AdminCampaignDetailPage() {
     reload();
   }, [reload, router]);
 
-  const moderate = async (decision: "ACTIVE" | "REJECTED") => {
+  const moderate = async (decision: "ACTIVE" | "REJECTED", commissionPercent?: number) => {
     setBusy(true);
     try {
-      await adminApi.moderate(id, decision);
+      await adminApi.moderate(id, decision, commissionPercent);
       reload();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Алдаа");
     } finally {
       setBusy(false);
+      setApproving(false);
     }
   };
 
@@ -118,6 +119,12 @@ export default function AdminCampaignDetailPage() {
 
   return (
     <>
+      <ApproveCampaignDialog
+        campaign={approving ? c : null}
+        busy={busy}
+        onApprove={(percent) => moderate("ACTIVE", percent)}
+        onCancel={() => setApproving(false)}
+      />
       <BackLink />
 
       <PageHeader
@@ -143,7 +150,7 @@ export default function AdminCampaignDetailPage() {
                 <Button
                   variant="success"
                   leftIcon={<Check size={14} />}
-                  onClick={() => moderate("ACTIVE")}
+                  onClick={() => setApproving(true)}
                   disabled={busy}
                 >
                   Баталгаажуулах
@@ -258,7 +265,7 @@ export default function AdminCampaignDetailPage() {
               </div>
               {companyName ? (
                 <Link
-                  href={`/companies/${companyId}`}
+                  href={`/admin/companies/${companyId}`}
                   className="inline-flex items-center gap-2 rounded-lg px-2 py-1 -mx-2 hover:bg-[var(--color-surface-elevated)]"
                 >
                   <Building2
@@ -288,7 +295,7 @@ export default function AdminCampaignDetailPage() {
 function BackLink() {
   return (
     <Link
-      href="/campaigns"
+      href="/admin/campaigns"
       className="mb-4 inline-flex items-center gap-1 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
     >
       <ArrowLeft size={12} /> Бүх судалгаа

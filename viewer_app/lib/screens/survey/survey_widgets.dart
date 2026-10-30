@@ -79,6 +79,7 @@ String answerHintFor(QuestionType type) => switch (type) {
       QuestionType.multipleChoice => 'Хэд хэдийг сонгож болно',
       QuestionType.text => 'Өөрийн үгээр бичнэ үү',
       QuestionType.rating => 'Слайдераа гулсуулж үнэлнэ үү',
+      QuestionType.quiz => 'Видеоноос харсан зөв хариултаа сонгоно уу',
     };
 
 /// Counter under the free-text answer: '12 тэмдэгт'. Counts user-perceived
@@ -256,6 +257,7 @@ class OptionTile extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.multiple = false,
+    this.wrong = false,
   });
 
   final String label;
@@ -268,6 +270,10 @@ class OptionTile extends StatelessWidget {
   /// Checkbox badge (multiple choice) instead of a letter badge.
   final bool multiple;
 
+  /// A quiz option the viewer already tried and the server said is wrong:
+  /// drawn in the danger colour with a cross.
+  final bool wrong;
+
   static const double minHeight = 64;
 
   /// Key of the trailing check badge (single choice only), for tests.
@@ -277,6 +283,8 @@ class OptionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final d = AppMotion.duration(context, AppDurations.normal);
     const curve = AppMotion.standard;
+    final marked = selected || wrong;
+    final accent = wrong ? context.colors.danger : context.colors.primary;
 
     return Pressable(
       onTap: onTap,
@@ -295,14 +303,14 @@ class OptionTile extends StatelessWidget {
             vertical: AppSpacing.md,
           ),
           decoration: BoxDecoration(
-            color: selected
+            color: marked
                 ? Color.alphaBlend(
-                    context.colors.primary.withValues(alpha: 0.10),
+                    accent.withValues(alpha: 0.10),
                     context.colors.surface,
                   )
                 : context.colors.surface,
             borderRadius: AppRadii.brMd,
-            boxShadow: selected
+            boxShadow: selected && !wrong
                 ? AppShadows.glow(
                     context.colors.primary,
                     strength: 0.35,
@@ -316,8 +324,8 @@ class OptionTile extends StatelessWidget {
           foregroundDecoration: BoxDecoration(
             borderRadius: AppRadii.brMd,
             border: Border.all(
-              color: selected ? context.colors.primary : context.colors.border,
-              width: selected ? 1.5 : 1,
+              color: marked ? accent : context.colors.border,
+              width: marked ? 1.5 : 1,
             ),
           ),
           child: Row(
@@ -352,11 +360,11 @@ class OptionTile extends StatelessWidget {
                 const SizedBox(width: 10),
                 AnimatedOpacity(
                   key: checkKey,
-                  opacity: selected ? 1 : 0,
+                  opacity: marked ? 1 : 0,
                   duration: d,
                   curve: curve,
                   child: AnimatedScale(
-                    scale: selected ? 1 : 0.5,
+                    scale: marked ? 1 : 0.5,
                     duration: d,
                     curve: AppMotion.emphasized,
                     child: Container(
@@ -364,13 +372,18 @@ class OptionTile extends StatelessWidget {
                       height: 24,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: context.gradients.gold,
+                        color: wrong ? context.colors.danger : null,
+                        gradient: wrong ? null : context.gradients.gold,
                       ),
                       alignment: Alignment.center,
                       child: Icon(
-                        Icons.check_rounded,
+                        wrong ? Icons.close_rounded : Icons.check_rounded,
                         size: 16,
-                        color: context.colors.onPrimary,
+                        // The surface colour reads on the danger fill in
+                        // both themes (white on red, graphite on pink).
+                        color: wrong
+                            ? context.colors.surface
+                            : context.colors.onPrimary,
                       ),
                     ),
                   ),

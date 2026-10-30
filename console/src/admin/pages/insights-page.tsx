@@ -1,6 +1,4 @@
-"use client";
-
-import { useRouter } from "next/navigation";
+import { useRouter } from "@shared/navigation";
 import { useEffect, useState } from "react";
 import { Database, ListChecks, Percent, UserCheck } from "lucide-react";
 import { PageHeader, SegmentedControl, StatCard } from "@uziy/ui";
@@ -11,11 +9,11 @@ import {
   type AccessLogEntry,
   type InsightQuestion,
   type InsightsOverview,
-} from "@/lib/api";
-import { AccessLogTable } from "@/components/insights/access-log-table";
-import { GroupCard } from "@/components/insights/group-card";
-import { PrivacyRulesCard } from "@/components/insights/privacy-rules-card";
-import { QuestionExplorer } from "@/components/insights/question-explorer";
+} from "@admin/lib/api";
+import { AccessLogTable } from "@admin/components/insights/access-log-table";
+import { GroupCard } from "@admin/components/insights/group-card";
+import { PrivacyRulesCard } from "@admin/components/insights/privacy-rules-card";
+import { QuestionExplorer } from "@admin/components/insights/question-explorer";
 
 type Tab = "overview" | "questions" | "log";
 

@@ -1,12 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { isActive, Sidebar, SidebarUser, Topbar, type NavItem } from "./sidebar";
+import {
+  isActive,
+  Sidebar,
+  SidebarUser,
+  Topbar,
+  type NavItem,
+  type NavLinkProps,
+} from "./sidebar";
 
-let path = "/";
-vi.mock("next/navigation", () => ({ usePathname: () => path }));
-vi.mock("next/image", () => ({
-  default: (p: { alt: string }) => <span role="img" aria-label={p.alt} />,
-}));
 
 const items: NavItem[] = [
   { href: "/", label: "Нүүр", icon: <i />, section: "Ерөнхий" },
@@ -22,12 +24,17 @@ describe("isActive", () => {
     expect(isActive("/users", "/")).toBe(false);
     expect(isActive("/", "/")).toBe(true);
   });
+
+  it("matches an exact item only on its own path", () => {
+    expect(isActive("/admin", "/admin", true)).toBe(true);
+    expect(isActive("/admin/payouts", "/admin", true)).toBe(false);
+    expect(isActive("/admin/payouts", "/admin")).toBe(true);
+  });
 });
 
 describe("<Sidebar>", () => {
   it("renders section headings once, badges, and the current page", () => {
-    path = "/users/9";
-    render(<Sidebar brand="Uziy" subtitle="Админ" items={items} />);
+    render(<Sidebar brand="Uziy" subtitle="Админ" items={items} pathname="/users/9" />);
     expect(screen.getByText("Ерөнхий")).toBeInTheDocument();
     expect(screen.getByText("Хяналт")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
@@ -38,6 +45,18 @@ describe("<Sidebar>", () => {
     expect(screen.getByRole("link", { name: /Нүүр/ })).not.toHaveAttribute(
       "aria-current",
     );
+  });
+
+  it("draws its links with the app's link component", () => {
+    const AppLink = ({ href, children, ...rest }: NavLinkProps) => (
+      <a href={href} data-router="yes" {...rest}>
+        {children}
+      </a>
+    );
+    render(
+      <Sidebar brand="Uziy" subtitle="Админ" items={items} pathname="/" linkComponent={AppLink} />,
+    );
+    expect(screen.getByRole("link", { name: /Шимтгэл/ })).toHaveAttribute("data-router", "yes");
   });
 });
 

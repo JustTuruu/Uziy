@@ -1,11 +1,11 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Campaign } from "@/lib/api";
-import { companyApi } from "@/lib/api";
+import type { Campaign } from "@company/lib/api";
+import { companyApi } from "@company/lib/api";
 import { COVER_LOCKED_NOTE, CampaignCoverCard } from "./campaign-cover-card";
 
-vi.mock("@/lib/api", () => ({
+vi.mock("@company/lib/api", () => ({
   companyApi: { uploadImage: vi.fn(), removeImage: vi.fn() },
   mediaUrl: (s: string) => `http://localhost:8080${s}`,
 }));

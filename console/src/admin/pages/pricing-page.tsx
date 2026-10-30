@@ -1,6 +1,4 @@
-"use client";
-
-import { useRouter } from "next/navigation";
+import { useRouter } from "@shared/navigation";
 import { useEffect, useState } from "react";
 import { AlertCircle, Percent, Save, ShieldCheck, Wallet } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, NumericInput, PageHeader } from "@uziy/ui";
@@ -10,19 +8,19 @@ import {
   auth,
   platformSettingsApi,
   type PlatformSettings,
-} from "@/lib/api";
+} from "@admin/lib/api";
 import {
   MAX_COMMISSION_PERCENT,
   MIN_COMMISSION_PERCENT,
   computeCampaignPricing,
   validateCommissionSettings,
-} from "@/lib/pricing";
+} from "@admin/lib/pricing";
 import {
   formatNumber,
   formatTugrik,
   parseIntInput,
   relativeTime,
-} from "@/lib/utils";
+} from "@admin/lib/utils";
 
 const EXAMPLE_BUDGET = 1_000_000;
 const EXAMPLE_VIEWERS = 1_000;
@@ -32,6 +30,7 @@ export default function CommissionSettingsPage() {
 
   const [settings, setSettings] = useState<PlatformSettings | null>(null);
   const [percentText, setPercentText] = useState("");
+  const [surveyPercentText, setSurveyPercentText] = useState("");
   const [minRewardText, setMinRewardText] = useState("");
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -47,6 +46,7 @@ export default function CommissionSettingsPage() {
       .then((s) => {
         setSettings(s);
         setPercentText(String(s.commissionPercent));
+        setSurveyPercentText(String(s.surveyCommissionPercent));
         setMinRewardText(String(s.minRewardPerViewer));
       })
       .catch((e) => {
@@ -55,8 +55,10 @@ export default function CommissionSettingsPage() {
   }, [router]);
 
   const percent = parseIntInput(percentText);
+  const surveyPercent = parseIntInput(surveyPercentText);
   const minReward = parseIntInput(minRewardText);
-  const validationError = validateCommissionSettings(percent, minReward);
+  const validationError =
+    validateCommissionSettings(percent, minReward) ?? validateCommissionSettings(surveyPercent, minReward);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,10 +73,12 @@ export default function CommissionSettingsPage() {
     try {
       const next = await adminApi.updateSettings({
         commissionPercent: percent,
+        surveyCommissionPercent: surveyPercent,
         minRewardPerViewer: minReward,
       });
       setSettings(next);
       setPercentText(String(next.commissionPercent));
+      setSurveyPercentText(String(next.surveyCommissionPercent));
       setMinRewardText(String(next.minRewardPerViewer));
       setSaved(true);
     } catch (e) {
@@ -104,7 +108,7 @@ export default function CommissionSettingsPage() {
     <>
       <PageHeader
         title="Шимтгэл ба урамшуулал"
-        description="Судалгаа бүрийн төсвөөс платформын авах шимтгэл болон үзэгчид олгох хамгийн бага урамшууллыг тохируулна"
+        description="Судалгааны төрөл тус бүрийн үндсэн шимтгэл болон үзэгчид олгох хамгийн бага урамшууллыг тохируулна. Судалгаа бүрийн өөрийн шимтгэлийг баталгаажуулахдаа тогтооно."
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -113,8 +117,8 @@ export default function CommissionSettingsPage() {
             title="Одоогийн тохиргоо"
             description={
               settings
-                ? `Хадгалсны дараа шинээр үүсэх судалгаануудад мөрдөгдөнө · Сүүлд шинэчилсэн: ${relativeTime(settings.updatedAt)}`
-                : "Хадгалсны дараа шинээр үүсэх судалгаануудад мөрдөгдөнө"
+                ? `Шинээр үүсэх судалгааны урьдчилсан үнэд мөрдөгдөнө · Сүүлд шинэчилсэн: ${relativeTime(settings.updatedAt)}`
+                : "Шинээр үүсэх судалгааны урьдчилсан үнэд мөрдөгдөнө"
             }
           />
           <CardBody>
@@ -126,14 +130,24 @@ export default function CommissionSettingsPage() {
               <form onSubmit={submit} noValidate className="space-y-5">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <NumericInput
-                    label="Платформын шимтгэл (%)"
+                    label="Видеотой судалгааны шимтгэл (%)"
                     maxLength={2}
                     value={percentText}
                     onValueChange={(text) => {
                       setPercentText(text);
                       setSaved(false);
                     }}
-                    hint={`${MIN_COMMISSION_PERCENT}–${MAX_COMMISSION_PERCENT}% хооронд. Судалгааны төсвөөс хасагдана.`}
+                    hint={`${MIN_COMMISSION_PERCENT}–${MAX_COMMISSION_PERCENT}% хооронд. Үндсэн утга; баталгаажуулахдаа өөрчилж болно.`}
+                  />
+                  <NumericInput
+                    label="Зөвхөн судалгааны шимтгэл (%)"
+                    maxLength={2}
+                    value={surveyPercentText}
+                    onValueChange={(text) => {
+                      setSurveyPercentText(text);
+                      setSaved(false);
+                    }}
+                    hint={`${MIN_COMMISSION_PERCENT}–${MAX_COMMISSION_PERCENT}% хооронд. Видеогүй судалгааны үндсэн утга.`}
                   />
                   <NumericInput
                     label="Нэг үзэгчид олгох хамгийн бага урамшуулал (₮)"
@@ -153,7 +167,7 @@ export default function CommissionSettingsPage() {
                   </div>
                   {example ? (
                     <div className="text-sm text-[var(--color-text-primary)]">
-                      {formatTugrik(EXAMPLE_BUDGET)} төсөв,{" "}
+                      Видеотой: {formatTugrik(EXAMPLE_BUDGET)} төсөв,{" "}
                       {formatNumber(EXAMPLE_VIEWERS)} үзэгч → үзэгч бүр{" "}
                       <b className="font-mono">
                         {formatTugrik(example.rewardPerViewer)}
@@ -232,8 +246,9 @@ export default function CommissionSettingsPage() {
                 <b className="text-[var(--color-text-primary)]">
                   Хамгийн бага урамшуулал
                 </b>{" "}
-                нь үзэгчдэд хэт бага урамшуулалтай судалгаа үүсэхээс сэргийлнэ. Өмнө
-                үүссэн судалгаанууд үүсэх үеийнхээ шимтгэлээр үргэлжилнэ.
+                нь үзэгчдэд хэт бага урамшуулалтай судалгаа үүсэхээс сэргийлнэ. Судалгааг
+                баталгаажуулахдаа түүний өөрийн шимтгэлийг тогтооно: компанийн төлсөн дүн өөрчлөгдөхгүй,
+                харин нэг үзэгчид олгох урамшуулал шимтгэлээс хамаарна.
               </p>
             </div>
           </CardBody>

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:viewer_app/models/campaign.dart';
 import 'package:viewer_app/screens/home/video_playback.dart';
@@ -221,15 +222,15 @@ void main() {
       expect(find.byType(RewindButton), findsNothing);
     });
 
-    testWidgets('the rewind button jumps back ten seconds, never below zero',
+    testWidgets('the rewind button jumps back five seconds, never below zero',
         (tester) async {
       final player = await pump(tester);
-      player.at(15);
+      player.at(8);
       await tester.pump();
 
       await tester.tap(rewind());
       await tester.pump();
-      expect(player.seeks.last, const Duration(seconds: 5));
+      expect(player.seeks.last, const Duration(seconds: 3));
 
       await tester.tap(rewind());
       await tester.pump();
@@ -284,7 +285,7 @@ void main() {
       await tester.tap(rewind());
       await tester.pump();
 
-      expect(player.seeks.last, const Duration(seconds: 23));
+      expect(player.seeks.last, const Duration(seconds: 28));
       expect(player.plays, playsBefore + 1);
       expect(button(tester).unlocked, isTrue);
       expect(find.bySemanticsLabel('Түр зогсоох'), findsOneWidget);
@@ -302,8 +303,114 @@ void main() {
       await tester.tap(rewind());
       await tester.pump();
 
-      expect(player.seeks.last, const Duration(seconds: 5));
+      expect(player.seeks.last, const Duration(seconds: 10));
       expect(player.plays, playsBefore);
+    });
+  });
+
+  group('full screen', () {
+    late List<MethodCall> system;
+
+    setUp(() {
+      system = [];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        system.add(call);
+        return null;
+      });
+    });
+
+    tearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+
+    List<Object?> orientations() => system
+        .where((c) => c.method == 'SystemChrome.setPreferredOrientations')
+        .map((c) => c.arguments)
+        .toList();
+
+    void phone(WidgetTester tester, {required bool sideways}) {
+      tester.view.devicePixelRatio = 3;
+      tester.view.physicalSize =
+          sideways ? const Size(844 * 3, 390 * 3) : const Size(390 * 3, 844 * 3);
+      addTearDown(tester.view.reset);
+    }
+
+    Finder enter() => find.bySemanticsLabel(FullscreenButton.enterLabel);
+    Finder exit() => find.bySemanticsLabel(FullscreenButton.exitLabel);
+
+    testWidgets('the button turns the phone sideways and fills the screen',
+        (tester) async {
+      phone(tester, sideways: false);
+      await pump(tester);
+
+      await tester.tap(enter());
+      await tester.pump();
+
+      expect(orientations().last,
+          ['DeviceOrientation.landscapeLeft', 'DeviceOrientation.landscapeRight']);
+      expect(exit(), findsOneWidget);
+      expect(find.byType(WatchProgressButton), findsNothing,
+          reason: 'the info panel gives the video the whole screen');
+    });
+
+    testWidgets('leaving full screen stands the phone upright again',
+        (tester) async {
+      phone(tester, sideways: false);
+      await pump(tester);
+      await tester.tap(enter());
+      await tester.pump();
+
+      await tester.tap(exit());
+      await tester.pump();
+
+      expect(orientations().last, ['DeviceOrientation.portraitUp']);
+      expect(find.byType(WatchProgressButton), findsOneWidget);
+    });
+
+    testWidgets('a phone held sideways shows the video full screen',
+        (tester) async {
+      phone(tester, sideways: true);
+      final player = await pump(tester);
+      await tester.pump();
+
+      expect(exit(), findsOneWidget);
+      expect(
+          system.any((c) =>
+              c.method == 'SystemChrome.setEnabledSystemUIMode' &&
+              c.arguments == 'SystemUiMode.immersiveSticky'),
+          isTrue,
+          reason: 'the status bar is hidden over the video');
+
+      player.at(33, completed: true);
+      await tester.pump();
+      expect(find.text('Судалгаа руу'), findsOneWidget,
+          reason: 'the way to the survey is on the full-screen video too');
+    });
+
+    testWidgets('full screen keeps the five-second rewind', (tester) async {
+      phone(tester, sideways: true);
+      final player = await pump(tester);
+      player.at(12);
+      await tester.pump();
+
+      await tester.tap(find.bySemanticsLabel(RewindButton.semanticLabel));
+      await tester.pump();
+
+      expect(player.seeks.last, const Duration(seconds: 7));
+    });
+
+    testWidgets('closing the screen frees the rotation for the rest of the app',
+        (tester) async {
+      phone(tester, sideways: false);
+      await pump(tester);
+      await tester.tap(enter());
+      await tester.pump();
+
+      await tester.pumpWidget(const SizedBox());
+
+      expect(orientations().last, isEmpty);
     });
   });
 }

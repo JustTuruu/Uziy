@@ -1,6 +1,4 @@
-"use client";
-
-import { useRouter } from "next/navigation";
+import { useRouter } from "@shared/navigation";
 import { useEffect, useState } from "react";
 import { Banknote, PiggyBank, TrendingUp } from "lucide-react";
 import { Card, CardBody, CardHeader, PageHeader, StatCard } from "@uziy/ui";
@@ -11,7 +9,7 @@ import {
   platformSettingsApi,
   type AdminStats,
   type PlatformSettings,
-} from "@/lib/api";
+} from "@admin/lib/api";
 
 export default function FinancePage() {
   const router = useRouter();

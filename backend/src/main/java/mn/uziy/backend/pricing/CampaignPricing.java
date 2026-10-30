@@ -69,8 +69,7 @@ public final class CampaignPricing {
                 return result(mode, budget, c, 0, 0, 0, PricingError.VIEWERS_INVALID);
             }
             long cost = budget / n;
-            // floor(cost * keep / 100) without overflow.
-            long reward = (cost / 100) * keep + ((cost % 100) * keep) / 100;
+            long reward = viewerShare(cost, keep);
             PricingError error = null;
             if (cost < 1) {
                 error = PricingError.BUDGET_TOO_SMALL;
@@ -99,6 +98,11 @@ public final class CampaignPricing {
             error = PricingError.REWARD_BELOW_MIN;
         }
         return result(mode, budget, c, n, cost, reward, error);
+    }
+
+    /** floor(cost * keep / 100) without overflow: the viewer's part of one viewer's cost. */
+    private static long viewerShare(long cost, long keep) {
+        return (cost / 100) * keep + ((cost % 100) * keep) / 100;
     }
 
     /** Convenience for VIEWERS mode. */

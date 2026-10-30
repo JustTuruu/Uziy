@@ -1,7 +1,5 @@
-"use client";
-
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link } from "@shared/navigation";
+import { useRouter } from "@shared/navigation";
 import { useEffect, useState } from "react";
 import {
   AlertTriangle,
@@ -28,8 +26,8 @@ import {
   type Campaign,
   type Payout,
   type PlatformSettings,
-} from "@/lib/api";
-import { formatNumber, formatTugrik, relativeTime } from "@/lib/utils";
+} from "@admin/lib/api";
+import { formatNumber, formatTugrik, relativeTime } from "@admin/lib/utils";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -109,7 +107,7 @@ export default function AdminDashboard() {
           icon={<Banknote size={16} />}
           hint={
             <Link
-              href="/pricing"
+              href="/admin/pricing"
               className="hover:text-[var(--color-text-primary)] hover:underline"
             >
               Судалгааны төсвөөс · тохируулах
@@ -131,7 +129,7 @@ export default function AdminDashboard() {
             description="Дансны эзэмшигчийн нэрийг шалгаж батална"
             action={
               <Link
-                href="/payouts"
+                href="/admin/payouts"
                 className="text-xs font-semibold text-[var(--color-primary)] hover:underline"
               >
                 Бүгд →
@@ -178,7 +176,7 @@ export default function AdminDashboard() {
             description="Видео контент, зорилтот тохиргоог шалгах"
             action={
               <Link
-                href="/campaigns"
+                href="/admin/campaigns"
                 className="text-xs font-semibold text-[var(--color-primary)] hover:underline"
               >
                 Бүгд →

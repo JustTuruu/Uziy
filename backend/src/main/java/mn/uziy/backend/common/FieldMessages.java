@@ -41,6 +41,7 @@ public final class FieldMessages {
     public static final String QUESTION_TYPE_REQUIRED = "Асуултын төрлийг сонгоно уу";
     public static final String TOO_MANY_OPTIONS = "Хариултын сонголт хэт олон байна";
     public static final String OPTION_TOO_LONG = "Хариултын сонголт хэт урт байна";
+    public static final String ANSWER_REQUIRED = "Хариултаа сонгоно уу";
 
     private FieldMessages() {
     }

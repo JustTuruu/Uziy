@@ -70,4 +70,6 @@ export {
   PageContainer,
   isActive,
   type NavItem,
+  type NavLinkComponent,
+  type NavLinkProps,
 } from "./sidebar";

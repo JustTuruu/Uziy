@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { adminApi, ApiError } from "@/lib/api";
+import { adminApi, ApiError } from "@admin/lib/api";
 import { FORGET_DEVICES_COPY, ForgetDevicesAction } from "./forget-devices-action";
 
 async function openDialog() {

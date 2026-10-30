@@ -1,13 +1,11 @@
-"use client";
-
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link } from "@shared/navigation";
+import { useRouter } from "@shared/navigation";
 import { useEffect, useState } from "react";
 import { ClipboardList, CreditCard, Play, Plus } from "lucide-react";
-import { CampaignStatusBadge } from "@/components/campaign-status-badge";
+import { CampaignStatusBadge } from "@company/components/campaign-status-badge";
 import { Button, Card, CardBody, PageHeader } from "@uziy/ui";
-import { ApiError, auth, companyApi, type Campaign } from "@/lib/api";
-import { formatNumber, formatTugrik, relativeTime } from "@/lib/utils";
+import { ApiError, auth, companyApi, type Campaign } from "@company/lib/api";
+import { formatNumber, formatTugrik, relativeTime } from "@company/lib/utils";
 
 export default function CampaignsPage() {
   const router = useRouter();

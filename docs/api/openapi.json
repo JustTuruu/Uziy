@@ -1,0 +1,2995 @@
+{
+  "components" : {
+    "schemas" : {
+      "AccessLogEntry" : {
+        "properties" : {
+          "action" : {
+            "type" : "string"
+          },
+          "adminPhone" : {
+            "type" : "string"
+          },
+          "at" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "detail" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "action", "adminPhone", "at", "detail", "id" ],
+        "type" : "object"
+      },
+      "AdminAccountDto" : {
+        "properties" : {
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "phoneNumber" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "createdAt", "id", "phoneNumber" ],
+        "type" : "object"
+      },
+      "AdminStats" : {
+        "properties" : {
+          "activeCampaigns" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "awaitingPaymentCampaigns" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "commissionPercent" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "commissionRate" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "pendingCampaigns" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "pendingPayouts" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalCampaigns" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalUsers" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "activeCampaigns", "awaitingPaymentCampaigns", "commissionPercent", "commissionRate", "pendingCampaigns", "pendingPayouts", "totalCampaigns", "totalUsers" ],
+        "type" : "object"
+      },
+      "AnalyticsResponse" : {
+        "properties" : {
+          "audience" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/Audience"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "campaigns" : {
+            "items" : {
+              "$ref" : "#/components/schemas/CampaignPerformance"
+            },
+            "type" : "array"
+          },
+          "daily" : {
+            "items" : {
+              "$ref" : "#/components/schemas/DailyViews"
+            },
+            "type" : "array"
+          },
+          "days" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "questions" : {
+            "items" : {
+              "$ref" : "#/components/schemas/QuestionBreakdown"
+            },
+            "type" : "array"
+          },
+          "segments" : {
+            "items" : {
+              "$ref" : "#/components/schemas/SegmentBreakdown"
+            },
+            "type" : "array"
+          },
+          "totals" : {
+            "$ref" : "#/components/schemas/Totals"
+          }
+        },
+        "required" : [ "audience", "campaigns", "daily", "days", "questions", "segments", "totals" ],
+        "type" : "object"
+      },
+      "Answer" : {
+        "properties" : {
+          "answerJson" : {
+            "type" : "string"
+          },
+          "questionId" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "Audience" : {
+        "properties" : {
+          "ageBands" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Slice"
+            },
+            "type" : "array"
+          },
+          "cities" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Slice"
+            },
+            "type" : "array"
+          },
+          "gender" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Slice"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "ageBands", "cities", "gender" ],
+        "type" : "object"
+      },
+      "AuthResponse" : {
+        "properties" : {
+          "token" : {
+            "type" : "string"
+          },
+          "user" : {
+            "$ref" : "#/components/schemas/Me"
+          }
+        },
+        "required" : [ "token", "user" ],
+        "type" : "object"
+      },
+      "CampaignDetailDto" : {
+        "properties" : {
+          "campaign" : {
+            "$ref" : "#/components/schemas/CampaignDto"
+          },
+          "companyId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "companyName" : {
+            "type" : [ "string", "null" ]
+          },
+          "completedViews" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "spentBudget" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        },
+        "required" : [ "campaign", "companyId", "companyName", "completedViews", "spentBudget" ],
+        "type" : "object"
+      },
+      "CampaignDto" : {
+        "properties" : {
+          "commissionPercent" : {
+            "format" : "int32",
+            "type" : [ "integer", "null" ]
+          },
+          "costPerView" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "durationSeconds" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "hasVideo" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "maxAge" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "minAge" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "paidAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "remainingBudget" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "rewardPerUser" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "status" : {
+            "enum" : [ "AWAITING_PAYMENT", "PENDING", "ACTIVE", "PAUSED", "COMPLETED", "REJECTED" ],
+            "type" : "string"
+          },
+          "targetCity" : {
+            "type" : "string"
+          },
+          "targetGender" : {
+            "enum" : [ "ALL", "MALE", "FEMALE" ],
+            "type" : "string"
+          },
+          "targetViewers" : {
+            "format" : "int32",
+            "type" : [ "integer", "null" ]
+          },
+          "thumbnailUrl" : {
+            "type" : [ "string", "null" ]
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "totalBudget" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "videoUrl" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "commissionPercent", "costPerView", "createdAt", "durationSeconds", "hasVideo", "id", "maxAge", "minAge", "paidAt", "remainingBudget", "rewardPerUser", "status", "targetCity", "targetGender", "targetViewers", "thumbnailUrl", "title", "totalBudget", "videoUrl" ],
+        "type" : "object"
+      },
+      "CampaignPerformance" : {
+        "properties" : {
+          "campaignId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "costPerResponse" : {
+            "format" : "double",
+            "type" : [ "number", "null" ]
+          },
+          "daysLeft" : {
+            "format" : "int32",
+            "type" : [ "integer", "null" ]
+          },
+          "hasVideo" : {
+            "type" : "boolean"
+          },
+          "reachPercent" : {
+            "format" : "double",
+            "type" : [ "number", "null" ]
+          },
+          "remainingResponses" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "responses" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "responsesLast7Days" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "rewardsPaid" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "spent" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "status" : {
+            "enum" : [ "AWAITING_PAYMENT", "PENDING", "ACTIVE", "PAUSED", "COMPLETED", "REJECTED" ],
+            "type" : "string"
+          },
+          "targetViewers" : {
+            "format" : "int32",
+            "type" : [ "integer", "null" ]
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "campaignId", "costPerResponse", "daysLeft", "hasVideo", "reachPercent", "remainingResponses", "responses", "responsesLast7Days", "rewardsPaid", "spent", "status", "targetViewers", "title" ],
+        "type" : "object"
+      },
+      "CheckQuizAnswerReq" : {
+        "properties" : {
+          "answer" : {
+            "maxLength" : 200,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "answer" ],
+        "type" : "object"
+      },
+      "CompanyAccountDto" : {
+        "properties" : {
+          "campaignCount" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "companyName" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "phoneNumber" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "campaignCount", "companyName", "createdAt", "id", "phoneNumber" ],
+        "type" : "object"
+      },
+      "ConsoleLoginVerifiedRes" : {
+        "properties" : {
+          "deviceToken" : {
+            "type" : "string"
+          },
+          "deviceTrustedUntil" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "token" : {
+            "type" : "string"
+          },
+          "user" : {
+            "$ref" : "#/components/schemas/Me"
+          }
+        },
+        "required" : [ "deviceToken", "deviceTrustedUntil", "token", "user" ],
+        "type" : "object"
+      },
+      "ConsoleLoginVerifyReq" : {
+        "properties" : {
+          "phoneNumber" : {
+            "pattern" : "\\d{8}",
+            "type" : "string"
+          },
+          "verificationId" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "required" : [ "phoneNumber", "verificationId" ],
+        "type" : "object"
+      },
+      "CreateAdminReq" : {
+        "properties" : {
+          "password" : {
+            "maxLength" : 100,
+            "minLength" : 6,
+            "type" : "string"
+          },
+          "phoneNumber" : {
+            "pattern" : "\\d{8}",
+            "type" : "string"
+          }
+        },
+        "required" : [ "password", "phoneNumber" ],
+        "type" : "object"
+      },
+      "CreateCampaignReq" : {
+        "properties" : {
+          "durationSeconds" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "hasVideo" : {
+            "type" : "boolean"
+          },
+          "maxAge" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "minAge" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "questions" : {
+            "items" : {
+              "$ref" : "#/components/schemas/NewQuestion"
+            },
+            "maxItems" : 20,
+            "minItems" : 0,
+            "type" : "array"
+          },
+          "rewardPerUser" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "targetCity" : {
+            "maxLength" : 50,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "targetGender" : {
+            "enum" : [ "ALL", "MALE", "FEMALE" ],
+            "type" : "string"
+          },
+          "targetViewers" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "title" : {
+            "maxLength" : 200,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "totalBudget" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "videoUrl" : {
+            "maxLength" : 500,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "title" ],
+        "type" : "object"
+      },
+      "CreateCompanyReq" : {
+        "properties" : {
+          "companyName" : {
+            "maxLength" : 120,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "password" : {
+            "maxLength" : 100,
+            "minLength" : 6,
+            "type" : "string"
+          },
+          "phoneNumber" : {
+            "pattern" : "\\d{8}",
+            "type" : "string"
+          }
+        },
+        "required" : [ "companyName", "password", "phoneNumber" ],
+        "type" : "object"
+      },
+      "CreatePayoutReq" : {
+        "properties" : {
+          "accountName" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "accountNumber" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "amount" : {
+            "exclusiveMinimum" : 0,
+            "format" : "double",
+            "type" : "number"
+          },
+          "bank" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "required" : [ "accountName", "accountNumber", "bank" ],
+        "type" : "object"
+      },
+      "DailyViews" : {
+        "properties" : {
+          "date" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "responses" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "date", "responses" ],
+        "type" : "object"
+      },
+      "DecideStatisticsConsentReq" : {
+        "properties" : {
+          "granted" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "granted" ],
+        "type" : "object"
+      },
+      "DeleteAccountReq" : {
+        "properties" : {
+          "password" : {
+            "maxLength" : 100,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "password" ],
+        "type" : "object"
+      },
+      "Distribution" : {
+        "properties" : {
+          "filter" : {
+            "$ref" : "#/components/schemas/Filter"
+          },
+          "people" : {
+            "format" : "int64",
+            "type" : [ "integer", "null" ]
+          },
+          "prompt" : {
+            "type" : "string"
+          },
+          "questionId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "shares" : {
+            "items" : {
+              "$ref" : "#/components/schemas/OptionShare"
+            },
+            "type" : "array"
+          },
+          "suppressed" : {
+            "type" : "boolean"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "filter", "people", "prompt", "questionId", "shares", "suppressed", "type" ],
+        "type" : "object"
+      },
+      "FeedItemDto" : {
+        "properties" : {
+          "companyName" : {
+            "type" : "string"
+          },
+          "durationSeconds" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "hasVideo" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "rewardPerUser" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "thumbnailUrl" : {
+            "type" : [ "string", "null" ]
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "videoUrl" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "companyName", "durationSeconds", "hasVideo", "id", "rewardPerUser", "thumbnailUrl", "title", "videoUrl" ],
+        "type" : "object"
+      },
+      "Filter" : {
+        "properties" : {
+          "ageBand" : {
+            "type" : [ "string", "null" ]
+          },
+          "city" : {
+            "type" : [ "string", "null" ]
+          },
+          "gender" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "ageBand", "city", "gender" ],
+        "type" : "object"
+      },
+      "Group" : {
+        "properties" : {
+          "label" : {
+            "type" : "string"
+          },
+          "people" : {
+            "format" : "int64",
+            "type" : [ "integer", "null" ]
+          }
+        },
+        "required" : [ "label", "people" ],
+        "type" : "object"
+      },
+      "ImageResponse" : {
+        "properties" : {
+          "thumbnailUrl" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "thumbnailUrl" ],
+        "type" : "object"
+      },
+      "LoginReq" : {
+        "properties" : {
+          "deviceToken" : {
+            "type" : "string"
+          },
+          "password" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "phoneNumber" : {
+            "pattern" : "\\d{8}",
+            "type" : "string"
+          }
+        },
+        "required" : [ "password", "phoneNumber" ],
+        "type" : "object"
+      },
+      "Me" : {
+        "properties" : {
+          "age" : {
+            "format" : "int32",
+            "type" : [ "integer", "null" ]
+          },
+          "balance" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "city" : {
+            "type" : [ "string", "null" ]
+          },
+          "companyName" : {
+            "type" : [ "string", "null" ]
+          },
+          "district" : {
+            "type" : [ "string", "null" ]
+          },
+          "firstName" : {
+            "type" : [ "string", "null" ]
+          },
+          "gender" : {
+            "enum" : [ "MALE", "FEMALE" ],
+            "type" : [ "string", "null" ]
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "isVerified" : {
+            "type" : "boolean"
+          },
+          "lastName" : {
+            "type" : [ "string", "null" ]
+          },
+          "phoneNumber" : {
+            "type" : "string"
+          },
+          "role" : {
+            "enum" : [ "VIEWER", "COMPANY", "ADMIN" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "age", "balance", "city", "companyName", "district", "firstName", "gender", "id", "isVerified", "lastName", "phoneNumber", "role" ],
+        "type" : "object"
+      },
+      "NewQuestion" : {
+        "properties" : {
+          "correctAnswer" : {
+            "maxLength" : 200,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "options" : {
+            "items" : {
+              "maxLength" : 200,
+              "minLength" : 0,
+              "type" : "string"
+            },
+            "maxItems" : 20,
+            "minItems" : 0,
+            "type" : "array"
+          },
+          "prompt" : {
+            "maxLength" : 1000,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "required" : {
+            "type" : "boolean"
+          },
+          "type" : {
+            "maxLength" : 20,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "prompt", "type" ],
+        "type" : "object"
+      },
+      "OptionBySegment" : {
+        "properties" : {
+          "counts" : {
+            "items" : {
+              "format" : "int64",
+              "type" : "integer"
+            },
+            "type" : "array"
+          },
+          "label" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "counts", "label" ],
+        "type" : "object"
+      },
+      "OptionShare" : {
+        "properties" : {
+          "option" : {
+            "type" : "string"
+          },
+          "percent" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "option", "percent" ],
+        "type" : "object"
+      },
+      "Overview" : {
+        "properties" : {
+          "byAgeBand" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Group"
+            },
+            "type" : "array"
+          },
+          "byCity" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Group"
+            },
+            "type" : "array"
+          },
+          "byGender" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Group"
+            },
+            "type" : "array"
+          },
+          "consentPercent" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "consentingViewers" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "minGroupSize" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "reportableQuestions" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "viewers" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "byAgeBand", "byCity", "byGender", "consentPercent", "consentingViewers", "minGroupSize", "reportableQuestions", "viewers" ],
+        "type" : "object"
+      },
+      "PayCampaignResponse" : {
+        "properties" : {
+          "campaign" : {
+            "$ref" : "#/components/schemas/CampaignDto"
+          },
+          "payment" : {
+            "$ref" : "#/components/schemas/PaymentDto"
+          }
+        },
+        "required" : [ "campaign", "payment" ],
+        "type" : "object"
+      },
+      "PaymentDto" : {
+        "properties" : {
+          "amount" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "campaignId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "campaignTitle" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "paidAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "provider" : {
+            "enum" : [ "SIMULATED", "QPAY", "BANK_TRANSFER" ],
+            "type" : "string"
+          },
+          "reference" : {
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [ "PAID", "FAILED", "REFUNDED" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "amount", "campaignId", "campaignTitle", "createdAt", "id", "paidAt", "provider", "reference", "status" ],
+        "type" : "object"
+      },
+      "PayoutDto" : {
+        "properties" : {
+          "accountName" : {
+            "type" : "string"
+          },
+          "accountNumber" : {
+            "type" : "string"
+          },
+          "amount" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "bank" : {
+            "type" : "string"
+          },
+          "decidedAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "isFirstPayout" : {
+            "type" : "boolean"
+          },
+          "rejectReason" : {
+            "type" : [ "string", "null" ]
+          },
+          "requestedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [ "PENDING", "APPROVED", "REJECTED" ],
+            "type" : "string"
+          },
+          "userId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "userPhone" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "accountName", "accountNumber", "amount", "bank", "decidedAt", "id", "isFirstPayout", "rejectReason", "requestedAt", "status", "userId", "userPhone" ],
+        "type" : "object"
+      },
+      "PhoneVerificationStartedRes" : {
+        "properties" : {
+          "displayInstruction" : {
+            "type" : "string"
+          },
+          "expiresAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "phoneNumber" : {
+            "type" : "string"
+          },
+          "shortcode" : {
+            "type" : "string"
+          },
+          "smsText" : {
+            "type" : "string"
+          },
+          "smsUri" : {
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [ "PENDING", "VERIFIED", "EXPIRED" ],
+            "type" : "string"
+          },
+          "verificationId" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "required" : [ "displayInstruction", "expiresAt", "phoneNumber", "shortcode", "smsText", "smsUri", "status", "verificationId" ],
+        "type" : "object"
+      },
+      "PhoneVerificationStateRes" : {
+        "properties" : {
+          "expiresAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [ "PENDING", "VERIFIED", "EXPIRED" ],
+            "type" : "string"
+          },
+          "verificationId" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "required" : [ "expiresAt", "status", "verificationId" ],
+        "type" : "object"
+      },
+      "PlatformSettingsDto" : {
+        "properties" : {
+          "commissionPercent" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "minRewardPerViewer" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "surveyCommissionPercent" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "updatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [ "commissionPercent", "minRewardPerViewer", "surveyCommissionPercent", "updatedAt" ],
+        "type" : "object"
+      },
+      "QuestionBreakdown" : {
+        "properties" : {
+          "answered" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "options" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Slice"
+            },
+            "type" : "array"
+          },
+          "prompt" : {
+            "type" : "string"
+          },
+          "questionId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "answered", "options", "prompt", "questionId", "type" ],
+        "type" : "object"
+      },
+      "QuestionDto" : {
+        "properties" : {
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "options" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "position" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "prompt" : {
+            "type" : "string"
+          },
+          "required" : {
+            "type" : "boolean"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "options", "position", "prompt", "required", "type" ],
+        "type" : "object"
+      },
+      "QuestionSummary" : {
+        "properties" : {
+          "companyName" : {
+            "type" : "string"
+          },
+          "prompt" : {
+            "type" : "string"
+          },
+          "questionId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "reportable" : {
+            "type" : "boolean"
+          },
+          "respondents" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "surveyTitle" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "companyName", "prompt", "questionId", "reportable", "respondents", "surveyTitle", "type" ],
+        "type" : "object"
+      },
+      "QuizCheckResult" : {
+        "properties" : {
+          "correct" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "correct" ],
+        "type" : "object"
+      },
+      "RegisterDeviceReq" : {
+        "properties" : {
+          "platform" : {
+            "enum" : [ "ANDROID", "IOS" ],
+            "type" : "string"
+          },
+          "token" : {
+            "maxLength" : 512,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "platform", "token" ],
+        "type" : "object"
+      },
+      "RegisterViewerReq" : {
+        "properties" : {
+          "birthDate" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "city" : {
+            "maxLength" : 50,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "district" : {
+            "maxLength" : 50,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "firstName" : {
+            "maxLength" : 60,
+            "minLength" : 0,
+            "pattern" : "^\\s*\\p{L}[\\p{L} '\\-]*\\s*$",
+            "type" : "string"
+          },
+          "gender" : {
+            "enum" : [ "MALE", "FEMALE" ],
+            "type" : "string"
+          },
+          "lastName" : {
+            "maxLength" : 60,
+            "minLength" : 0,
+            "pattern" : "^\\s*\\p{L}[\\p{L} '\\-]*\\s*$",
+            "type" : "string"
+          },
+          "password" : {
+            "maxLength" : 100,
+            "minLength" : 6,
+            "type" : "string"
+          },
+          "phoneNumber" : {
+            "pattern" : "\\d{8}",
+            "type" : "string"
+          },
+          "verificationId" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "required" : [ "birthDate", "city", "firstName", "gender", "lastName", "password", "verificationId" ],
+        "type" : "object"
+      },
+      "ResetPasswordReq" : {
+        "properties" : {
+          "newPassword" : {
+            "maxLength" : 100,
+            "minLength" : 6,
+            "type" : "string"
+          },
+          "phoneNumber" : {
+            "pattern" : "\\d{8}",
+            "type" : "string"
+          },
+          "verificationId" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "required" : [ "newPassword", "phoneNumber", "verificationId" ],
+        "type" : "object"
+      },
+      "RewardResult" : {
+        "properties" : {
+          "newBalance" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "rewardPaid" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        },
+        "required" : [ "newBalance", "rewardPaid" ],
+        "type" : "object"
+      },
+      "SegmentBreakdown" : {
+        "properties" : {
+          "options" : {
+            "items" : {
+              "$ref" : "#/components/schemas/OptionBySegment"
+            },
+            "type" : "array"
+          },
+          "prompt" : {
+            "type" : "string"
+          },
+          "questionId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "segments" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Slice"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "options", "prompt", "questionId", "segments" ],
+        "type" : "object"
+      },
+      "SegmentRow" : {
+        "properties" : {
+          "dimension" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "people" : {
+            "format" : "int64",
+            "type" : [ "integer", "null" ]
+          },
+          "shares" : {
+            "items" : {
+              "$ref" : "#/components/schemas/OptionShare"
+            },
+            "type" : "array"
+          },
+          "suppressed" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "dimension", "label", "people", "shares", "suppressed" ],
+        "type" : "object"
+      },
+      "Segments" : {
+        "properties" : {
+          "options" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "prompt" : {
+            "type" : "string"
+          },
+          "questionId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "rows" : {
+            "items" : {
+              "$ref" : "#/components/schemas/SegmentRow"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "options", "prompt", "questionId", "rows" ],
+        "type" : "object"
+      },
+      "SetViewerNameReq" : {
+        "properties" : {
+          "firstName" : {
+            "maxLength" : 60,
+            "minLength" : 0,
+            "pattern" : "^\\s*\\p{L}[\\p{L} '\\-]*\\s*$",
+            "type" : "string"
+          },
+          "lastName" : {
+            "maxLength" : 60,
+            "minLength" : 0,
+            "pattern" : "^\\s*\\p{L}[\\p{L} '\\-]*\\s*$",
+            "type" : "string"
+          }
+        },
+        "required" : [ "firstName", "lastName" ],
+        "type" : "object"
+      },
+      "Slice" : {
+        "properties" : {
+          "count" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "label" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "count", "label" ],
+        "type" : "object"
+      },
+      "StartPhoneVerificationReq" : {
+        "properties" : {
+          "phoneNumber" : {
+            "pattern" : "\\d{8}",
+            "type" : "string"
+          },
+          "purpose" : {
+            "enum" : [ "REGISTER", "PASSWORD_RESET", "ADMIN_LOGIN", "COMPANY_LOGIN" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "phoneNumber" ],
+        "type" : "object"
+      },
+      "StatisticsConsentDto" : {
+        "properties" : {
+          "decidedAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "status" : {
+            "enum" : [ "UNASKED", "GRANTED", "DECLINED" ],
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "decidedAt", "status", "version" ],
+        "type" : "object"
+      },
+      "SubmitSurveyReq" : {
+        "properties" : {
+          "answers" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Answer"
+            },
+            "minItems" : 1,
+            "type" : "array"
+          }
+        },
+        "required" : [ "answers" ],
+        "type" : "object"
+      },
+      "Totals" : {
+        "properties" : {
+          "activeCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "campaignCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "costPerResponse" : {
+            "format" : "double",
+            "type" : [ "number", "null" ]
+          },
+          "responses" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "rewardsPaid" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "spent" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        },
+        "required" : [ "activeCount", "campaignCount", "costPerResponse", "responses", "rewardsPaid", "spent" ],
+        "type" : "object"
+      },
+      "UpdatePlatformSettingsReq" : {
+        "properties" : {
+          "commissionPercent" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "minRewardPerViewer" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "surveyCommissionPercent" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "UserDto" : {
+        "properties" : {
+          "age" : {
+            "format" : "int32",
+            "type" : [ "integer", "null" ]
+          },
+          "balance" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "city" : {
+            "type" : [ "string", "null" ]
+          },
+          "companyName" : {
+            "type" : [ "string", "null" ]
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "gender" : {
+            "enum" : [ "MALE", "FEMALE" ],
+            "type" : [ "string", "null" ]
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "isVerified" : {
+            "type" : "boolean"
+          },
+          "phoneNumber" : {
+            "type" : "string"
+          },
+          "role" : {
+            "enum" : [ "VIEWER", "COMPANY", "ADMIN" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "age", "balance", "city", "companyName", "createdAt", "gender", "id", "isVerified", "phoneNumber", "role" ],
+        "type" : "object"
+      },
+      "ViewHistoryItemDto" : {
+        "properties" : {
+          "campaignId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "companyName" : {
+            "type" : "string"
+          },
+          "rewardPaid" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "watchedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [ "campaignId", "companyName", "rewardPaid", "title", "watchedAt" ],
+        "type" : "object"
+      }
+    },
+    "securitySchemes" : {
+      "bearer" : {
+        "bearerFormat" : "JWT",
+        "scheme" : "bearer",
+        "type" : "http"
+      }
+    }
+  },
+  "info" : {
+    "title" : "Uziy API",
+    "version" : "1"
+  },
+  "openapi" : "3.1.0",
+  "paths" : {
+    "/admin/admins" : {
+      "get" : {
+        "operationId" : "list_2",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/AdminAccountDto"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-account-controller" ]
+      },
+      "post" : {
+        "operationId" : "create_2",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateAdminReq"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminAccountDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-account-controller" ]
+      }
+    },
+    "/admin/campaigns" : {
+      "get" : {
+        "operationId" : "listCampaigns",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "AWAITING_PAYMENT", "PENDING", "ACTIVE", "PAUSED", "COMPLETED", "REJECTED" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "companyId",
+          "required" : false,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/CampaignDto"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-controller" ]
+      }
+    },
+    "/admin/campaigns/{id}" : {
+      "get" : {
+        "operationId" : "getCampaign",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CampaignDetailDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-controller" ]
+      }
+    },
+    "/admin/campaigns/{id}/image" : {
+      "delete" : {
+        "operationId" : "remove_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ImageResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "campaign-image-controller" ]
+      },
+      "post" : {
+        "operationId" : "upload_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "properties" : {
+                  "file" : {
+                    "format" : "binary",
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "file" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ImageResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "campaign-image-controller" ]
+      }
+    },
+    "/admin/campaigns/{id}/moderate" : {
+      "patch" : {
+        "operationId" : "moderate",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "decision",
+          "required" : true,
+          "schema" : {
+            "enum" : [ "AWAITING_PAYMENT", "PENDING", "ACTIVE", "PAUSED", "COMPLETED", "REJECTED" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "commissionPercent",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CampaignDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-controller" ]
+      }
+    },
+    "/admin/companies" : {
+      "get" : {
+        "operationId" : "list_1",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/CompanyAccountDto"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "company-account-controller" ]
+      },
+      "post" : {
+        "operationId" : "create_1",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateCompanyReq"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CompanyAccountDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "company-account-controller" ]
+      }
+    },
+    "/admin/insights/access-log" : {
+      "get" : {
+        "operationId" : "accessLog",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/AccessLogEntry"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "insights-controller" ]
+      }
+    },
+    "/admin/insights/overview" : {
+      "get" : {
+        "operationId" : "overview",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Overview"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "insights-controller" ]
+      }
+    },
+    "/admin/insights/questions" : {
+      "get" : {
+        "operationId" : "questions_1",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/QuestionSummary"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "insights-controller" ]
+      }
+    },
+    "/admin/insights/questions/{id}" : {
+      "get" : {
+        "operationId" : "distribution",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "gender",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "ageBand",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "city",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Distribution"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "insights-controller" ]
+      }
+    },
+    "/admin/insights/questions/{id}/export.csv" : {
+      "get" : {
+        "operationId" : "export",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "format" : "byte",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "insights-controller" ]
+      }
+    },
+    "/admin/insights/questions/{id}/segments" : {
+      "get" : {
+        "operationId" : "segments",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Segments"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "insights-controller" ]
+      }
+    },
+    "/admin/payouts" : {
+      "get" : {
+        "operationId" : "pending",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/PayoutDto"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "payout-controller" ]
+      }
+    },
+    "/admin/payouts/history" : {
+      "get" : {
+        "operationId" : "history_1",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/PayoutDto"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "payout-controller" ]
+      }
+    },
+    "/admin/payouts/{id}/decision" : {
+      "patch" : {
+        "operationId" : "decide_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "decision",
+          "required" : true,
+          "schema" : {
+            "enum" : [ "PENDING", "APPROVED", "REJECTED" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "reason",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PayoutDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "payout-controller" ]
+      }
+    },
+    "/admin/platform-settings" : {
+      "patch" : {
+        "operationId" : "update",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdatePlatformSettingsReq"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlatformSettingsDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "platform-settings-controller" ]
+      }
+    },
+    "/admin/stats" : {
+      "get" : {
+        "operationId" : "stats",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminStats"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-controller" ]
+      }
+    },
+    "/admin/users" : {
+      "get" : {
+        "operationId" : "listUsers",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/UserDto"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-controller" ]
+      }
+    },
+    "/admin/users/{id}" : {
+      "get" : {
+        "operationId" : "getUser",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-controller" ]
+      }
+    },
+    "/admin/users/{id}/trusted-devices/forget" : {
+      "post" : {
+        "operationId" : "forget",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "trusted-device-admin-controller" ]
+      }
+    },
+    "/admin/users/{id}/verify" : {
+      "patch" : {
+        "operationId" : "verify_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-controller" ]
+      }
+    },
+    "/auth/login" : {
+      "post" : {
+        "operationId" : "login",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LoginReq"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/auth/login/verify" : {
+      "post" : {
+        "operationId" : "verify",
+        "parameters" : [ {
+          "in" : "header",
+          "name" : "User-Agent",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ConsoleLoginVerifyReq"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConsoleLoginVerifiedRes"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "console-login-controller" ]
+      }
+    },
+    "/auth/password/reset" : {
+      "post" : {
+        "operationId" : "reset",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ResetPasswordReq"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "password-reset-controller" ]
+      }
+    },
+    "/auth/phone-verifications" : {
+      "post" : {
+        "operationId" : "start",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/StartPhoneVerificationReq"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PhoneVerificationStartedRes"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "phone-verification-controller" ]
+      }
+    },
+    "/auth/phone-verifications/simulated-sms/{sessionId}" : {
+      "post" : {
+        "operationId" : "receive",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "sessionId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "simulated-sms-controller" ]
+      }
+    },
+    "/auth/phone-verifications/{verificationId}" : {
+      "get" : {
+        "operationId" : "check_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "verificationId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PhoneVerificationStateRes"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "phone-verification-controller" ]
+      }
+    },
+    "/auth/register/viewer" : {
+      "post" : {
+        "operationId" : "registerViewer",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RegisterViewerReq"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuthResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/company/analytics" : {
+      "get" : {
+        "operationId" : "get_2",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "days",
+          "required" : false,
+          "schema" : {
+            "default" : 30,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "campaignId",
+          "required" : false,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AnalyticsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "analytics-controller" ]
+      }
+    },
+    "/company/campaigns" : {
+      "get" : {
+        "operationId" : "list",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/CampaignDto"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "company-controller" ]
+      },
+      "post" : {
+        "operationId" : "create",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateCampaignReq"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CampaignDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "company-controller" ]
+      }
+    },
+    "/company/campaigns/{id}" : {
+      "get" : {
+        "operationId" : "get_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CampaignDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "company-controller" ]
+      }
+    },
+    "/company/campaigns/{id}/image" : {
+      "delete" : {
+        "operationId" : "remove",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ImageResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "company-campaign-image-controller" ]
+      },
+      "post" : {
+        "operationId" : "upload",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "properties" : {
+                  "file" : {
+                    "format" : "binary",
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "file" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ImageResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "company-campaign-image-controller" ]
+      }
+    },
+    "/company/campaigns/{id}/pay" : {
+      "post" : {
+        "operationId" : "pay",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PayCampaignResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "company-controller" ]
+      }
+    },
+    "/company/campaigns/{id}/status" : {
+      "patch" : {
+        "operationId" : "setStatus",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "status",
+          "required" : true,
+          "schema" : {
+            "enum" : [ "AWAITING_PAYMENT", "PENDING", "ACTIVE", "PAUSED", "COMPLETED", "REJECTED" ],
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CampaignDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "company-controller" ]
+      }
+    },
+    "/company/payments" : {
+      "get" : {
+        "operationId" : "payments",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/PaymentDto"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "company-controller" ]
+      }
+    },
+    "/platform-settings" : {
+      "get" : {
+        "operationId" : "get",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlatformSettingsDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "platform-settings-controller" ]
+      }
+    },
+    "/public/campaigns/{id}/image" : {
+      "get" : {
+        "operationId" : "image",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "format" : "byte",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "campaign-image-controller" ]
+      }
+    },
+    "/public/feed" : {
+      "get" : {
+        "operationId" : "feed_1",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/FeedItemDto"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "guest-controller" ]
+      }
+    },
+    "/viewer/campaigns/{id}/questions" : {
+      "get" : {
+        "operationId" : "questions",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/QuestionDto"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "viewer-controller" ]
+      }
+    },
+    "/viewer/campaigns/{id}/questions/{questionId}/check" : {
+      "post" : {
+        "operationId" : "check",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "questionId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CheckQuizAnswerReq"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/QuizCheckResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "quiz-controller" ]
+      }
+    },
+    "/viewer/campaigns/{id}/submit" : {
+      "post" : {
+        "operationId" : "submit",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SubmitSurveyReq"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RewardResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "viewer-controller" ]
+      }
+    },
+    "/viewer/consents/statistics" : {
+      "get" : {
+        "operationId" : "current",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StatisticsConsentDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "statistics-consent-controller" ]
+      },
+      "put" : {
+        "operationId" : "decide",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DecideStatisticsConsentReq"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StatisticsConsentDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "statistics-consent-controller" ]
+      }
+    },
+    "/viewer/devices" : {
+      "delete" : {
+        "operationId" : "unregister",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "maxLength" : 512,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "device-controller" ]
+      },
+      "post" : {
+        "operationId" : "register",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RegisterDeviceReq"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "device-controller" ]
+      }
+    },
+    "/viewer/feed" : {
+      "get" : {
+        "operationId" : "feed",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/FeedItemDto"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "viewer-controller" ]
+      }
+    },
+    "/viewer/history" : {
+      "get" : {
+        "operationId" : "history",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/ViewHistoryItemDto"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "viewer-controller" ]
+      }
+    },
+    "/viewer/me" : {
+      "delete" : {
+        "operationId" : "delete",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DeleteAccountReq"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "account-deletion-controller" ]
+      },
+      "get" : {
+        "operationId" : "me",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Me"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "viewer-controller" ]
+      }
+    },
+    "/viewer/me/name" : {
+      "put" : {
+        "operationId" : "set",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SetViewerNameReq"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Me"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "viewer-name-controller" ]
+      }
+    },
+    "/viewer/payouts" : {
+      "get" : {
+        "operationId" : "mine",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/PayoutDto"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "payout-controller" ]
+      },
+      "post" : {
+        "operationId" : "request",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreatePayoutReq"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PayoutDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "payout-controller" ]
+      }
+    }
+  },
+  "security" : [ {
+    "bearer" : [ ]
+  } ],
+  "servers" : [ {
+    "url" : "http://localhost:8080"
+  } ]
+}

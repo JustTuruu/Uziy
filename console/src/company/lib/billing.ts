@@ -25,11 +25,8 @@ export interface CampaignInvoice {
   payable: number;
   targetViewers: number;
   rewardPerViewer: number;
-  /** Paid out to viewers in total. */
+  /** Paid out to viewers in total. The platform's cut is never shown to the company (owner, 2026-10-30). */
   rewardsTotal: number;
-  /** Platform's cut; payable − rewardsTotal so the lines always add up. */
-  commissionTotal: number;
-  commissionPercent: number | null;
 }
 
 /**
@@ -47,8 +44,6 @@ export function campaignInvoice(c: Campaign): CampaignInvoice {
     targetViewers,
     rewardPerViewer: c.rewardPerUser,
     rewardsTotal,
-    commissionTotal: Math.max(0, payable - rewardsTotal),
-    commissionPercent: c.commissionPercent,
   };
 }
 

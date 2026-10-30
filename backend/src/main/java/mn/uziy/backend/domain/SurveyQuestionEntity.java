@@ -39,6 +39,10 @@ public class SurveyQuestionEntity {
     @Column(nullable = false)
     private boolean required = true;
 
+    /** The one correct option of a QUIZ question; null for every other type. Never sent to the viewer app. */
+    @Column(name = "correct_answer", columnDefinition = "TEXT")
+    private @Nullable String correctAnswer;
+
     public SurveyQuestionEntity() {
     }
 
@@ -62,4 +66,7 @@ public class SurveyQuestionEntity {
 
     public boolean isRequired() { return required; }
     public void setRequired(boolean required) { this.required = required; }
+
+    public @Nullable String getCorrectAnswer() { return correctAnswer; }
+    public void setCorrectAnswer(@Nullable String correctAnswer) { this.correctAnswer = correctAnswer; }
 }

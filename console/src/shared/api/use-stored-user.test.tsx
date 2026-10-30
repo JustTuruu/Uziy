@@ -1,7 +1,8 @@
 import { renderHook } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { auth, useStoredUser, type Me } from "./api";
+import { auth, useStoredUser } from "./http";
+import type { Me } from "./types";
 
 const me: Me = {
   id: 1,
@@ -13,6 +14,9 @@ const me: Me = {
   balance: 0,
   isVerified: true,
   companyName: null,
+  district: null,
+  lastName: null,
+  firstName: null,
 };
 
 describe("useStoredUser", () => {

@@ -32,13 +32,11 @@ viewer_app/macos/Flutter/ephemeral/
 viewer_app/linux/flutter/ephemeral/
 viewer_app/windows/flutter/ephemeral/
 
-# ---- Next.js (admin_panel/) ----
-admin_panel/node_modules/
-admin_panel/.next/
-admin_panel/out/
-admin_panel/.turbo/
-admin_panel/.vercel/
-admin_panel/*.tsbuildinfo
+# ---- Vite (console/) ----
+console/node_modules/
+console/dist/
+console/build/
+console/*.tsbuildinfo
 
 # ---- Gradle / Spring Boot (backend/) ----
 backend/.gradle/

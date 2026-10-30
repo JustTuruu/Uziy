@@ -16,8 +16,6 @@ public final class Messages {
     public static final String PHONE_TAKEN = "Энэ утасны дугаар аль хэдийн бүртгэлтэй байна. Нэвтэрч орно уу";
     /** An admin opening a company or admin account on a phone that already has an account (of any role). */
     public static final String ACCOUNT_PHONE_TAKEN = "Энэ утасны дугаар өөр бүртгэлд ашиглагдаж байна";
-    /** A sign-in handoff code that is unknown, already spent or too old. */
-    public static final String HANDOFF_INVALID = "Нэвтрэх холбоосны хугацаа дууссан байна. Дахин нэвтэрнэ үү";
     public static final String INSUFFICIENT_BALANCE = "Хэтэвчний үлдэгдэл хүрэлцэхгүй байна";
     public static final String BUSY = "Түр завгүй байна. Дахин оролдоно уу";
 

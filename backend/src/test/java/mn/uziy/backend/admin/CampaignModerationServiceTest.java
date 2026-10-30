@@ -26,6 +26,8 @@ import mn.uziy.backend.domain.CampaignActor;
 import mn.uziy.backend.domain.CampaignEntity;
 import mn.uziy.backend.domain.CampaignRepository;
 import mn.uziy.backend.domain.CampaignStatus;
+import mn.uziy.backend.domain.PlatformSettingsEntity;
+import mn.uziy.backend.domain.PlatformSettingsRepository;
 import mn.uziy.backend.domain.UserRepository;
 import mn.uziy.backend.domain.ViewHistoryRepository;
 import org.junit.jupiter.api.Test;
@@ -38,11 +40,12 @@ class CampaignModerationServiceTest {
     private final CampaignRepository campaigns = mock(CampaignRepository.class);
     private final ViewHistoryRepository history = mock(ViewHistoryRepository.class);
     private final DomainEventPublisher events = mock(DomainEventPublisher.class);
+    private final PlatformSettingsRepository settings = mock(PlatformSettingsRepository.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-10-06T10:00:00Z"), ZoneOffset.UTC);
     private final CampaignModerationServiceImpl moderation = new CampaignModerationServiceImpl(
             campaigns, users, history, new AdminCampaignMapper(new CampaignMapper()),
             new ModerationStrategyRegistry(List.of(new ApproveCampaignStrategy(), new RejectCampaignStrategy())),
-            events, clock);
+            new CampaignCommission(), settings, events, clock);
 
     // ------- listCampaigns -------------------------------------------------
 
@@ -128,6 +131,33 @@ class CampaignModerationServiceTest {
         assertThat(dto.status()).isEqualTo(CampaignStatus.ACTIVE);
         assertThat(saved.getValue().getStatus()).isEqualTo(CampaignStatus.ACTIVE);
         assertThat(saved.getValue().getUpdatedAt()).isEqualTo(OffsetDateTime.now(clock));
+    }
+
+    @Test
+    void approvingAtItsOwnCommissionReSplitsThePaidCampaignAndRecordsIt() {
+        CampaignEntity pending = campaign(1, CampaignStatus.PENDING);
+        pending.setTargetViewers(1_000);
+        pending.setCommissionPercent(30);
+        when(campaigns.findById(1L)).thenReturn(Optional.of(pending));
+        when(campaigns.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(settings.findById(1)).thenReturn(Optional.of(new PlatformSettingsEntity()));
+
+        CampaignDto dto = moderation.moderate(1L, CampaignStatus.ACTIVE, 40);
+
+        assertThat(dto.status()).isEqualTo(CampaignStatus.ACTIVE);
+        assertThat(dto.commissionPercent()).isEqualTo(40);
+        assertThat(dto.rewardPerUser()).isEqualTo(600.0);
+        assertThat(dto.costPerView()).isEqualTo(1000.0);
+        verify(events).publish(new CampaignCommissionSet(1L, 30, 40, 600L));
+    }
+
+    @Test
+    void aCommissionWithARejectionIs400AndChangesNothing() {
+        when(campaigns.findById(1L)).thenReturn(Optional.of(campaign(1, CampaignStatus.PENDING)));
+        var ex = assertFailsWithHttp(() -> moderation.moderate(1L, CampaignStatus.REJECTED, 40));
+        assertThat(ex.statusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(ex.reason()).isEqualTo(CampaignCommission.ONLY_ON_APPROVAL_MESSAGE);
+        verify(campaigns, never()).save(any());
     }
 
     @Test

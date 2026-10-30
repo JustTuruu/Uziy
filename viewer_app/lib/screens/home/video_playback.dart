@@ -32,8 +32,8 @@ class PlaybackState {
       position.inMicroseconds / Duration.microsecondsPerSecond;
 }
 
-/// How far the rewind button jumps back.
-const Duration kRewindStep = Duration(seconds: 10);
+/// How far the rewind button jumps back (owner, 2026-10-30: 5 s, was 10).
+const Duration kRewindStep = Duration(seconds: 5);
 
 /// Rewind only (owner, 2026-10-22): a viewer may go back to anything already
 /// played, never past the [furthest] point they have actually watched, so the

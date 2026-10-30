@@ -6,14 +6,14 @@ import mn.uziy.backend.common.BadRequestException;
 import mn.uziy.backend.domain.PlatformSettings;
 import mn.uziy.backend.domain.PlatformSettingsEntity;
 import mn.uziy.backend.domain.PlatformSettingsRepository;
-import mn.uziy.backend.pricing.CampaignPricing;
+import mn.uziy.backend.pricing.CommissionRange;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class PlatformSettingsServiceImpl implements PlatformSettingsService {
 
-    public static final String COMMISSION_RANGE_MESSAGE = "Платформын шимтгэл 1–90% хооронд байх ёстой";
+    public static final String COMMISSION_RANGE_MESSAGE = CommissionRange.MESSAGE;
     public static final String MIN_REWARD_MESSAGE =
             "Нэг үзэгчид олгох хамгийн бага урамшуулал 1 ₮-өөс багагүй байх ёстой";
     private static final int MIN_REWARD_FLOOR = 1;
@@ -36,12 +36,8 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
     @Override
     @Transactional
     public PlatformSettingsDto update(UpdatePlatformSettingsReq req, long adminId) {
-        Integer commission = req.commissionPercent();
-        if (commission == null
-                || commission < CampaignPricing.MIN_COMMISSION_PERCENT
-                || commission > CampaignPricing.MAX_COMMISSION_PERCENT) {
-            throw new BadRequestException(COMMISSION_RANGE_MESSAGE);
-        }
+        int commission = CommissionRange.check(req.commissionPercent());
+        int surveyCommission = CommissionRange.check(req.surveyCommissionPercent());
 
         Integer minReward = req.minRewardPerViewer();
         if (minReward == null || minReward < MIN_REWARD_FLOOR) {
@@ -50,6 +46,7 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
 
         PlatformSettingsEntity e = PlatformSettings.current(repo);
         e.setCommissionPercent(commission);
+        e.setSurveyCommissionPercent(surveyCommission);
         e.setMinRewardPerViewer(minReward);
         e.setUpdatedAt(OffsetDateTime.now(clock));
         e.setUpdatedBy(adminId);

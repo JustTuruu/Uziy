@@ -34,6 +34,8 @@ abstract final class AppIcons {
 
   // Video player
   static const IconData rewind = LucideIcons.rotateCcw;
+  static const IconData fullscreen = LucideIcons.maximize;
+  static const IconData exitFullscreen = LucideIcons.minimize;
 
   // Wallet history
   static const IconData payout = LucideIcons.landmark;

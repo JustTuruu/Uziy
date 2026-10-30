@@ -1,9 +1,16 @@
 packages:
-  - admin_panel
-  - company_panel
+  - console
   - landing
   - packages/*
 
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver
+
+# Pinned to releases at least two weeks old (2026-10-30): the console's newest transitive dependencies had been
+# published a day earlier. Drop a pin once the version it holds back is old enough.
+overrides:
+  seroval: 1.6.9
+  seroval-plugins: 1.6.9
+  "@redocly/openapi-core": 1.34.21
+  uri-js-replace: 1.0.1

@@ -1,11 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { auth, companyApi, type Campaign, type Payment } from "@/lib/api";
-import { formatDate, formatTugrik } from "@/lib/utils";
-import BillingPage from "./page";
+import { auth, companyApi, type Campaign, type Payment } from "@company/lib/api";
+import { formatDate, formatTugrik } from "@company/lib/utils";
+import BillingPage from "./billing-page";
 
 const router = { replace: vi.fn(), push: vi.fn(), refresh: vi.fn() };
-vi.mock("next/navigation", () => ({ useRouter: () => router }));
+vi.mock("@shared/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@shared/navigation")>()),
+  useRouter: () => router,
+}));
 
 function campaign(over: Partial<Campaign>): Campaign {
   return {
@@ -27,6 +30,7 @@ function campaign(over: Partial<Campaign>): Campaign {
     paidAt: null,
     status: "ACTIVE",
     createdAt: "2026-09-01T00:00:00Z",
+    thumbnailUrl: null,
     ...over,
   };
 }

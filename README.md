@@ -174,14 +174,13 @@ flowchart LR
 </details>
 
 <details>
-<summary><b>Web consoles</b> — <code>company_panel/</code> + <code>admin_panel/</code></summary>
+<summary><b>Web console</b> — <code>console/</code></summary>
 
-- **Next.js 16** (App Router, Turbopack, Server Components by default)
-- **React 19**
-- **TypeScript 5**
-- **Tailwind CSS 4** (CSS variables for theming, matching the Flutter palette)
-- **lucide-react** for icons
-- One codebase, role-based routing (`/company/*` vs `/admin/*`)
+- **Vite 8** single-page app, **React 19**, **TypeScript 5**
+- **TanStack Router** — companies at `/`, super admins at `/admin/*`, one sign-in page; each area is guarded and lazy-loaded
+- **Tailwind CSS 4** + the shared kit `packages/ui` (`@uziy/ui`)
+- API types generated from the backend's OpenAPI spec (`packages/api-types`)
+- Served by **nginx** in Docker with a strict CSP (no inline scripts)
 
 </details>
 
@@ -241,26 +240,8 @@ uziy/
 │   ├── android/ ios/ web/ …   platform folders
 │   └── test/                  flutter_test smoke tests
 │
-├── company_panel/             ← Next.js — company console (port 3000)
-├── admin_panel/               ← Next.js — super admin console (port 3001)
-│   ├── package.json
-│   ├── app/
-│   │   ├── layout.tsx         root <html lang="mn">
-│   │   ├── globals.css        Tailwind + design tokens (mirror viewer_app)
-│   │   ├── page.tsx           → redirects to /login
-│   │   ├── login/             role picker (Company / Admin) + JWT login
-│   │   ├── company/           dashboard, campaigns list, 5-step wizard,
-│   │   │                      analytics, billing, settings
-│   │   └── admin/             dashboard, payouts queue, users list,
-│   │                          campaigns moderation, finance ledger
-│   ├── components/
-│   │   ├── sidebar.tsx        role-aware nav
-│   │   ├── stat-card.tsx
-│   │   └── ui/                Button, Card, Input, Badge
-│   └── lib/
-│       ├── utils.ts           cn(), formatTugrik(), relativeTime()
-│       └── mock-data.ts       fixtures used until backend is wired
-│
+├── console/                   ← Vite SPA — company console (/) + super admin console (/admin), port 3000
+├── packages/ui, packages/api-types  ← shared UI kit, generated API types
 ├── backend/                   ← Spring Boot — REST API
 │   ├── build.gradle.kts       Boot 4, Java 17, JJWT, Mockito, Testcontainers
 │   ├── docker-compose.yml     local Postgres 16 on :5432
@@ -301,7 +282,7 @@ Verify with `flutter doctor` and `docker info`.
 
 ### Run everything with Docker (one command)
 
-Postgres, the backend and both consoles, from the repo root:
+Postgres, the backend and the console, from the repo root:
 
 ```bash
 docker compose up -d --build     # first build takes a few minutes
@@ -309,8 +290,7 @@ docker compose up -d --build     # first build takes a few minutes
 
 | Service | URL |
 |---|---|
-| Company console | http://localhost:3000 |
-| Super Admin console | http://localhost:3001 |
+| Console (companies at `/`, admins at `/admin`) | http://localhost:3000 |
 | Backend API | http://localhost:8080 |
 | pgAdmin | http://localhost:5050 |
 
@@ -324,7 +304,7 @@ Local secrets (`PHONE_VERIFICATION_PROVIDER`, `VERIFY_MN_API_KEY`, …) come fro
 `backend/.env` when it exists (see `backend/.env.example`). The images are
 production builds, so code changes need `--build`; for hot reload use the
 three-terminal setup below (stop the Docker copy first with
-`docker compose stop backend admin company`, or the ports clash).
+`docker compose stop backend console`, or the ports clash).
 
 ### Run the whole stack in three terminals
 
@@ -337,23 +317,15 @@ docker compose up -d postgres          # boots Postgres 16 on :5432
 # API up on http://localhost:8080
 ```
 
-**Terminal 2 — Company console** (http://localhost:3000)
+**Terminal 2 — Console** (http://localhost:3000; admins sign in on the same page and land on `/admin`)
 
 ```bash
-cd company_panel
+cd console
 pnpm install
 pnpm dev
 ```
 
-**Terminal 3 — Super Admin console** (http://localhost:3001)
-
-```bash
-cd admin_panel
-pnpm install
-pnpm dev
-```
-
-**Terminal 4 — Viewer app**
+**Terminal 3 — Viewer app**
 
 ```bash
 cd viewer_app
@@ -616,18 +588,12 @@ scp build/libs/backend-*.jar user@server:/opt/uziy/
 Env vars (`DB_URL`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `PORT`) are
 injected via systemd `EnvironmentFile=`.
 
-### Web consoles (Next.js)
+### Web console
 
-Deploy to **Vercel** — `company_panel/` and `admin_panel/` are each a
-standard Next.js project (two Vercel projects; add both origins to the
-backend's `uziy.cors.allowed-origins`).
-
-```bash
-cd admin_panel
-vercel deploy --prod
-```
-
-Set `NEXT_PUBLIC_API_BASE_URL=https://api.uziy.mn` in Vercel env vars.
+`console/` builds to static files (`pnpm -C console build` → `console/dist`). Serve them with
+`docker/console.Dockerfile` (nginx, SPA fallback, security headers from `console/build/nginx/`), or any static host
+that sends the same headers and falls back to `index.html`. Set `VITE_API_BASE_URL=https://api.uziy.mn` at build
+time and add the console's origin to the backend's `uziy.cors.allowed-origins`.
 
 ### Viewer app
 
@@ -678,13 +644,13 @@ This is a private project, but the internal contribution flow is:
 1. Branch off `main`.
 2. Add tests for any new function / endpoint / non-trivial logic. Backend
    uses JUnit 5 + Mockito + Testcontainers; Flutter uses `flutter_test`;
-   Next.js will use Vitest.
+   the console uses Vitest.
 3. Run **all three test suites** before opening a PR:
    ```bash
    ( cd backend      && ./gradlew test )
    ( cd viewer_app   && flutter test )
-   ( cd company_panel && pnpm test )
-   ( cd admin_panel  && pnpm test )
+   ( cd console      && pnpm test )
+   ( cd packages/ui  && pnpm test )
    ```
 4. Update `docs/SPEC.md` if the change touches the product model.
 5. Open a PR to `main`.

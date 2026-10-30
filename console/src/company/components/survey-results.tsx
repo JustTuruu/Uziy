@@ -1,10 +1,10 @@
 import { useId, type ReactNode } from "react";
 import { Lock, MessageSquareDashed, RotateCw } from "lucide-react";
 import { Badge, Button } from "@uziy/ui";
-import { DistributionBars } from "@/components/distribution-bars";
-import { SegmentTable, SegmentTintScale } from "@/components/segment-table";
-import { TOO_FEW_ANSWERS } from "@/lib/analytics";
-import type { QuestionBreakdown, SegmentBreakdown } from "@/lib/api";
+import { DistributionBars } from "@company/components/distribution-bars";
+import { SegmentTable, SegmentTintScale } from "@company/components/segment-table";
+import { TOO_FEW_ANSWERS } from "@company/lib/analytics";
+import type { QuestionBreakdown, SegmentBreakdown } from "@company/lib/api";
 import {
   HIDDEN_GROUPS_NOTE,
   MULTI_CHOICE_NOTE,
@@ -14,8 +14,8 @@ import {
   questionResults,
   questionTypeLabel,
   type QuestionResult,
-} from "@/lib/survey-results";
-import { formatNumber } from "@/lib/utils";
+} from "@company/lib/survey-results";
+import { formatNumber } from "@company/lib/utils";
 
 export const NO_QUESTIONS = "Энэ судалгаанд асуулт алга.";
 export const NO_ANSWERS_YET = "Хариулт хараахан ирээгүй байна. Үзэгчид хариулж эхэлмэгц энд харагдана.";

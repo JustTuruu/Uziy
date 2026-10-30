@@ -1,10 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { adminApi, auth, type AdminStats, type Me } from "@/lib/api";
-import AdminLayout from "./layout";
+import { adminApi, auth, type AdminStats, type Me } from "@admin/lib/api";
+import AdminLayout from "./admin-layout";
 
 let path = "/";
-vi.mock("next/navigation", () => ({ usePathname: () => path }));
+vi.mock("@shared/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@shared/navigation")>()),
+  usePathname: () => path,
+}));
 
 const admin: Me = {
   id: 1,
@@ -16,6 +19,9 @@ const admin: Me = {
   balance: 0,
   isVerified: true,
   companyName: null,
+  district: null,
+  lastName: null,
+  firstName: null,
 };
 
 const stats = (
@@ -27,12 +33,14 @@ const stats = (
   activeCampaigns: 0,
   pendingCampaigns,
   pendingPayouts,
+  awaitingPaymentCampaigns: 0,
+  commissionPercent: 30,
   commissionRate: 0.3,
 });
 
 describe("Admin console layout", () => {
   beforeEach(() => {
-    path = "/";
+    path = "/admin";
     window.localStorage.clear();
     vi.spyOn(adminApi, "stats").mockResolvedValue(stats(0, 0));
   });
@@ -48,17 +56,17 @@ describe("Admin console layout", () => {
   it("links to the company accounts page", () => {
     render(<AdminLayout>x</AdminLayout>);
     expect(screen.getByRole("link", { name: "Компаниуд" }).getAttribute("href")).toBe(
-      "/companies",
+      "/admin/companies",
     );
   });
 
   it("links to the admin accounts page under settings", () => {
     render(<AdminLayout>x</AdminLayout>);
-    expect(screen.getByRole("link", { name: "Админууд" }).getAttribute("href")).toBe("/admins");
+    expect(screen.getByRole("link", { name: "Админууд" }).getAttribute("href")).toBe("/admin/admins");
   });
 
   it("marks the current route and shows it in the breadcrumb", () => {
-    path = "/users";
+    path = "/admin/users";
     render(<AdminLayout>x</AdminLayout>);
     const link = screen.getByRole("link", { name: "Хэрэглэгчид" });
     expect(link.getAttribute("aria-current")).toBe("page");
@@ -67,8 +75,14 @@ describe("Admin console layout", () => {
     ).toContain("Хэрэглэгчид");
   });
 
+  it("marks the dashboard only on its own page, not on every admin page", () => {
+    path = "/admin/payouts";
+    render(<AdminLayout>x</AdminLayout>);
+    expect(screen.getByRole("link", { name: "Хяналтын самбар" }).getAttribute("aria-current")).toBeNull();
+  });
+
   it("adds a detail crumb on nested routes", () => {
-    path = "/campaigns/4";
+    path = "/admin/campaigns/4";
     render(<AdminLayout>x</AdminLayout>);
     expect(
       screen.getByRole("navigation", { name: "Breadcrumb" }).textContent,

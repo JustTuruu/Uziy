@@ -1,6 +1,4 @@
-"use client";
-
-import { useRouter } from "next/navigation";
+import { useRouter } from "@shared/navigation";
 import { useEffect, useState } from "react";
 import { Plus, ShieldCheck } from "lucide-react";
 import { Badge, Button, Card, CardBody, CardHeader, FormError, PageHeader, TableScroll } from "@uziy/ui";
@@ -11,11 +9,11 @@ import {
   GENERIC_ERROR_MESSAGE,
   useStoredUser,
   type AdminAccount,
-} from "@/lib/api";
-import { credentialsError, type AccountCredentials } from "@/lib/account-form";
-import { CredentialFields } from "@/components/accounts/credential-fields";
-import { HandOverNotice, type HandOver } from "@/components/accounts/handover-notice";
-import { formatDate, formatPhone } from "@/lib/utils";
+} from "@admin/lib/api";
+import { credentialsError, type AccountCredentials } from "@admin/lib/account-form";
+import { CredentialFields } from "@admin/components/accounts/credential-fields";
+import { HandOverNotice, type HandOver } from "@admin/components/accounts/handover-notice";
+import { formatDate, formatPhone } from "@admin/lib/utils";
 
 const EMPTY_FORM: AccountCredentials = { phoneNumber: "", password: "" };
 

@@ -1,7 +1,5 @@
-"use client";
-
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link } from "@shared/navigation";
+import { useRouter } from "@shared/navigation";
 import { useEffect, useState } from "react";
 import { Building2, Plus } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, FormError, Input, PageHeader, TableScroll } from "@uziy/ui";
@@ -11,11 +9,11 @@ import {
   companiesApi,
   GENERIC_ERROR_MESSAGE,
   type CompanyAccount,
-} from "@/lib/api";
-import { COMPANY_NAME_MAX, companyFormError, type CompanyForm } from "@/lib/account-form";
-import { CredentialFields } from "@/components/accounts/credential-fields";
-import { HandOverNotice, type HandOver } from "@/components/accounts/handover-notice";
-import { formatDate, formatPhone } from "@/lib/utils";
+} from "@admin/lib/api";
+import { COMPANY_NAME_MAX, companyFormError, type CompanyForm } from "@admin/lib/account-form";
+import { CredentialFields } from "@admin/components/accounts/credential-fields";
+import { HandOverNotice, type HandOver } from "@admin/components/accounts/handover-notice";
+import { formatDate, formatPhone } from "@admin/lib/utils";
 
 const EMPTY_FORM: CompanyForm = { companyName: "", phoneNumber: "", password: "" };
 
@@ -123,7 +121,7 @@ export default function CompaniesPage() {
                       >
                         <td className="px-5 py-3">
                           <Link
-                            href={`/companies/${c.id}`}
+                            href={`/admin/companies/${c.id}`}
                             className="inline-flex items-center gap-2 font-semibold text-[var(--color-text-primary)] hover:text-[var(--color-primary)]"
                           >
                             <Building2 size={14} className="text-[var(--color-text-muted)]" />

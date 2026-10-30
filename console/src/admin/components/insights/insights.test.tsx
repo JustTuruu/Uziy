@@ -1,14 +1,14 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { insightsApi, type InsightQuestion } from "@/lib/api";
+import { insightsApi, type InsightQuestion } from "@admin/lib/api";
 import { AccessLogTable, actionLabel } from "./access-log-table";
 import { groupFractions, hiddenLabel, peopleLabel } from "./insight-format";
 import { PrivacyRulesCard } from "./privacy-rules-card";
 import { QuestionExplorer, toFilter } from "./question-explorer";
 
-vi.mock("@/lib/api", async (orig) => ({
-  ...(await orig<typeof import("@/lib/api")>()),
+vi.mock("@admin/lib/api", async (orig) => ({
+  ...(await orig<typeof import("@admin/lib/api")>()),
   insightsApi: {
     distribution: vi.fn(),
     segments: vi.fn(),
@@ -114,7 +114,7 @@ describe("<QuestionExplorer>", () => {
   it("shows the shares and the segments of a picked question", async () => {
     vi.mocked(insightsApi.distribution).mockResolvedValue({
       questionId: 12, prompt: "Аль сошиал сүлжээг ашигладаг вэ?", type: "SINGLE_CHOICE",
-      filter: {}, suppressed: false, people: 120,
+      filter: { gender: null, ageBand: null, city: null }, suppressed: false, people: 120,
       shares: [{ option: "Facebook", percent: 70 }, { option: "TikTok", percent: 30 }],
     });
     renderExplorer();
@@ -131,7 +131,7 @@ describe("<QuestionExplorer>", () => {
   it("explains a hidden group instead of showing numbers", async () => {
     vi.mocked(insightsApi.distribution).mockResolvedValue({
       questionId: 12, prompt: "Аль сошиал сүлжээг ашигладаг вэ?", type: "SINGLE_CHOICE",
-      filter: {}, suppressed: true, people: null, shares: [],
+      filter: { gender: null, ageBand: null, city: null }, suppressed: true, people: null, shares: [],
     });
     renderExplorer();
 
@@ -142,7 +142,7 @@ describe("<QuestionExplorer>", () => {
 
   it("downloads the CSV through the logged export call", async () => {
     vi.mocked(insightsApi.distribution).mockResolvedValue({
-      questionId: 12, prompt: "Q", type: "SINGLE_CHOICE", filter: {}, suppressed: true, people: null, shares: [],
+      questionId: 12, prompt: "Q", type: "SINGLE_CHOICE", filter: { gender: null, ageBand: null, city: null }, suppressed: true, people: null, shares: [],
     });
     vi.mocked(insightsApi.exportCsv).mockResolvedValue("csv");
     URL.createObjectURL = vi.fn(() => "blob:csv");

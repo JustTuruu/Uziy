@@ -4,11 +4,12 @@ import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
   CampaignBudgetFields,
+  pricingSettingsFor,
   DEFAULT_BUDGET_FIELDS,
   pricingFromFields,
   type BudgetFieldsValue,
 } from "./campaign-budget-fields";
-import { formatTugrik } from "@/lib/utils";
+import { formatTugrik } from "@company/lib/utils";
 
 const settings = { commissionPercent: 30, minRewardPerViewer: 100 };
 
@@ -47,8 +48,8 @@ describe("<CampaignBudgetFields>", () => {
     expect(viewers().closest("label")).not.toHaveTextContent("Автоматаар тооцоолсон");
     expect(screen.getByText(`${formatTugrik(1_000_000)}`, { selector: "div.font-mono" }))
       .toBeInTheDocument();
-    expect(screen.getByText(/Платформын шимтгэл \(30%\)/)).toBeInTheDocument();
-    expect(screen.getByText(/үзэгч бүр 700 ₮ авна/)).toBeInTheDocument();
+    expect(screen.queryByText(/шимтгэл/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/ойролцоогоор 700 ₮ урамшуулал авна/)).toBeInTheDocument();
   });
 
   it("typing a viewer count updates the computed reward", async () => {
@@ -138,5 +139,14 @@ describe("pricingFromFields", () => {
       settings,
     );
     expect(p.targetViewers).toBe(1_000);
+  });
+});
+
+describe("pricingSettingsFor", () => {
+  const settings = { commissionPercent: 30, surveyCommissionPercent: 20, minRewardPerViewer: 100 };
+
+  it("previews each kind of campaign with its own default commission", () => {
+    expect(pricingSettingsFor(settings, true)).toEqual({ commissionPercent: 30, minRewardPerViewer: 100 });
+    expect(pricingSettingsFor(settings, false)).toEqual({ commissionPercent: 20, minRewardPerViewer: 100 });
   });
 });

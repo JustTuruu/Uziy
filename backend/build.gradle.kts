@@ -29,6 +29,8 @@ dependencies {
 	implementation("io.jsonwebtoken:jjwt-api:0.12.6")
 	runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
 	runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
+	// OpenAPI spec of the API (docs/api/openapi.json): the TypeScript and Dart clients are checked against it
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-api:3.1.1")
 	// Push notifications (FCM covers Android + iOS)
 	implementation("com.google.firebase:firebase-admin:9.11.0")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
@@ -51,6 +53,17 @@ tasks.withType<JavaCompile> {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+}
+
+// ./gradlew updateOpenApi rewrites docs/api/openapi.json from the running API instead of failing on a change.
+tasks.register<Test>("updateOpenApi") {
+	group = "documentation"
+	description = "Rewrite docs/api/openapi.json from the API (then regenerate the TypeScript types)"
+	testClassesDirs = sourceSets["test"].output.classesDirs
+	classpath = sourceSets["test"].runtimeClasspath
+	filter { includeTestsMatching("mn.uziy.backend.api.OpenApiContractTest") }
+	systemProperty("openapi.update", "true")
+	outputs.upToDateWhen { false }
 }
 
 springBoot {

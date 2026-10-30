@@ -21,9 +21,15 @@ final class CompanyTestFixtures {
 
     /** Stubs the singleton platform_settings row. */
     static void settings(PlatformSettingsRepository repo, int commission, int minReward) {
+        settings(repo, commission, commission, minReward);
+    }
+
+    /** {@code commission} for video campaigns, {@code surveyCommission} for survey-only ones. */
+    static void settings(PlatformSettingsRepository repo, int commission, int surveyCommission, int minReward) {
         PlatformSettingsEntity s = new PlatformSettingsEntity();
         s.setId(1);
         s.setCommissionPercent(commission);
+        s.setSurveyCommissionPercent(surveyCommission);
         s.setMinRewardPerViewer(minReward);
         when(repo.findById(1)).thenReturn(Optional.of(s));
     }
