@@ -1,7 +1,0 @@
-@import "tailwindcss";
-@import "../../packages/ui/src/theme.css";
-/* White console look + Rubik sizes, shared with the company panel. */
-@import "../../packages/ui/src/theme-light.css";
-
-/* Tailwind must scan the shared components for class names. */
-@source "../../packages/ui/src";
