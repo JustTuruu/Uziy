@@ -46,6 +46,10 @@ uziy:
     # 256-bit dev-only secret. Rotate + inject via env in prod.
     secret: ${JWT_SECRET:dev-only-secret-change-me-please-do-not-ship-this-keyminimum-256-bit}
     ttl-hours: 24
+  privacy:
+    # Key of the phone hash kept after an account is deleted (former_completions). Never change it once real
+    # accounts were deleted: the old hashes would stop matching and those campaigns could be earned again.
+    phone-hash-secret: ${PHONE_HASH_SECRET:dev-only-phone-hash-secret-do-not-ship-this-value-anywhere}
   payments:
     # true → the company's "Төлөх" button marks a campaign paid instantly
     # (no money moves). Set PAYMENTS_SIMULATED=false in prod until the real

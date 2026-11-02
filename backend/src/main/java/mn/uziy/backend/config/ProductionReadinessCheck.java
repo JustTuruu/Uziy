@@ -25,6 +25,9 @@ public class ProductionReadinessCheck implements ApplicationRunner {
     /** The secret in application.yml's default; also what a copied dev config would carry. */
     static final String DEV_JWT_SECRET_PREFIX = "dev-only-secret";
     static final int MIN_JWT_SECRET_BYTES = 32;
+    /** application.yml's default phone-hash key starts with this. */
+    static final String DEV_PHONE_HASH_SECRET_PREFIX = "dev-only-";
+    static final int MIN_PHONE_HASH_SECRET_BYTES = 32;
 
     /** Phone numbers of the accounts the V2 dev seed creates (admin, companies, viewers). */
     static final List<String> SEEDED_PHONES =
@@ -33,10 +36,13 @@ public class ProductionReadinessCheck implements ApplicationRunner {
     private final AppProperties props;
     private final UserRepository users;
     private final String phoneVerificationProvider;
+    private final String phoneHashSecret;
 
     public ProductionReadinessCheck(AppProperties props, UserRepository users,
                                     @Value("${uziy.phone-verification.provider:simulated}")
-                                    String phoneVerificationProvider) {
+                                    String phoneVerificationProvider,
+                                    @Value("${uziy.privacy.phone-hash-secret:}") String phoneHashSecret) {
+        this.phoneHashSecret = phoneHashSecret;
         this.props = props;
         this.users = users;
         this.phoneVerificationProvider = phoneVerificationProvider;
@@ -58,6 +64,11 @@ public class ProductionReadinessCheck implements ApplicationRunner {
             problems.add("JWT_SECRET is the development default: set a secret of your own");
         } else if (secret.getBytes(StandardCharsets.UTF_8).length < MIN_JWT_SECRET_BYTES) {
             problems.add("JWT_SECRET is shorter than " + MIN_JWT_SECRET_BYTES + " bytes");
+        }
+        if (phoneHashSecret.startsWith(DEV_PHONE_HASH_SECRET_PREFIX)) {
+            problems.add("PHONE_HASH_SECRET is the development default: set a secret of your own");
+        } else if (phoneHashSecret.getBytes(StandardCharsets.UTF_8).length < MIN_PHONE_HASH_SECRET_BYTES) {
+            problems.add("PHONE_HASH_SECRET is shorter than " + MIN_PHONE_HASH_SECRET_BYTES + " bytes");
         }
         if (props.payments().simulated()) {
             problems.add("PAYMENTS_SIMULATED=true: campaigns would be \"paid\" without any money");

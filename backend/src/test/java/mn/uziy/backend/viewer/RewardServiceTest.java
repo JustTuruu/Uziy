@@ -5,6 +5,7 @@ import static mn.uziy.backend.viewer.ViewerTestData.sampleCampaign;
 import static mn.uziy.backend.viewer.ViewerTestData.viewer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -23,6 +24,7 @@ import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
 import mn.uziy.backend.domain.ViewHistoryEntity;
 import mn.uziy.backend.domain.ViewHistoryRepository;
+import mn.uziy.backend.rejoin.PriorCompletions;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
@@ -36,10 +38,11 @@ class RewardServiceTest {
     private final SurveyResponseRepository responses = mock(SurveyResponseRepository.class);
 
     private final DomainEventPublisher events = mock(DomainEventPublisher.class);
+    private final PriorCompletions priorCompletions = mock(PriorCompletions.class);
 
     private final RewardServiceImpl service =
             new RewardServiceImpl(users, campaigns, questions, history, responses, events,
-                    new AnswerValidator());
+                    new AnswerValidator(), priorCompletions);
 
     private final UserEntity viewer = viewer();
 
@@ -113,7 +116,7 @@ class RewardServiceTest {
                 List.of(new SubmitSurveyReq.Answer(10L, "\"Тийм\""), new SubmitSurveyReq.Answer(999L, "\"x\""))));
 
         assertThat(ex.statusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        verify(users, never()).addBalance(anyLong(), org.mockito.ArgumentMatchers.anyDouble());
+        verify(users, never()).addBalance(anyLong(), anyDouble());
         verify(campaigns, never()).tryDecrementBudget(anyLong());
     }
 
@@ -140,7 +143,7 @@ class RewardServiceTest {
 
         assertThat(ex.statusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         verify(campaigns, never()).tryDecrementBudget(anyLong());
-        verify(users, never()).addBalance(anyLong(), org.mockito.ArgumentMatchers.anyDouble());
+        verify(users, never()).addBalance(anyLong(), anyDouble());
     }
 
     @Test
@@ -150,6 +153,21 @@ class RewardServiceTest {
                 service.submitSurvey(42L, 1L, List.of(new SubmitSurveyReq.Answer(1L, "\"x\""))));
         assertThat(ex.statusCode()).isEqualTo(HttpStatus.CONFLICT);
         verify(campaigns, never()).tryDecrementBudget(anyLong());
+        verify(events, never()).publish(any());
+    }
+
+    @Test
+    void submitThrows409WhenTheCampaignWasEarnedUnderADeletedAccountOfTheSameNumber() {
+        when(history.existsByUserIdAndCampaignId(42L, 1L)).thenReturn(false);
+        when(priorCompletions.isInherited(42L, 1L)).thenReturn(true);
+
+        var ex = assertFailsWithHttp(() ->
+                service.submitSurvey(42L, 1L, List.of(new SubmitSurveyReq.Answer(1L, "\"x\""))));
+
+        assertThat(ex.statusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(ex.reason()).isEqualTo(RewardServiceImpl.ALREADY_REWARDED);
+        verify(campaigns, never()).tryDecrementBudget(anyLong());
+        verify(users, never()).addBalance(anyLong(), anyDouble());
         verify(events, never()).publish(any());
     }
 
@@ -172,6 +190,6 @@ class RewardServiceTest {
         assertThat(ex.statusCode()).isEqualTo(HttpStatus.CONFLICT);
         // No view_history or balance mutation should have happened.
         verify(history, never()).save(any());
-        verify(users, never()).addBalance(anyLong(), org.mockito.ArgumentMatchers.anyDouble());
+        verify(users, never()).addBalance(anyLong(), anyDouble());
     }
 }

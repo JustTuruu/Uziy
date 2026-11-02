@@ -13,6 +13,7 @@ import mn.uziy.backend.domain.PayoutStatus;
 import mn.uziy.backend.domain.Role;
 import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
+import mn.uziy.backend.rejoin.CompletionCarryOver;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,7 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
  * review):
  * <ul>
  *   <li><b>Personal data is erased</b>: phone number (replaced by a unique tombstone, so the number can register
- *       again), овог/нэр, gender, birth date, city, district, statistics consent. The password hash is replaced by a
+ *       again), овог/нэр, gender, district, statistics consent. Kept for the results (owner, 2026-11-02): the
+ *       city/aimag and the birth YEAR (stored as the 1st of {@value #KEPT_BIRTH_MONTH}, mid-year, so a computed age
+ *       is at most half a year off). The password hash is replaced by a
  *       value no password matches, and {@code credentials_changed_at} moves past "now", so every token already
  *       issued is refused at once (JWTs keep whole seconds, hence the extra second; no new token can ever be
  *       issued for the row).</li>
@@ -32,6 +35,8 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li><b>Push tokens and phone checks are deleted</b>; <b>free-text answers are deleted</b> (they can hold
  *       anything personal); choice/rating answers and the view history stay, now tied only to an empty row, so the
  *       results companies paid for do not change and nothing in them leads back to the person.</li>
+ *   <li><b>Completed campaigns are remembered under a keyed hash of the phone</b> (never the number), so the same
+ *       number registering again cannot earn them a second time (owner, 2026-11-02; {@link CompletionCarryOver}).</li>
  *   <li><b>Decided payouts stay for the books</b> (amount, bank, status, dates) without the holder's name and with
  *       only the last {@value #KEPT_ACCOUNT_DIGITS} digits of the account number.</li>
  * </ul>
@@ -49,6 +54,8 @@ public class AccountDeletionServiceImpl implements AccountDeletionService {
     static final String UNUSABLE_PASSWORD_HASH = "!deleted";
     static final String ACCOUNT_NUMBER_MASK = "••••";
     static final int KEPT_ACCOUNT_DIGITS = 4;
+    /** The kept birth date is the 1st of July of the birth year: the middle of it. */
+    static final int KEPT_BIRTH_MONTH = 7;
     /** A token issued in the same second as the deletion must die too (JWT times are whole seconds). */
     private static final long TOKEN_CUTOFF_SECONDS = 1;
 
@@ -57,11 +64,13 @@ public class AccountDeletionServiceImpl implements AccountDeletionService {
     private final AccountDeletionRepository deletion;
     private final PasswordEncoder encoder;
     private final DomainEventPublisher events;
+    private final CompletionCarryOver completions;
     private final Clock clock;
 
     public AccountDeletionServiceImpl(UserRepository users, PayoutRepository payouts,
                                       AccountDeletionRepository deletion, PasswordEncoder encoder,
-                                      DomainEventPublisher events, Clock clock) {
+                                      DomainEventPublisher events, CompletionCarryOver completions, Clock clock) {
+        this.completions = completions;
         this.users = users;
         this.payouts = payouts;
         this.deletion = deletion;
@@ -83,13 +92,14 @@ public class AccountDeletionServiceImpl implements AccountDeletionService {
         String phone = viewer.getPhoneNumber();
 
         int anonymised = deletion.tryAnonymiseViewer(viewerId, checkedHash, tombstonePhone(viewerId),
-                UNUSABLE_PASSWORD_HASH, tokenCutoff());
+                UNUSABLE_PASSWORD_HASH, tokenCutoff(), KEPT_BIRTH_MONTH);
         if (anonymised == 0) {
             throw new ConflictException(AccountDeletionMessages.NOT_DELETED);
         }
         if (payouts.existsByUserIdAndStatus(viewerId, PayoutStatus.PENDING)) {
             throw new ConflictException(AccountDeletionMessages.PAYOUT_PENDING);
         }
+        completions.rememberBeforeDeletion(viewerId, phone);
         deletion.deleteDeviceTokens(viewerId);
         deletion.deletePhoneVerifications(phone);
         deletion.deleteFreeTextAnswers(viewerId);

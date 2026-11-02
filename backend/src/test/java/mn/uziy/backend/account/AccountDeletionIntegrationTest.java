@@ -7,10 +7,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 import com.jayway.jsonpath.JsonPath;
+import java.sql.Date;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import mn.uziy.backend.notification.DeviceTokenRepository;
+import mn.uziy.backend.rejoin.PhoneFingerprint;
 import mn.uziy.backend.security.AbstractApiIntegrationTest;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -18,12 +24,15 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 /**
  * {@code DELETE /viewer/me} over real HTTP, security and Postgres. The viewer registers through the simulated phone
  * check (the developer "delivers" the SMS), deletes the account, and then: the password and the old token no longer
- * work, nothing personal is left for statistics or analytics, the counted answers stay, and the same phone can
- * register again. Each test uses its own phone number.
+ * work, nothing that names the person is left, only a coarse age and place stay for the counted answers, and the
+ * same phone can register again — but cannot earn the campaigns it already earned. Each test uses its own phone.
  */
 class AccountDeletionIntegrationTest extends AbstractApiIntegrationTest {
 
     private static final String VIEWER_PASSWORD = "password1";
+
+    @Autowired DeviceTokenRepository deviceTokens;
+    @Autowired PhoneFingerprint fingerprint;
 
     private MockHttpServletResponse call(MockHttpServletRequestBuilder request, String token, String json)
             throws Exception {
@@ -102,10 +111,12 @@ class AccountDeletionIntegrationTest extends AbstractApiIntegrationTest {
 
         Map<String, Object> row = jdbc.queryForMap("SELECT * FROM users WHERE id = ?", id);
         assertThat(row.get("phone_number")).isEqualTo("DEL-" + id);
-        for (String personal : new String[] {"gender", "birth_date", "city", "district", "last_name", "first_name",
+        for (String personal : new String[] {"gender", "district", "last_name", "first_name",
                 "stats_consent", "stats_consent_at", "stats_consent_version"}) {
             assertThat(row.get(personal)).as(personal).isNull();
         }
+        assertThat(row.get("city")).isEqualTo("Улаанбаатар");
+        assertThat(((Date) row.get("birth_date")).toLocalDate()).isEqualTo(LocalDate.of(2000, 7, 1));
         assertThat(((Number) row.get("balance")).doubleValue()).isZero();
         assertThat(encoder.matches(VIEWER_PASSWORD, (String) row.get("password_hash"))).isFalse();
 
@@ -125,7 +136,7 @@ class AccountDeletionIntegrationTest extends AbstractApiIntegrationTest {
     }
 
     @Test
-    void statisticsAndCompanyAnalyticsNoLongerSeeThePerson() throws Exception {
+    void statisticsDropThePersonButCompanyResultsKeepOnlyTheirAgeYearAndPlace() throws Exception {
         String phone = freshPhone();
         String token = register(phone);
         long id = idOf(phone);
@@ -134,14 +145,99 @@ class AccountDeletionIntegrationTest extends AbstractApiIntegrationTest {
 
         assertThat(deleteAccount(token, VIEWER_PASSWORD)).isEqualTo(204);
 
-        assertThat(jdbc.queryForObject("""
-                SELECT COUNT(*) FROM users u
-                WHERE u.id = ? AND (u.stats_consent IS NOT NULL OR u.gender IS NOT NULL
-                    OR u.birth_date IS NOT NULL OR u.city IS NOT NULL)""", Integer.class, id)).isZero();
-        assertThat(jdbc.queryForObject("""
-                SELECT COUNT(*) FROM view_history vh JOIN users u ON u.id = vh.user_id
-                WHERE vh.user_id = ? AND (u.gender IS NOT NULL OR u.birth_date IS NOT NULL OR u.city IS NOT NULL)""",
+        // No consent left, so the admin statistics (consenting adults only) no longer count the row.
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE id = ? AND stats_consent IS NOT NULL",
                 Integer.class, id)).isZero();
+        // The company's age and place charts still count the answers; gender and district are gone.
+        assertThat(jdbc.queryForMap("""
+                SELECT u.gender, u.district, u.city, u.birth_date FROM view_history vh JOIN users u ON u.id = vh.user_id
+                WHERE vh.user_id = ?""", id))
+                .containsEntry("gender", null)
+                .containsEntry("district", null)
+                .containsEntry("city", "Улаанбаатар")
+                .containsEntry("birth_date", Date.valueOf(LocalDate.of(2000, 7, 1)));
+    }
+
+    /** The answer body the app sends for one choice question. */
+    private static String choiceAnswer(long questionId) {
+        return "{\"answers\":[{\"questionId\":" + questionId + ",\"answerJson\":\"\\\"Тийм\\\"\"}]}";
+    }
+
+    private List<Long> feedIds(String token) throws Exception {
+        MockHttpServletResponse feed = call(get("/viewer/feed"), token, null);
+        assertThat(feed.getStatus()).isEqualTo(200);
+        List<Number> ids = JsonPath.read(feed.getContentAsString(), "$[*].id");
+        return ids.stream().map(Number::longValue).toList();
+    }
+
+    private boolean reachedByApprovalPush(long campaign, String pushToken) {
+        return deviceTokens.findTokensForCampaign(campaign, "ALL", "ALL", LocalDate.of(1900, 1, 1),
+                LocalDate.of(2100, 1, 1)).contains(pushToken);
+    }
+
+    @Test
+    void reRegisteringTheNumberCannotEarnTheSameCampaignAgainButNewOnesStillPay() throws Exception {
+        String phone = freshPhone();
+        String first = register(phone);
+        long earned = activeCampaign(company());
+        long earnedQuestion = question(earned, 1, "SINGLE_CHOICE", "[\"Тийм\",\"Үгүй\"]", true);
+        assertThat(call(post("/viewer/campaigns/" + earned + "/submit"), first, choiceAnswer(earnedQuestion))
+                .getStatus()).isEqualTo(200);
+        assertThat(deleteAccount(first, VIEWER_PASSWORD)).isEqualTo(204);
+
+        String again = register(phone);
+        long newId = idOf(phone);
+        long fresh = activeCampaign(company());
+        long freshQuestion = question(fresh, 1, "SINGLE_CHOICE", "[\"Тийм\",\"Үгүй\"]", true);
+        String pushToken = "push-rejoin-" + phone;
+        jdbc.update("INSERT INTO device_tokens (user_id, token, platform) VALUES (?, ?, 'IOS')", newId, pushToken);
+
+        assertThat(feedIds(again)).doesNotContain(earned).contains(fresh);
+        assertThat(reachedByApprovalPush(earned, pushToken)).isFalse();
+        assertThat(reachedByApprovalPush(fresh, pushToken)).isTrue();
+        MockHttpServletResponse refused = call(post("/viewer/campaigns/" + earned + "/submit"), again,
+                choiceAnswer(earnedQuestion));
+        assertThat(refused.getStatus()).isEqualTo(409);
+        assertThat(balanceOf(newId)).isZero();
+        assertThat(call(post("/viewer/campaigns/" + fresh + "/submit"), again, choiceAnswer(freshQuestion))
+                .getStatus()).isEqualTo(200);
+        assertThat(balanceOf(newId)).isEqualTo(70.0);
+    }
+
+    @Test
+    void aSecondDeletionStillRemembersWhatTheFirstAccountEarned() throws Exception {
+        String phone = freshPhone();
+        String first = register(phone);
+        long earned = activeCampaign(company());
+        long q = question(earned, 1, "SINGLE_CHOICE", "[\"Тийм\",\"Үгүй\"]", true);
+        assertThat(call(post("/viewer/campaigns/" + earned + "/submit"), first, choiceAnswer(q)).getStatus())
+                .isEqualTo(200);
+        assertThat(deleteAccount(first, VIEWER_PASSWORD)).isEqualTo(204);
+        String second = register(phone);
+        assertThat(deleteAccount(second, VIEWER_PASSWORD)).isEqualTo(204);
+
+        String third = register(phone);
+
+        assertThat(feedIds(third)).doesNotContain(earned);
+        assertThat(call(post("/viewer/campaigns/" + earned + "/submit"), third, choiceAnswer(q)).getStatus())
+                .isEqualTo(409);
+    }
+
+    @Test
+    void theNumberItselfIsNeverStoredOnlyItsKeyedHash() throws Exception {
+        String phone = freshPhone();
+        String token = register(phone);
+        answeredSurvey(idOf(phone));
+
+        assertThat(deleteAccount(token, VIEWER_PASSWORD)).isEqualTo(204);
+
+        List<String> hashes = jdbc.queryForList(
+                "SELECT DISTINCT phone_hash FROM former_completions WHERE phone_hash = ?", String.class,
+                fingerprint.of(phone));
+        assertThat(hashes).hasSize(1);
+        assertThat(hashes.get(0)).matches("[0-9a-f]{64}").doesNotContain(phone);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM former_completions WHERE phone_hash LIKE ?",
+                Integer.class, "%" + phone + "%")).isZero();
     }
 
     @Test

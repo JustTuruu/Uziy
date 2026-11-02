@@ -14,22 +14,26 @@ import org.springframework.data.repository.query.Param;
 public interface AccountDeletionRepository extends Repository<UserEntity, Long> {
 
     /**
-     * Strips the viewer row of everything personal, in one UPDATE, only while it is still a VIEWER with the
-     * password hash the caller just checked (a password changed in between, or a second delete, changes nothing).
-     * The row itself stays: view history and survey answers point at it, and the counts companies paid for must
-     * not shrink. Returns 1 when the row was anonymised, 0 otherwise.
+     * Strips the viewer row of everything that names the person, in one UPDATE, only while it is still a VIEWER with
+     * the password hash the caller just checked (a password changed in between, or a second delete, changes
+     * nothing). The row itself stays: view history and survey answers point at it, and the counts companies paid for
+     * must not shrink. For the same reason the row keeps a coarse age and place (owner, 2026-11-02): the city/aimag
+     * (the district goes), and the birth date cut to the 1st of {@code keptBirthMonth} of the birth year, so age
+     * groups still count it but the exact date is gone. Gender is erased. Returns 1 when the row was anonymised.
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(value = """
             UPDATE users SET phone_number = :tombstone, password_hash = :unusableHash,
-                   gender = NULL, birth_date = NULL, city = NULL, district = NULL,
+                   gender = NULL, district = NULL,
+                   birth_date = make_date(CAST(EXTRACT(YEAR FROM birth_date) AS int), :keptBirthMonth, 1),
                    last_name = NULL, first_name = NULL, balance = 0, is_verified = FALSE,
                    stats_consent = NULL, stats_consent_at = NULL, stats_consent_version = NULL,
                    credentials_changed_at = :tokensInvalidBefore
             WHERE id = :id AND role = 'VIEWER' AND password_hash = :expectedHash""", nativeQuery = true)
     int tryAnonymiseViewer(@Param("id") long id, @Param("expectedHash") String expectedHash,
                            @Param("tombstone") String tombstone, @Param("unusableHash") String unusableHash,
-                           @Param("tokensInvalidBefore") OffsetDateTime tokensInvalidBefore);
+                           @Param("tokensInvalidBefore") OffsetDateTime tokensInvalidBefore,
+                           @Param("keptBirthMonth") int keptBirthMonth);
 
     /** Forgets every push token of the user: nothing may be sent to that phone any more. */
     @Modifying(flushAutomatically = true)

@@ -17,6 +17,7 @@ import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
 import mn.uziy.backend.domain.ViewHistoryEntity;
 import mn.uziy.backend.domain.ViewHistoryRepository;
+import mn.uziy.backend.rejoin.PriorCompletions;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,11 +37,13 @@ public class RewardServiceImpl implements RewardService {
 
     private final DomainEventPublisher events;
     private final AnswerValidator answerValidator;
+    private final PriorCompletions priorCompletions;
 
     public RewardServiceImpl(UserRepository users, CampaignRepository campaigns,
                              SurveyQuestionRepository questions, ViewHistoryRepository history,
                              SurveyResponseRepository responses, DomainEventPublisher events,
-                             AnswerValidator answerValidator) {
+                             AnswerValidator answerValidator, PriorCompletions priorCompletions) {
+        this.priorCompletions = priorCompletions;
         this.answerValidator = answerValidator;
         this.events = events;
         this.users = users;
@@ -53,7 +56,9 @@ public class RewardServiceImpl implements RewardService {
     @Override
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public RewardResult submitSurvey(long userId, long campaignId, List<SubmitSurveyReq.Answer> answers) {
-        if (history.existsByUserIdAndCampaignId(userId, campaignId)) {
+        // A campaign earned under a deleted account of the same number counts as earned (owner, 2026-11-02).
+        if (history.existsByUserIdAndCampaignId(userId, campaignId)
+                || priorCompletions.isInherited(userId, campaignId)) {
             throw new ConflictException(ALREADY_REWARDED);
         }
 

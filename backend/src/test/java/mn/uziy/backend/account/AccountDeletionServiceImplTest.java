@@ -3,6 +3,7 @@ package mn.uziy.backend.account;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -27,6 +28,7 @@ import mn.uziy.backend.domain.PayoutStatus;
 import mn.uziy.backend.domain.Role;
 import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
+import mn.uziy.backend.rejoin.CompletionCarryOver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
@@ -44,8 +46,9 @@ class AccountDeletionServiceImplTest {
     private final AccountDeletionRepository deletion = mock(AccountDeletionRepository.class);
     private final PasswordEncoder encoder = mock(PasswordEncoder.class);
     private final DomainEventPublisher events = mock(DomainEventPublisher.class);
+    private final CompletionCarryOver completions = mock(CompletionCarryOver.class);
     private final AccountDeletionServiceImpl service = new AccountDeletionServiceImpl(users, payouts, deletion,
-            encoder, events, Clock.fixed(NOW, ZoneOffset.UTC));
+            encoder, events, completions, Clock.fixed(NOW, ZoneOffset.UTC));
 
     private static UserEntity user(Role role) {
         UserEntity u = new UserEntity();
@@ -60,7 +63,7 @@ class AccountDeletionServiceImplTest {
     void aViewerWithTheRightPassword() {
         when(users.findById(VIEWER)).thenReturn(Optional.of(user(Role.VIEWER)));
         when(encoder.matches("secret12", HASH)).thenReturn(true);
-        when(deletion.tryAnonymiseViewer(eq(VIEWER), eq(HASH), anyString(), anyString(), any())).thenReturn(1);
+        when(deletion.tryAnonymiseViewer(eq(VIEWER), eq(HASH), anyString(), anyString(), any(), anyInt())).thenReturn(1);
     }
 
     @Test
@@ -68,7 +71,7 @@ class AccountDeletionServiceImplTest {
         service.deleteOwnAccount(VIEWER, "secret12");
 
         verify(deletion).tryAnonymiseViewer(VIEWER, HASH, "DEL-42", AccountDeletionServiceImpl.UNUSABLE_PASSWORD_HASH,
-                OffsetDateTime.parse("2026-10-22T04:05:07Z"));
+                OffsetDateTime.parse("2026-10-22T04:05:07Z"), AccountDeletionServiceImpl.KEPT_BIRTH_MONTH);
     }
 
     @Test
@@ -83,11 +86,32 @@ class AccountDeletionServiceImplTest {
     }
 
     @Test
+    void theCompletedCampaignsAreRememberedUnderTheRealPhoneBeforeItIsErasedElsewhere() {
+        service.deleteOwnAccount(VIEWER, "secret12");
+
+        verify(completions).rememberBeforeDeletion(VIEWER, PHONE);
+    }
+
+    @Test
+    void theBirthDateIsKeptOnlyToTheMiddleOfItsYear() {
+        assertThat(AccountDeletionServiceImpl.KEPT_BIRTH_MONTH).isEqualTo(7);
+    }
+
+    @Test
+    void aRefusedDeletionRemembersNothing() {
+        when(payouts.existsByUserIdAndStatus(VIEWER, PayoutStatus.PENDING)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.deleteOwnAccount(VIEWER, "secret12")).isInstanceOf(ConflictException.class);
+
+        verify(completions, never()).rememberBeforeDeletion(anyLong(), anyString());
+    }
+
+    @Test
     void theRowIsLockedByTheUpdateBeforeLookingForAPendingPayout() {
         service.deleteOwnAccount(VIEWER, "secret12");
 
         InOrder order = inOrder(deletion, payouts);
-        order.verify(deletion).tryAnonymiseViewer(anyLong(), anyString(), anyString(), anyString(), any());
+        order.verify(deletion).tryAnonymiseViewer(anyLong(), anyString(), anyString(), anyString(), any(), anyInt());
         order.verify(payouts).existsByUserIdAndStatus(VIEWER, PayoutStatus.PENDING);
     }
 
@@ -97,7 +121,7 @@ class AccountDeletionServiceImplTest {
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage(AccountDeletionMessages.WRONG_PASSWORD);
 
-        verifyNoInteractions(deletion, events);
+        verifyNoInteractions(deletion, events, completions);
     }
 
     @Test
@@ -114,7 +138,7 @@ class AccountDeletionServiceImplTest {
 
     @Test
     void aRowThatChangedInBetweenIsNotDeleted() {
-        when(deletion.tryAnonymiseViewer(eq(VIEWER), eq(HASH), anyString(), anyString(), any())).thenReturn(0);
+        when(deletion.tryAnonymiseViewer(eq(VIEWER), eq(HASH), anyString(), anyString(), any(), anyInt())).thenReturn(0);
 
         assertThatThrownBy(() -> service.deleteOwnAccount(VIEWER, "secret12"))
                 .isInstanceOf(ConflictException.class)

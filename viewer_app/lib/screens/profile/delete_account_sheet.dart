@@ -10,7 +10,7 @@ import 'profile_widgets.dart';
 const String kDeleteTitle = 'Бүртгэлээ устгах уу?';
 const String kDeleteIntro = 'Дараа нь буцааж сэргээх боломжгүй.';
 const String kDeletePointData = 'Таны мэдээлэл, бичсэн хариултууд устана.';
-const String kDeletePointPhone = 'Энэ дугаараар дахин бүртгүүлж болно.';
+const String kDeletePointPhone = 'Дахин бүртгүүлсэн ч урамшуулал давтагдахгүй.';
 
 /// The sheet's short summary, read at a glance; the full rules (anonymous
 /// choice answers, kept payout records, pending payouts) stay on the

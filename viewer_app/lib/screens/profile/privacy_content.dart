@@ -15,7 +15,8 @@ const String kPrivacyIntro =
 /// privacy page says the same, so the two never disagree. Matches the backend
 /// (`AccountDeletionServiceImpl`).
 const String kDeleteFactPersonal =
-    'Утасны дугаар, овог нэр, хүйс, төрсөн огноо, хот, дүүрэг устана.';
+    'Утасны дугаар, овог нэр, хүйс, дүүрэг, төрсөн сар өдөр устана. Төрсөн '
+    'он, аймаг эсвэл хот тань судалгааны нийлбэр дүнд нэргүйгээр үлдэнэ.';
 const String kDeleteFactAnswers =
     'Чөлөөт бичсэн хариултууд устана. Сонгож өгсөн хариултууд таныг '
     'тодорхойлох мэдээлэлгүйгээр нийлбэр дүнд үлдэнэ.';
@@ -25,7 +26,10 @@ const String kDeleteFactPayouts =
 const String kDeleteFactBalance = 'Хэтэвчинд үлдсэн мөнгө буцаагдахгүй.';
 const String kDeleteFactPending =
     'Мөнгө татах хүсэлт шалгагдаж байх үед бүртгэлээ устгах боломжгүй.';
-const String kDeleteFactPhone = 'Энэ дугаараар дараа нь дахин бүртгүүлж болно.';
+const String kDeleteFactPhone =
+    'Энэ дугаараар дахин бүртгүүлж болно, гэхдээ өмнө урамшуулал авсан '
+    'судалгаандаа дахин оролцох боломжгүй. Үүний тулд дугаарыг тань биш, '
+    'түүнээс гаргасан тайлагдашгүй кодыг хадгална.';
 const List<String> kDeleteAccountFacts = [
   kDeleteFactPersonal,
   kDeleteFactAnswers,
@@ -88,7 +92,8 @@ const List<PolicySection> kPrivacySections = [
     kDeleteSectionHeading,
     'Профайл → «Бүртгэл устгах» хэсэгт нууц үгээ оруулаад бүртгэлээ хүссэн '
     'үедээ устгаж болно. $kDeleteFactPersonal $kDeleteFactAnswers '
-    '$kDeleteFactPayouts $kDeleteFactBalance $kDeleteFactPending',
+    '$kDeleteFactPayouts $kDeleteFactBalance $kDeleteFactPending '
+    '$kDeleteFactPhone',
   ),
   PolicySection(
     'Нас',

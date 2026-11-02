@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import mn.uziy.backend.auth.Me;
 import mn.uziy.backend.domain.CampaignRepository;
 import mn.uziy.backend.domain.Role;
@@ -23,6 +24,7 @@ import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
 import mn.uziy.backend.domain.ViewHistoryEntity;
 import mn.uziy.backend.domain.ViewHistoryRepository;
+import mn.uziy.backend.rejoin.PriorCompletions;
 import java.time.OffsetDateTime;
 import org.springframework.data.domain.PageRequest;
 import org.junit.jupiter.api.Test;
@@ -35,9 +37,11 @@ class ViewerServiceTest {
 
     private final ViewHistoryRepository views = mock(ViewHistoryRepository.class);
 
+    private final PriorCompletions priorCompletions = mock(PriorCompletions.class);
+
     private final ViewerServiceImpl service = new ViewerServiceImpl(users, campaigns, questions, views,
             new mn.uziy.backend.auth.MeMapper(), new FeedItemMapper(), new QuestionMapper(),
-            new ViewHistoryMapper());
+            new ViewHistoryMapper(), priorCompletions);
 
     private final UserEntity viewer = viewer();
 
@@ -84,6 +88,18 @@ class ViewerServiceTest {
         assertThat(feed).hasSize(1);
         assertThat(feed.get(0).id()).isEqualTo(1L);
         assertThat(feed.get(0).companyName()).isEqualTo("MobiCom");
+    }
+
+    @Test
+    void feedLeavesOutCampaignsEarnedUnderADeletedAccountOfTheSameNumber() {
+        when(users.findById(42L)).thenReturn(Optional.of(viewer));
+        when(campaigns.findFeedFor(42L, TargetGender.MALE, 26, "Улаанбаатар"))
+                .thenReturn(List.of(sampleCampaign(1), sampleCampaign(2)));
+        when(priorCompletions.inheritedCampaignIds(42L)).thenReturn(Set.of(2L));
+
+        List<FeedItemDto> feed = service.feed(42L);
+
+        assertThat(feed).extracting(FeedItemDto::id).containsExactly(1L);
     }
 
     @Test

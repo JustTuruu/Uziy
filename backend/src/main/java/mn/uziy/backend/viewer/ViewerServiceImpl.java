@@ -3,6 +3,7 @@ package mn.uziy.backend.viewer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import mn.uziy.backend.auth.Me;
 import mn.uziy.backend.auth.MeMapper;
 import mn.uziy.backend.common.Messages;
@@ -16,6 +17,7 @@ import mn.uziy.backend.domain.UserEntity;
 import mn.uziy.backend.domain.UserRepository;
 import mn.uziy.backend.domain.ViewHistoryEntity;
 import mn.uziy.backend.domain.ViewHistoryRepository;
+import mn.uziy.backend.rejoin.PriorCompletions;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
@@ -31,11 +33,14 @@ public class ViewerServiceImpl implements ViewerService {
     private final FeedItemMapper feedMapper;
     private final QuestionMapper questionMapper;
     private final ViewHistoryMapper historyMapper;
+    private final PriorCompletions priorCompletions;
 
     public ViewerServiceImpl(UserRepository users, CampaignRepository campaigns,
                              SurveyQuestionRepository questions, ViewHistoryRepository views,
                              MeMapper meMapper, FeedItemMapper feedMapper,
-                             QuestionMapper questionMapper, ViewHistoryMapper historyMapper) {
+                             QuestionMapper questionMapper, ViewHistoryMapper historyMapper,
+                             PriorCompletions priorCompletions) {
+        this.priorCompletions = priorCompletions;
         this.views = views;
         this.historyMapper = historyMapper;
         this.meMapper = meMapper;
@@ -63,6 +68,11 @@ public class ViewerServiceImpl implements ViewerService {
                 TargetGender.valueOf(user.getGender().name()),
                 user.getAge(),
                 user.getCity());
+        // Campaigns earned under a deleted account of the same number are done for this one too.
+        Set<Long> inherited = priorCompletions.inheritedCampaignIds(user.getId());
+        if (!inherited.isEmpty()) {
+            list = list.stream().filter(c -> !inherited.contains(c.getId())).toList();
+        }
         List<Long> companyIds = list.stream().map(CampaignEntity::getCompanyId).distinct().toList();
         Map<Long, String> companyNames = new HashMap<>();
         for (UserEntity company : users.findAllById(companyIds)) {

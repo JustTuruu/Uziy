@@ -695,7 +695,16 @@ Details and the open decisions: `docs/PRODUCTION_CHECKLIST.md` ("Second audit").
   number can register again; names, birth date, city, consent cleared; password unusable; tokens die via
   `credentials_changed_at`), device tokens + phone checks + free-text answers deleted, choice answers kept anonymous,
   decided payouts kept for accounting with holder name removed and the account masked; 409 while a payout is pending;
-  any balance is forfeited (the app warns). Event `ViewerDeleted`. App: Profile → 'Бүртгэл устгах'
+  any balance is forfeited (the app warns). Event `ViewerDeleted`.
+  **Kept after deletion (owner, 2026-11-02)**: the city/aimag and the birth YEAR (stored as 1 July of it,
+  `KEPT_BIRTH_MONTH`) stay on the anonymous row so companies' age/place results do not shift; gender and district are
+  erased. **No second reward after re-registering** (package `rejoin/`): before the row is erased its completed
+  campaigns go to `former_completions(phone_hash, campaign_id)` (V23) under `PhoneFingerprint` = HMAC-SHA256 with
+  `PHONE_HASH_SECRET` (`uziy.privacy.phone-hash-secret`; never change it once real accounts were deleted;
+  `ProductionReadinessCheck` refuses the dev default). A new viewer of the same number inherits them
+  (`CompletionCarryOverOnRegistration` on `UserRegistered` → `inherited_completions`), and the feed, the reward
+  (409 `ALREADY_REWARDED`) and the approval push treat them as done. The old demographics are NOT given to the new
+  account. App: Profile → 'Бүртгэл устгах'
   (`delete_account_sheet.dart`): a short sheet (owner, 2026-10-22) — two lines `kDeleteSheetPoints` + the balance warning; the full rules (`kDeleteAccountFacts`) live on the privacy page. Owner/accountant should confirm the retention choice.
 - Store config: ids above, version from pubspec, Android release signing from git-ignored `android/key.properties`
   (template `key.properties.example`; no key ⇒ debug-signed APK with a warning, App Bundle refused), adaptive +

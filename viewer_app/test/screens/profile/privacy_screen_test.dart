@@ -74,6 +74,20 @@ void main() {
     expect(find.text(kStatsConsentOff), findsOneWidget);
   });
 
+  test('the deletion section states every rule the deletion sheet relies on',
+      () {
+    final deletion =
+        kPrivacySections.firstWhere((s) => s.heading == kDeleteSectionHeading);
+    for (final fact in kDeleteAccountFacts) {
+      expect(deletion.body, contains(fact));
+    }
+  });
+
+  test('the policy says what a re-registered number cannot do again', () {
+    expect(kDeleteFactPhone, contains('дахин оролцох боломжгүй'));
+    expect(kDeleteFactPersonal, contains('Төрсөн он'));
+  });
+
   test('every policy section has a heading and a body', () {
     for (final section in kPrivacySections) {
       expect(section.heading.trim(), isNotEmpty);

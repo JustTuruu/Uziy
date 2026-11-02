@@ -14,6 +14,7 @@ import org.springframework.boot.DefaultApplicationArguments;
 class ProductionReadinessCheckTest {
 
     private static final String REAL_SECRET = "z".repeat(64);
+    private static final String REAL_PHONE_HASH_SECRET = "h".repeat(48);
 
     private final UserRepository users = mock(UserRepository.class);
 
@@ -23,9 +24,14 @@ class ProductionReadinessCheckTest {
 
     private ProductionReadinessCheck check(String secret, boolean simulated, String phoneVerification,
                                            List<String> origins) {
+        return check(secret, simulated, phoneVerification, origins, REAL_PHONE_HASH_SECRET);
+    }
+
+    private ProductionReadinessCheck check(String secret, boolean simulated, String phoneVerification,
+                                           List<String> origins, String phoneHashSecret) {
         var props = new AppProperties(new AppProperties.Jwt(secret, 24), new AppProperties.Cors(origins),
                 new AppProperties.Payments(simulated), new AppProperties.Push(false, ""), new AppProperties.ConsoleLogin(false));
-        return new ProductionReadinessCheck(props, users, phoneVerification);
+        return new ProductionReadinessCheck(props, users, phoneVerification, phoneHashSecret);
     }
 
     private ProductionReadinessCheck ready() {
@@ -36,6 +42,22 @@ class ProductionReadinessCheckTest {
     void aProperlyConfiguredCleanSystemHasNoProblems() {
         assertThat(ready().problems()).isEmpty();
         assertThatCode(() -> ready().run(new DefaultApplicationArguments())).doesNotThrowAnyException();
+    }
+
+    @Test
+    void theDevelopmentPhoneHashSecretIsRefused() {
+        var devDefault = "dev-only-phone-hash-secret-do-not-ship-this-value-anywhere";
+
+        assertThat(check(REAL_SECRET, false, "verifymn", List.of("https://x.mn"), devDefault).problems())
+                .anyMatch(p -> p.contains("PHONE_HASH_SECRET") && p.contains("development default"));
+    }
+
+    @Test
+    void aMissingOrShortPhoneHashSecretIsRefused() {
+        assertThat(check(REAL_SECRET, false, "verifymn", List.of("https://x.mn"), "").problems())
+                .anyMatch(p -> p.contains("PHONE_HASH_SECRET") && p.contains("shorter"));
+        assertThat(check(REAL_SECRET, false, "verifymn", List.of("https://x.mn"), "short").problems())
+                .anyMatch(p -> p.contains("PHONE_HASH_SECRET") && p.contains("shorter"));
     }
 
     @Test

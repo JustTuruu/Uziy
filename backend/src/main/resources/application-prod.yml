@@ -4,6 +4,8 @@
 uziy:
   jwt:
     secret: ${JWT_SECRET}
+  privacy:
+    phone-hash-secret: ${PHONE_HASH_SECRET}
   payments:
     simulated: false
   phone-verification:

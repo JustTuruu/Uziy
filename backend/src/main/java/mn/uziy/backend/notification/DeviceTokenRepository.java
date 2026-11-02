@@ -37,7 +37,7 @@ public interface DeviceTokenRepository extends JpaRepository<DeviceTokenEntity, 
      * (CampaignRepository.findFeedFor), minus budget: gender ALL or equal, born within
      * ({@code bornAfter}, {@code bornOnOrBefore}] (= age within [minAge, maxAge], computed by
      * the caller from its Clock), city ALL or equal, and not already completed
-     * (no view_history row for the campaign). Native because the targeting values are
+     * (no view_history row for the campaign, and not inherited from a deleted account of the same number). Native because the targeting values are
      * strings that the caller passes as-is.
      */
     @Query(value = """
@@ -52,6 +52,9 @@ public interface DeviceTokenRepository extends JpaRepository<DeviceTokenEntity, 
            AND NOT EXISTS (
                SELECT 1 FROM view_history v
                 WHERE v.user_id = u.id AND v.campaign_id = :campaignId)
+           AND NOT EXISTS (
+               SELECT 1 FROM inherited_completions ic
+                WHERE ic.user_id = u.id AND ic.campaign_id = :campaignId)
          ORDER BY d.id
         """, nativeQuery = true)
     List<String> findTokensForCampaign(

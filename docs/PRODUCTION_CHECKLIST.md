@@ -48,7 +48,7 @@ registration.
 
 ## To do before going live (needs you)
 
-1. **Create the environment** (`SPRING_PROFILES_ACTIVE=prod`): `JWT_SECRET` (random, ≥ 64 chars),
+1. **Create the environment** (`SPRING_PROFILES_ACTIVE=prod`): `JWT_SECRET` (random, ≥ 64 chars), `PHONE_HASH_SECRET` (random, ≥ 32 bytes, never rotated once accounts were deleted),
    `DB_URL`/`DB_USER`/`DB_PASSWORD`, `CORS_ALLOWED_ORIGINS` (the real panel URLs),
    `PHONE_VERIFICATION_PROVIDER=verifymn` + `VERIFY_MN_API_KEY` (verify.mn Developer Console),
    `PAYMENTS_SIMULATED=false`. The app will list anything still unsafe when it refuses to start.
